@@ -60,6 +60,9 @@ bool __stdcall IsBoolean(
         fIsBoolean = true;
     }
     else if ((5 == c_strValue.length()) && (0 == strncasecmp(c_strValue.c_str(), "false", 5)))
+    {
+        fIsBoolean = true;
+    }
 
     return fIsBoolean;
 }

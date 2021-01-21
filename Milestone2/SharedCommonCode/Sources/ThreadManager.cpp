@@ -46,7 +46,7 @@ ThreadManager * __stdcall ThreadManager::GetInstance(void) throw()
 ThreadManager::ThreadManager(void)
 {
     __DebugFunction();
-    __DebugAssert(this == gs_poThreadManager);
+    //__DebugAssert(this == gs_poThreadManager);
 }
 
 /********************************************************************************************/

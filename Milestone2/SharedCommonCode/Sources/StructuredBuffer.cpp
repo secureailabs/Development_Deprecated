@@ -836,6 +836,7 @@ void __thiscall StructuredBuffer::RemoveElement(
 
     if (m_stlMapOfElements.end() != m_stlMapOfElements.find(qwElementName64BitHash))
     {
+        m_stlMapOfElements.at(qwElementName64BitHash)->Release();
         m_stlMapOfElements.erase(qwElementName64BitHash);
         this->DeleteCachedData();
     }

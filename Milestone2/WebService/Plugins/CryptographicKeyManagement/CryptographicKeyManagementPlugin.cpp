@@ -352,7 +352,24 @@ uint64_t __thiscall CryptographicKeyManagementPlugin::SubmitRequest(
  *        | ["ConfidentialUserRecord":StructuredBuffer] {Required} Double Encrypted          |
  *                                                                 Confidential User Record  |
  *        +----------------------------------------------------------------------------------+
- *        | ["BasicRecord":StructuredBuffer] {Required} Basic User record                    |
+ *        | ["BasicUserRecord":StructuredBuffer] {Required} Basic User record                    |
+ *        +----------------------------------------------------------------------------------+
+ *
+ *      The ConfidentialUserRecord must atleast have the following elements:
+ *        +----------------------------------------------------------------------------------+
+ *        | ["IV":Buffer] {Required} IV used to encrypt data with SAIL Key                   |
+ *        +----------------------------------------------------------------------------------+
+ *        | ["TAG":Buffer] {Required} Aes Tag for decryption authentication                  |
+ *        +----------------------------------------------------------------------------------+
+ *        | ["SailKeyEncryptedConfidentialUserRecord":Buffer] {Required} SAIL Key Encrypted
+ *                                                                  User Confidential record |
+ *        +----------------------------------------------------------------------------------+
+ *
+ *      The BasicUserRecord must atleast have the following elements:
+ *        +----------------------------------------------------------------------------------+
+ *        | ["WrapedAccountKey":Buffer] {Required} Account Key Wrapped with Password Key     |
+ *        +----------------------------------------------------------------------------------+
+ *        | ["UserId":Buffer] {Required} User Guid                                           |
  *        +----------------------------------------------------------------------------------+
  *
  ********************************************************************************************/

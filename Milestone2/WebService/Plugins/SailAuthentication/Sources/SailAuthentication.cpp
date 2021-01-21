@@ -375,17 +375,13 @@ std::vector<Byte> __thiscall SailAuthentication::AuthenticateUserCredentails(
             // Create a session UUID
             Guid oSessionGuid;
 
-            // Generate EOSB
+            // Generate SSB
             StructuredBuffer oSsb;
             oSsb.PutString("UserUuid", m_stlUserAccounts[unIndex]->GetUserUuid());
             oSsb.PutString("SessionUuid", oSessionGuid.ToString(eHyphensAndCurlyBraces));
             oSsb.PutQword("AccessRights", 0x4);
-            // StructuredBuffer oEosb;
-            // oEosb.PutQword("Header", 0xE62110021B65A123);
-            // oEosb.PutUnsignedInt32("SizeOfSSB", (uint32_t) oSsb.GetSerializedBufferRawDataSizeInBytes());
-            // oEosb.PutStructuredBuffer("SSB", oSsb);
-            // oEosb.PutQword("Footer", 0x321A56B12991126E);
-            // oResponse.PutStructuredBuffer("Eosb", oEosb);
+
+            // Generate oEosb
             unsigned int unSerializedEosbSizeInBytes = sizeof(Qword) + sizeof(uint32_t) + oSsb.GetSerializedBufferRawDataSizeInBytes() + sizeof(Qword);
             std::vector<Byte> stlSerializedResponse(unSerializedEosbSizeInBytes);
             Byte * pbSerializedEosb = (Byte *) stlSerializedResponse.data();

@@ -341,11 +341,11 @@ uint64_t __thiscall CryptographicKeyManagementPlugin::SubmitRequest(
  * @class CryptographicKeyManagementPlugin
  * @function GenerateEosb
  * @brief Create a new Eosb for the login request
- * @param[in] c_oRequest contains the request body
+ * @param[in] c_oStructuredBufferRequest contains the request body
  * @throw BaseException on failure
  * @returns Buffer with encrypted Eosb and decryption information
  * @note
- *      The RequiredParameters StructuredBuffer should have
+ *      The c_oStructuredBufferRequest StructuredBuffer should have
  *        +----------------------------------------------------------------------------------+
  *        | ["Passphrase":String] {Required} Password to generate key                        |
  *        +----------------------------------------------------------------------------------+
@@ -375,20 +375,19 @@ uint64_t __thiscall CryptographicKeyManagementPlugin::SubmitRequest(
  ********************************************************************************************/
 
 std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
-    _in const StructuredBuffer & c_oRequest
+    _in const StructuredBuffer & c_oStructuredBufferRequest
     )
 {
     __DebugFunction();
 
     StructuredBuffer oResponseStructuredBuffer;
 
-    const StructuredBuffer c_oStructuredBufferRequest = c_oRequest.GetStructuredBuffer("RequiredParameters");
     const std::string strPassphrase = c_oStructuredBufferRequest.GetString("Passphrase");
-    StructuredBuffer oStructuredBufferConfidentialUserRecord = c_oStructuredBufferRequest.GetStructuredBuffer("ConfidentialUserRecord");
-    StructuredBuffer oStructuredBufferBasicUserRecord = c_oStructuredBufferRequest.GetStructuredBuffer("BasicUserRecord");
+    const StructuredBuffer oStructuredBufferConfidentialUserRecord = c_oStructuredBufferRequest.GetStructuredBuffer("ConfidentialUserRecord");
+    const StructuredBuffer oStructuredBufferBasicUserRecord = c_oStructuredBufferRequest.GetStructuredBuffer("BasicUserRecord");
 
     // Fetch the reference to the Cryptographic Engine Singleton Object
-    CryptographicEngine & oCryptographicEngine = CryptographicEngine::Get();
+    const CryptographicEngine & oCryptographicEngine = CryptographicEngine::Get();
 
     // Generate a password derived Key
     // Not using the Engine fucntion call to generate the key as that is used when the key is

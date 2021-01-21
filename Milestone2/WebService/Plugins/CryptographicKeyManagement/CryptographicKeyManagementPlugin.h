@@ -82,19 +82,15 @@ class CryptographicKeyManagementPlugin : public Object
         const std::string m_strPluginName;
         const std::vector<Byte> m_EosbHeader = {0xE6, 0x21, 0x10, 0x02, 0x1B, 0x65, 0xA1, 0x23};
         const std::vector<Byte> m_EosbFooter = {0x32, 0x1A, 0x56, 0xB1, 0x29, 0x91, 0x12, 0x6E};
-
-        // Always use the key Guid by taking a lock on them
+        // Always use the following key Guid by taking the m_sEosbKeyMutex lock on them
         Guid m_oGuidEosbCurrentKey = (const char *)nullptr;
         Guid m_oGuidEosbPredecessorKey = (const char *)nullptr;
-
         pthread_mutex_t m_sMutex;
         pthread_mutex_t m_sEosbKeyMutex;
         uint64_t m_unKeyRotationThreadID;
         uint64_t m_unNextAvailableIdentifier;
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;
-
         uint64_t m_unKeyRotateThreadID;
-
         PluginDictionary m_oDictionary;
 };
 

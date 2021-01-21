@@ -63,6 +63,7 @@ enum class CryptographicOperation : uint32_t
 };
 
 #define AES_IV_LENGTH 12
+#define AES_TAG_LENGTH 16
 
 /********************************************************************************************/
 
@@ -118,17 +119,6 @@ class CryptographicKey : public Object
         bool __thiscall IsOperationSupported(
             _in CryptographicOperation eOperation
             );
-        void __thiscall SetPemPublicKey(
-            _in const std::string & c_strPemPublicKey
-            );
-        void __thiscall SetPemPrivateKey(
-            _in const std::string & c_strPemPublicKey
-            );
-        void __thiscall SetSymmetricKey(
-            _in const std::vector<Byte> & stlSymmetricKey
-            );
-        std::string __thiscall GetPemPublicKey(void);
-        std::string __thiscall GetPemPrivateKey(void);
 
         void __thiscall StoreKey(void);
         Guid __thiscall GetKeyGuid(void);

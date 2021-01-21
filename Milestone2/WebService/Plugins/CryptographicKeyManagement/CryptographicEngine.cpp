@@ -484,14 +484,14 @@ bool __thiscall CryptographicEngine::EncryptFinal(
         int nCipherTextLength;
 
         // Adding additional 16 bytes for the tag.
-        stlCipherText.resize(stlCipherText.size() + 16);
+        stlCipherText.resize(stlCipherText.size() + AES_TAG_LENGTH);
 
         // Most likely this will not anything to the ciphertext buffer. It internally finalizes the encryption and maybe some cleanup.
         nOpenSslStatus = ::EVP_EncryptFinal_ex(poOperationParams->pEvpCipherCtx, stlCipherText.data() + unOriginalCipherLength, &nCipherTextLength);
         _ThrowBaseExceptionIf((1 != nOpenSslStatus), "AES Encryption failed", nullptr);
 
         // Add the generated TAG at the end of the cipher
-        nOpenSslStatus = ::EVP_CIPHER_CTX_ctrl(poOperationParams->pEvpCipherCtx, EVP_CTRL_AEAD_GET_TAG, 16, stlCipherText.data() + unOriginalCipherLength + nCipherTextLength);
+        nOpenSslStatus = ::EVP_CIPHER_CTX_ctrl(poOperationParams->pEvpCipherCtx, EVP_CTRL_AEAD_GET_TAG, AES_TAG_LENGTH, stlCipherText.data() + unOriginalCipherLength + nCipherTextLength);
         _ThrowBaseExceptionIf((1 != nOpenSslStatus), "AES Encryption failed", nullptr);
 
         // Free the Cipher context
@@ -608,7 +608,7 @@ OperationID __thiscall CryptographicEngine::DecryptInit(
 
         // Set the TAG right here which will be used to test if the decrypted data can be trusted or not
         // These are the last 16 bytes of the cipher text
-        nOpenSslStatus = ::EVP_CIPHER_CTX_ctrl(poEvpCipherCtx, EVP_CTRL_AEAD_SET_TAG, 16, c_poStructuredBufferRequest->GetBuffer("TAG").data());
+        nOpenSslStatus = ::EVP_CIPHER_CTX_ctrl(poEvpCipherCtx, EVP_CTRL_AEAD_SET_TAG, AES_TAG_LENGTH, c_poStructuredBufferRequest->GetBuffer("TAG").data());
         _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Setting up TAG failed", nullptr);
 
         poOperationParams->nCryptographicOperation = CryptographicOperation::eDecrypt;
@@ -658,7 +658,7 @@ OperationID __thiscall CryptographicEngine::DecryptInit(
  * it is just much more efficient to pass as much data as possible in a single go. The encrypted
  * buffer has 16 bytes attached to the end as tag which must be removed when passed as input.
  * A good to do it would be to first copy the tag into the StructuredBuffer and then resize the
- * encrypted buffer to (stlCipherText.size() - 16).
+ * encrypted buffer to (stlCipherText.size() - AES_TAG_LENGTH).
  *
  ********************************************************************************************/
 

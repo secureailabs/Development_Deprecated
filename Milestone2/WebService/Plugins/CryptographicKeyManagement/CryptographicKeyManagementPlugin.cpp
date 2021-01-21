@@ -398,6 +398,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     CryptographicKeyUniquePtr oPasswordDerivedDecryptKey = std::make_unique<CryptographicKey>(*oPasswordDerivedWrapKey);
 
     // Set the parameters for unwrapping/decrypting the key
+    // Password derived keys also derive IV from the same password. So, not needed.
     StructuredBuffer oDecryptParams;
     oDecryptParams.PutString("AesMode", "CFB");
 
@@ -410,7 +411,6 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
 
     // Get the Double Encrypted Confidential User Record and first decrypt it using the
     // AES-GCM SAIL Secret key and then using the password derived key
-    StructuredBuffer oDecryptParams;
     oDecryptParams.PutBuffer("IV", oStructuredBufferConfidentialUserRecord.GetBuffer("IV"));
     oDecryptParams.PutBuffer("TAG", oStructuredBufferConfidentialUserRecord.GetBuffer("TAG"));
     oDecryptParams.PutString("AesMode", "GCM");
@@ -469,9 +469,9 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     bool fEncryptStatus = oCryptographicEngine.OperationFinish(pEncryptEosbId, stlEncryptedSerializedEosbBuffer);
 
     // Extract the 16 byte AES GCM Tag from the encrypted Cipher Text and resize the original buffer
-    std::vector<Byte> stlAesGcmTag(16);
-    ::memcpy(stlAesGcmTag.data(), stlEncryptedSerializedEosbBuffer.data() + (stlEncryptedSerializedEosbBuffer.size() - 16), 16);
-    stlEncryptedSerializedEosbBuffer.resize(stlEncryptedSerializedEosbBuffer.size() - 16);
+    std::vector<Byte> stlAesGcmTag(AES_TAG_LENGTH);
+    ::memcpy(stlAesGcmTag.data(), stlEncryptedSerializedEosbBuffer.data() + (stlEncryptedSerializedEosbBuffer.size() - AES_TAG_LENGTH), AES_TAG_LENGTH);
+    stlEncryptedSerializedEosbBuffer.resize(stlEncryptedSerializedEosbBuffer.size() - AES_TAG_LENGTH);
 
     // Fill the output buffer
     const unsigned int unSizeOfEncryptedBuffer = m_EosbHeader.size() + stlAesInitializationVector.size() + stlAesGcmTag.size() + oEncryptKey.ToString(eRaw).length() +  sizeof(uint32_t) + stlEncryptedSerializedEosbBuffer.size() + m_EosbFooter.size();

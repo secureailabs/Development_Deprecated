@@ -161,7 +161,7 @@ CryptographicKey::CryptographicKey(
  * @throw BaseException on an internal error occurs
  *
  ********************************************************************************************/
-// TODO: encrypt the key and then wite it to the filesystem
+
 CryptographicKey::CryptographicKey(
     _in Guid oGuid
 )
@@ -214,83 +214,6 @@ CryptographicKey::CryptographicKey(
     {
         _ThrowBaseException("No stored key found.", nullptr);
     }
-}
-
-/********************************************************************************************
- *
- * @class CryptographicKey
- * @function SetPemPublicKey
- * @brief Set the Public Key to the object
- * @param[in] stlBuffer Set the Public Key in the object
- * @throw BaseException on invalid key or if key already exists
- *
- ********************************************************************************************/
-
-void __thiscall CryptographicKey::SetPemPublicKey(
-    _in const std::string & c_strPemPublicKey
-    )
-{
-    __DebugFunction();
-    __DebugAssert(0 != c_strPemPublicKey.length());
-    _ThrowBaseExceptionIf((nullptr != m_poPublicKey), "Public Key already exists for this object", nullptr);
-
-    BioUniquePtr poBio(::BIO_new(BIO_s_mem()), ::BIO_free);
-    _ThrowOutOfMemoryExceptionIfNull(poBio);
-
-    int nOpenSslStatus = ::BIO_write(poBio.get(), c_strPemPublicKey.c_str(), c_strPemPublicKey.length());
-    _ThrowBaseExceptionIf((c_strPemPublicKey.length() != nOpenSslStatus), "Could not write to BIO", nullptr);
-
-    m_poPublicKey.reset(::PEM_read_bio_PUBKEY(poBio.get(), nullptr, nullptr, nullptr), ::EVP_PKEY_free);
-    _ThrowIfNull(m_poPublicKey, "Couldn't extract public key from PEM string", nullptr);
-}
-
-/********************************************************************************************
- *
- * @class CryptographicKey
- * @function SetPemPrivateKey
- * @brief Set the Public Key to the object
- * @param[in] stlBuffer Set the Public Key in the object
- * @throw BaseException on invalid key or if key already exists
- *
- ********************************************************************************************/
-
-void __thiscall CryptographicKey::SetPemPrivateKey(
-    _in const std::string & c_strPemPrivateKey
-    )
-{
-    __DebugFunction();
-    __DebugAssert(0 != c_strPemPrivateKey.length());
-    _ThrowBaseExceptionIf((nullptr != m_poPublicKey), "Public Key already exists for this object", nullptr);
-
-    BioUniquePtr poBio(::BIO_new(BIO_s_mem()), ::BIO_free);
-    _ThrowOutOfMemoryExceptionIfNull(poBio);
-
-    int nOpenSslStatus = ::BIO_write(poBio.get(), c_strPemPrivateKey.c_str(), c_strPemPrivateKey.length());
-    _ThrowBaseExceptionIf((c_strPemPrivateKey.length() != nOpenSslStatus), "Could not write to BIO", nullptr);
-
-    m_poPrivateKey.reset(::PEM_read_bio_PrivateKey(poBio.get(), nullptr, nullptr, nullptr), ::EVP_PKEY_free);
-    _ThrowIfNull(m_poPrivateKey, "Couldn't extract public key from PEM string", nullptr);
-}
-
-/********************************************************************************************
- *
- * @class CryptographicKey
- * @function SetSymmetricKey
- * @brief Set the Symmetric Key for the object
- * @param[in] stlSymmetricKey Set the Public Key in the object
- * @throw BaseException on invalid key or if key already exists
- *
- ********************************************************************************************/
-
-void __thiscall CryptographicKey::SetSymmetricKey(
-    const std::vector<Byte> & stlSymmetricKey
-    )
-{
-    __DebugFunction();
-    __DebugAssert(0 != stlSymmetricKey.size());
-    _ThrowBaseExceptionIf((0 != m_stlSymmetricKey.size()), "Symmetric Key already exists for this object", nullptr);
-
-    m_stlSymmetricKey = stlSymmetricKey;
 }
 
 /********************************************************************************************
@@ -554,6 +477,7 @@ Guid __thiscall CryptographicKey::GetKeyGuid()
  *
  ********************************************************************************************/
 
+// TODO: encrypt the key and then wite it to the filesystem
 void __thiscall CryptographicKey::StoreKey()
 {
     __DebugFunction();
@@ -601,64 +525,4 @@ void __thiscall CryptographicKey::StoreKey()
 
     oKeyFile.write((const char *)oStructuredBufferKey.GetSerializedBufferRawDataPtr(), oStructuredBufferKey.GetSerializedBufferRawDataSizeInBytes());
     oKeyFile.close();
-}
-
-/********************************************************************************************
- *
- * @class CryptographicKey
- * @function GetPemPublicKey
- * @brief Get the Public Key as a Pem string
- * @return Public Key in PEM formatted string
- *
- ********************************************************************************************/
-
-std::string __thiscall CryptographicKey::GetPemPublicKey(void)
-{
-    __DebugFunction();
-
-    BioUniquePtr poBIO(::BIO_new(::BIO_s_mem()), ::BIO_free);
-    _ThrowOutOfMemoryExceptionIfNull(poBIO);
-
-    std::string strPemPublicKey;
-    if (1 == ::PEM_write_bio_PUBKEY(poBIO.get(), m_poPrivateKey.get()))
-    {
-        char * pTempBufferLoc;
-        int nBytesInBio = ::BIO_get_mem_data(poBIO.get(), &pTempBufferLoc);
-        _ThrowBaseExceptionIf((0 >= nBytesInBio), "Nothing to read from BIO", nullptr);
-        strPemPublicKey.resize(nBytesInBio);
-        int nBytesRead = ::BIO_read(poBIO.get(), &(strPemPublicKey[0]), strPemPublicKey.size());
-        _ThrowBaseExceptionIf((nBytesInBio != nBytesRead), "Failed to read from BIO", nullptr);
-    }
-
-    return strPemPublicKey;
-}
-
-/********************************************************************************************
- *
- * @class CryptographicKey
- * @function GetPemPrivateKey
- * @brief Get the Private Key as a Pem string
- * @return Private Key in PEM formatted string
- *
- ********************************************************************************************/
-
-std::string __thiscall CryptographicKey::GetPemPrivateKey(void)
-{
-    __DebugFunction();
-
-    BioUniquePtr poBIO(::BIO_new(::BIO_s_mem()), ::BIO_free);
-    _ThrowOutOfMemoryExceptionIfNull(poBIO);
-
-    std::string strPemPrivateKey;
-    if (1 == ::PEM_write_bio_PrivateKey(poBIO.get(), m_poPrivateKey.get(), nullptr, nullptr, 0, nullptr, nullptr))
-    {
-        char * pTempBufferLoc;
-        int nBytesInBio = ::BIO_get_mem_data(poBIO.get(), &pTempBufferLoc);
-        _ThrowBaseExceptionIf((0 >= nBytesInBio), "Nothing to read from BIO", nullptr);
-        strPemPrivateKey.resize(nBytesInBio);
-        int nBytesRead = ::BIO_read(poBIO.get(), &(strPemPrivateKey[0]), strPemPrivateKey.size());
-        _ThrowBaseExceptionIf((nBytesInBio != nBytesRead), "Failed to read from BIO", nullptr);
-    }
-
-    return strPemPrivateKey;
 }

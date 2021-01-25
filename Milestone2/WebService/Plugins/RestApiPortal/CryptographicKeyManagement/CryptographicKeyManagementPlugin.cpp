@@ -1,0 +1,502 @@
+/*********************************************************************************************
+ *
+ * @file CryptographicKeyManagementPlugin.cpp
+ * @author Shabana Akhtar Baig
+ * @date 06 Nov 2020
+ * @License Private and Confidential. Internal Use Only.
+ * @copyright Copyright (C) 2020 Secure AI Labs, Inc. All Rights Reserved.
+ * @brief
+ ********************************************************************************************/
+
+#include "CryptographicKeyManagementPlugin.h"
+#include "HardCodedCryptographicKeys.h"
+#include "Base64Encoder.h"
+#include "CryptographicEngine.h"
+#include "ThreadManager.h"
+#include "DateAndTime.h"
+
+#include <unistd.h>
+
+// Singleton Object, can be declared anywhere, but only once
+CryptographicKeyManagementPlugin CryptographicKeyManagementPlugin::m_oCryptographicKeyManagementPlugin;
+
+/********************************************************************************************
+ * @class CryptographicKeyManagementPlugin
+ * @function Get
+ * @brief Get a reference to a singleton object of CryptographicKeyManagementPlugin class
+ * @return Return the reference to the singleton object of CryptographicKeyManagementPlugin
+ *
+ ********************************************************************************************/
+
+CryptographicKeyManagementPlugin & __stdcall CryptographicKeyManagementPlugin::Get(void)
+{
+    __DebugFunction();
+
+    return m_oCryptographicKeyManagementPlugin;
+}
+
+/********************************************************************************************
+ * @class CryptographicKeyManagementPlugin
+ * @function Shutdown
+ * @brief Release the object resources
+ *
+ ********************************************************************************************/
+
+void __stdcall CryptographicKeyManagementPlugin::Shutdown(void)
+{
+    __DebugFunction();
+
+    CryptographicKeyManagementPlugin & oCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
+    oCryptographicKeyManagementPlugin.Release();
+}
+
+/********************************************************************************************
+ *
+ * @function ManageEphemeralKeys
+ * @brief To to rotate keys after a particular interval
+ *
+ ********************************************************************************************/
+
+void * __stdcall ManageEphemeralKeys(void *)
+{
+    __DebugFunction();
+
+    CryptographicKeyManagementPlugin & oCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
+    while (true)
+    {
+        oCryptographicKeyManagementPlugin.RotateEphemeralKeys();
+
+        // Sleep for 20 Minutes
+        ::sleep(20*60);
+    }
+
+    return nullptr;
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function CryptographicKeyManagementPlugin
+ * @brief Constructor
+ *
+ ********************************************************************************************/
+
+CryptographicKeyManagementPlugin::CryptographicKeyManagementPlugin(void)
+    : m_oPluginGuid("{30998245-A931-4518-9A9D-FB0F43F1F02D}"), m_strPluginName("CryptographicKeyManagementPlugin")
+{
+    __DebugFunction();
+
+    m_sMutex = PTHREAD_MUTEX_INITIALIZER;
+    m_sEosbKeyMutex = PTHREAD_MUTEX_INITIALIZER;
+    m_unNextAvailableIdentifier = 0;
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function ~CryptographicKeyManagementPlugin
+ * @brief Destructor
+ *
+ ********************************************************************************************/
+
+CryptographicKeyManagementPlugin::~CryptographicKeyManagementPlugin(void)
+{
+    __DebugFunction();
+
+    // Kill the Eosb Key Rotation Thread
+    ThreadManager * poThreadManager = ThreadManager::GetInstance();
+    poThreadManager->TerminateThread(m_unKeyRotationThreadID);
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function GetName
+ * @brief Fetch the name of the plugin
+ * @return Name of the plugin
+ *
+ ********************************************************************************************/
+
+const char * __thiscall CryptographicKeyManagementPlugin::GetName(void) const throw()
+{
+    __DebugFunction();
+
+    return m_strPluginName.c_str();
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function GetUuid
+ * @brief Fetch the UUID of the plugin
+ * @return UUID of the plugin
+ *
+ ********************************************************************************************/
+
+const char * __thiscall CryptographicKeyManagementPlugin::GetUuid(void) const throw()
+{
+    __DebugFunction();
+
+    return m_oPluginGuid.ToString(eHyphensAndCurlyBraces).c_str();
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function GetVersion
+ * @brief Fetch the current version of the plugin
+ * @return Version of the plugin
+ *
+ ********************************************************************************************/
+
+Qword __thiscall CryptographicKeyManagementPlugin::GetVersion(void) const throw()
+{
+    __DebugFunction();
+
+    return 0x0000000100000001;
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function GetDictionarySerializedBuffer
+ * @brief Fetch the serialized buffer of the plugin's dictionary
+ * @return Serialized buffer of the plugin's dictionary
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GetDictionarySerializedBuffer(void) const throw()
+{
+    __DebugFunction();
+
+    return m_oDictionary.GetSerializedDictionary();
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function RotateEphemeralKeys
+ * @brief Creates Ephemeral Keys and rotates them at a fixed interval
+ *
+ ********************************************************************************************/
+
+void __thiscall CryptographicKeyManagementPlugin::RotateEphemeralKeys()
+{
+    ::pthread_mutex_lock(&m_sEosbKeyMutex);
+    if (Guid((const char *)nullptr) == m_oGuidEosbCurrentKey)
+    {
+        m_oGuidEosbPredecessorKey = m_oGuidEosbCurrentKey;
+    }
+
+    CryptographicKey oCurrentKey(KeySpec::eAES256);
+    oCurrentKey.StoreKey();
+    m_oGuidEosbCurrentKey = oCurrentKey.GetKeyGuid();
+    ::pthread_mutex_unlock(&m_sEosbKeyMutex);
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function InitializePlugin
+ * @brief Initializer that initializes the plugin's dictionary
+ *
+ ********************************************************************************************/
+
+void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
+{
+    __DebugFunction();
+
+    // Adding the list of required Parameters for the Eosb Generation API
+    StructuredBuffer oGenerateEosbParameters;
+    StructuredBuffer oPassphrase;
+    oPassphrase.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oPassphrase.PutBoolean("IsRequired", true);
+    oGenerateEosbParameters.PutStructuredBuffer("Passphrase", oPassphrase);
+    StructuredBuffer oBasicUserData;
+    oBasicUserData.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
+    oBasicUserData.PutBoolean("IsRequired", true);
+    oGenerateEosbParameters.PutStructuredBuffer("BasicUserRecord", oBasicUserData);
+    StructuredBuffer oConfidentialUserRecord;
+    oConfidentialUserRecord.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
+    oConfidentialUserRecord.PutBoolean("IsRequired", true);
+    oGenerateEosbParameters.PutStructuredBuffer("ConfidentialUserRecord", oConfidentialUserRecord);
+    // Registering the Generate Eosb Entry
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/GenerateEosb", oGenerateEosbParameters);
+
+    // Generate the ephemeral Keys and keep rotating them every 20 minutes and at a time keep only the
+    // latest key active and it's predecessor for the grace period.
+    ThreadManager * poThreadManager = ThreadManager::GetInstance();
+    _ThrowIfNull(poThreadManager, "GetThreadManager not found.", nullptr);
+    m_unKeyRotationThreadID = poThreadManager->CreateThread(nullptr, ::ManageEphemeralKeys, nullptr);
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function SubmitRequest
+ * @brief Method called by flat function SubmitRequest when a client requests for the plugin's resource
+ * @param[in] c_oRequestStructuredBuffer points to the request body
+ * @param[out] punSerializedResponseSizeInBytes stores the size of the response
+ * @throw BaseException Element not found
+ * @throw BaseException Error generating challenge nonce
+ * @returns a 64 bit unique transaction identifier
+ *
+ ********************************************************************************************/
+
+uint64_t __thiscall CryptographicKeyManagementPlugin::SubmitRequest(
+    _in const StructuredBuffer & c_oRequestStructuredBuffer,
+    _out unsigned int * punSerializedResponseSizeInBytes
+    )
+{
+    __DebugFunction();
+
+    uint64_t un64Identifier = 0xFFFFFFFFFFFFFFFF;
+    std::string strVerb = c_oRequestStructuredBuffer.GetString("Verb");
+    std::string strResource = c_oRequestStructuredBuffer.GetString("Resource");
+
+    // TODO: As an optimization, we should make sure to convert strings into 64 bit hashes
+    // in order to speed up comparison. String comparisons WAY expensive.
+    std::vector<Byte> stlResponseBuffer;
+
+    ::pthread_mutex_lock(&m_sMutex);
+    if (0xFFFFFFFFFFFFFFFF == m_unNextAvailableIdentifier)
+    {
+        m_unNextAvailableIdentifier = 0;
+    }
+    un64Identifier = m_unNextAvailableIdentifier;
+    m_unNextAvailableIdentifier++;
+    ::pthread_mutex_unlock(&m_sMutex);
+
+    try
+    {
+        // Route to the requested resource
+        if ("GET" == strVerb)
+        {
+            if ("SAIL/CryptographicManager/GenerateEosb" == strResource)
+            {
+                stlResponseBuffer = this->GenerateEosb(c_oRequestStructuredBuffer);
+            }
+        }
+    }
+    catch(...)
+    {
+        StructuredBuffer oRequestFailBuffer;
+        oRequestFailBuffer.PutString("Status", "FAIL");
+        stlResponseBuffer = oRequestFailBuffer.GetSerializedBuffer();
+    }
+
+    // Return size of response buffer
+    *punSerializedResponseSizeInBytes = stlResponseBuffer.size();
+    __DebugAssert(0 < *punSerializedResponseSizeInBytes);
+
+    // Save the response buffer and increment transaction identifier which will be assigned to the next transaction
+    ::pthread_mutex_lock(&m_sMutex);
+    m_stlCachedResponse[un64Identifier] = stlResponseBuffer;
+    ::pthread_mutex_unlock(&m_sMutex);
+
+    return un64Identifier;
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function GetResponse
+ * @brief Method called by flat function GetResponse to get plugin's response
+ * @param[in] un64Identifier is the transaction identifier
+ * @param[out] c_pbSerializedResponseBuffer points to the GetResponse
+ * @params[in] unSerializedResponseBufferSizeInBytes is used to verify the request
+ * @returns a boolean that represents status of the request
+ *
+ ********************************************************************************************/
+
+ bool __thiscall CryptographicKeyManagementPlugin::GetResponse(
+     _in uint64_t un64Identifier,
+     _out Byte * pbSerializedResponseBuffer,
+     _in unsigned int unSerializedResponseBufferSizeInBytes
+     )
+{
+    __DebugFunction();
+    __DebugAssert(0xFFFFFFFFFFFFFFFF != un64Identifier);
+    __DebugAssert(nullptr != pbSerializedResponseBuffer);
+    __DebugAssert(0 < unSerializedResponseBufferSizeInBytes);
+
+    bool fSuccess = false;
+
+    ::pthread_mutex_lock(&m_sMutex);
+    if (m_stlCachedResponse.end() != m_stlCachedResponse.find(un64Identifier))
+    {
+        __DebugAssert(0 < m_stlCachedResponse[un64Identifier].size());
+
+        ::memcpy((void *) pbSerializedResponseBuffer, (const void *) m_stlCachedResponse[un64Identifier].data(), m_stlCachedResponse[un64Identifier].size());
+        m_stlCachedResponse.erase(un64Identifier);
+        fSuccess = true;
+    }
+    ::pthread_mutex_unlock(&m_sMutex);
+
+    return fSuccess;
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function GenerateEosb
+ * @brief Create a new Eosb for the login request
+ * @param[in] c_oStructuredBufferRequest contains the request body
+ * @throw BaseException on failure
+ * @returns Buffer with encrypted Eosb and decryption information
+ * @note
+ *      The c_oStructuredBufferRequest StructuredBuffer should have
+ *        +----------------------------------------------------------------------------------+
+ *        | ["Passphrase":String] {Required} Password to generate key                        |
+ *        +----------------------------------------------------------------------------------+
+ *        | ["ConfidentialUserRecord":StructuredBuffer] {Required} Double Encrypted          |
+ *                                                                 Confidential User Record  |
+ *        +----------------------------------------------------------------------------------+
+ *        | ["BasicUserRecord":StructuredBuffer] {Required} Basic User record                    |
+ *        +----------------------------------------------------------------------------------+
+ *
+ *      The ConfidentialUserRecord must atleast have the following elements:
+ *        +----------------------------------------------------------------------------------+
+ *        | ["IV":Buffer] {Required} IV used to encrypt data with SAIL Key                   |
+ *        +----------------------------------------------------------------------------------+
+ *        | ["TAG":Buffer] {Required} Aes Tag for decryption authentication                  |
+ *        +----------------------------------------------------------------------------------+
+ *        | ["SailKeyEncryptedConfidentialUserRecord":Buffer] {Required} SAIL Key Encrypted
+ *                                                                  User Confidential record |
+ *        +----------------------------------------------------------------------------------+
+ *
+ *      The BasicUserRecord must atleast have the following elements:
+ *        +----------------------------------------------------------------------------------+
+ *        | ["WrapedAccountKey":Buffer] {Required} Account Key Wrapped with Password Key     |
+ *        +----------------------------------------------------------------------------------+
+ *        | ["UserId":Buffer] {Required} User Guid                                           |
+ *        +----------------------------------------------------------------------------------+
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
+    _in const StructuredBuffer & c_oStructuredBufferRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponseStructuredBuffer;
+
+    const std::string strPassphrase = c_oStructuredBufferRequest.GetString("Passphrase");
+    const StructuredBuffer oStructuredBufferConfidentialUserRecord = c_oStructuredBufferRequest.GetStructuredBuffer("ConfidentialUserRecord");
+    const StructuredBuffer oStructuredBufferBasicUserRecord = c_oStructuredBufferRequest.GetStructuredBuffer("BasicUserRecord");
+
+    // Fetch the reference to the Cryptographic Engine Singleton Object
+    const CryptographicEngine & oCryptographicEngine = CryptographicEngine::Get();
+
+    // Generate a password derived Key
+    // Not using the Engine fucntion call to generate the key as that is used when the key is
+    // generated and stored to the file systems and only the Guid of the Key is returned.
+    CryptographicKeyUniquePtr oPasswordDerivedWrapKey = std::make_unique<CryptographicKey>(KeySpec::ePDKDF2, HashAlgorithm::eSHA256, strPassphrase);
+    // Copy it so that it can be used twice, Copy constructor is cheaper
+    CryptographicKeyUniquePtr oPasswordDerivedDecryptKey = std::make_unique<CryptographicKey>(*oPasswordDerivedWrapKey);
+
+    // Set the parameters for unwrapping/decrypting the key
+    // Password derived keys also derive IV from the same password. So, not needed.
+    StructuredBuffer oDecryptParams;
+    oDecryptParams.PutString("AesMode", "CFB");
+
+    // Unwrap the Account Key from the Basic Record using the password derived key
+    std::vector<Byte> stlAccountKey;
+    OperationID oUnwrapKeyOperationId = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, std::move(oPasswordDerivedWrapKey));
+    oCryptographicEngine.OperationUpdate(oUnwrapKeyOperationId, oStructuredBufferBasicUserRecord.GetBuffer("WrapedAccountKey"), stlAccountKey);
+    bool fDecryptStatus = oCryptographicEngine.OperationFinish(oUnwrapKeyOperationId, stlAccountKey);
+    _ThrowBaseExceptionIf((false == fDecryptStatus), "Account key Decryption using Password Key failed.", nullptr);
+
+    // Get the Double Encrypted Confidential User Record and first decrypt it using the
+    // AES-GCM SAIL Secret key and then using the password derived key
+    oDecryptParams.PutBuffer("IV", oStructuredBufferConfidentialUserRecord.GetBuffer("IV"));
+    oDecryptParams.PutBuffer("TAG", oStructuredBufferConfidentialUserRecord.GetBuffer("TAG"));
+    oDecryptParams.PutString("AesMode", "GCM");
+
+    // TODO: don't use the hard-coded key eventually.
+    Guid oSailSecretKey = "76A426D93D1F4F82AFA48843140EF603";
+
+    std::vector<Byte> stlUserKeyEncryptedUserRecord;
+    OperationID oDecryptionID = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, oSailSecretKey, &oDecryptParams);
+    oCryptographicEngine.OperationUpdate(oDecryptionID, oStructuredBufferConfidentialUserRecord.GetBuffer("SailKeyEncryptedConfidentialUserRecord"), stlUserKeyEncryptedUserRecord);
+    fDecryptStatus = oCryptographicEngine.OperationFinish(oDecryptionID, stlUserKeyEncryptedUserRecord);
+    _ThrowBaseExceptionIf((false == fDecryptStatus), "Confidential User Record Decryption using SAIL Key failed.", nullptr);
+
+    // Password Derived Keys have their own IV derived form the password. So they are not needed
+    // Decryption using the Password derived key uses the AES-CFB mode becasue
+    // the authenticity of the data has already been ensured in the previous GCM decryption
+    // So the tag in not needed in Decryption Paramaters.
+    oDecryptParams.RemoveElement("IV");
+    oDecryptParams.RemoveElement("TAG");
+    oDecryptParams.PutString("AesMode", "CFB");
+
+    std::vector<Byte> stlSerializedPlainTextConfidentialUserRecord;
+    OperationID oUserKeyDecryptionID = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, std::move(oPasswordDerivedDecryptKey), &oDecryptParams);
+    oCryptographicEngine.OperationUpdate(oUserKeyDecryptionID, stlUserKeyEncryptedUserRecord, stlSerializedPlainTextConfidentialUserRecord);
+    fDecryptStatus = oCryptographicEngine.OperationFinish(oUserKeyDecryptionID, stlSerializedPlainTextConfidentialUserRecord);
+    _ThrowBaseExceptionIf((false == fDecryptStatus), "Confidential User Record Decryption using User Account Key failed.", nullptr);
+
+    // Use the Basic User Record and Confidential User Record to get the session Eosb
+    StructuredBuffer oPlainTextConfidentialUserRecord(stlSerializedPlainTextConfidentialUserRecord);
+
+    StructuredBuffer oStructuredBufferEosb;
+    oStructuredBufferEosb.PutGuid("UserId", oStructuredBufferBasicUserRecord.GetGuid("UserID"));
+    oStructuredBufferEosb.PutGuid("SessionId", Guid());
+    oStructuredBufferEosb.PutBuffer("AccountKey", stlAccountKey);
+    oStructuredBufferEosb.PutQword("AccessRights", 0xDEADBEEF);
+    oStructuredBufferEosb.PutUnsignedInt64("Timestamp", ::GetEpochTimeInSeconds());
+    oStructuredBufferEosb.PutGuid("UserRootKeyId", oPlainTextConfidentialUserRecord.GetGuid("UserRootKeyId"));
+
+    // Generate an IV to Encrypt the Eosb serialized Buffer
+    const std::vector<Byte> stlAesInitializationVector = ::GenerateRandomBytes(AES_IV_LENGTH);
+
+    // Fetch the Guid of the current Eosb Encryption Key
+    ::pthread_mutex_lock(&m_sEosbKeyMutex);
+    const Guid oEncryptKey = m_oGuidEosbCurrentKey;
+    ::pthread_mutex_unlock(&m_sEosbKeyMutex);
+
+    // Create a Request Structured Buffer with an initialization vector for the
+    // AES-GCM encryption of the Eosb
+    StructuredBuffer oStructuredBufferEosbEncryptRequest;
+    oStructuredBufferEosbEncryptRequest.PutBuffer("IV", stlAesInitializationVector);
+
+    // This buffer will hold the encrypted serialized Eosb
+    std::vector<Byte> stlEncryptedSerializedEosbBuffer;
+    OperationID pEncryptEosbId = oCryptographicEngine.OperationInit(CryptographicOperation::eEncrypt, oEncryptKey, &oStructuredBufferEosbEncryptRequest);
+    oCryptographicEngine.OperationUpdate(pEncryptEosbId, oStructuredBufferEosb.GetSerializedBuffer(), stlEncryptedSerializedEosbBuffer);
+    bool fEncryptStatus = oCryptographicEngine.OperationFinish(pEncryptEosbId, stlEncryptedSerializedEosbBuffer);
+
+    // Extract the 16 byte AES GCM Tag from the encrypted Cipher Text and resize the original buffer
+    std::vector<Byte> stlAesGcmTag(AES_TAG_LENGTH);
+    ::memcpy(stlAesGcmTag.data(), stlEncryptedSerializedEosbBuffer.data() + (stlEncryptedSerializedEosbBuffer.size() - AES_TAG_LENGTH), AES_TAG_LENGTH);
+    stlEncryptedSerializedEosbBuffer.resize(stlEncryptedSerializedEosbBuffer.size() - AES_TAG_LENGTH);
+
+    // Fill the output buffer
+    const unsigned int unSizeOfEncryptedBuffer = m_EosbHeader.size() + stlAesInitializationVector.size() + stlAesGcmTag.size() + oEncryptKey.ToString(eRaw).length() +  sizeof(uint32_t) + stlEncryptedSerializedEosbBuffer.size() + m_EosbFooter.size();
+    std::vector<Byte> stlResponseEosb;
+    // Call reserve to just allocate memory and not initialize with
+    stlResponseEosb.reserve(unSizeOfEncryptedBuffer);
+
+    // Header
+    stlResponseEosb.insert(stlResponseEosb.end(), m_EosbHeader.begin(), m_EosbHeader.end());
+    // AES GCM IV
+    stlResponseEosb.insert(stlResponseEosb.end(), stlAesInitializationVector.begin(), stlAesInitializationVector.end());
+    // AES GCM TAG
+    stlResponseEosb.insert(stlResponseEosb.end(), stlAesGcmTag.begin(), stlAesGcmTag.end());
+    // Identifier of key used for encryption
+    std::string strEosbKeyID = oEncryptKey.ToString(eRaw);
+    stlResponseEosb.insert(stlResponseEosb.end(), strEosbKeyID.begin(), strEosbKeyID.end());
+    // Size in bytes of encrypted SSB
+    stlResponseEosb.insert(stlResponseEosb.end(), &unSizeOfEncryptedBuffer, &unSizeOfEncryptedBuffer + sizeof(unSizeOfEncryptedBuffer));
+    // Encrypted SSB containing DC information
+    stlResponseEosb.insert(stlResponseEosb.end(), stlEncryptedSerializedEosbBuffer.begin(), stlEncryptedSerializedEosbBuffer.end());
+    // Footer
+    stlResponseEosb.insert(stlResponseEosb.end(), m_EosbFooter.begin(), m_EosbFooter.end());
+
+    // Put the success and the Encrypted Eosb status in the Response Structured Buffer
+    oResponseStructuredBuffer.PutString("Status", "OK");
+    oResponseStructuredBuffer.PutBuffer("Eosb", stlResponseEosb);
+
+    return oResponseStructuredBuffer.GetSerializedBuffer();
+}

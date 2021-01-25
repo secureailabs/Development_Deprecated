@@ -1,0 +1,97 @@
+/*********************************************************************************************
+ *
+ * @file CryptographicKeyManagementPlugin.h
+ * @author Shabana Akhtar Baig
+ * @date 06 Nov 2020
+ * @License Private and Confidential. Internal Use Only.
+ * @copyright Copyright (C) 2020 Secure AI Labs, Inc. All Rights Reserved.
+ *
+ ********************************************************************************************/
+#pragma once
+
+#include "DebugLibrary.h"
+#include "Exceptions.h"
+#include "Object.h"
+#include "PluginDictionary.h"
+#include "RestFrameworkSharedFunctions.h"
+#include "StructuredBuffer.h"
+#include "CryptographicEngine.h"
+
+#include <string.h>
+#include <pthread.h>
+#include <uuid/uuid.h>
+
+#include <iostream>
+#include <algorithm>
+#include <functional>
+#include <string>
+#include <vector>
+
+/********************************************************************************************/
+
+class CryptographicKeyManagementPlugin : public Object
+{
+    public:
+
+        // Constructors and Destructor
+        ~CryptographicKeyManagementPlugin(void);
+        CryptographicKeyManagementPlugin(
+            _in const CryptographicKeyManagementPlugin & c_oCryptographicKeyManagementPlugin
+            ) = delete;
+        // The static function for the class that can get the reference to the
+        // CryptographicEngine singleton object
+        static CryptographicKeyManagementPlugin & __stdcall Get(void);
+        static void __stdcall Shutdown(void);
+
+        // Property accessor methods
+        const char * __thiscall GetName(void) const throw();
+        const char * __thiscall GetUuid(void) const throw();
+        Qword __thiscall GetVersion(void) const throw();
+        std::vector<Byte> __thiscall GetDictionarySerializedBuffer(void) const throw();
+
+        // Method used to initializes data members including the plugin's dictionary
+        void __thiscall InitializePlugin(void);
+
+        // RestFrameworkRuntimeData parses an incoming connection and calls the requested plugin's flat CallBack
+        // functions, SubmitRequest and GetResponse. These functions then call CryptographicKeyManagementPlugin's
+        // SubmitRequest and GetResponse functions.
+        // This function calls the requested resource and sends back a uinque transaction identifier.
+        uint64_t __thiscall SubmitRequest(
+            _in const StructuredBuffer & c_oRequestStructuredBuffer,
+            _out unsigned int * punSerializedResponseSizeInBytes
+            );
+        // This function sends back the response associated with un64Identifier
+        bool __thiscall GetResponse(
+            _in uint64_t un64Identifier,
+            _out Byte * pbSerializedResponseBuffer,
+            _in unsigned int unSerializedResponseBufferSizeInBytes
+            );
+        void __thiscall RotateEphemeralKeys(void);
+
+    private:
+
+        CryptographicKeyManagementPlugin(void);
+        static CryptographicKeyManagementPlugin m_oCryptographicKeyManagementPlugin;
+
+        std::vector<Byte> __thiscall GenerateEosb(
+            _in const StructuredBuffer & c_stlRequest
+            );
+
+        // private data members
+        const Guid m_oPluginGuid;
+        const std::string m_strPluginName;
+        const std::vector<Byte> m_EosbHeader = {0xE6, 0x21, 0x10, 0x02, 0x1B, 0x65, 0xA1, 0x23};
+        const std::vector<Byte> m_EosbFooter = {0x32, 0x1A, 0x56, 0xB1, 0x29, 0x91, 0x12, 0x6E};
+        // Always use the following key Guid by taking the m_sEosbKeyMutex lock on them
+        Guid m_oGuidEosbCurrentKey = (const char *)nullptr;
+        Guid m_oGuidEosbPredecessorKey = (const char *)nullptr;
+        pthread_mutex_t m_sMutex;
+        pthread_mutex_t m_sEosbKeyMutex;
+        uint64_t m_unKeyRotationThreadID;
+        uint64_t m_unNextAvailableIdentifier;
+        std::map<Qword, std::vector<Byte>> m_stlCachedResponse;
+        uint64_t m_unKeyRotateThreadID;
+        PluginDictionary m_oDictionary;
+};
+
+/********************************************************************************************/

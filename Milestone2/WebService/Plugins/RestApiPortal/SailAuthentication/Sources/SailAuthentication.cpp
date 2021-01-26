@@ -9,6 +9,8 @@
  ********************************************************************************************/
 
 #include "SailAuthentication.h"
+#include "SocketClient.h"
+#include "IpcTransactionHelperFunctions.h"
 
 static SailAuthentication * gs_oSailAuthentication = nullptr;
 
@@ -214,18 +216,14 @@ void __thiscall SailAuthentication::InitializePlugin(void)
     // Required parameters are marked by setting IsRequired to true
     // Otherwise the parameter is optional
     StructuredBuffer oLoginParameters;
-    StructuredBuffer oUsername;
-    oUsername.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
-    oUsername.PutBoolean("IsRequired", true);
-    oLoginParameters.PutStructuredBuffer("Username", oUsername);
+    StructuredBuffer oEmail;
+    oEmail.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oEmail.PutBoolean("IsRequired", true);
+    oLoginParameters.PutStructuredBuffer("Email", oEmail);
     StructuredBuffer oPassword;
     oPassword.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oPassword.PutBoolean("IsRequired", true);
     oLoginParameters.PutStructuredBuffer("Password", oPassword);
-    StructuredBuffer oOrganization;
-    oOrganization.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
-    oOrganization.PutBoolean("IsRequired", true);
-    oLoginParameters.PutStructuredBuffer("Organization", oOrganization);
 
     // Add parameters for GetImposterEOSB resource in a StructuredBuffer.
     StructuredBuffer oGetImposterParameters;
@@ -344,10 +342,8 @@ uint64_t __thiscall SailAuthentication::SubmitRequest(
  *
  * @class SailAuthentication
  * @function AuthenticateUserCredentails
- * @brief Validate a username/password/organization set of credentials
+ * @brief Validate a email/password set of credentials
  * @param[in] c_oRequest contains the request body
- * @throw BaseException Error StructuredBuffer element not found
- * @throw BaseException Error validating credentials
  * @returns Generated EOSB
  *
  ********************************************************************************************/
@@ -361,46 +357,45 @@ std::vector<Byte> __thiscall SailAuthentication::AuthenticateUserCredentails(
     StructuredBuffer oResponse;
 
     // Validate user credentials
-    std::string strUsername = c_oRequest.GetString("Username");
+    std::string strEmail = c_oRequest.GetString("Email");
     std::string strPassword = c_oRequest.GetString("Password");
-    std::string strOrganization = c_oRequest.GetString("Organization");
+    std::string strPassphrase;
 
-    UserAccount oRequestedUser(strUsername, strPassword, strOrganization);
+    // Trim whitespaces in email and convert all letters to lowercase
+    strEmail.erase(std::remove_if(strEmail.begin(), strEmail.end(), ::isspace), strEmail.end());
+    std::transform(strEmail.begin(), strEmail.end(), strPassphrase.begin(), ::tolower);
+    // Generate email/password string
+    strPassphrase.append("/");
+    strPassphrase.append(strPassword);
 
+    // Call AccountManager plugin to fetch BasicUser and ConfidentialUser records from the database
     bool fSuccess = false;
-    for (unsigned int unIndex = 0; ((false == fSuccess) && (unIndex < m_stlUserAccounts.size())); ++unIndex)
+    StructuredBuffer oCredentials;
+    oCredentials.PutDword("TransactionType", 0x00000001);
+    oCredentials.PutString("Passphrase", strPassphrase);
+    Socket * poIpcAccountManager =  ::ConnectToUnixDomainSocket("/tmp/{0BE996BF-6966-41EB-B211-2D63C9908289}");
+    StructuredBuffer oAccountRecords(::PutIpcTransactionAndGetResponse(poIpcAccountManager, oCredentials));
+
+    // Call CryptographicManager plugin to get the Eosb
+    if (0 < oAccountRecords.GetSerializedBufferRawDataSizeInBytes())
     {
-        if (true == m_stlUserAccounts[unIndex]->IsUserEqual(oRequestedUser))
-        {
-            // Create a session UUID
-            Guid oSessionGuid;
-
-            // Generate SSB
-            StructuredBuffer oSsb;
-            oSsb.PutString("UserUuid", m_stlUserAccounts[unIndex]->GetUserUuid());
-            oSsb.PutString("SessionUuid", oSessionGuid.ToString(eHyphensAndCurlyBraces));
-            oSsb.PutQword("AccessRights", 0x4);
-
-            // Generate oEosb
-            unsigned int unSerializedEosbSizeInBytes = sizeof(Qword) + sizeof(uint32_t) + oSsb.GetSerializedBufferRawDataSizeInBytes() + sizeof(Qword);
-            std::vector<Byte> stlSerializedResponse(unSerializedEosbSizeInBytes);
-            Byte * pbSerializedEosb = (Byte *) stlSerializedResponse.data();
-            __DebugAssert(nullptr != pbSerializedEosb);
-
-            *((Qword *) pbSerializedEosb) = 0xE62110021B65A123;
-            pbSerializedEosb += sizeof(Qword);
-            *((uint32_t *) pbSerializedEosb) = (uint32_t) oSsb.GetSerializedBufferRawDataSizeInBytes();
-            pbSerializedEosb += sizeof(uint32_t);
-            ::memcpy((void *) pbSerializedEosb, (const void *) oSsb.GetSerializedBufferRawDataPtr(), oSsb.GetSerializedBufferRawDataSizeInBytes());
-            pbSerializedEosb += oSsb.GetSerializedBufferRawDataSizeInBytes();
-            *((Qword *) pbSerializedEosb) = 0x321A56B12991126E;
-            oResponse.PutBuffer("Eosb", stlSerializedResponse);
-
-            fSuccess = true;
-        }
+        std::cout << "Login Successful\n";
+        // TODO: Generate SHA256 hash of passphrase. Did Prawal added this in his code?
+        // oAccountRecords.PutString("Passphrase", strPassword);
+        // Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/Sail/CryptographicManagerIpc/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+        // StructuredBuffer oEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oCredentails));
+        // if (0 < oEosb.GetSerializedBufferRawDataSizeInBytes())
+        // {
+        //     fSuccess = true;
+        //     oResponse.PutDword("Status", 201);
+        //     oResponse.PutBuffer("Eosb", oEosb.GetSerializedBuffer());
+        // }
     }
-
-    _ThrowBaseExceptionIf((false == fSuccess), "Error: User authentication failed.", nullptr);
+    // Add error code if login was unsuccessful
+    if (false == fSuccess)
+    {
+        oResponse.PutDword("Status", 404);
+    }
 
     return oResponse.GetSerializedBuffer();
 }

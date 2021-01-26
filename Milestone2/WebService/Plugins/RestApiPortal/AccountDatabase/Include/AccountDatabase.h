@@ -16,6 +16,9 @@
 #include "PluginDictionary.h"
 #include "RestFrameworkSharedFunctions.h"
 #include "StructuredBuffer.h"
+#include "Socket.h"
+#include "SocketServer.h"
+#include "ThreadManager.h"
 #include "UserAccount.h"
 
 #include <pthread.h>
@@ -62,7 +65,23 @@ class AccountDatabase : public Object
             _in unsigned int unSerializedResponseBufferSizeInBytes
             );
 
+        // Start the Ipc server
+        void __thiscall RunIpcServer(
+            _in SocketServer * poIpcServer,
+            _in ThreadManager * poThreadManager
+        );
+
+        // Handle an incoming Ipc request and call the relevant function based on the identifier
+        void __thiscall HandleIpcRequest(
+            _in Socket * poSocket
+            );
+
     private:
+
+        // Given a email/password string, fetch Basic and Confidential records from the database
+        std::vector<Byte> __thiscall GetUserRecords(
+            _in const StructuredBuffer & c_oRequest
+        );
 
         // Given an EOSB, return a StructuredBuffer containing user metadata
         std::vector<Byte> __thiscall GetUserInfo(
@@ -80,6 +99,7 @@ class AccountDatabase : public Object
         uint64_t m_unNextAvailableIdentifier;
         PluginDictionary m_oDictionary;
         std::vector<UserAccount *> m_stlUserAccounts;
+        bool m_fTerminationSignalEncountered;
 };
 
 /********************************************************************************************/

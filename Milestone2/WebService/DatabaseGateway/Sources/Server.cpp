@@ -14,7 +14,7 @@
 int main()
 {
     std::cout << "----------Database Portal----------" << std::endl;
-    Word wPort = 6200;
+    Word wPort = 6500;
     RestFramework oRestFramework(wPort, "../WebService/SharedLibraries/DatabasePortal");
     oRestFramework.RunServer();
     return 0;

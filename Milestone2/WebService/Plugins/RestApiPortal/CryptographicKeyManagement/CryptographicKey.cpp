@@ -150,6 +150,8 @@ CryptographicKey::CryptographicKey(
     // to stay with the cipher text and can be generated deterministically everytime
     int nKeyGenStatus = ::PKCS5_PBKDF2_HMAC(c_strPassword.c_str(), c_strPassword.length(), nullptr, 0, 1024, c_poEvpMd, m_stlSymmetricKey.size(), m_stlSymmetricKey.data());
     _ThrowBaseExceptionIf((1 != nKeyGenStatus), "Failed to derive symmetric key from password.", nullptr);
+
+    m_KeySpec = eKeySpec;
 }
 
 /********************************************************************************************

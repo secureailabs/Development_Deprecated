@@ -403,7 +403,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
 
     // Unwrap the Account Key from the Basic Record using the password derived key
     std::vector<Byte> stlAccountKey;
-    OperationID oUnwrapKeyOperationId = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, std::move(oPasswordDerivedWrapKey));
+    OperationID oUnwrapKeyOperationId = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, std::move(oPasswordDerivedWrapKey), &oDecryptParams);
     oCryptographicEngine.OperationUpdate(oUnwrapKeyOperationId, oStructuredBufferBasicUserRecord.GetBuffer("WrapedAccountKey"), stlAccountKey);
     bool fDecryptStatus = oCryptographicEngine.OperationFinish(oUnwrapKeyOperationId, stlAccountKey);
     _ThrowBaseExceptionIf((false == fDecryptStatus), "Account key Decryption using Password Key failed.", nullptr);

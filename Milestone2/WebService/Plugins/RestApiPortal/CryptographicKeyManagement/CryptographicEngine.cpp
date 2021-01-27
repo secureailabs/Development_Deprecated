@@ -386,10 +386,6 @@ OperationID __thiscall CryptographicEngine::EncryptInit(
         nOpenSslStatus = ::EVP_EncryptInit_ex(poEvpCipherCtx, poEvpCipher, nullptr, nullptr, nullptr);
         _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Failed to Initialize AES CFB", nullptr);
 
-        // Set IV length, using the recommended 12 bytes
-        nOpenSslStatus = ::EVP_CIPHER_CTX_ctrl(poEvpCipherCtx, EVP_CTRL_AEAD_SET_IVLEN, AES_IV_LENGTH, nullptr);
-        _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Failed to set the IV length for encryption", nullptr);
-
         // Initialise key and IV
         nOpenSslStatus = ::EVP_EncryptInit_ex(poEvpCipherCtx, nullptr, nullptr, poKey->GetSymmetricKey().data(), (poKey->GetSymmetricKey().data() + poKey->GetSymmetricKey().size() - AES_IV_LENGTH));
         _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Failed to create Initialize key and IV", nullptr);
@@ -591,7 +587,7 @@ OperationID __thiscall CryptographicEngine::DecryptInit(
 
         // Set IV length to 12, as recommended
         nOpenSslStatus = ::EVP_CIPHER_CTX_ctrl(poEvpCipherCtx, EVP_CTRL_AEAD_SET_IVLEN, AES_IV_LENGTH, nullptr);
-        _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Failed to set the IV length for encryption", nullptr);
+        _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Failed to set the IV length for decryption", nullptr);
 
         // Initialise key and IV
         nOpenSslStatus = ::EVP_DecryptInit_ex(poEvpCipherCtx, nullptr, nullptr, poKey->GetSymmetricKey().data(), c_poStructuredBufferRequest->GetBuffer("IV").data());
@@ -627,10 +623,6 @@ OperationID __thiscall CryptographicEngine::DecryptInit(
         //  Initialise the decryption operation.
         nOpenSslStatus = ::EVP_DecryptInit_ex(poEvpCipherCtx, poEvpCipher, nullptr, nullptr, nullptr);
         _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Failed to Initialize AES ", nullptr);
-
-        // Set IV length to 12, as recommended
-        nOpenSslStatus = ::EVP_CIPHER_CTX_ctrl(poEvpCipherCtx, EVP_CTRL_AEAD_SET_IVLEN, AES_IV_LENGTH, nullptr);
-        _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Failed to set the IV length for encryption", nullptr);
 
         // Initialise key and IV
         nOpenSslStatus = ::EVP_DecryptInit_ex(poEvpCipherCtx, nullptr, nullptr, poKey->GetSymmetricKey().data(), (poKey->GetSymmetricKey().data() + poKey->GetSymmetricKey().size() - AES_IV_LENGTH));

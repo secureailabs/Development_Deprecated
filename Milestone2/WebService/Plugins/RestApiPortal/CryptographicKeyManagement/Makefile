@@ -9,23 +9,19 @@ else
 endif
 
 # The Root directory containing all the code
-ROOTDIR=../../../..
+ROOTDIR=../../..
 ABSROOTDIR=$(shell realpath $(ROOTDIR))
 OBJDIR=$(ABSROOTDIR)/Binary/Objects
 
 # Add the new include folders here
 INCLUDE+=-I$(shell realpath ./)
-INCLUDE+=-I$(shell realpath ../../../../WebService/ApiPortal/Include)
+INCLUDE+=-I$(shell realpath ../../../../WebService/RestApiPortal/Include)
 INCLUDE+=-I$(shell realpath ../../../../SharedCommonCode/Include)
-INCLUDE+=-I$(shell realpath ../../../../VirtualMachine/SharedComponents/Include)
-INCLUDE+=-I$(shell realpath ../../../../OlderVersionOfTlsLibrary)
 
 # Add the new source directory here
 SRCDIRS+=$(shell realpath ./)
-SRCDIRS+=$(shell realpath ../../../../WebService/ApiPortal/Sources)
+SRCDIRS+=$(shell realpath ../../../../WebService/RestApiPortal/Sources)
 SRCDIRS+=$(shell realpath ../../../../SharedCommonCode/Sources)
-SRCDIRS+=$(shell realpath ../../../../VirtualMachine/SharedComponents/Sources)
-SRCDIRS+=$(shell realpath ../../../../OlderVersionOfTlsLibrary)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))

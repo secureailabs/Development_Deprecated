@@ -3,6 +3,7 @@
 #include "CryptographicEngine.h"
 #include "StructuredBuffer.h"
 #include "DebugLibrary.h"
+#include "DateAndTime.h"
 
 #include <iostream>
 #include <cstdlib>
@@ -98,12 +99,13 @@ StructuredBuffer __thiscall EncryptUsingSailSecretKey(
 
         std::ofstream oKeyFile("76A426D93D1F4F82AFA48843140EF603.key", std::ios::binary);
         oKeyFile.write((const char *)c_stlSailKeyFile.data(), c_stlSailKeyFile.size());
+        oKeyFile.close();
     }
 
     CryptographicEngine & oCryptographicEngine = CryptographicEngine::Get();
 
     std::vector<Byte> stlEncryptedRecord;
-    std::vector<Byte> stlInitializationVector = ::GenerateRandomBytes(AES_IV_LENGTH);
+    std::vector<Byte> stlInitializationVector = ::GenerateRandomBytes(AES_GCM_IV_LENGTH);
     StructuredBuffer oEncryptParams;
     oEncryptParams.PutBuffer("IV", stlInitializationVector);
     oEncryptParams.PutString("AesMode", "GCM");
@@ -201,24 +203,39 @@ std::vector<Byte> __thiscall GenerateAccountKey(void)
 
 int main()
 {
-    std::vector<Byte> stlConfidentialUserRecord = {'A', 'B', 'C', 'D'};
-
     try
     {
-        std::cout << "Account Key Generated of size: " << ::GenerateAccountKey().size() << std::endl;
-
         std::string strEmail = "foo@sail.com";
         std::string strPassword = "password";
         std::string strPassphrase = ::Base64HashOfEmailPassword(strEmail, strPassword);
         std::cout << "Passphrase for Key Generation " << strPassphrase << std::endl;
 
-        std::vector<Byte> stlPasswordKeyEncrypted = ::EncryptUsingPasswordKey(stlConfidentialUserRecord, strPassphrase);
+        // Generate Account Key
+        std::vector<Byte> stlAccountKey = ::GenerateAccountKey();
 
+        // Encrypt it using the password derived key
+        std::vector<Byte> stlWrappedAccountKey = ::EncryptUsingPasswordKey(stlAccountKey, strPassphrase);
+
+        // Create a Basic User Record as described in the 'Account' subsection of Internal Web Service Constructs
+        Guid oUserId = Guid();
+        StructuredBuffer oBasicUserRecord;
+        // Note: adding only relevant data here
+        oBasicUserRecord.PutGuid("UserId", oUserId);
+        oBasicUserRecord.PutBuffer("WrappedAccountKey", stlWrappedAccountKey);
+
+        // Create a the Confidential User Record
+        StructuredBuffer oConfidentialUserRecord;
+        oConfidentialUserRecord.PutGuid("UserId", oUserId);
+        oConfidentialUserRecord.PutGuid("UserRootKeyId", Guid());
+        // ... Add more data
+
+        std::vector<Byte> stlPasswordKeyEncrypted = ::EncryptUsingPasswordKey(oConfidentialUserRecord.GetSerializedBuffer(), strPassphrase);
         StructuredBuffer oEncryptedBuffer = ::EncryptUsingSailSecretKey(stlPasswordKeyEncrypted);
 
-        ::PrintBytesBufferAsHexOnStdout(oEncryptedBuffer.GetBuffer("SailKeyEncryptedConfidentialUserRecord"));
-        ::PrintBytesBufferAsHexOnStdout(oEncryptedBuffer.GetBuffer("TAG"));
-        ::PrintBytesBufferAsHexOnStdout(oEncryptedBuffer.GetBuffer("IV"));
+        StructuredBuffer oEsobRequest;
+        oEsobRequest.PutString("Passphrase", strPassphrase);
+        oEsobRequest.PutStructuredBuffer("BasicUserRecord", oBasicUserRecord);
+        oEsobRequest.PutStructuredBuffer("ConfidentialUserRecord", oEncryptedBuffer);
     }
     catch(BaseException & oBaseException)
     {

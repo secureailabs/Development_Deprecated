@@ -404,7 +404,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     // Unwrap the Account Key from the Basic Record using the password derived key
     std::vector<Byte> stlAccountKey;
     OperationID oUnwrapKeyOperationId = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, std::move(oPasswordDerivedWrapKey), &oDecryptParams);
-    oCryptographicEngine.OperationUpdate(oUnwrapKeyOperationId, oStructuredBufferBasicUserRecord.GetBuffer("WrapedAccountKey"), stlAccountKey);
+    oCryptographicEngine.OperationUpdate(oUnwrapKeyOperationId, oStructuredBufferBasicUserRecord.GetBuffer("WrappedAccountKey"), stlAccountKey);
     bool fDecryptStatus = oCryptographicEngine.OperationFinish(oUnwrapKeyOperationId, stlAccountKey);
     _ThrowBaseExceptionIf((false == fDecryptStatus), "Account key Decryption using Password Key failed.", nullptr);
 
@@ -441,15 +441,16 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     StructuredBuffer oPlainTextConfidentialUserRecord(stlSerializedPlainTextConfidentialUserRecord);
 
     StructuredBuffer oStructuredBufferEosb;
-    oStructuredBufferEosb.PutGuid("UserId", oStructuredBufferBasicUserRecord.GetGuid("UserID"));
+    oStructuredBufferEosb.PutGuid("UserId", oStructuredBufferBasicUserRecord.GetGuid("UserId"));
     oStructuredBufferEosb.PutGuid("SessionId", Guid());
     oStructuredBufferEosb.PutBuffer("AccountKey", stlAccountKey);
+    // TODO: fill this in future
     oStructuredBufferEosb.PutQword("AccessRights", 0xDEADBEEF);
     oStructuredBufferEosb.PutUnsignedInt64("Timestamp", ::GetEpochTimeInSeconds());
     oStructuredBufferEosb.PutGuid("UserRootKeyId", oPlainTextConfidentialUserRecord.GetGuid("UserRootKeyId"));
 
     // Generate an IV to Encrypt the Eosb serialized Buffer
-    const std::vector<Byte> stlAesInitializationVector = ::GenerateRandomBytes(AES_IV_LENGTH);
+    const std::vector<Byte> stlAesInitializationVector = ::GenerateRandomBytes(AES_GCM_IV_LENGTH);
 
     // Fetch the Guid of the current Eosb Encryption Key
     ::pthread_mutex_lock(&m_sEosbKeyMutex);
@@ -460,6 +461,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     // AES-GCM encryption of the Eosb
     StructuredBuffer oStructuredBufferEosbEncryptRequest;
     oStructuredBufferEosbEncryptRequest.PutBuffer("IV", stlAesInitializationVector);
+    oStructuredBufferEosbEncryptRequest.PutString("AesMode", "GCM");
 
     // This buffer will hold the encrypted serialized Eosb
     std::vector<Byte> stlEncryptedSerializedEosbBuffer;

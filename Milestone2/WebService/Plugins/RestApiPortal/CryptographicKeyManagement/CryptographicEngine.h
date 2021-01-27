@@ -62,7 +62,8 @@ enum class CryptographicOperation : uint32_t
     eHmac = 1 << 9
 };
 
-#define AES_IV_LENGTH 12
+#define AES_GCM_IV_LENGTH 12
+#define AES_CFB_IV_LENGTH 16
 #define AES_TAG_LENGTH 16
 
 /********************************************************************************************/

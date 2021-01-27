@@ -112,12 +112,10 @@ const EVP_CIPHER * __thiscall GetEVP_CIPHERForAesKey(
             :   poEvpCipherResponse = ::EVP_aes_128_gcm();
                 break;
             case KeySpec::eAES256
-            :
-            case KeySpec::ePDKDF2
             :   poEvpCipherResponse = ::EVP_aes_256_gcm();
                 break;
             default
-            :   _ThrowBaseException("EVP_CIPHER only available for supported AES keys", nullptr);
+            :   _ThrowBaseException("EVP_CIPHER not available for the config", nullptr);
                 break;
         }
     }
@@ -125,16 +123,11 @@ const EVP_CIPHER * __thiscall GetEVP_CIPHERForAesKey(
     {
         switch (eKeySpec)
         {
-            case KeySpec::eAES128
-            :   poEvpCipherResponse = ::EVP_aes_128_cfb();
-                break;
-            case KeySpec::eAES256
-            :
             case KeySpec::ePDKDF2
-            :   poEvpCipherResponse = ::EVP_aes_256_cfb();
+            :   poEvpCipherResponse = ::EVP_aes_256_cfb128();
                 break;
             default
-            :   _ThrowBaseException("EVP_CIPHER only available for supported AES keys", nullptr);
+            :   _ThrowBaseException("EVP_CIPHER not available for the config", nullptr);
                 break;
         }
     }

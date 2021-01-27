@@ -143,8 +143,9 @@ CryptographicKey::CryptographicKey(
 
     const EVP_MD * c_poEvpMd = ::GetEVP_MDForHashAlgorithm(eHashAlgorithm);
 
-    // The generated keys are always 256 bits or 32 bytes + 12 bytes for the deterministic IV
-    m_stlSymmetricKey.resize(32 + AES_IV_LENGTH);
+    // The generated keys are always 256 bits or 32 bytes + 16 bytes for the deterministic IV
+    // Only AES CFB is used with password generated keys for now.
+    m_stlSymmetricKey.resize(32 + AES_CFB_IV_LENGTH);
 
     // Taking 12 extra bytes where the IV for the AES is generated so that it does not need
     // to stay with the cipher text and can be generated deterministically everytime

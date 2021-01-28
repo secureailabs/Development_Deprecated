@@ -458,15 +458,15 @@ std::vector<Byte> __thiscall DatabaseManager::GetConfidentialUserRecord(
 
         if (stlIv && stlIv.type() == type::k_binary)
         {
-            oConfidentialUserRecord.PutBuffer("IV", stlIv.raw(), stlIv.length());
+            oConfidentialUserRecord.PutBuffer("IV", stlIv.get_binary().bytes, stlIv.get_binary().size);
         }
         if (stlTag && stlTag.type() == type::k_binary)
         {
-            oConfidentialUserRecord.PutBuffer("Tag", stlTag.raw(), stlTag.length());
+            oConfidentialUserRecord.PutBuffer("TAG", stlTag.get_binary().bytes, stlTag.get_binary().size);
         }
         if (stlEncryptedSsb && stlEncryptedSsb.type() == type::k_binary)
         {
-            oConfidentialUserRecord.PutBuffer("EncryptedSsb", stlEncryptedSsb.raw(), stlEncryptedSsb.length());
+            oConfidentialUserRecord.PutBuffer("EncryptedSsb", stlEncryptedSsb.get_binary().bytes, stlEncryptedSsb.get_binary().size);
         }
         oResponse.PutDword("Status", 200);
         oResponse.PutStructuredBuffer("ConfidentialOrganizationOrUserRecord", oConfidentialUserRecord);

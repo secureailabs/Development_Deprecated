@@ -35,12 +35,21 @@ void AddUserAccountsToDatabase(
     // Access the ConfidentialOrganizationOrUser collection
     mongocxx::collection oConfidentialCollection = oDatabase["ConfidentialOrganizationOrUser"];
     // Create a document
+    bsoncxx::types::b_binary oIv {bsoncxx::binary_sub_type::k_binary,
+                              uint32_t(c_oConfidentialUser.GetBuffer("IV").size()),
+                              c_oConfidentialUser.GetBuffer("IV").data()};
+    bsoncxx::types::b_binary oTag {bsoncxx::binary_sub_type::k_binary,
+                              uint32_t(c_oConfidentialUser.GetBuffer("TAG").size()),
+                              c_oConfidentialUser.GetBuffer("TAG").data()};
     bsoncxx::types::b_binary oEncryptedSsb {bsoncxx::binary_sub_type::k_binary,
-                              uint32_t(c_oConfidentialUser.GetSerializedBufferRawDataSizeInBytes()),
-                              c_oConfidentialUser.GetSerializedBufferRawDataPtr()};
+                              uint32_t(c_oConfidentialUser.GetBuffer("SailKeyEncryptedConfidentialUserRecord").size()),
+                              c_oConfidentialUser.GetBuffer("SailKeyEncryptedConfidentialUserRecord").data()};
+
     auto oBuilder = bsoncxx::builder::stream::document{};
     bsoncxx::document::value oConfidentialDocumentValue = oBuilder
       << "OrganizationOrUserUuid" << c_oBasicUser.GetString("UserUuid")
+      << "IV" << oIv
+      << "Tag" << oTag
       << "EncryptedSsb" << oEncryptedSsb
       << finalize;
 

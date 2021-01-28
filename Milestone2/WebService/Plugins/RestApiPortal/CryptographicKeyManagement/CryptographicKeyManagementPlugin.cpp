@@ -598,7 +598,6 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
 
     // Get the Double Encrypted Confidential User Record and first decrypt it using the
     // AES-GCM SAIL Secret key and then using the password derived key
-
     StructuredBuffer oEncryptedUserRecord(oStructuredBufferConfidentialUserRecord.GetBuffer("EncryptedSsb"));
     oDecryptParams.PutBuffer("IV", oEncryptedUserRecord.GetBuffer("IV"));
     oDecryptParams.PutBuffer("TAG", oEncryptedUserRecord.GetBuffer("TAG"));

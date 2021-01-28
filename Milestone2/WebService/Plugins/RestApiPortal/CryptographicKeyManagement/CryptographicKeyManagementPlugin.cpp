@@ -461,18 +461,6 @@ uint64_t __thiscall CryptographicKeyManagementPlugin::SubmitRequest(
     m_unNextAvailableIdentifier++;
     ::pthread_mutex_unlock(&m_sMutex);
 
-    try
-    {
-        // Route to the requested resource
-
-    }
-    catch(...)
-    {
-        StructuredBuffer oRequestFailBuffer;
-        oRequestFailBuffer.PutString("Status", "FAIL");
-        stlResponseBuffer = oRequestFailBuffer.GetSerializedBuffer();
-    }
-
     // Return size of response buffer
     *punSerializedResponseSizeInBytes = stlResponseBuffer.size();
     __DebugAssert(0 < *punSerializedResponseSizeInBytes);
@@ -568,7 +556,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
 {
     __DebugFunction();
 
-    StructuredBuffer oResponseStructuredBuffer;
+    std::vector<Byte> stlResponseEosb;
 
     const std::string strPassphrase = c_oStructuredBufferRequest.GetString("Passphrase");
     const StructuredBuffer oStructuredBufferConfidentialUserRecord = c_oStructuredBufferRequest.GetStructuredBuffer("ConfidentialOrganizationOrUserRecord");
@@ -665,10 +653,9 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
 
     // Fill the output buffer
     const unsigned int unSizeOfEncryptedBuffer = m_EosbHeader.size() + stlAesInitializationVector.size() + stlAesGcmTag.size() + oEncryptKey.ToString(eRaw).length() +  sizeof(uint32_t) + stlEncryptedSerializedEosbBuffer.size() + m_EosbFooter.size();
-    std::vector<Byte> stlResponseEosb;
+
     // Call reserve to just allocate memory and not initialize with
     stlResponseEosb.reserve(unSizeOfEncryptedBuffer);
-
     // Header
     stlResponseEosb.insert(stlResponseEosb.end(), m_EosbHeader.begin(), m_EosbHeader.end());
     // AES GCM IV
@@ -685,10 +672,5 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     // Footer
     stlResponseEosb.insert(stlResponseEosb.end(), m_EosbFooter.begin(), m_EosbFooter.end());
 
-    // Put the success and the Encrypted Eosb status in the Response Structured Buffer
-    oResponseStructuredBuffer.PutString("Status", "OK");
-    oResponseStructuredBuffer.PutBuffer("Eosb", stlResponseEosb);
-
-    return oResponseStructuredBuffer.GetSerializedBuffer();
+    return stlResponseEosb;
 }
- 

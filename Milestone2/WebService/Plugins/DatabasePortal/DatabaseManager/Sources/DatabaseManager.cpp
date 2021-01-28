@@ -353,16 +353,16 @@ std::vector<Byte> __thiscall DatabaseManager::GetBasicUserRecord(
 
     StructuredBuffer oResponse;
 
-    std::string str64BitHash = c_oRequest.GetString("Passphrase");
+    Qword qw64BitHash = c_oRequest.GetQword("Passphrase");
 
     // Access SailDatabase
     ::pthread_mutex_lock(&m_sMutex);
     mongocxx::database oSailDatabase = (*m_poMongoClient)["SailDatabase"];
     // Access BasicUser collection
     mongocxx::collection oBasicUserCollection = oSailDatabase["BasicUser"];
-    // Fetch basic user record associated with the str64BitHash
+    // Fetch basic user record associated with the qw64BitHash
     bool fFound = false;
-    bsoncxx::stdx::optional<bsoncxx::document::value> oBasicUser = oBasicUserCollection.find_one(document{} << "64BitHash" << str64BitHash << finalize);
+    bsoncxx::stdx::optional<bsoncxx::document::value> oBasicUser = oBasicUserCollection.find_one(document{} << "64BitHash" << (double)qw64BitHash << finalize);
     ::pthread_mutex_unlock(&m_sMutex);
     if (bsoncxx::stdx::nullopt != oBasicUser)
     {
@@ -376,8 +376,8 @@ std::vector<Byte> __thiscall DatabaseManager::GetBasicUserRecord(
         bsoncxx::document::view oBasicUserView = oBasicUser->view();
         bsoncxx::document::element strUserGuid = oBasicUserView["UserUuid"];
         bsoncxx::document::element strOrganizationGuid = oBasicUserView["OrganizationUuid"];
-        bsoncxx::document::element dwAccountStatus = oBasicUserView["accountStatus"];
-        bsoncxx::document::element stlAccountKeyWrappedWithPDK = oBasicUserView["AccountKeyWrappedWithPDK"];
+        bsoncxx::document::element dwAccountStatus = oBasicUserView["AccountStatus"];
+        bsoncxx::document::element stlAccountKeyWrappedWithPDK = oBasicUserView["WrappedAccountKey"];
 
         StructuredBuffer oBasicUserRecord;
 
@@ -395,7 +395,7 @@ std::vector<Byte> __thiscall DatabaseManager::GetBasicUserRecord(
         }
         if (stlAccountKeyWrappedWithPDK && stlAccountKeyWrappedWithPDK.type() == type::k_binary)
         {
-            oBasicUserRecord.PutBuffer("AccountKeyWrappedWithPDK", stlAccountKeyWrappedWithPDK.raw(), stlAccountKeyWrappedWithPDK.length());
+            oBasicUserRecord.PutBuffer("WrappedAccountKey", stlAccountKeyWrappedWithPDK.raw(), stlAccountKeyWrappedWithPDK.length());
         }
         oResponse.PutDword("Status", 200);
         oResponse.PutStructuredBuffer("BasicUserRecord", oBasicUserRecord);

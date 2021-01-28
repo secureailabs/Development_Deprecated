@@ -16,6 +16,9 @@
 #include "RestFrameworkSharedFunctions.h"
 #include "StructuredBuffer.h"
 #include "CryptographicEngine.h"
+#include "Socket.h"
+#include "SocketServer.h"
+#include "ThreadManager.h"
 
 #include <string.h>
 #include <pthread.h>
@@ -52,6 +55,17 @@ class CryptographicKeyManagementPlugin : public Object
         // Method used to initializes data members including the plugin's dictionary
         void __thiscall InitializePlugin(void);
 
+        // Start the Ipc server
+        void __thiscall RunIpcServer(
+            _in SocketServer * poIpcServer,
+            _in ThreadManager * poThreadManager
+        );
+
+        // Handle an incoming Ipc request and call the relevant function based on the identifier
+        void __thiscall HandleIpcRequest(
+            _in Socket * poSocket
+            );
+
         // RestFrameworkRuntimeData parses an incoming connection and calls the requested plugin's flat CallBack
         // functions, SubmitRequest and GetResponse. These functions then call CryptographicKeyManagementPlugin's
         // SubmitRequest and GetResponse functions.
@@ -66,6 +80,7 @@ class CryptographicKeyManagementPlugin : public Object
             _out Byte * pbSerializedResponseBuffer,
             _in unsigned int unSerializedResponseBufferSizeInBytes
             );
+
         void __thiscall RotateEphemeralKeys(void);
 
     private:
@@ -92,6 +107,7 @@ class CryptographicKeyManagementPlugin : public Object
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;
         uint64_t m_unKeyRotateThreadID;
         PluginDictionary m_oDictionary;
+        bool m_fTerminationSignalEncountered;
 };
 
 /********************************************************************************************/

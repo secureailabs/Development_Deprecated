@@ -14,11 +14,137 @@
 #include "CryptographicEngine.h"
 #include "ThreadManager.h"
 #include "DateAndTime.h"
+#include "IpcTransactionHelperFunctions.h"
+#include "SmartMemoryAllocator.h"
+#include "SocketServer.h"
+#include "TlsClient.h"
 
 #include <unistd.h>
 
 // Singleton Object, can be declared anywhere, but only once
 CryptographicKeyManagementPlugin CryptographicKeyManagementPlugin::m_oCryptographicKeyManagementPlugin;
+
+static SmartMemoryAllocator gs_oMemoryAllocator;
+
+/********************************************************************************************
+ *
+ * @struct IpcServerParameters
+ * @brief Struct used to pass in parameters to StartServerThread()
+ *
+ ********************************************************************************************/
+
+typedef struct
+{
+    ThreadManager * poThreadManager;        /* Pointer to thread manager object */
+    SocketServer * poIpcServer;          /* Pointer to socket server instance */
+}
+IpcServerParameters;
+
+/********************************************************************************************
+ *
+ * @function StartIpcServerThread
+ * @brief Starts up ipc server thread
+ * @param[in] poVoidThreadParameter void pointer to IpcServerParameters instance
+ * @return A null pointer
+ *
+ ********************************************************************************************/
+
+static void * __stdcall StartIpcServerThread(
+    _in void * poVoidThreadParameter
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poVoidThreadParameter);
+
+    IpcServerParameters * poIpcServerParameters = (IpcServerParameters *) poVoidThreadParameter;
+    __DebugAssert(nullptr != poIpcServerParameters->poThreadManager);
+    __DebugAssert(nullptr != poIpcServerParameters->poIpcServer);
+
+    try
+    {
+        CryptographicKeyManagementPlugin & poCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
+        poCryptographicKeyManagementPlugin.RunIpcServer(poIpcServerParameters->poIpcServer, poIpcServerParameters->poThreadManager);
+    }
+    catch (BaseException oException)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
+                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    catch (...)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    poIpcServerParameters->poIpcServer->Release();
+    gs_oMemoryAllocator.Deallocate(poVoidThreadParameter);
+
+    return nullptr;
+}
+
+/********************************************************************************************
+ *
+ * @function StartIpcThread
+ * @brief Starts up a connection thread
+ * @param[in] poVoidThreadParameter void pointer to socket instance
+ * @return A null pointer
+ *
+ ********************************************************************************************/
+
+static void * __stdcall StartIpcThread(
+    _in void * poVoidThreadParameter
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poVoidThreadParameter);
+
+    Socket * poIpcSocket = (Socket *) poVoidThreadParameter;
+    __DebugAssert(nullptr != poIpcSocket);
+
+    try
+    {
+        CryptographicKeyManagementPlugin & poCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
+        poCryptographicKeyManagementPlugin.HandleIpcRequest(poIpcSocket);
+    }
+    catch (BaseException oException)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
+                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    catch (...)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    poIpcSocket->Release();
+
+    return nullptr;
+}
 
 /********************************************************************************************
  * @class CryptographicKeyManagementPlugin
@@ -89,6 +215,7 @@ CryptographicKeyManagementPlugin::CryptographicKeyManagementPlugin(void)
     m_sMutex = PTHREAD_MUTEX_INITIALIZER;
     m_sEosbKeyMutex = PTHREAD_MUTEX_INITIALIZER;
     m_unNextAvailableIdentifier = 0;
+    m_fTerminationSignalEncountered = false;
 }
 
 /********************************************************************************************
@@ -206,28 +333,95 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
 {
     __DebugFunction();
 
-    // Adding the list of required Parameters for the Eosb Generation API
-    StructuredBuffer oGenerateEosbParameters;
-    StructuredBuffer oPassphrase;
-    oPassphrase.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
-    oPassphrase.PutBoolean("IsRequired", true);
-    oGenerateEosbParameters.PutStructuredBuffer("Passphrase", oPassphrase);
-    StructuredBuffer oBasicUserData;
-    oBasicUserData.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
-    oBasicUserData.PutBoolean("IsRequired", true);
-    oGenerateEosbParameters.PutStructuredBuffer("BasicUserRecord", oBasicUserData);
-    StructuredBuffer oConfidentialUserRecord;
-    oConfidentialUserRecord.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
-    oConfidentialUserRecord.PutBoolean("IsRequired", true);
-    oGenerateEosbParameters.PutStructuredBuffer("ConfidentialUserRecord", oConfidentialUserRecord);
-    // Registering the Generate Eosb Entry
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/GenerateEosb", oGenerateEosbParameters);
+    // Start the Ipc server
+    // Start listening for Ipc connections
+    ThreadManager * poThreadManager = ThreadManager::GetInstance();
+    SocketServer * poIpcServer = new SocketServer("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+    IpcServerParameters * poIpcServerParameters = (IpcServerParameters *) gs_oMemoryAllocator.Allocate(sizeof(IpcServerParameters), true);
+    _ThrowOutOfMemoryExceptionIfNull(poIpcServer);
+
+    // Initialize IpcServerParameters struct
+    poIpcServerParameters->poThreadManager = poThreadManager;
+    poIpcServerParameters->poIpcServer = poIpcServer;
+    poThreadManager->CreateThread("CryptographicManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
 
     // Generate the ephemeral Keys and keep rotating them every 20 minutes and at a time keep only the
     // latest key active and it's predecessor for the grace period.
-    ThreadManager * poThreadManager = ThreadManager::GetInstance();
     _ThrowIfNull(poThreadManager, "GetThreadManager not found.", nullptr);
     m_unKeyRotationThreadID = poThreadManager->CreateThread(nullptr, ::ManageEphemeralKeys, nullptr);
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function RunIpcServer
+ * @brief Run Ipc server for incoming Ipc requests
+ * @param[in] poIpcServer Pointer to Socket server
+ * @param[in] poThreadManager Pointer to the thread manager object
+ *
+ ********************************************************************************************/
+
+void __thiscall CryptographicKeyManagementPlugin::RunIpcServer(
+    _in SocketServer * poIpcServer,
+    _in ThreadManager * poThreadManager
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poIpcServer);
+
+    while (false == m_fTerminationSignalEncountered)
+    {
+        // Wait for connection
+        if (true == poIpcServer->WaitForConnection(1000))
+        {
+            Socket * poSocket = poIpcServer->Accept();
+            if (nullptr != poSocket)
+            {
+                poThreadManager->CreateThread("CryptographicManagerPluginGroup", StartIpcThread, (void *) poSocket);
+            }
+        }
+    }
+
+    // Close Socket Server for the plugin
+    poIpcServer->Release();
+    // Wait for all threads in the group to terminate
+    poThreadManager->JoinThreadGroup("CryptographicManagerPluginGroup");
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function HandleIpcRequest
+ * @brief Handles an incoming Ipc request and call the relevant function based on the identifier
+ * @param[in] poSocket Pointer to socket instance
+ *
+ ********************************************************************************************/
+void __thiscall CryptographicKeyManagementPlugin::HandleIpcRequest(
+    _in Socket * poSocket
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poSocket);
+
+    std::vector<Byte> stlResponse;
+
+    StructuredBuffer oRequestParameters(::GetIpcTransaction(poSocket));
+
+    Dword dwTransactionType = oRequestParameters.GetDword("TransactionType");
+
+    switch (dwTransactionType)
+    {
+        case 0x00000001 // GetEosb
+        :
+            stlResponse = this->GenerateEosb(oRequestParameters);
+            break;
+    }
+
+    // Send back the response
+    if ((0 < stlResponse.size())&&(false == ::PutIpcTransaction(poSocket, stlResponse)))
+    {
+        _ThrowBaseException("Error: Sending back Ipc response filed", nullptr);
+    }
 }
 
 /********************************************************************************************
@@ -270,13 +464,7 @@ uint64_t __thiscall CryptographicKeyManagementPlugin::SubmitRequest(
     try
     {
         // Route to the requested resource
-        if ("GET" == strVerb)
-        {
-            if ("SAIL/CryptographicManager/GenerateEosb" == strResource)
-            {
-                stlResponseBuffer = this->GenerateEosb(c_oRequestStructuredBuffer);
-            }
-        }
+
     }
     catch(...)
     {
@@ -383,7 +571,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     StructuredBuffer oResponseStructuredBuffer;
 
     const std::string strPassphrase = c_oStructuredBufferRequest.GetString("Passphrase");
-    const StructuredBuffer oStructuredBufferConfidentialUserRecord = c_oStructuredBufferRequest.GetStructuredBuffer("ConfidentialUserRecord");
+    const StructuredBuffer oStructuredBufferConfidentialUserRecord = c_oStructuredBufferRequest.GetStructuredBuffer("ConfidentialOrganizationOrUserRecord");
     const StructuredBuffer oStructuredBufferBasicUserRecord = c_oStructuredBufferRequest.GetStructuredBuffer("BasicUserRecord");
 
     // Fetch the reference to the Cryptographic Engine Singleton Object
@@ -410,8 +598,10 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
 
     // Get the Double Encrypted Confidential User Record and first decrypt it using the
     // AES-GCM SAIL Secret key and then using the password derived key
-    oDecryptParams.PutBuffer("IV", oStructuredBufferConfidentialUserRecord.GetBuffer("IV"));
-    oDecryptParams.PutBuffer("TAG", oStructuredBufferConfidentialUserRecord.GetBuffer("TAG"));
+
+    StructuredBuffer oEncryptedUserRecord(oStructuredBufferConfidentialUserRecord.GetBuffer("EncryptedSsb"));
+    oDecryptParams.PutBuffer("IV", oEncryptedUserRecord.GetBuffer("IV"));
+    oDecryptParams.PutBuffer("TAG", oEncryptedUserRecord.GetBuffer("TAG"));
     oDecryptParams.PutString("AesMode", "GCM");
 
     // TODO: don't use the hard-coded key eventually.
@@ -419,7 +609,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
 
     std::vector<Byte> stlUserKeyEncryptedUserRecord;
     OperationID oDecryptionID = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, oSailSecretKey, &oDecryptParams);
-    oCryptographicEngine.OperationUpdate(oDecryptionID, oStructuredBufferConfidentialUserRecord.GetBuffer("SailKeyEncryptedConfidentialUserRecord"), stlUserKeyEncryptedUserRecord);
+    oCryptographicEngine.OperationUpdate(oDecryptionID, oEncryptedUserRecord.GetBuffer("SailKeyEncryptedConfidentialUserRecord"), stlUserKeyEncryptedUserRecord);
     fDecryptStatus = oCryptographicEngine.OperationFinish(oDecryptionID, stlUserKeyEncryptedUserRecord);
     _ThrowBaseExceptionIf((false == fDecryptStatus), "Confidential User Record Decryption using SAIL Key failed.", nullptr);
 
@@ -502,3 +692,4 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
 
     return oResponseStructuredBuffer.GetSerializedBuffer();
 }
+ 

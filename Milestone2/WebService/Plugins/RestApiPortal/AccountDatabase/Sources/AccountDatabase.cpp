@@ -414,6 +414,7 @@ void __thiscall AccountDatabase::RunIpcServer(
 
 /********************************************************************************************
  *
+ * @class AccountDatabase
  * @function HandleIpcRequest
  * @brief Handles an incoming Ipc request and call the relevant function based on the identifier
  * @param[in] poSocket Pointer to socket instance
@@ -577,7 +578,7 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserRecords(
     oBasicRecordRequest.PutString("PluginName", "DatabaseManager");
     oBasicRecordRequest.PutString("Verb", "GET");
     oBasicRecordRequest.PutString("Resource", "/SAIL/DatabaseManager/BasicUser");
-    oBasicRecordRequest.PutString("Passphrase", "13508842751312269905");
+    oBasicRecordRequest.PutQword("Passphrase", qw64BitHashPassphrase);
     std::vector<Byte> stlBasicRecordRequest = ::CreateRequestPacket(oBasicRecordRequest);
     // Send request packet
     poTlsNode->Write(stlBasicRecordRequest.data(), (stlBasicRecordRequest.size()));
@@ -589,6 +590,7 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserRecords(
     std::vector<Byte> stlBasicUser = poTlsNode->Read(unResponseDataSizeInBytes, 100);
     _ThrowBaseExceptionIf((0 == stlBasicUser.size()), "Dead Packet.", nullptr);
 
+    Dword dwStatus = 404;
     StructuredBuffer oBasicRecord(stlBasicUser);
     if (404 != oBasicRecord.GetDword("Status"))
     {
@@ -615,10 +617,13 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserRecords(
         if (404 != oConfidentialRecord.GetDword("Status"))
         {
             // Add BasicUserRecord and ConfidentialOrganizationOrUserRecord
-            oAccountRecords.PutStructuredBuffer("BasicUser", oBasicRecord.GetStructuredBuffer("BasicUserRecord"));
-            oAccountRecords.PutStructuredBuffer("ConfidentialUser", oConfidentialRecord.GetStructuredBuffer("ConfidentialOrganizationOrUserRecord"));
+            oAccountRecords.PutStructuredBuffer("BasicUserRecord", oBasicRecord.GetStructuredBuffer("BasicUserRecord"));
+            oAccountRecords.PutStructuredBuffer("ConfidentialOrganizationOrUserRecord", oConfidentialRecord.GetStructuredBuffer("ConfidentialOrganizationOrUserRecord"));
+            dwStatus = 201;
         }
     }
+
+    oAccountRecords.PutDword("Status", dwStatus);
 
     return oAccountRecords.GetSerializedBuffer();
 }

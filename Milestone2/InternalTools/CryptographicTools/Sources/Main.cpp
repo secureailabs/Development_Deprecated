@@ -1,241 +1,128 @@
-#include "Base64Encoder.h"
+#include "64BitHashes.h"
+#include "CryptoUtils.h"
 #include "Exceptions.h"
-#include "CryptographicEngine.h"
-#include "StructuredBuffer.h"
-#include "DebugLibrary.h"
-#include "DateAndTime.h"
+
+#include <bsoncxx/json.hpp>
+#include <mongocxx/client.hpp>
+#include <mongocxx/instance.hpp>
+#include <mongocxx/stdx.hpp>
+#include <mongocxx/uri.hpp>
+#include <bsoncxx/builder/stream/helpers.hpp>
+#include <bsoncxx/builder/stream/document.hpp>
+#include <bsoncxx/builder/stream/array.hpp>
 
 #include <iostream>
-#include <cstdlib>
-#include <string>
-#include <fstream>
 
-#include <string.h>
-#include <sys/stat.h>
-#include <unistd.h>
+using bsoncxx::builder::stream::close_array;
+using bsoncxx::builder::stream::close_document;
+using bsoncxx::builder::stream::document;
+using bsoncxx::builder::stream::finalize;
+using bsoncxx::builder::stream::open_array;
+using bsoncxx::builder::stream::open_document;
 
-void __thiscall PrintBytesBufferAsHexOnStdout(
-    const std::vector<Byte> & stlByteBuffer
-)
+void AddUserAccountsToDatabase(
+    const StructuredBuffer & c_oBasicUser,
+    const StructuredBuffer & c_oConfidentialUser
+    )
 {
-    __DebugFunction();
-
-    std::cout << "[";
-    int i = 0;
-    for (i = 0; i < stlByteBuffer.size() - 1; i++)
+    mongocxx::instance oInstance{}; // Create only one instance
+    mongocxx::client * oClient = new mongocxx::client   // Use mongocxx client to connect to MongoDB instance
     {
-        printf("0x%02X, ", stlByteBuffer.at(i));
-        if(0 == ((i+1) % 16))
-        {
-            std::cout << std::endl;
+        mongocxx::uri{"mongodb://localhost:27017"}
+    };
+    // Access the SailDatabase
+    mongocxx::database oDatabase = (*oClient)["SailDatabase"];
+    // Access the ConfidentialOrganizationOrUser collection
+    mongocxx::collection oConfidentialCollection = oDatabase["ConfidentialOrganizationOrUser"];
+    // Create a document
+    bsoncxx::types::b_binary oEncryptedSsb {bsoncxx::binary_sub_type::k_binary,
+                              uint32_t(c_oConfidentialUser.GetSerializedBufferRawDataSizeInBytes()),
+                              c_oConfidentialUser.GetSerializedBufferRawDataPtr()};
+    auto oBuilder = bsoncxx::builder::stream::document{};
+    bsoncxx::document::value oConfidentialDocumentValue = oBuilder
+      << "OrganizationOrUserUuid" << c_oBasicUser.GetString("UserUuid")
+      << "EncryptedSsb" << oEncryptedSsb
+      << finalize;
+
+    // Insert document in the collection
+    auto oResult = oConfidentialCollection.insert_one(oConfidentialDocumentValue.view());
+
+    if (!oResult) {
+        std::cout << "Error while writing to the database." << std::endl;
+    }
+    else
+    {
+        // Access a collection
+        mongocxx::collection oBasicUserCollection = oDatabase["BasicUser"];
+        // Create a document
+        std::vector stlWrappedAccountKey = c_oBasicUser.GetBuffer("WrappedAccountKey");
+        bsoncxx::types::b_binary oWrappedAccountKey {bsoncxx::binary_sub_type::k_binary,
+                                  uint32_t(stlWrappedAccountKey.size()),
+                                  stlWrappedAccountKey.data()};
+        bsoncxx::document::value oBasicUserDocumentValue = oBuilder
+        << "64BitHash" << (double)c_oBasicUser.GetQword("64BitHashedPassphrase")
+        << "OrganizationUuid" << c_oBasicUser.GetString("OrganizationUuid")
+        << "UserUuid" << c_oBasicUser.GetString("UserUuid")
+        << "AccountStatus" << (double)c_oBasicUser.GetDword("AccountStatus")
+        << "WrappedAccountKey" << oWrappedAccountKey
+        << finalize;
+
+        // Insert document in the collection
+        oResult = oBasicUserCollection.insert_one(oBasicUserDocumentValue.view());
+
+        if (!oResult) {
+            std::cout << "Error while writing to the database." << std::endl;
         }
     }
-    printf("0x%02X]\n", stlByteBuffer.at(i));
-}
 
-std::string __thiscall Base64HashOfEmailPassword(
-    const std::string & strEmail,
-    const std::string & strPassword
-)
-{
-    __DebugFunction();
-
-    CryptographicEngine & oCryptographicEngine = CryptographicEngine::Get();
-
-    std::string strConcatEmailPassword = strEmail + "/" + strPassword;
-    std::cout << "Email/Password: " << strConcatEmailPassword << std::endl;
-
-    // Calculate SHA256 Hash of the concatinated string
-    EVP_MD_CTX * poEvpMdCtx = ::EVP_MD_CTX_new();
-    _ThrowIfNull(poEvpMdCtx, "Failed to create Hash Digest", nullptr);
-
-    int nOpenSslStatus = ::EVP_DigestInit_ex(poEvpMdCtx, ::EVP_sha256(), nullptr);
-    _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Hash init function failed", nullptr);
-
-    nOpenSslStatus = ::EVP_DigestUpdate(poEvpMdCtx, strConcatEmailPassword.data(), strConcatEmailPassword.length());
-    _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Hash Digest Fail for Input", nullptr);
-
-    unsigned int nHashLength;
-    std::vector<Byte> stlMessageDigest(::EVP_MD_CTX_size(poEvpMdCtx));
-    nOpenSslStatus = ::EVP_DigestFinal_ex(poEvpMdCtx, stlMessageDigest.data(), &nHashLength);
-    _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Hash Digest finalise fail", nullptr);
-
-    // Previously the buffer was set to the max size the message digest could take
-    // but the actual size is nHashLength which was calculated in the EVP_DigestFinal_ex call
-    // If not resized, there is no way of knowing the actual size unless returned explicitly
-    stlMessageDigest.resize(nHashLength);
-    std::cout << "Lenght of hash " << nHashLength << std::endl;
-
-    ::EVP_MD_CTX_free(poEvpMdCtx);
-
-    return ::Base64Encode(stlMessageDigest.data(), stlMessageDigest.size());
-}
-
-StructuredBuffer __thiscall EncryptUsingSailSecretKey(
-    const std::vector<Byte> & stlPlainText
-)
-{
-    __DebugFunction();
-
-    StructuredBuffer oEncryptedConfidentialUserRecord;
-    Guid oSailKeyGuid = "76A426D93D1F4F82AFA48843140EF603";
-
-    struct stat buffer;
-    if (0 != stat("76A426D93D1F4F82AFA48843140EF603.key", &buffer))
-    {
-        std::vector<Byte> c_stlSailKeyFile = {
-            0xCD, 0xAB, 0x9C, 0xE5, 0x3B, 0x93, 0x52, 0x2C, 0xB2, 0x9A, 0x7D, 0xE5, 0x57, 0x55, 0x12, 0x98,
-            0xC1, 0x6F, 0x29, 0xE8, 0x02, 0x00, 0x00, 0x00, 0x83, 0x63, 0x74, 0x83, 0x3D, 0x00, 0x00, 0x00,
-            0x34, 0x01, 0xFB, 0x54, 0x12, 0x04, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x0D, 0x02, 0x0F,
-            0x01, 0x4B, 0x65, 0x79, 0x00, 0x0B, 0x04, 0x0C, 0x03, 0xE5, 0x26, 0x7B, 0x98, 0xA6, 0x03, 0x84,
-            0x1F, 0x6C, 0x5F, 0x40, 0xF4, 0x4D, 0xAE, 0x3D, 0x1C, 0xE8, 0x06, 0x0E, 0xEB, 0xC1, 0xCB, 0x68,
-            0xD7, 0x0C, 0x0C, 0x60, 0x28, 0xEF, 0xA2, 0x21, 0x8A, 0x45, 0xBF, 0x10, 0x34, 0x83, 0x63, 0x74,
-            0x83, 0x28, 0x00, 0x00, 0x00, 0x34, 0x01, 0xFB, 0x54, 0x03, 0x08, 0x00, 0x00, 0x00, 0x07, 0x00,
-            0x00, 0x00, 0x0D, 0x02, 0x0F, 0x01, 0x4B, 0x65, 0x79, 0x53, 0x70, 0x65, 0x63, 0x00, 0x0B, 0x04,
-            0x0C, 0x03, 0x41, 0x45, 0x53, 0x32, 0x35, 0x36, 0x00, 0x45, 0xBF, 0x10, 0x34, 0x5E, 0xC9, 0xBA,
-            0xDC};
-
-        ::PrintBytesBufferAsHexOnStdout(c_stlSailKeyFile);
-
-        std::ofstream oKeyFile("76A426D93D1F4F82AFA48843140EF603.key", std::ios::binary);
-        oKeyFile.write((const char *)c_stlSailKeyFile.data(), c_stlSailKeyFile.size());
-        oKeyFile.close();
-    }
-
-    CryptographicEngine & oCryptographicEngine = CryptographicEngine::Get();
-
-    std::vector<Byte> stlEncryptedRecord;
-    std::vector<Byte> stlInitializationVector = ::GenerateRandomBytes(AES_GCM_IV_LENGTH);
-    StructuredBuffer oEncryptParams;
-    oEncryptParams.PutBuffer("IV", stlInitializationVector);
-    oEncryptParams.PutString("AesMode", "GCM");
-    OperationID oSailKeyEncryptId = oCryptographicEngine.OperationInit(CryptographicOperation::eEncrypt, oSailKeyGuid, &oEncryptParams);
-    oCryptographicEngine.OperationUpdate(oSailKeyEncryptId, stlPlainText, stlEncryptedRecord);
-    bool fEncryptStatus = oCryptographicEngine.OperationFinish(oSailKeyEncryptId, stlEncryptedRecord);
-    _ThrowBaseExceptionIf((true != fEncryptStatus), "Encrypt failed.", nullptr);
-
-    // Extract the 16 byte AES GCM Tag from the encrypted Cipher Text and resize the original buffer
-    std::vector<Byte> stlAesGcmTag(AES_TAG_LENGTH);
-    ::memcpy(stlAesGcmTag.data(), stlEncryptedRecord.data() + (stlEncryptedRecord.size() - AES_TAG_LENGTH), AES_TAG_LENGTH);
-    stlEncryptedRecord.resize(stlEncryptedRecord.size() - AES_TAG_LENGTH);
-
-    oEncryptedConfidentialUserRecord.PutBuffer("IV", stlInitializationVector);
-    oEncryptedConfidentialUserRecord.PutBuffer("TAG", stlAesGcmTag);
-    oEncryptedConfidentialUserRecord.PutBuffer("SailKeyEncryptedConfidentialUserRecord", stlEncryptedRecord);
-
-    return oEncryptedConfidentialUserRecord;
-}
-
-std::vector<Byte> __thiscall EncryptUsingPasswordKey(
-    const std::vector<Byte> & stlPlainText,
-    const std::string & strBase64HashOfEmailPassword
-)
-{
-    __DebugFunction();
-
-    CryptographicEngine & oCryptographicEngine = CryptographicEngine::Get();
-
-    // Generate a password derived Key
-    CryptographicKeyUniquePtr oPasswordDerivedKey = std::make_unique<CryptographicKey>(KeySpec::ePDKDF2, HashAlgorithm::eSHA256, strBase64HashOfEmailPassword);
-
-    std::vector<Byte> stlCipherText;
-    StructuredBuffer oEncryptParams;
-    oEncryptParams.PutString("AesMode", "CFB");
-    OperationID oPasswordEncryptId = oCryptographicEngine.OperationInit(CryptographicOperation::eEncrypt, std::move(oPasswordDerivedKey), &oEncryptParams);
-    oCryptographicEngine.OperationUpdate(oPasswordEncryptId, stlPlainText, stlCipherText);
-    bool fEncryptStatus = oCryptographicEngine.OperationFinish(oPasswordEncryptId, stlCipherText);
-
-    return stlCipherText;
-}
-
-std::vector<Byte> __thiscall EncryptUsingPasswordKey(
-    const std::vector<Byte> & stlPlainText,
-    const std::string & strEmail,
-    const std::string & strPassword
-)
-{
-    __DebugFunction();
-
-    return ::EncryptUsingPasswordKey(stlPlainText, ::Base64HashOfEmailPassword(strEmail, strPassword));
-}
-
-std::vector<Byte> __thiscall DecryptUsingPasswordKey(
-    const std::vector<Byte> & stlCipherText,
-    const std::string & strBase64HashOfEmailPassword
-)
-{
-    __DebugFunction();
-
-    CryptographicEngine & oCryptographicEngine = CryptographicEngine::Get();
-
-    // Generate a password derived Key
-    CryptographicKeyUniquePtr oPasswordDerivedKey2 = std::make_unique<CryptographicKey>(KeySpec::ePDKDF2, HashAlgorithm::eSHA256, strBase64HashOfEmailPassword);
-
-    StructuredBuffer oEncryptParams;
-    oEncryptParams.PutString("AesMode", "CFB");
-    std::vector<Byte> stlDecrypted;
-    OperationID oPasswordDecryptId = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, std::move(oPasswordDerivedKey2), &oEncryptParams);
-    oCryptographicEngine.OperationUpdate(oPasswordDecryptId, stlCipherText, stlDecrypted);
-    bool fEncryptStatus = oCryptographicEngine.OperationFinish(oPasswordDecryptId, stlDecrypted);
-
-    return stlDecrypted;
-}
-
-
-std::vector<Byte> __thiscall DecryptUsingPasswordKey(
-    const std::vector<Byte> & stlCipherText,
-    const std::string & strEmail,
-    const std::string & strPassword
-)
-{
-    __DebugFunction();
-
-    return ::EncryptUsingPasswordKey(stlCipherText, ::Base64HashOfEmailPassword(strEmail, strPassword));
-}
-
-std::vector<Byte> __thiscall GenerateAccountKey(void)
-{
-    __DebugFunction();
-
-    CryptographicKey oCryptographicAccountKey(KeySpec::eAES256);
-    return oCryptographicAccountKey.GetSymmetricKey();
+    delete oClient;
 }
 
 int main()
 {
     try
     {
-        std::string strEmail = "foo@sail.com";
-        std::string strPassword = "password";
-        std::string strPassphrase = ::Base64HashOfEmailPassword(strEmail, strPassword);
-        std::cout << "Passphrase for Key Generation " << strPassphrase << std::endl;
+        std::string strEmail, strPassword = "sailpassword", strPassphrase, strUserName, strTitle;
+        std::cout << "Enter email address: \n";
+        std::cin >> strEmail;
+        std::cout << "Enter name: \n";
+        std::cin >> strUserName;
+        std::cout << "Enter title:\n";
+        std::cin >> strTitle;
+        strPassphrase = strEmail + "/" + strPassword;
+        Qword qw64BitHashedPassphrase = ::Get64BitHashOfNullTerminatedString(strPassphrase.c_str(), false);
+
+        std::string strHashedPassphrase = ::Base64HashOfEmailPassword(strEmail, strPassword);
+        std::cout << "Passphrase for Key Generation " << strHashedPassphrase << std::endl;
 
         // Generate Account Key
         std::vector<Byte> stlAccountKey = ::GenerateAccountKey();
-
         // Encrypt it using the password derived key
-        std::vector<Byte> stlWrappedAccountKey = ::EncryptUsingPasswordKey(stlAccountKey, strPassphrase);
-
+        std::vector<Byte> stlWrappedAccountKey = ::EncryptUsingPasswordKey(stlAccountKey, strHashedPassphrase);
         // Create a Basic User Record as described in the 'Account' subsection of Internal Web Service Constructs
-        Guid oUserId = Guid();
+        Guid oUserId, oOrganizationId, oUserRootKeyId;
         StructuredBuffer oBasicUserRecord;
-        // Note: adding only relevant data here
-        oBasicUserRecord.PutGuid("UserId", oUserId);
+        oBasicUserRecord.PutQword("64BitHashedPassphrase", qw64BitHashedPassphrase);
+        oBasicUserRecord.PutString("OrganizationUuid", oOrganizationId.ToString(eHyphensAndCurlyBraces));
+        oBasicUserRecord.PutString("UserUuid", oUserId.ToString(eHyphensAndCurlyBraces));
+        oBasicUserRecord.PutDword("AccountStatus", 0x1);
         oBasicUserRecord.PutBuffer("WrappedAccountKey", stlWrappedAccountKey);
 
         // Create a the Confidential User Record
         StructuredBuffer oConfidentialUserRecord;
-        oConfidentialUserRecord.PutGuid("UserId", oUserId);
-        oConfidentialUserRecord.PutGuid("UserRootKeyId", Guid());
-        // ... Add more data
+        oConfidentialUserRecord.PutString("UserUuid", oUserId.ToString(eHyphensAndCurlyBraces));
+        oConfidentialUserRecord.PutString("UserRootKeyUuid", oUserRootKeyId.ToString(eHyphensAndCurlyBraces));
+        oConfidentialUserRecord.PutQword("AccountRights", 0x1);
+        oConfidentialUserRecord.PutString("Username", strUserName);
+        oConfidentialUserRecord.PutString("Title", strTitle);
+        oConfidentialUserRecord.PutString("EmailAddress", strEmail);
+        oConfidentialUserRecord.PutString("PhoneNumber", "000-000-0000");
 
-        std::vector<Byte> stlPasswordKeyEncrypted = ::EncryptUsingPasswordKey(oConfidentialUserRecord.GetSerializedBuffer(), strPassphrase);
+        std::vector<Byte> stlPasswordKeyEncrypted = ::EncryptUsingPasswordKey(oConfidentialUserRecord.GetSerializedBuffer(), strHashedPassphrase);
         StructuredBuffer oEncryptedBuffer = ::EncryptUsingSailSecretKey(stlPasswordKeyEncrypted);
 
-        StructuredBuffer oEsobRequest;
-        oEsobRequest.PutString("Passphrase", strPassphrase);
-        oEsobRequest.PutStructuredBuffer("BasicUserRecord", oBasicUserRecord);
-        oEsobRequest.PutStructuredBuffer("ConfidentialUserRecord", oEncryptedBuffer);
+        // Insert documents
+        ::AddUserAccountsToDatabase(oBasicUserRecord, oEncryptedBuffer);
     }
     catch(BaseException & oBaseException)
     {

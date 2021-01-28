@@ -8,6 +8,7 @@
  * @brief
  ********************************************************************************************/
 
+#include "CryptoUtils.h"
 #include "SailAuthentication.h"
 #include "SocketClient.h"
 #include "IpcTransactionHelperFunctions.h"
@@ -363,10 +364,9 @@ std::vector<Byte> __thiscall SailAuthentication::AuthenticateUserCredentails(
 
     // Trim whitespaces in email and convert all letters to lowercase
     strEmail.erase(std::remove_if(strEmail.begin(), strEmail.end(), ::isspace), strEmail.end());
-    std::transform(strEmail.begin(), strEmail.end(), strPassphrase.begin(), ::tolower);
+    std::transform(strEmail.begin(), strEmail.end(), strEmail.begin(), ::tolower);
     // Generate email/password string
-    strPassphrase.append("/");
-    strPassphrase.append(strPassword);
+    strPassphrase = strEmail + "/" + strPassword;
 
     // Call AccountManager plugin to fetch BasicUser and ConfidentialUser records from the database
     bool fSuccess = false;
@@ -377,19 +377,18 @@ std::vector<Byte> __thiscall SailAuthentication::AuthenticateUserCredentails(
     StructuredBuffer oAccountRecords(::PutIpcTransactionAndGetResponse(poIpcAccountManager, oCredentials));
 
     // Call CryptographicManager plugin to get the Eosb
-    if (0 < oAccountRecords.GetSerializedBufferRawDataSizeInBytes())
+    if ((0 < oAccountRecords.GetSerializedBufferRawDataSizeInBytes())&&(404 != oAccountRecords.GetDword("Status")) )
     {
-        std::cout << "Login Successful\n";
-        // TODO: Generate SHA256 hash of passphrase. Did Prawal added this in his code?
-        // oAccountRecords.PutString("Passphrase", strPassword);
-        // Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/Sail/CryptographicManagerIpc/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-        // StructuredBuffer oEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oCredentails));
-        // if (0 < oEosb.GetSerializedBufferRawDataSizeInBytes())
-        // {
-        //     fSuccess = true;
-        //     oResponse.PutDword("Status", 201);
-        //     oResponse.PutBuffer("Eosb", oEosb.GetSerializedBuffer());
-        // }
+        oAccountRecords.PutDword("TransactionType", 0x00000001);
+        oAccountRecords.PutString("Passphrase", ::Base64HashOfEmailPassword(strEmail, strPassword));
+        Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+        StructuredBuffer oEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oAccountRecords));
+        if (0 < oEosb.GetSerializedBufferRawDataSizeInBytes())
+        {
+            fSuccess = true;
+            oResponse.PutDword("Status", 201);
+            oResponse.PutBuffer("Eosb", oEosb.GetSerializedBuffer());
+        }
     }
     // Add error code if login was unsuccessful
     if (false == fSuccess)

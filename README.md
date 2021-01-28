@@ -41,7 +41,7 @@ Change working directory to Binary:
 $ cd Development/Milestone2/Binary
 ```
 
-Run the database too (DatabaseTools) and add user(s) to the database:
+Run the database tool (DatabaseTools) and add user(s) to the database:
 ```sh
 $ ./DatabaseTools
 ```
@@ -61,6 +61,6 @@ Use postman to make an Http request:
 * Resource: https://localhost:6200/SAIL/AuthenticationManager/User/Login
 * Params: Add entries for Email and Password
 
-If the login is successful, the RestApiPortal will return an Eosb otherwise it will return error code.
+If the login is successful, the RestApiPortal will return an Eosb otherwise it will return an error code.
 
 Once done, stop the servers.

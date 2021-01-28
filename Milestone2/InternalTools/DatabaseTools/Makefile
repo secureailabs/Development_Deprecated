@@ -14,7 +14,7 @@ ABSROOTDIR=$(shell realpath $(ROOTDIR))
 OBJDIR=$(ABSROOTDIR)/Binary/Objects
 
 # Add the new include folders here
-INCLUDE+=-I$(shell realpath ./Include)
+INCLUDE+=-I$(shell realpath ../../InternalTools/CryptographicTools/Include)
 INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
 INCLUDE+=-I$(shell realpath ../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement)
 INCLUDE+=-I$(shell realpath ../../WebService/RestApiPortal/Include)
@@ -27,6 +27,7 @@ SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
+SOURCES += $(shell realpath ../../InternalTools/CryptographicTools/Sources/CryptoUtils.cpp)
 SOURCES += $(shell realpath ../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement/CryptographicEngine.cpp)
 SOURCES += $(shell realpath ../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement/CryptographicKey.cpp)
 SOURCES += $(shell realpath ../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement/CryptographyHelperFunctions.cpp)

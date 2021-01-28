@@ -618,13 +618,13 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     StructuredBuffer oPlainTextConfidentialUserRecord(stlSerializedPlainTextConfidentialUserRecord);
 
     StructuredBuffer oStructuredBufferEosb;
-    oStructuredBufferEosb.PutGuid("UserId", oStructuredBufferBasicUserRecord.GetGuid("UserId"));
+    oStructuredBufferEosb.PutGuid("UserId", oStructuredBufferBasicUserRecord.GetGuid("UserGuid"));
     oStructuredBufferEosb.PutGuid("SessionId", Guid());
     oStructuredBufferEosb.PutBuffer("AccountKey", stlAccountKey);
     // TODO: fill this in future
     oStructuredBufferEosb.PutQword("AccessRights", 0xDEADBEEF);
     oStructuredBufferEosb.PutUnsignedInt64("Timestamp", ::GetEpochTimeInSeconds());
-    oStructuredBufferEosb.PutGuid("UserRootKeyId", oPlainTextConfidentialUserRecord.GetGuid("UserRootKeyId"));
+    oStructuredBufferEosb.PutGuid("UserRootKeyId", oPlainTextConfidentialUserRecord.GetGuid("UserRootKeyGuid"));
 
     // Generate an IV to Encrypt the Eosb serialized Buffer
     const std::vector<Byte> stlAesInitializationVector = ::GenerateRandomBytes(AES_GCM_IV_LENGTH);
@@ -653,7 +653,6 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
 
     // Fill the output buffer
     const unsigned int unSizeOfEncryptedBuffer = m_EosbHeader.size() + stlAesInitializationVector.size() + stlAesGcmTag.size() + oEncryptKey.ToString(eRaw).length() +  sizeof(uint32_t) + stlEncryptedSerializedEosbBuffer.size() + m_EosbFooter.size();
-
     // Call reserve to just allocate memory and not initialize with
     stlResponseEosb.reserve(unSizeOfEncryptedBuffer);
     // Header

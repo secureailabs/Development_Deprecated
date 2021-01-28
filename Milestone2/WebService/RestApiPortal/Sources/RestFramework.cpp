@@ -264,6 +264,7 @@ void __thiscall RestFramework::LoadPlugins(
 
             if (nullptr == pPluginHandle)
             {
+                std::cout << "Error loading library: " << dlerror() << std::endl;
                 __DebugError("%s", "Error: Library file could not be open.");
             }
             else

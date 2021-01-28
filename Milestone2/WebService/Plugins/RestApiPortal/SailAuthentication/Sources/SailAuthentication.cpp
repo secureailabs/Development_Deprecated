@@ -382,12 +382,12 @@ std::vector<Byte> __thiscall SailAuthentication::AuthenticateUserCredentails(
         oAccountRecords.PutDword("TransactionType", 0x00000001);
         oAccountRecords.PutString("Passphrase", ::Base64HashOfEmailPassword(strEmail, strPassword));
         Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-        StructuredBuffer oEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oAccountRecords));
-        if (0 < oEosb.GetSerializedBufferRawDataSizeInBytes())
+        std::vector stlEosb = ::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oAccountRecords);
+        if (0 < stlEosb.size())
         {
             fSuccess = true;
             oResponse.PutDword("Status", 201);
-            oResponse.PutBuffer("Eosb", oEosb.GetSerializedBuffer());
+            oResponse.PutBuffer("Eosb", stlEosb);
         }
     }
     // Add error code if login was unsuccessful

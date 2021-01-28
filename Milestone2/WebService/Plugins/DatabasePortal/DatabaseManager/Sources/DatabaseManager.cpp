@@ -456,14 +456,6 @@ std::vector<Byte> __thiscall DatabaseManager::GetConfidentialUserRecord(
 
         oConfidentialUserRecord.PutGuid("OrganizationOrUserGuid", Guid(strUserUuid.c_str()));
 
-        if (stlIv && stlIv.type() == type::k_binary)
-        {
-            oConfidentialUserRecord.PutBuffer("IV", stlIv.get_binary().bytes, stlIv.get_binary().size);
-        }
-        if (stlTag && stlTag.type() == type::k_binary)
-        {
-            oConfidentialUserRecord.PutBuffer("TAG", stlTag.get_binary().bytes, stlTag.get_binary().size);
-        }
         if (stlEncryptedSsb && stlEncryptedSsb.type() == type::k_binary)
         {
             oConfidentialUserRecord.PutBuffer("EncryptedSsb", stlEncryptedSsb.get_binary().bytes, stlEncryptedSsb.get_binary().size);

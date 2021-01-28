@@ -35,21 +35,13 @@ void AddUserAccountsToDatabase(
     // Access the ConfidentialOrganizationOrUser collection
     mongocxx::collection oConfidentialCollection = oDatabase["ConfidentialOrganizationOrUser"];
     // Create a document
-    bsoncxx::types::b_binary oIv {bsoncxx::binary_sub_type::k_binary,
-                              uint32_t(c_oConfidentialUser.GetBuffer("IV").size()),
-                              c_oConfidentialUser.GetBuffer("IV").data()};
-    bsoncxx::types::b_binary oTag {bsoncxx::binary_sub_type::k_binary,
-                              uint32_t(c_oConfidentialUser.GetBuffer("TAG").size()),
-                              c_oConfidentialUser.GetBuffer("TAG").data()};
     bsoncxx::types::b_binary oEncryptedSsb {bsoncxx::binary_sub_type::k_binary,
-                              uint32_t(c_oConfidentialUser.GetBuffer("SailKeyEncryptedConfidentialUserRecord").size()),
-                              c_oConfidentialUser.GetBuffer("SailKeyEncryptedConfidentialUserRecord").data()};
+                              uint32_t(c_oConfidentialUser.GetSerializedBufferRawDataSizeInBytes()),
+                              c_oConfidentialUser.GetSerializedBufferRawDataPtr()};
 
     auto oBuilder = bsoncxx::builder::stream::document{};
     bsoncxx::document::value oConfidentialDocumentValue = oBuilder
       << "OrganizationOrUserUuid" << c_oBasicUser.GetString("UserUuid")
-      << "IV" << oIv
-      << "Tag" << oTag
       << "EncryptedSsb" << oEncryptedSsb
       << finalize;
 
@@ -92,11 +84,11 @@ int main()
     try
     {
         std::string strEmail, strPassword = "sailpassword", strPassphrase, strUserName, strTitle;
-        std::cout << "Enter email address: \n";
+        std::cout << "Enter email address: ";
         std::cin >> strEmail;
-        std::cout << "Enter name: \n";
+        std::cout << "Enter name: ";
         std::cin >> strUserName;
-        std::cout << "Enter title:\n";
+        std::cout << "Enter title: ";
         std::cin >> strTitle;
         strPassphrase = strEmail + "/" + strPassword;
         Qword qw64BitHashedPassphrase = ::Get64BitHashOfNullTerminatedString(strPassphrase.c_str(), false);
@@ -119,8 +111,8 @@ int main()
 
         // Create a the Confidential User Record
         StructuredBuffer oConfidentialUserRecord;
-        oConfidentialUserRecord.PutString("UserUuid", oUserId.ToString(eHyphensAndCurlyBraces));
-        oConfidentialUserRecord.PutString("UserRootKeyUuid", oUserRootKeyId.ToString(eHyphensAndCurlyBraces));
+        oConfidentialUserRecord.PutGuid("UserGuid", oUserId);
+        oConfidentialUserRecord.PutGuid("UserRootKeyGuid", oUserRootKeyId);
         oConfidentialUserRecord.PutQword("AccountRights", 0x1);
         oConfidentialUserRecord.PutString("Username", strUserName);
         oConfidentialUserRecord.PutString("Title", strTitle);

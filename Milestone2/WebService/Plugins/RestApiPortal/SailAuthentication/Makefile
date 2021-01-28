@@ -29,7 +29,7 @@ SRCDIRS+=$(shell realpath ../../../../SharedCommonCode/Sources)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
-SOURCES +=$(shell realpath ../../../../InternalTools/CryptographicTools/Sources/CryptoUtils.cpp)
+SOURCES += $(shell realpath ../../../../InternalTools/CryptographicTools/Sources/CryptoUtils.cpp)
 SOURCES += $(shell realpath ../../../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement/CryptographicEngine.cpp)
 SOURCES += $(shell realpath ../../../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement/CryptographicKey.cpp)
 SOURCES += $(shell realpath ../../../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement/CryptographyHelperFunctions.cpp)

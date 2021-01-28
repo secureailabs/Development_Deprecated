@@ -395,7 +395,7 @@ std::vector<Byte> __thiscall DatabaseManager::GetBasicUserRecord(
         }
         if (stlAccountKeyWrappedWithPDK && stlAccountKeyWrappedWithPDK.type() == type::k_binary)
         {
-            oBasicUserRecord.PutBuffer("WrappedAccountKey", stlAccountKeyWrappedWithPDK.raw(), stlAccountKeyWrappedWithPDK.length());
+            oBasicUserRecord.PutBuffer("WrappedAccountKey", stlAccountKeyWrappedWithPDK.get_binary().bytes, stlAccountKeyWrappedWithPDK.get_binary().size);
         }
         oResponse.PutDword("Status", 200);
         oResponse.PutStructuredBuffer("BasicUserRecord", oBasicUserRecord);

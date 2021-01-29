@@ -347,6 +347,15 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     poIpcServerParameters->poIpcServer = poIpcServer;
     poThreadManager->CreateThread("CryptographicManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
 
+    StructuredBuffer oRefreshEosb;
+    StructuredBuffer oEosb;
+    oEosb.PutByte("ElementType", BUFFER_VALUE_TYPE);
+    oEosb.PutBoolean("IsRequired", true);
+    oRefreshEosb.PutStructuredBuffer("Eosb", oEosb);
+
+    // Re-encrypts the old Eosb with the latest key and returns the fresh Eosb
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/CryptographicManager/User/RefreshEosb", oRefreshEosb);
+
     // Generate the ephemeral Keys and keep rotating them every 20 minutes and at a time keep only the
     // latest key active and it's predecessor for the grace period.
     m_unKeyRotationThreadID = poThreadManager->CreateThread(nullptr, ::ManageEphemeralKeys, nullptr);
@@ -416,10 +425,6 @@ void __thiscall CryptographicKeyManagementPlugin::HandleIpcRequest(
         :
             stlResponse = this->GenerateEosb(oRequestParameters);
             break;
-        case 0x00000002 // RefreshEosb
-        :
-            stlResponse = this->RefreshEosb(oRequestParameters);
-            break;
     }
 
     // Send back the response
@@ -457,14 +462,14 @@ uint64_t __thiscall CryptographicKeyManagementPlugin::SubmitRequest(
     // in order to speed up comparison. String comparisons WAY expensive.
     std::vector<Byte> stlResponseBuffer;
 
-    ::pthread_mutex_lock(&m_sMutex);
-    if (0xFFFFFFFFFFFFFFFF == m_unNextAvailableIdentifier)
+    // Route to the requested resource
+    if ("GET" == strVerb)
     {
-        m_unNextAvailableIdentifier = 0;
+        if ("/SAIL/CryptographicManager/User/RefreshEosb" == strResource)
+        {
+            stlResponseBuffer = this->RefreshEosb(c_oRequestStructuredBuffer);
+        }
     }
-    un64Identifier = m_unNextAvailableIdentifier;
-    m_unNextAvailableIdentifier++;
-    ::pthread_mutex_unlock(&m_sMutex);
 
     // Return size of response buffer
     *punSerializedResponseSizeInBytes = stlResponseBuffer.size();
@@ -472,6 +477,12 @@ uint64_t __thiscall CryptographicKeyManagementPlugin::SubmitRequest(
 
     // Save the response buffer and increment transaction identifier which will be assigned to the next transaction
     ::pthread_mutex_lock(&m_sMutex);
+    if (0xFFFFFFFFFFFFFFFF == m_unNextAvailableIdentifier)
+    {
+        m_unNextAvailableIdentifier = 0;
+    }
+    un64Identifier = m_unNextAvailableIdentifier;
+    m_unNextAvailableIdentifier++;
     m_stlCachedResponse[un64Identifier] = stlResponseBuffer;
     ::pthread_mutex_unlock(&m_sMutex);
 
@@ -638,7 +649,6 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RefreshEosb(
     std::vector<Byte> stlResponseEosb;
 
     std::vector<Byte> stlEncryptedEsobBuffer = c_oStructuredBufferRequest.GetBuffer("Eosb");
-
     std::size_t unEsobCounter = 0;
 
     // Esob Buffer Header
@@ -646,19 +656,15 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RefreshEosb(
     unEsobCounter += m_EosbHeader.size();
 
     StructuredBuffer oStructuredBufferDecryptionParameters;
-
     // AES GCM IV
     oStructuredBufferDecryptionParameters.PutBuffer("IV", stlEncryptedEsobBuffer.data() + unEsobCounter, AES_GCM_IV_LENGTH);
     unEsobCounter += AES_GCM_IV_LENGTH;
-
     // AES GCM TAG
     oStructuredBufferDecryptionParameters.PutBuffer("TAG", stlEncryptedEsobBuffer.data() + unEsobCounter, AES_TAG_LENGTH);
     unEsobCounter += AES_TAG_LENGTH;
-
     // Identifier of key used for encryption
     Guid oGuidEsobEncryptKey(stlEncryptedEsobBuffer.data() + unEsobCounter);
     unEsobCounter += 16;
-
     // Check the EosbKey Guid and procees only if it was encrypted with the predecessor Key
     // TODO: add locks
     if (m_oGuidEosbCurrentKey == oGuidEsobEncryptKey)
@@ -685,8 +691,10 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RefreshEosb(
         bool fDeryptionStatus = oCryptographicEngine.OperationFinish(oEsobDecryptId, stlPlainTextEsob);
         _ThrowBaseExceptionIf((false == fDeryptionStatus), "Eosb decryption failed", nullptr);
 
-        // Create a new Esob
-        stlResponseEosb = this->CreateEosbFromPlainSsb(stlPlainTextEsob);
+        // Put the Esob buffer into the StrucutredBuffer
+        StructuredBuffer oResponseEosb;
+        oResponseEosb.PutBuffer("Eosb", this->CreateEosbFromPlainSsb(stlPlainTextEsob));
+        stlResponseEosb = oResponseEosb.GetSerializedBuffer();
     }
 
     return stlResponseEosb;

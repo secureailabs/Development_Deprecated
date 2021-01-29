@@ -85,11 +85,11 @@ int main()
     {
         std::string strEmail, strPassword = "sailpassword", strPassphrase, strUserName, strTitle;
         std::cout << "Enter email address: ";
-        std::cin >> strEmail;
-        std::cout << "Enter name: ";
-        std::cin >> strUserName;
-        std::cout << "Enter title: ";
-        std::cin >> strTitle;
+        getline(std::cin, strEmail, '\n');
+        std::cout << "Enter user name: ";
+        getline(std::cin, strUserName, '\n');
+        std::cout << "Enter title in the organization: ";
+        getline(std::cin, strTitle, '\n');
         strPassphrase = strEmail + "/" + strPassword;
         Qword qw64BitHashedPassphrase = ::Get64BitHashOfNullTerminatedString(strPassphrase.c_str(), false);
 

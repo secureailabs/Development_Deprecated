@@ -264,7 +264,9 @@ const char * __thiscall CryptographicKeyManagementPlugin::GetUuid(void) const th
 {
     __DebugFunction();
 
-    return m_oPluginGuid.ToString(eHyphensAndCurlyBraces).c_str();
+    static const char * sc_szUuid = "{30998245-A931-4518-9A9D-FB0F43F1F02D}";
+
+    return sc_szUuid;
 }
 
 /********************************************************************************************
@@ -345,7 +347,11 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     // Initialize IpcServerParameters struct
     poIpcServerParameters->poThreadManager = poThreadManager;
     poIpcServerParameters->poIpcServer = poIpcServer;
-    poThreadManager->CreateThread("CryptographicManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
+    // poThreadManager->CreateThread("CryptographicManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
+
+    pthread_t connectionThread;
+    int nStatus = ::pthread_create(&connectionThread, nullptr, StartIpcServerThread, poIpcServerParameters);
+    _ThrowBaseExceptionIf((0 != nStatus), "Error creating a thread with nStatus: %d.", nStatus);
 
     StructuredBuffer oRefreshEosb;
     StructuredBuffer oEosb;
@@ -463,7 +469,7 @@ uint64_t __thiscall CryptographicKeyManagementPlugin::SubmitRequest(
     std::vector<Byte> stlResponseBuffer;
 
     // Route to the requested resource
-    if ("GET" == strVerb)
+    if ("POST" == strVerb)
     {
         if ("/SAIL/CryptographicManager/User/RefreshEosb" == strResource)
         {
@@ -473,7 +479,7 @@ uint64_t __thiscall CryptographicKeyManagementPlugin::SubmitRequest(
 
     // Return size of response buffer
     *punSerializedResponseSizeInBytes = stlResponseBuffer.size();
-    __DebugAssert(0 < *punSerializedResponseSizeInBytes);
+    _ThrowBaseExceptionIf((0 >= *punSerializedResponseSizeInBytes), "Error processing the request.", nullptr);
 
     // Save the response buffer and increment transaction identifier which will be assigned to the next transaction
     ::pthread_mutex_lock(&m_sMutex);

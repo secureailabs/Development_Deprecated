@@ -274,7 +274,7 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
         unsigned int unSerializedResponseSizeInBytes = 0;
         uint64_t un64Identifier = fnSubmitRequestFunction(oRequestData.GetSerializedBufferRawDataPtr(), oRequestData.GetSerializedBufferRawDataSizeInBytes(), &unSerializedResponseSizeInBytes);
         _ThrowBaseExceptionIf((0xFFFFFFFFFFFFFFFF == un64Identifier), "Error submitting request.", nullptr);
-        __DebugAssert(0 < unSerializedResponseSizeInBytes);
+        _ThrowBaseExceptionIf((0 >= unSerializedResponseSizeInBytes), "Error processing request", nullptr);
 
         // Call plugin's GetResponse function. The function will get the reponse associated with the identifier argument
         // and compare the size argument and the saved response's size. If they are equal, it will send back address to the response

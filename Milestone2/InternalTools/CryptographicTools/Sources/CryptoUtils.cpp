@@ -108,7 +108,6 @@ StructuredBuffer __thiscall EncryptUsingSailSecretKey(
     std::vector<Byte> stlInitializationVector = ::GenerateRandomBytes(AES_GCM_IV_LENGTH);
     StructuredBuffer oEncryptParams;
     oEncryptParams.PutBuffer("IV", stlInitializationVector);
-    oEncryptParams.PutString("AesMode", "GCM");
     OperationID oSailKeyEncryptId = oCryptographicEngine.OperationInit(CryptographicOperation::eEncrypt, oSailKeyGuid, &oEncryptParams);
     oCryptographicEngine.OperationUpdate(oSailKeyEncryptId, stlPlainText, stlEncryptedRecord);
     bool fEncryptStatus = oCryptographicEngine.OperationFinish(oSailKeyEncryptId, stlEncryptedRecord);
@@ -140,7 +139,6 @@ std::vector<Byte> __thiscall EncryptUsingPasswordKey(
 
     std::vector<Byte> stlCipherText;
     StructuredBuffer oEncryptParams;
-    oEncryptParams.PutString("AesMode", "CFB");
     OperationID oPasswordEncryptId = oCryptographicEngine.OperationInit(CryptographicOperation::eEncrypt, std::move(oPasswordDerivedKey), &oEncryptParams);
     oCryptographicEngine.OperationUpdate(oPasswordEncryptId, stlPlainText, stlCipherText);
     bool fEncryptStatus = oCryptographicEngine.OperationFinish(oPasswordEncryptId, stlCipherText);
@@ -172,7 +170,6 @@ std::vector<Byte> __thiscall DecryptUsingPasswordKey(
     CryptographicKeyUniquePtr oPasswordDerivedKey2 = std::make_unique<CryptographicKey>(KeySpec::ePDKDF2, HashAlgorithm::eSHA256, strBase64HashOfEmailPassword);
 
     StructuredBuffer oEncryptParams;
-    oEncryptParams.PutString("AesMode", "CFB");
     std::vector<Byte> stlDecrypted;
     OperationID oPasswordDecryptId = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, std::move(oPasswordDerivedKey2), &oEncryptParams);
     oCryptographicEngine.OperationUpdate(oPasswordDecryptId, stlCipherText, stlDecrypted);

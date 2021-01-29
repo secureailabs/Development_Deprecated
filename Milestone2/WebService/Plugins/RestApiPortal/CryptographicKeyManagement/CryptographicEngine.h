@@ -75,8 +75,7 @@ const EVP_MD * __thiscall GetEVP_MDForHashAlgorithm(
     _in HashAlgorithm eHashAlgorithm
     );
 const EVP_CIPHER * __thiscall GetEVP_CIPHERForAesKey(
-    _in KeySpec eKeySpec,
-    _in const std::string & c_strAesMode
+    _in KeySpec eKeySpec
     );
 KeySpec __thiscall GetKeySpecFromString(
     _in const std::string & strKeyType

@@ -336,6 +336,8 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     // Start the Ipc server
     // Start listening for Ipc connections
     ThreadManager * poThreadManager = ThreadManager::GetInstance();
+    _ThrowIfNull(poThreadManager, "GetThreadManager not found.", nullptr);
+
     SocketServer * poIpcServer = new SocketServer("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
     IpcServerParameters * poIpcServerParameters = (IpcServerParameters *) gs_oMemoryAllocator.Allocate(sizeof(IpcServerParameters), true);
     _ThrowOutOfMemoryExceptionIfNull(poIpcServer);
@@ -347,7 +349,6 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
 
     // Generate the ephemeral Keys and keep rotating them every 20 minutes and at a time keep only the
     // latest key active and it's predecessor for the grace period.
-    _ThrowIfNull(poThreadManager, "GetThreadManager not found.", nullptr);
     m_unKeyRotationThreadID = poThreadManager->CreateThread(nullptr, ::ManageEphemeralKeys, nullptr);
 }
 
@@ -577,11 +578,10 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     // Set the parameters for unwrapping/decrypting the key
     // Password derived keys also derive IV from the same password. So, not needed.
     StructuredBuffer oDecryptParams;
-    oDecryptParams.PutString("AesMode", "CFB");
 
     // Unwrap the Account Key from the Basic Record using the password derived key
     std::vector<Byte> stlAccountKey;
-    OperationID oUnwrapKeyOperationId = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, std::move(oPasswordDerivedWrapKey), &oDecryptParams);
+    OperationID oUnwrapKeyOperationId = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, std::move(oPasswordDerivedWrapKey));
     oCryptographicEngine.OperationUpdate(oUnwrapKeyOperationId, oStructuredBufferBasicUserRecord.GetBuffer("WrappedAccountKey"), stlAccountKey);
     bool fDecryptStatus = oCryptographicEngine.OperationFinish(oUnwrapKeyOperationId, stlAccountKey);
     _ThrowBaseExceptionIf((false == fDecryptStatus), "Account key Decryption using Password Key failed.", nullptr);
@@ -591,7 +591,6 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     StructuredBuffer oEncryptedUserRecord(oStructuredBufferConfidentialUserRecord.GetBuffer("EncryptedSsb"));
     oDecryptParams.PutBuffer("IV", oEncryptedUserRecord.GetBuffer("IV"));
     oDecryptParams.PutBuffer("TAG", oEncryptedUserRecord.GetBuffer("TAG"));
-    oDecryptParams.PutString("AesMode", "GCM");
 
     // TODO: don't use the hard-coded key eventually.
     Guid oSailSecretKey = "76A426D93D1F4F82AFA48843140EF603";
@@ -608,7 +607,6 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     // So the tag in not needed in Decryption Paramaters.
     oDecryptParams.RemoveElement("IV");
     oDecryptParams.RemoveElement("TAG");
-    oDecryptParams.PutString("AesMode", "CFB");
 
     std::vector<Byte> stlSerializedPlainTextConfidentialUserRecord;
     OperationID oUserKeyDecryptionID = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, std::move(oPasswordDerivedDecryptKey), &oDecryptParams);
@@ -648,7 +646,6 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RefreshEosb(
     unEsobCounter += m_EosbHeader.size();
 
     StructuredBuffer oStructuredBufferDecryptionParameters;
-    oStructuredBufferDecryptionParameters.PutString("AesMode", "GCM");
 
     // AES GCM IV
     oStructuredBufferDecryptionParameters.PutBuffer("IV", stlEncryptedEsobBuffer.data() + unEsobCounter, AES_GCM_IV_LENGTH);
@@ -718,7 +715,6 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::CreateEosbFromPla
     // AES-GCM encryption of the Eosb
     StructuredBuffer oStructuredBufferEosbEncryptRequest;
     oStructuredBufferEosbEncryptRequest.PutBuffer("IV", stlAesInitializationVector);
-    oStructuredBufferEosbEncryptRequest.PutString("AesMode", "GCM");
 
     // This buffer will hold the encrypted serialized Eosb
     std::vector<Byte> stlEncryptedSsb;

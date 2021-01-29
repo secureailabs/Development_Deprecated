@@ -96,40 +96,27 @@ const EVP_MD * __thiscall GetEVP_MDForHashAlgorithm(
  ********************************************************************************************/
 
 const EVP_CIPHER * __thiscall GetEVP_CIPHERForAesKey(
-    _in KeySpec eKeySpec,
-    _in const std::string & c_strAesMode
+    _in KeySpec eKeySpec
     )
 {
     __DebugFunction();
 
     const EVP_CIPHER * poEvpCipherResponse = nullptr;
 
-    if ("GCM" == c_strAesMode)
+    switch (eKeySpec)
     {
-        switch (eKeySpec)
-        {
-            case KeySpec::eAES128
-            :   poEvpCipherResponse = ::EVP_aes_128_gcm();
-                break;
-            case KeySpec::eAES256
-            :   poEvpCipherResponse = ::EVP_aes_256_gcm();
-                break;
-            default
-            :   _ThrowBaseException("EVP_CIPHER not available for the config", nullptr);
-                break;
-        }
-    }
-    else if ("CFB" == c_strAesMode)
-    {
-        switch (eKeySpec)
-        {
-            case KeySpec::ePDKDF2
-            :   poEvpCipherResponse = ::EVP_aes_256_cfb128();
-                break;
-            default
-            :   _ThrowBaseException("EVP_CIPHER not available for the config", nullptr);
-                break;
-        }
+        case KeySpec::eAES128
+        :   poEvpCipherResponse = ::EVP_aes_128_gcm();
+            break;
+        case KeySpec::eAES256
+        :   poEvpCipherResponse = ::EVP_aes_256_gcm();
+            break;
+        case KeySpec::ePDKDF2
+        :   poEvpCipherResponse = ::EVP_aes_256_cfb128();
+            break;
+        default
+        :   _ThrowBaseException("EVP_CIPHER not available for the config", nullptr);
+            break;
     }
 
     return poEvpCipherResponse;

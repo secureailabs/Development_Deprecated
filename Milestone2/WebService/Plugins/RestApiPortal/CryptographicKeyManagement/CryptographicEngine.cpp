@@ -342,8 +342,7 @@ OperationID __thiscall CryptographicEngine::EncryptInit(
     }
     else if ((KeySpec::eAES256 == eKeySpec) || (KeySpec::eAES128 == eKeySpec))
     {
-        std::string strAesMode = c_poStructuredBufferRequest->GetString("AesMode");
-        const EVP_CIPHER * poEvpCipher = ::GetEVP_CIPHERForAesKey(eKeySpec, strAesMode);
+        const EVP_CIPHER * poEvpCipher = ::GetEVP_CIPHERForAesKey(eKeySpec);
 
         EVP_CIPHER_CTX * poEvpCipherCtx = ::EVP_CIPHER_CTX_new();
         _ThrowIfNull(poEvpCipherCtx, "EVP_CIPHER_CTX_new() failed.", nullptr);
@@ -376,8 +375,7 @@ OperationID __thiscall CryptographicEngine::EncryptInit(
     }
     else if ((KeySpec::ePDKDF2 == eKeySpec))
     {
-        std::string strAesMode = c_poStructuredBufferRequest->GetString("AesMode");
-        const EVP_CIPHER * poEvpCipher = ::GetEVP_CIPHERForAesKey(eKeySpec, strAesMode);
+        const EVP_CIPHER * poEvpCipher = ::GetEVP_CIPHERForAesKey(eKeySpec);
 
         EVP_CIPHER_CTX * poEvpCipherCtx = ::EVP_CIPHER_CTX_new();
         _ThrowIfNull(poEvpCipherCtx, "EVP_CIPHER_CTX_new() failed.", nullptr);
@@ -571,8 +569,7 @@ OperationID __thiscall CryptographicEngine::DecryptInit(
     }
     else if ((KeySpec::eAES256 == eKeySpec) || (KeySpec::eAES128 == eKeySpec))
     {
-        std::string strAesMode = c_poStructuredBufferRequest->GetString("AesMode");
-        const EVP_CIPHER * poEvpCipher = ::GetEVP_CIPHERForAesKey(eKeySpec, strAesMode);
+        const EVP_CIPHER * poEvpCipher = ::GetEVP_CIPHERForAesKey(eKeySpec);
 
         EVP_CIPHER_CTX * poEvpCipherCtx = ::EVP_CIPHER_CTX_new();
         _ThrowIfNull(poEvpCipherCtx, "EVP_CIPHER_CTX_new() failed.", nullptr);
@@ -610,8 +607,7 @@ OperationID __thiscall CryptographicEngine::DecryptInit(
     }
     else if ((KeySpec::ePDKDF2 == eKeySpec))
     {
-        std::string strAesMode = c_poStructuredBufferRequest->GetString("AesMode");
-        const EVP_CIPHER * poEvpCipher = ::GetEVP_CIPHERForAesKey(eKeySpec, strAesMode);
+        const EVP_CIPHER * poEvpCipher = ::GetEVP_CIPHERForAesKey(eKeySpec);
 
         EVP_CIPHER_CTX * poEvpCipherCtx = ::EVP_CIPHER_CTX_new();
         _ThrowIfNull(poEvpCipherCtx, "EVP_CIPHER_CTX_new() failed.", nullptr);

@@ -67,7 +67,6 @@ std::string __cdecl Base64HashOfEmailPassword(
     // but the actual size is nHashLength which was calculated in the EVP_DigestFinal_ex call
     // If not resized, there is no way of knowing the actual size unless returned explicitly
     stlMessageDigest.resize(nHashLength);
-    std::cout << "Lenght of hash " << nHashLength << std::endl;
 
     ::EVP_MD_CTX_free(poEvpMdCtx);
 
@@ -97,8 +96,6 @@ StructuredBuffer __thiscall EncryptUsingSailSecretKey(
             0x00, 0x00, 0x0D, 0x02, 0x0F, 0x01, 0x4B, 0x65, 0x79, 0x53, 0x70, 0x65, 0x63, 0x00, 0x0B, 0x04,
             0x0C, 0x03, 0x41, 0x45, 0x53, 0x32, 0x35, 0x36, 0x00, 0x45, 0xBF, 0x10, 0x34, 0x5E, 0xC9, 0xBA,
             0xDC};
-
-        ::PrintBytesBufferAsHexOnStdout(c_stlSailKeyFile);
 
         std::ofstream oKeyFile("76A426D93D1F4F82AFA48843140EF603.key", std::ios::binary);
         oKeyFile.write((const char *)c_stlSailKeyFile.data(), c_stlSailKeyFile.size());

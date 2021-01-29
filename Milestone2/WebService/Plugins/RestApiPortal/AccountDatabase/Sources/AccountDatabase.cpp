@@ -724,4 +724,3 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterUser(
 
     return oResponse.GetSerializedBuffer();
 }
- 

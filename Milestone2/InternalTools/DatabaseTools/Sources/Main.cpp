@@ -94,7 +94,6 @@ int main()
         Qword qw64BitHashedPassphrase = ::Get64BitHashOfNullTerminatedString(strPassphrase.c_str(), false);
 
         std::string strHashedPassphrase = ::Base64HashOfEmailPassword(strEmail, strPassword);
-        std::cout << "Passphrase for Key Generation " << strHashedPassphrase << std::endl;
 
         // Generate Account Key
         std::vector<Byte> stlAccountKey = ::GenerateAccountKey();

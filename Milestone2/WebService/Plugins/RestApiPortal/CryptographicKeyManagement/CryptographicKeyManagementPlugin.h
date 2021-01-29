@@ -91,6 +91,12 @@ class CryptographicKeyManagementPlugin : public Object
         std::vector<Byte> __thiscall GenerateEosb(
             _in const StructuredBuffer & c_stlRequest
             );
+        std::vector<Byte> __thiscall RefreshEosb(
+            _in const StructuredBuffer & c_stlRequest
+            );
+        std::vector<Byte> __thiscall CreateEosbFromPlainSsb(
+            _in const std::vector<Byte> & c_stlPlainTextSsb
+            );
 
         // private data members
         const Guid m_oPluginGuid;

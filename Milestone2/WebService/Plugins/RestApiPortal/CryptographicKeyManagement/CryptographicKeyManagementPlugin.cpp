@@ -415,6 +415,10 @@ void __thiscall CryptographicKeyManagementPlugin::HandleIpcRequest(
         :
             stlResponse = this->GenerateEosb(oRequestParameters);
             break;
+        case 0x00000002 // RefreshEosb
+        :
+            stlResponse = this->RefreshEosb(oRequestParameters);
+            break;
     }
 
     // Send back the response
@@ -556,8 +560,6 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
 {
     __DebugFunction();
 
-    std::vector<Byte> stlResponseEosb;
-
     const std::string strPassphrase = c_oStructuredBufferRequest.GetString("Passphrase");
     const StructuredBuffer oStructuredBufferConfidentialUserRecord = c_oStructuredBufferRequest.GetStructuredBuffer("ConfidentialOrganizationOrUserRecord");
     const StructuredBuffer oStructuredBufferBasicUserRecord = c_oStructuredBufferRequest.GetStructuredBuffer("BasicUserRecord");
@@ -626,12 +628,90 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     oStructuredBufferEosb.PutUnsignedInt64("Timestamp", ::GetEpochTimeInSeconds());
     oStructuredBufferEosb.PutGuid("UserRootKeyId", oPlainTextConfidentialUserRecord.GetGuid("UserRootKeyGuid"));
 
+    return this->CreateEosbFromPlainSsb(oStructuredBufferEosb.GetSerializedBuffer());
+}
+
+std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RefreshEosb(
+    _in const StructuredBuffer & c_oStructuredBufferRequest
+    )
+{
+    __DebugFunction();
+
+    std::vector<Byte> stlResponseEosb;
+
+    std::vector<Byte> stlEncryptedEsobBuffer = c_oStructuredBufferRequest.GetBuffer("Eosb");
+
+    std::size_t unEsobCounter = 0;
+
+    // Esob Buffer Header
+    _ThrowBaseExceptionIf((*((Qword *)m_EosbHeader.data()) != *((Qword *)stlEncryptedEsobBuffer.data())), "Invalid Header", nullptr);
+    unEsobCounter += m_EosbHeader.size();
+
+    StructuredBuffer oStructuredBufferDecryptionParameters;
+    oStructuredBufferDecryptionParameters.PutString("AesMode", "GCM");
+
+    // AES GCM IV
+    oStructuredBufferDecryptionParameters.PutBuffer("IV", stlEncryptedEsobBuffer.data() + unEsobCounter, AES_GCM_IV_LENGTH);
+    unEsobCounter += AES_GCM_IV_LENGTH;
+
+    // AES GCM TAG
+    oStructuredBufferDecryptionParameters.PutBuffer("TAG", stlEncryptedEsobBuffer.data() + unEsobCounter, AES_TAG_LENGTH);
+    unEsobCounter += AES_TAG_LENGTH;
+
+    // Identifier of key used for encryption
+    Guid oGuidEsobEncryptKey(stlEncryptedEsobBuffer.data() + unEsobCounter);
+    unEsobCounter += 16;
+
+    // Check the EosbKey Guid and procees only if it was encrypted with the predecessor Key
+    // TODO: add locks
+    if (m_oGuidEosbCurrentKey == oGuidEsobEncryptKey)
+    {
+        stlResponseEosb = stlEncryptedEsobBuffer;
+    }
+    else if (m_oGuidEosbPredecessorKey == oGuidEsobEncryptKey)
+    {
+        // Size in bytes of encrypted SSB
+        unsigned int unSizeOfEncryptedSsb = *(unsigned int *)(stlEncryptedEsobBuffer.data() + unEsobCounter);
+        unEsobCounter += sizeof(unsigned int);
+
+        // Get the Eosb Ssb encrypted with the old key in its grace period
+        std::vector<Byte> stlEncryptedSsb(stlEncryptedEsobBuffer.data() + unEsobCounter, stlEncryptedEsobBuffer.data() + unEsobCounter + unSizeOfEncryptedSsb);
+        unEsobCounter += unSizeOfEncryptedSsb;
+
+        // Esob Buffer Footer
+        _ThrowBaseExceptionIf((*((Qword *)m_EosbFooter.data()) != *((Qword *)(stlEncryptedEsobBuffer.data() + unEsobCounter))), "Invalid Footer. Expected %ull Got %ull", nullptr);
+
+        std::vector<Byte> stlPlainTextEsob;
+        CryptographicEngine & oCryptographicEngine = CryptographicEngine::Get();
+        OperationID oEsobDecryptId = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, oGuidEsobEncryptKey, &oStructuredBufferDecryptionParameters);
+        oCryptographicEngine.OperationUpdate(oEsobDecryptId, stlEncryptedSsb, stlPlainTextEsob);
+        bool fDeryptionStatus = oCryptographicEngine.OperationFinish(oEsobDecryptId, stlPlainTextEsob);
+        _ThrowBaseExceptionIf((false == fDeryptionStatus), "Eosb decryption failed", nullptr);
+
+        // Create a new Esob
+        stlResponseEosb = this->CreateEosbFromPlainSsb(stlPlainTextEsob);
+    }
+
+    return stlResponseEosb;
+}
+
+std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::CreateEosbFromPlainSsb(
+    _in const std::vector<Byte> & c_stlPlainTextSsb
+    )
+{
+    __DebugFunction();
+
+    std::vector<Byte> stlResponseEosb;
+
+    // Fetch the reference to the Cryptographic Engine Singleton Object
+    const CryptographicEngine & oCryptographicEngine = CryptographicEngine::Get();
+
     // Generate an IV to Encrypt the Eosb serialized Buffer
     const std::vector<Byte> stlAesInitializationVector = ::GenerateRandomBytes(AES_GCM_IV_LENGTH);
 
     // Fetch the Guid of the current Eosb Encryption Key
     ::pthread_mutex_lock(&m_sEosbKeyMutex);
-    const Guid oEncryptKey = m_oGuidEosbCurrentKey;
+    const Guid oGuidEncryptKey = m_oGuidEosbCurrentKey;
     ::pthread_mutex_unlock(&m_sEosbKeyMutex);
 
     // Create a Request Structured Buffer with an initialization vector for the
@@ -641,20 +721,21 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     oStructuredBufferEosbEncryptRequest.PutString("AesMode", "GCM");
 
     // This buffer will hold the encrypted serialized Eosb
-    std::vector<Byte> stlEncryptedSerializedEosbBuffer;
-    OperationID pEncryptEosbId = oCryptographicEngine.OperationInit(CryptographicOperation::eEncrypt, oEncryptKey, &oStructuredBufferEosbEncryptRequest);
-    oCryptographicEngine.OperationUpdate(pEncryptEosbId, oStructuredBufferEosb.GetSerializedBuffer(), stlEncryptedSerializedEosbBuffer);
-    bool fEncryptStatus = oCryptographicEngine.OperationFinish(pEncryptEosbId, stlEncryptedSerializedEosbBuffer);
+    std::vector<Byte> stlEncryptedSsb;
+    OperationID pEncryptEosbId = oCryptographicEngine.OperationInit(CryptographicOperation::eEncrypt, oGuidEncryptKey, &oStructuredBufferEosbEncryptRequest);
+    oCryptographicEngine.OperationUpdate(pEncryptEosbId, c_stlPlainTextSsb, stlEncryptedSsb);
+    bool fEncryptStatus = oCryptographicEngine.OperationFinish(pEncryptEosbId, stlEncryptedSsb);
 
     // Extract the 16 byte AES GCM Tag from the encrypted Cipher Text and resize the original buffer
     std::vector<Byte> stlAesGcmTag(AES_TAG_LENGTH);
-    ::memcpy(stlAesGcmTag.data(), stlEncryptedSerializedEosbBuffer.data() + (stlEncryptedSerializedEosbBuffer.size() - AES_TAG_LENGTH), AES_TAG_LENGTH);
-    stlEncryptedSerializedEosbBuffer.resize(stlEncryptedSerializedEosbBuffer.size() - AES_TAG_LENGTH);
+    ::memcpy(stlAesGcmTag.data(), stlEncryptedSsb.data() + (stlEncryptedSsb.size() - AES_TAG_LENGTH), AES_TAG_LENGTH);
+    stlEncryptedSsb.resize(stlEncryptedSsb.size() - AES_TAG_LENGTH);
 
     // Fill the output buffer
-    const unsigned int unSizeOfEncryptedBuffer = m_EosbHeader.size() + stlAesInitializationVector.size() + stlAesGcmTag.size() + oEncryptKey.ToString(eRaw).length() +  sizeof(uint32_t) + stlEncryptedSerializedEosbBuffer.size() + m_EosbFooter.size();
+    const unsigned int unSizeOfEsobInBytes = m_EosbHeader.size() + stlAesInitializationVector.size() + stlAesGcmTag.size() + oGuidEncryptKey.ToString(eRaw).length() +  sizeof(uint32_t) + stlEncryptedSsb.size() + m_EosbFooter.size();
     // Call reserve to just allocate memory and not initialize with
-    stlResponseEosb.reserve(unSizeOfEncryptedBuffer);
+    stlResponseEosb.reserve(unSizeOfEsobInBytes);
+
     // Header
     stlResponseEosb.insert(stlResponseEosb.end(), m_EosbHeader.begin(), m_EosbHeader.end());
     // AES GCM IV
@@ -662,12 +743,16 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     // AES GCM TAG
     stlResponseEosb.insert(stlResponseEosb.end(), stlAesGcmTag.begin(), stlAesGcmTag.end());
     // Identifier of key used for encryption
-    std::string strEosbKeyID = oEncryptKey.ToString(eRaw);
+    std::vector<Byte> strEosbKeyID = oGuidEncryptKey.GetRawData();
     stlResponseEosb.insert(stlResponseEosb.end(), strEosbKeyID.begin(), strEosbKeyID.end());
     // Size in bytes of encrypted SSB
-    stlResponseEosb.insert(stlResponseEosb.end(), &unSizeOfEncryptedBuffer, &unSizeOfEncryptedBuffer + sizeof(unSizeOfEncryptedBuffer));
+    const unsigned int unSizeOfEncryptedSsb = stlEncryptedSsb.size();
+    stlResponseEosb.push_back(unSizeOfEncryptedSsb >> 0);
+    stlResponseEosb.push_back(unSizeOfEncryptedSsb >> 8);
+    stlResponseEosb.push_back(unSizeOfEncryptedSsb >> 16);
+    stlResponseEosb.push_back(unSizeOfEncryptedSsb >> 24);
     // Encrypted SSB containing DC information
-    stlResponseEosb.insert(stlResponseEosb.end(), stlEncryptedSerializedEosbBuffer.begin(), stlEncryptedSerializedEosbBuffer.end());
+    stlResponseEosb.insert(stlResponseEosb.end(), stlEncryptedSsb.begin(), stlEncryptedSsb.end());
     // Footer
     stlResponseEosb.insert(stlResponseEosb.end(), m_EosbFooter.begin(), m_EosbFooter.end());
 

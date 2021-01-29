@@ -391,7 +391,7 @@ std::vector<Byte> __thiscall DatabaseManager::GetBasicUserRecord(
         }
         if (dwAccountStatus && dwAccountStatus.type() == type::k_double)
         {
-            oBasicUserRecord.PutDword("AccountStatus", (Dword) (double)dwAccountStatus.get_double());
+            oBasicUserRecord.PutDword("AccountStatus", (Dword) dwAccountStatus.get_double().value);
         }
         if (stlAccountKeyWrappedWithPDK && stlAccountKeyWrappedWithPDK.type() == type::k_binary)
         {

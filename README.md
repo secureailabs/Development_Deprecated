@@ -20,7 +20,7 @@ Generate executables in the following directories using make:
 
 # Installing and Configuring MongoDB
 
-Run install.sh to install on configure MongoDB Community Edition, MongoDB C Driver, and MongoDB C++ Driver on Ubuntu 20.04.
+Run install.sh to install and configure MongoDB Community Edition, MongoDB C Driver, and MongoDB C++ Driver on Ubuntu 20.04.
 
 ## Running the Script
 

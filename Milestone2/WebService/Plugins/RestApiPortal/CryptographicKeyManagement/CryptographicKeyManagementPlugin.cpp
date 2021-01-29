@@ -347,11 +347,7 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     // Initialize IpcServerParameters struct
     poIpcServerParameters->poThreadManager = poThreadManager;
     poIpcServerParameters->poIpcServer = poIpcServer;
-    // poThreadManager->CreateThread("CryptographicManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
-
-    pthread_t connectionThread;
-    int nStatus = ::pthread_create(&connectionThread, nullptr, StartIpcServerThread, poIpcServerParameters);
-    _ThrowBaseExceptionIf((0 != nStatus), "Error creating a thread with nStatus: %d.", nStatus);
+    poThreadManager->CreateThread("CryptographicManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
 
     StructuredBuffer oRefreshEosb;
     StructuredBuffer oEosb;

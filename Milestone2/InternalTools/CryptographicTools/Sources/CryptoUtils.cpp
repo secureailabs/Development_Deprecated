@@ -46,7 +46,6 @@ std::string __cdecl Base64HashOfEmailPassword(
     CryptographicEngine & oCryptographicEngine = CryptographicEngine::Get();
 
     std::string strConcatEmailPassword = strEmail + "/" + strPassword;
-    std::cout << "Email/Password: " << strConcatEmailPassword << std::endl;
 
     // Calculate SHA256 Hash of the concatinated string
     EVP_MD_CTX * poEvpMdCtx = ::EVP_MD_CTX_new();

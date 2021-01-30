@@ -312,7 +312,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GetDictionarySeri
 void __thiscall CryptographicKeyManagementPlugin::RotateEphemeralKeys()
 {
     ::pthread_mutex_lock(&m_sEosbKeyMutex);
-    if (Guid((const char *)nullptr) == m_oGuidEosbCurrentKey)
+    if (Guid((const char *)nullptr) != m_oGuidEosbCurrentKey)
     {
         m_oGuidEosbPredecessorKey = m_oGuidEosbCurrentKey;
     }
@@ -356,7 +356,7 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     oRefreshEosb.PutStructuredBuffer("Eosb", oEosb);
 
     // Re-encrypts the old Eosb with the latest key and returns the fresh Eosb
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/CryptographicManager/User/RefreshEosb", oRefreshEosb);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/RefreshEosb", oRefreshEosb);
 
     // Generate the ephemeral Keys and keep rotating them every 20 minutes and at a time keep only the
     // latest key active and it's predecessor for the grace period.
@@ -465,7 +465,7 @@ uint64_t __thiscall CryptographicKeyManagementPlugin::SubmitRequest(
     std::vector<Byte> stlResponseBuffer;
 
     // Route to the requested resource
-    if ("POST" == strVerb)
+    if ("GET" == strVerb)
     {
         if ("/SAIL/CryptographicManager/User/RefreshEosb" == strResource)
         {
@@ -648,7 +648,8 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RefreshEosb(
 {
     __DebugFunction();
 
-    std::vector<Byte> stlResponseEosb;
+    StructuredBuffer oResponseEosb;
+    oResponseEosb.PutDword("Status", 404);
 
     std::vector<Byte> stlEncryptedEsobBuffer = c_oStructuredBufferRequest.GetBuffer("Eosb");
     std::size_t unEsobCounter = 0;
@@ -671,7 +672,8 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RefreshEosb(
     // TODO: add locks
     if (m_oGuidEosbCurrentKey == oGuidEsobEncryptKey)
     {
-        stlResponseEosb = stlEncryptedEsobBuffer;
+        oResponseEosb.PutDword("Status", 200);
+        oResponseEosb.PutString("Eosb", ::Base64Encode(stlEncryptedEsobBuffer.data(), stlEncryptedEsobBuffer.size()));
     }
     else if (m_oGuidEosbPredecessorKey == oGuidEsobEncryptKey)
     {
@@ -694,12 +696,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RefreshEosb(
         _ThrowBaseExceptionIf((false == fDeryptionStatus), "Eosb decryption failed", nullptr);
 
         // Put the Esob buffer into the StrucutredBuffer
-        StructuredBuffer oResponseEosb;
-        oResponseEosb.PutBuffer("Eosb", this->CreateEosbFromPlainSsb(stlPlainTextEsob));
-        stlResponseEosb = oResponseEosb.GetSerializedBuffer();
+        oResponseEosb.PutDword("Status", 200);
+        std::vector<Byte> stlEosb = this->CreateEosbFromPlainSsb(stlPlainTextEsob);
+        oResponseEosb.PutBuffer("Eosb", stlEosb);
     }
 
-    return stlResponseEosb;
+    return oResponseEosb.GetSerializedBuffer();
 }
 
 std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::CreateEosbFromPlainSsb(

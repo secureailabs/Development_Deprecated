@@ -68,7 +68,7 @@ std::vector<Byte> __thiscall FifoBuffer::Read(
     __DebugFunction();
 
     std::vector<Byte> stlReturnBuffer;
-    
+
     if (0 < unNumberOfBytesToRead)
     {
         m_stlLock.lock();
@@ -79,8 +79,29 @@ std::vector<Byte> __thiscall FifoBuffer::Read(
         }
         m_stlLock.unlock();
     }
-    
+
     return stlReturnBuffer;
+}
+
+/********************************************************************************************
+ *
+ * @class FifoBuffer
+ * @function GetBytesInBuffer
+ * @brief Get number of bytes in the buffer.
+ * @return The bytes in the fifo buffer
+ *
+ ********************************************************************************************/
+
+std::size_t __thiscall FifoBuffer::GetBytesInBuffer(void)
+{
+    __DebugFunction();
+
+    std::size_t unSizeToReturn = 0;
+    m_stlLock.lock();
+    unSizeToReturn = m_stlFifoBuffer.size();
+    m_stlLock.unlock();
+
+    return unSizeToReturn;
 }
 
 /********************************************************************************************
@@ -107,14 +128,14 @@ Byte * __thiscall FifoBuffer::WriteLock(
     __DebugFunction();
 
     Byte * pbReturnedBuffer = nullptr;
-    
+
     if (0 < unNumberOfBytesToWrite)
     {
         m_stlLock.lock();
         m_stlLockBuffer.resize(unNumberOfBytesToWrite);
         pbReturnedBuffer = &(m_stlLockBuffer[0]);
     }
-    
+
     return pbReturnedBuffer;
 }
 
@@ -137,16 +158,16 @@ void __thiscall FifoBuffer::WriteUnlock(
     )
 {
     __DebugFunction();
-    
+
     bool fThrowException = false;
 
-    // Recursively try to lock again to make sure whoever is calling WriteUnlock() was in 
+    // Recursively try to lock again to make sure whoever is calling WriteUnlock() was in
     // fact the SAME thread that called WriteLock(). This is because calling unlock
     // on a mutex that is not controlled by the current thread has an undefined behavior
     if (true == m_stlLock.try_lock())
     {
         // Check to make sure we are not trying to persist more bytes than what was
-        // actually reserved in the m_stlLockBuffer. This is important since this 
+        // actually reserved in the m_stlLockBuffer. This is important since this
         // could turn into a buffer overrun attack
         if (unNumberOfBytesToPersist > m_stlLockBuffer.size())
         {
@@ -164,7 +185,7 @@ void __thiscall FifoBuffer::WriteUnlock(
         // Now unlock the original lock()
         m_stlLock.unlock();
     }
-    
+
     if (true == fThrowException)
     {
         _ThrowSimpleException("OUT_OF_BOUNDS EXCEPTION! unNumberOfBytesToPersist is greater than unNumberOfBytesToWrite specified when WriteLocked() was called");

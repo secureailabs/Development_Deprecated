@@ -22,10 +22,12 @@ class FifoBuffer : public Object
     
         FifoBuffer(void);
         virtual ~FifoBuffer(void);
-        
+
         std::vector<Byte> __thiscall Read(
             _in unsigned int unNumberOfBytesToRead
             );
+        std::size_t __thiscall GetBytesInBuffer(void);
+
         Byte * __thiscall WriteLock(
             _in unsigned int unNumberOfBytesToWrite
             );

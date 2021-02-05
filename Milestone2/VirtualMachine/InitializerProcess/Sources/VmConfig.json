@@ -1,0 +1,39 @@
+{
+  "location": "{{Location}}",
+  "properties": {
+    "hardwareProfile": {
+      "vmSize": "Standard_D1_v2"
+    },
+    "storageProfile": {
+      "imageReference": {
+        "publisher": "canonical",
+        "offer": "0001-com-ubuntu-server-focal",
+        "sku": "20_04-lts",
+        "version": "latest"
+    },
+      "osDisk": {
+        "caching": "ReadWrite",
+        "managedDisk": {
+          "storageAccountType": "Standard_LRS"
+        },
+        "name": "{{OsDiskName}}",
+        "createOption": "FromImage"
+      }
+    },
+    "osProfile": {
+      "adminUsername": "azureuser",
+      "computerName": "myVM",
+      "adminPassword": "azureuser@123"
+    },
+    "networkProfile": {
+      "networkInterfaces": [
+        {
+          "id": "/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Network/networkInterfaces/{{NetworkInterface}}",
+          "properties": {
+            "primary": true
+          }
+        }
+      ]
+    }
+  }
+}

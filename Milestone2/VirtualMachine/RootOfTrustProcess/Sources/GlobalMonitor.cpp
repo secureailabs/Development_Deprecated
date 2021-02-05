@@ -165,7 +165,7 @@ void __thiscall GlobalMonitor::Run(
     m_fDisplayStatus = fDisplayStatus;
     m_stlLock.unlock();
     // Spin up a thread which will process the GlobalMonitor handling
-    ThreadManager * ThreadManager::GetInstance();
+    ThreadManager * poThreadManager = ThreadManager::GetInstance();
     __DebugAssert(nullptr != poThreadManager);
     _ThrowBaseExceptionIf((0xFFFFFFFFFFFFFFFF == poThreadManager->CreateThread("GlobalMonitorListener", GlobalMonitorRunThread, nullptr)), "Failed to start the global monitoring thread", nullptr);
 }

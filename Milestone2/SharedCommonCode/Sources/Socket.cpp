@@ -34,20 +34,20 @@ Socket::Socket(
     : m_nSocketDescriptor(-1), m_nPollingFileDescriptor(-1)
 {
     __DebugFunction();
-    
+
     // Initialize epoll stuff. This mechanism is used to help prevent the code from blocking
     // when there is no available data for a read operation.
     struct epoll_event sEvent;
     m_nPollingFileDescriptor = ::epoll_create1(0);
     _ThrowBaseExceptionIf((-1 == m_nPollingFileDescriptor), "epoll_create1() failed with errno = %d", errno);
-    
+
     // The sockets are all blocking sockets, but we use epoll to check whenever we try to
-    // read something. 
+    // read something.
     sEvent.events = EPOLLIN;
     sEvent.data.fd = nSocketDescriptor;
     int nReturnValue = ::epoll_ctl(m_nPollingFileDescriptor, EPOLL_CTL_ADD, nSocketDescriptor, &sEvent);
     _ThrowBaseExceptionIf((0 != nReturnValue), "epoll_ctl() failed with errno = %d", errno);
-    
+
     // Persist incoming parameters to class data members
     m_nSocketDescriptor = nSocketDescriptor;
 }
@@ -67,7 +67,7 @@ Socket::Socket(
     : m_nSocketDescriptor(-1), m_nPollingFileDescriptor(-1)
 {
     __DebugFunction();
-    
+
     m_nSocketDescriptor = c_oSocket.m_nSocketDescriptor;
     m_nPollingFileDescriptor = c_oSocket.m_nPollingFileDescriptor;
 }
@@ -83,23 +83,23 @@ Socket::Socket(
 Socket::~Socket(void) throw()
 {
     __DebugFunction();
-    
+
     if (-1 != m_nPollingFileDescriptor)
     {
         __DebugAssert(-1 != m_nSocketDescriptor);
-        
+
         ::epoll_ctl(m_nPollingFileDescriptor, EPOLL_CTL_DEL, m_nSocketDescriptor, nullptr);
         ::close(m_nPollingFileDescriptor);
         m_nPollingFileDescriptor = -1;
     }
-    
+
     if (-1 != m_nSocketDescriptor)
     {
         ::close(m_nSocketDescriptor);
         m_nSocketDescriptor = -1;
     }
 }
-        
+
 /********************************************************************************************
  *
  * @class Socket
@@ -118,9 +118,8 @@ std::vector<Byte> __thiscall Socket::Read(
     ) throw()
 {
     __DebugFunction();
-    
+
     std::vector<Byte> stlDestinationBuffer;
- 
     try
     {
         if (0 < unNumberOfDesiredBytes)
@@ -136,11 +135,17 @@ std::vector<Byte> __thiscall Socket::Read(
                 int nNumberOfBytesRead = 0;
                 Chronometer oChronometer;
                 oChronometer.Start();
-                
+
                 // We are going to spin until the request for reading is satisfied or until the
                 // timeout is reached
+                unsigned int unNumberOfBytesToRead = 0;
                 do
                 {
+                    unsigned int unBytesInFifoBuffer = m_oIncomingBytes.GetBytesInBuffer();
+                    if (unBytesInFifoBuffer <= unNumberOfDesiredBytes)
+                    {
+                        unNumberOfBytesToRead = unNumberOfDesiredBytes - unBytesInFifoBuffer;
+                    }
                     // The circular buffer doesn't have unNumberOfDesiredBytes already cached, so let's
                     // go and see if we can read some bytes off of the socket itself
                     struct epoll_event asPollingEvents[100];
@@ -159,17 +164,15 @@ std::vector<Byte> __thiscall Socket::Read(
                             {
                                 // Calling read() should not block since we already know that there is
                                 // nNumberOfBytesAvailable of bytes available to read.
-                                nNumberOfBytesRead += ::read(m_nSocketDescriptor, pbCircularBufferDestination, nNumberOfBytesAvailable);
+                                nNumberOfBytesRead = ::read(m_nSocketDescriptor, pbCircularBufferDestination, nNumberOfBytesAvailable);
                                 // m_oIncomingBytes.WriteUnlock() knows how to handle 0 and -1, so we can
                                 // call it directly with the results returned by read()
                                 m_oIncomingBytes.WriteUnlock(nNumberOfBytesRead);
-                                
                             }
                         }
                     }
                 }
-                while (((unsigned int) nNumberOfBytesRead < unNumberOfDesiredBytes)&&(unMillisecondTimeout > oChronometer.GetElapsedTimeWithPrecision(Millisecond)));
-                
+                while (((unsigned int)(nNumberOfBytesRead) < unNumberOfBytesToRead) && (unMillisecondTimeout > oChronometer.GetElapsedTimeWithPrecision(Millisecond)));
                 // We recursively call Read again, but this time with a 0 millisecond timeout. If not
                 // enough bytes are waiting in the FIFO buffer, then this call will return a 0 sized
                 // stlDestinationBuffer
@@ -177,12 +180,11 @@ std::vector<Byte> __thiscall Socket::Read(
             }
         }
     }
-    
-    catch(...)
+    catch(BaseException & oBaseException)
     {
-        
+        std::cout << "Socket Exception" << oBaseException.GetExceptionMessage() << std::endl;
     }
-    
+
     return stlDestinationBuffer;
 }
 
@@ -206,6 +208,6 @@ int __thiscall Socket::Write(
     __DebugFunction();
     __DebugAssert(nullptr != c_pbSourceBuffer);
     __DebugAssert(0 < unNumberOfBytesToWrite);
-    
+
     return ::write(m_nSocketDescriptor, c_pbSourceBuffer, unNumberOfBytesToWrite);
 }

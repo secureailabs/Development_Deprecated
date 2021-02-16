@@ -15,726 +15,499 @@
 #include "StructuredBuffer.h"
 #include "TlsClient.h"
 #include "GuiTerminal.h"
+#include "Utils.h"
+#include "HttpRequestParser.h"
+#include "JsonValue.h"
 
 #include <string.h>
 
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <vector>
 
-/********************************************************************************************/
+/********************************************************************************************
+ *
+ * @function ParseFirstLine
+ * @brief Parse first line of the response to get the Status
+ * @param[in] c_strRequestData response data
+ * @return true if parsed successfully
+ * @return false otherwise
+ *
+ ********************************************************************************************/
 
-std::vector<Byte> __stdcall CreateRequestPacket(
-    _in const StructuredBuffer & c_oRequestPacket
+bool ParseFirstLine(
+    _in const std::string & c_strRequestData
     )
 {
     __DebugFunction();
 
-    unsigned int unSerializedBufferSizeInBytes = sizeof(Dword) + sizeof(uint32_t) + c_oRequestPacket.GetSerializedBufferRawDataSizeInBytes() + sizeof(Dword);
+    bool fSuccess = false;
+    std::string strProtocol, strStatus;
+    std::stringstream oFirstLineStream(c_strRequestData);
 
-    std::vector<Byte> stlSerializedBuffer(unSerializedBufferSizeInBytes);
-    Byte * pbSerializedBuffer = (Byte *) stlSerializedBuffer.data();
+    // Get transaction status
+    std::getline(oFirstLineStream, strProtocol, ' ');
+    std::getline(oFirstLineStream, strStatus, ' ');
+    if (!strStatus.empty())
+    {
+        fSuccess = true;
+    }
+    else
+    {
+        _ThrowBaseException("ERROR: Invalid request.", nullptr);
+    }
+    _ThrowBaseExceptionIf(("200" != strStatus), "Transaction returned with error code:", strStatus);
 
-    // The format of the request data is:
-    //
-    // +------------------------------------------------------------------------------------+
-    // | [Dword] 0x436f6e74                                                                 |
-    // +------------------------------------------------------------------------------------+
-    // | [uint32_t] SizeInBytesOfRestRequestStructuredBuffer                                |
-    // +------------------------------------------------------------------------------------+
-    // | [SizeInBytesOfRestRequestStructuredBuffer] RestRequestStructuredBuffer             |
-    // +------------------------------------------------------------------------------------+
-    // | [Dword] 0x656e6420                                                                 |
-    // +------------------------------------------------------------------------------------+
+    return fSuccess;
+}
 
-    *((Dword *) pbSerializedBuffer) = 0x436f6e74;
-    pbSerializedBuffer += sizeof(Dword);
-    *((uint32_t *) pbSerializedBuffer) = (uint32_t) c_oRequestPacket.GetSerializedBufferRawDataSizeInBytes();
-    pbSerializedBuffer += sizeof(uint32_t);
-    ::memcpy((void *) pbSerializedBuffer, (const void *) c_oRequestPacket.GetSerializedBufferRawDataPtr(), c_oRequestPacket.GetSerializedBufferRawDataSizeInBytes());
-    pbSerializedBuffer += c_oRequestPacket.GetSerializedBufferRawDataSizeInBytes();
-    *((Dword *) pbSerializedBuffer) = 0x656e6420;
+/********************************************************************************************
+ *
+ * @function GetResponseBody
+ * @brief Parse and return response body
+ * @param[in] c_strRequestData response data
+ * @return Serialized response body
+ *
+ ********************************************************************************************/
 
-    return stlSerializedBuffer;
+std::vector<Byte> GetResponseBody(
+    _in const std::string & c_strRequestData,
+    _in TlsNode * poTlsNode
+    )
+{
+    __DebugFunction();
+
+    std::vector<Byte> stlSerializedResponse;
+
+    // Check http code
+    bool fSuccess = ::ParseFirstLine(c_strRequestData);
+    // Parse Header of the Rest Request
+    HttpRequestParser oParser;
+    fSuccess = oParser.ParseResponse(c_strRequestData);
+    _ThrowBaseExceptionIf((false == fSuccess), "Error: Parsing response failed.", nullptr);
+
+    if (true == oParser.HeaderExists("Content-Length"))
+    {
+        unsigned int unContentLength = std::stoi(oParser.GetHeaderValue("Content-Length"));
+        if (0 < unContentLength)
+        {
+            // Read request content
+            std::vector<Byte> stlBodyData = poTlsNode->Read(unContentLength, 100);
+            _ThrowBaseExceptionIf((0 == stlBodyData.size()), "Dead Packet.", nullptr);
+            std::string strRequestBody = std::string(stlBodyData.begin(), stlBodyData.end());
+
+            // Check Content-Type
+            _ThrowBaseExceptionIf((false == oParser.HeaderExists("Content-Type")), "Invalid request format.", nullptr);
+            std::string strContentType = oParser.GetHeaderValue("Content-Type");
+            if ("application/json" == strContentType)
+            {
+                // Parse Json
+                std::string strUnEscapseJsonString = ::UnEscapeJsonString(strRequestBody);
+                stlSerializedResponse = JsonValue::ParseDataToStructuredBuffer(strUnEscapseJsonString.c_str());
+            }
+            else
+            {
+                _ThrowBaseException("Content Type: %s not supported.", strContentType);
+            }
+        }
+    }
+    _ThrowBaseExceptionIf((0 == stlSerializedResponse.size()), "Error logging in.", nullptr);
+
+    return stlSerializedResponse;
 }
 
 /********************************************************************************************/
 
-bool Login(
-    _out std::vector<Byte> & stlEosb,
-    _in const std::string & c_strUserName,
-    _in const std::string & c_strUserPassword,
-    _in const std::string & c_strUserOrganization
+std::string Login(
+    _in const std::string & c_strEmail,
+    _in const std::string & c_strUserPassword
     )
 {
     __DebugFunction();
-    __DebugAssert(0 != c_strUserName.length());
+    __DebugAssert(0 != c_strEmail.length());
     __DebugAssert(0 != c_strUserPassword.length());
-    __DebugAssert(0 != c_strUserOrganization.length());
 
-    bool fSuccess = false;
-
-    std::vector<Byte> stlRestResponse;
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
-
-    // Create rest request
-    StructuredBuffer oRestRequestStructuredBuffer;
-    oRestRequestStructuredBuffer.PutString("PluginName", "SailAuthentication");
-    oRestRequestStructuredBuffer.PutString("Verb", "POST");
-    oRestRequestStructuredBuffer.PutString("Resource", "SecureAiLabs/Authentication/Login");
-    oRestRequestStructuredBuffer.PutString("Username", c_strUserName);
-    oRestRequestStructuredBuffer.PutString("Password", c_strUserPassword);
-    oRestRequestStructuredBuffer.PutString("Organization", c_strUserOrganization);
-
-    std::vector<Byte> stlRestRequest = ::CreateRequestPacket(oRestRequestStructuredBuffer);
-
-    // Send request packet
-    poTlsNode->Write(stlRestRequest.data(), (stlRestRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    stlRestResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Dead Packet.", nullptr);
+    std::string strEosb;
 
     try
     {
-        StructuredBuffer oResponse(stlRestResponse);
-        stlEosb.resize(stlRestResponse.size());
-        ::memcpy((void *) stlEosb.data(), (const void *) stlRestResponse.data(), stlRestResponse.size());
+        bool fSuccess = false;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+
+        std::string strHttpLoginRequest = "POST /SAIL/AuthenticationManager/User/Login?Email="+ c_strEmail +"&Password="+ c_strUserPassword +" HTTP/1.1\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: 0\r\n"
+                                        "\r\n";
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpLoginRequest.data(), (strHttpLoginRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {
+            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
+            if (4 <= stlHeaderData.size())
+            {
+                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                {
+                    fIsEndOfHeader = true;
+                }
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error logging in.", nullptr);
+        strEosb = oResponse.GetString("Eosb");
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage("Login Failed!");
+    }
+
+    return strEosb;
+}
+
+/********************************************************************************************/
+
+bool RegisterRootEvent(
+    _in const std::string & c_strEncodedEosb
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+
+    try
+    {
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+
+        // Create rest request
+
+        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
+                                "\n    \"NonLeafEvent\":"
+                                "\n    {"
+                                "\n        \"EventGuid\": \""+ Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces) +"\","
+                                "\n        \"ParentGuid\": \"{00000000-0000-0000-0000-000000000000}\","
+                                "\n        \"OrganizationGuid\": \""+ Guid(eOrganization).ToString(eHyphensAndCurlyBraces) +"\","
+                                "\n        \"EventType\": 1,"
+                                "\n        \"Timestamp\": 12345,"
+                                "\n        \"SequenceNumber\": 0,"
+                                "\n        \"PlainTextEventData\": "
+                                "\n        {"
+                                "\n        }"
+                                "\n    }"
+                                "\n}";
+
+        std::string strHttpRegisterRequest = "POST /SAIL/AuditLogManager/Events HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRegisterRequest.data(), strHttpRegisterRequest.size());
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {
+            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
+            if (4 <= stlHeaderData.size())
+            {
+                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                {
+                    fIsEndOfHeader = true;
+                }
+            }
+        }
+
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
+        std::cout << "Root event added successfully!" << std::endl;
         fSuccess = true;
     }
     catch(BaseException oBaseException)
     {
-        ::ShowErrorMessage("\nLogin Failed");
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
     }
+    catch(...)
+    {
+        ::ShowErrorMessage("Error registering root event.");
+    }
+
+    ::WaitForUserToContinue();
 
     return fSuccess;
 }
 
 /********************************************************************************************/
 
-bool GetImposterEosb(
-    _out std::vector<Byte> & stlIEosb,
-    _in const std::vector<Byte> & c_stlEosb
+bool RegisterBranchEvent(
+    _in const std::string & c_strEncodedEosb
     )
 {
     __DebugFunction();
 
     bool fSuccess = false;
 
-    std::vector<Byte> stlRestResponse;
-
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
-
-    // Create rest request
-    StructuredBuffer oRestRequestStructuredBuffer;
-    oRestRequestStructuredBuffer.PutString("PluginName", "SailAuthentication");
-    oRestRequestStructuredBuffer.PutString("Verb", "POST");
-    oRestRequestStructuredBuffer.PutString("Resource", "SecureAiLabs/Authentication/ImposterEOSB");
-    oRestRequestStructuredBuffer.PutBuffer("Eosb", c_stlEosb);
-
-    std::vector<Byte> stlRestRequest = ::CreateRequestPacket(oRestRequestStructuredBuffer);
-
-    // Send request packet
-    poTlsNode->Write(stlRestRequest.data(), (stlRestRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    stlRestResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Dead Packet.", nullptr);
-
-    try
+    try 
     {
-        StructuredBuffer oResponse(stlRestResponse);
-        stlIEosb.resize(stlRestResponse.size());
-        ::memcpy((void *) stlIEosb.data(), (const void *) stlRestResponse.data(), stlRestResponse.size());
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+
+        // Create rest request
+        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
+                                "\n    \"NonLeafEvent\":"
+                                "\n    {"
+                                "\n        \"EventGuid\": \""+ Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces) +"\","
+                                "\n        \"ParentGuid\": \"{9F049392-9EA7-4436-B737-1C40CC31CA38}\","
+                                "\n        \"OrganizationGuid\": \""+ Guid(eOrganization).ToString(eHyphensAndCurlyBraces) +"\","
+                                "\n        \"EventType\": 2,"
+                                "\n        \"Timestamp\": 12345,"
+                                "\n        \"SequenceNumber\": 1,"
+                                "\n        \"PlainTextEventData\": "
+                                "\n        {"
+                                "\n            \"BranchType\": 1,"
+                                "\n            \"GuidOfDcOrVm\" : \""+ Guid(eDigitalContract).ToString(eHyphensAndCurlyBraces) +"\""
+                                "\n        }"
+                                "\n    }"
+                                "\n}";
+        std::string strHttpRegisterRequest = "POST /SAIL/AuditLogManager/Events HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRegisterRequest.data(), strHttpRegisterRequest.size());
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {
+            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
+            if (4 <= stlHeaderData.size())
+            {
+                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                {
+                    fIsEndOfHeader = true;
+                }
+            }
+        }
+
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
+        std::cout << "Branch event added successfully!" << std::endl;
         fSuccess = true;
     }
     catch(BaseException oBaseException)
     {
-        ::ShowErrorMessage("\nError getting imposter EOSB");
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
     }
+    catch(...)
+    {
+        ::ShowErrorMessage("Error registering branch event.");
+    }
+
+    ::WaitForUserToContinue();
 
     return fSuccess;
 }
 
 /********************************************************************************************/
 
-std::vector<Byte> RegisterDataset(
-    _in const std::vector<Byte> & c_stlEosb,
-    _in const std::string & c_strDatasetName,
-    _in const std::string & c_strDatasetOrganization,
-    _in Qword qwDatasetSubmissionDate
+bool RegisterLeafEvents(
+    _in const std::string & c_strEncodedEosb
     )
 {
     __DebugFunction();
 
-    std::vector<Byte> stlRestResponse;
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
-
-    // Create rest request
-    // Add data owner's Eosb
-    StructuredBuffer oEosb(c_stlEosb);
-
-    // Add dataset information
-    StructuredBuffer oRestRequestStructuredBuffer;
-    oRestRequestStructuredBuffer.PutString("PluginName", "DatasetDatabase");
-    oRestRequestStructuredBuffer.PutString("Verb", "POST");
-    oRestRequestStructuredBuffer.PutString("Resource", "SecureAiLabs/Dataset/RegisterDataset");
-    oRestRequestStructuredBuffer.PutString("DatasetName", c_strDatasetName);
-    oRestRequestStructuredBuffer.PutString("DatasetOrganization", c_strDatasetOrganization);
-    oRestRequestStructuredBuffer.PutQword("DatasetSubmissionDate", qwDatasetSubmissionDate);
-    oRestRequestStructuredBuffer.PutBuffer("Eosb", oEosb.GetSerializedBuffer());
-
-    std::vector<Byte> stlRestRequest = ::CreateRequestPacket(oRestRequestStructuredBuffer);
-
-    // Send request packet
-    poTlsNode->Write(stlRestRequest.data(), (stlRestRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    stlRestResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Dead Packet.", nullptr);
+    bool fSuccess = false;
 
     try
     {
-        StructuredBuffer oResponse(stlRestResponse);
-        std::cout << "Dataset registered with UUID: " << oResponse.GetString("DatasetUuid") << std::endl;
-    }
-    catch(...)
-    {
-        ::ShowErrorMessage(std::string(stlRestResponse.begin(), stlRestResponse.end()));
-    }
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
 
-    ::WaitForUserToContinue();
+        // Create rest request
+        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
+                                "\n    \"ParentGuid\": \"{9F049392-9EA7-4436-B737-1C40CC31CA38}\","
+                                "\n    \"LeafEvents\": ["
+                                "\n        {"
+                                "\n            \"EventGuid\": \""+ Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces) +"\","
+                                "\n            \"OrganizationGuid\": \""+ Guid(eOrganization).ToString(eHyphensAndCurlyBraces) +"\","
+                                "\n            \"EventType\": 6,"
+                                "\n            \"Timestamp\": 12345,"
+                                "\n            \"SequenceNumber\": 2,"
+                                "\n            \"EncryptedEventData\": \"5iEQAhtloSMplcUnh1L0nooYrO0TKDJZSOAIzOgfaItg8i+EFrmGkDE7SNm6icKgskkBpoMBAABO6L5OOW6aS0pw3aMZjP2Q0KeKL2XtoeVCmW+2sN34h0LuFaPqN48Ku2WytWVHK2t0ilp50Xo7RHxcMPKkiUqSatRD42UjaqcpFCoy3plz+JfogTONcCDiRe+4tRcmg1zHAk2zsXZhwFg5tJioNIQdSoG1bOz4dPYqltRtMYlpbea85IH3pMkB4qduM5OK5zDNCxB0SdlyNpsREhRzeUCxAAiiop7PYgZb/8Vdsd67BTeSd73JkyFr301nqaa5+LCJpnSv19B6yUqQK7ZoSVsTwNsUqO+mtIRTEomvRspqu4hwQf++4I4rIyCwIlN2daJtxNI5RVujFTellgaWB0BudhxqIk72EMEkE9vOihEdaPcJJC2FkEBJTH9Dg3DBNRSck5ZXYmP2MBGAM474iwisvSpfiUSBNNkM3AL6y782K3vrhNDxvY2uxKmR3rfs8TJI9V7lAvIogLht2VYKJi1DWWLtMbccGScTYfyqZgjBw5m7R5LL1CkREZsV6kVymL1kYDkyGlaxKZESbg==\""
+                                "\n        },"
+                                "\n        {"
+                                "\n            \"EventGuid\": \""+ Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces) +"\","
+                                "\n            \"OrganizationGuid\": \""+ Guid(eOrganization).ToString(eHyphensAndCurlyBraces) +"\","
+                                "\n            \"EventType\": 6,"
+                                "\n            \"Timestamp\": 12345,"
+                                "\n            \"SequenceNumber\": 3,"
+                                "\n            \"EncryptedEventData\": \"5iEQAhtloSMplcUnh1L0nooYrO0TKDJZSOAIzOgfaItg8i+EFrmGkDE7SNm6icKgskkBpoMBAABO6L5OOW6aS0pw3aMZjP2Q0KeKL2XtoeVCmW+2sN34h0LuFaPqN48Ku2WytWVHK2t0ilp50Xo7RHxcMPKkiUqSatRD42UjaqcpFCoy3plz+JfogTONcCDiRe+4tRcmg1zHAk2zsXZhwFg5tJioNIQdSoG1bOz4dPYqltRtMYlpbea85IH3pMkB4qduM5OK5zDNCxB0SdlyNpsREhRzeUCxAAiiop7PYgZb/8Vdsd67BTeSd73JkyFr301nqaa5+LCJpnSv19B6yUqQK7ZoSVsTwNsUqO+mtIRTEomvRspqu4hwQf++4I4rIyCwIlN2daJtxNI5RVujFTellgaWB0BudhxqIk72EMEkE9vOihEdaPcJJC2FkEBJTH9Dg3DBNRSck5ZXYmP2MBGAM474iwisvSpfiUSBNNkM3AL6y782K3vrhNDxvY2uxKmR3rfs8TJI9V7lAvIogLht2VYKJi1DWWLtMbccGScTYfyqZgjBw5m7R5LL1CkREZsV6kVymL1kYDkyGlaxKZESbg==\""
+                                "\n        }"
+                                "\n    ]"
+                                "\n}";
+        std::string strHttpRegisterRequest = "POST /SAIL/AuditLogManager/LeafEvents HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
 
-    return stlRestResponse;
-}
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRegisterRequest.data(), (strHttpRegisterRequest.size()));
 
-/********************************************************************************************/
-
-std::vector<Byte> DeleteDataset(
-    _in const std::vector<Byte> & c_stlEosb,
-    _in const std::string & c_strDatasetUuid
-    )
-{
-    __DebugFunction();
-
-    std::vector<Byte> stlRestResponse;
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
-
-    // Create rest request
-    // Add data owner's Eosb
-    StructuredBuffer oEosb(c_stlEosb);
-
-    // Add dataset information
-    StructuredBuffer oRestRequestStructuredBuffer;
-    oRestRequestStructuredBuffer.PutString("PluginName", "DatasetDatabase");
-    oRestRequestStructuredBuffer.PutString("Verb", "POST");
-    oRestRequestStructuredBuffer.PutString("Resource", "SecureAiLabs/Dataset/DeleteDataset");
-    oRestRequestStructuredBuffer.PutString("DatasetUuid", c_strDatasetUuid);
-    oRestRequestStructuredBuffer.PutBuffer("Eosb", oEosb.GetSerializedBuffer());
-
-    std::vector<Byte> stlRestRequest = ::CreateRequestPacket(oRestRequestStructuredBuffer);
-
-    // Send request packet
-    poTlsNode->Write(stlRestRequest.data(), (stlRestRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    stlRestResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Dead Packet.", nullptr);
-
-    try
-    {
-        StructuredBuffer oResponse(stlRestResponse);
-        if (200 == oResponse.GetWord("Status"))
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
         {
-          std::cout << "Dataset with UUID " << c_strDatasetUuid << " deleted successfully."<< std::endl;
-        }
-        else
-        {
-          ::ShowErrorMessage("Error deleteing the dataset with UUID " + c_strDatasetUuid + ". Dataset not found.");
-        }
-    }
-    catch(...)
-    {
-        ::ShowErrorMessage(std::string(stlRestResponse.begin(), stlRestResponse.end()));
-    }
-
-    ::WaitForUserToContinue();
-
-    return stlRestResponse;
-}
-
-/********************************************************************************************/
-
-std::vector<Byte> GetListOfSubmittedDatasets(
-    _in const std::vector<Byte> & c_stlEosb
-    )
-{
-    __DebugFunction();
-
-    std::vector<Byte> stlRestResponse;
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
-
-    // Create rest request
-    // Add data owner's Eosb
-    StructuredBuffer oEosb(c_stlEosb);
-
-    StructuredBuffer oRestRequestStructuredBuffer;
-    oRestRequestStructuredBuffer.PutString("PluginName", "DatasetDatabase");
-    oRestRequestStructuredBuffer.PutString("Verb", "GET");
-    oRestRequestStructuredBuffer.PutString("Resource", "SecureAiLabs/Dataset/GetSubmittedDataset");
-    oRestRequestStructuredBuffer.PutBuffer("Eosb", oEosb.GetSerializedBuffer());
-
-    std::vector<Byte> stlRestRequest = ::CreateRequestPacket(oRestRequestStructuredBuffer);
-
-    // Send request packet
-    poTlsNode->Write(stlRestRequest.data(), (stlRestRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    stlRestResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Dead Packet.", nullptr);
-
-    try
-    {
-        StructuredBuffer oResponse(stlRestResponse);
-        if (200 == oResponse.GetWord("Status"))
-        {
-            std::cout << "List of Submitted Datsets: \n\n";
-
-            oResponse.RemoveElement("Status");
-            std::vector<std::string> stlDatasetUuids = oResponse.GetNamesOfElements();
-            for (std::string strUuid : stlDatasetUuids)
+            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
+            if (4 <= stlHeaderData.size())
             {
-                StructuredBuffer oDataset(oResponse.GetStructuredBuffer(strUuid.c_str()));
-                std::cout << "Name: " << oDataset.GetString("DatasetName") << std::endl;
-                std::cout << "Submitted By: " << oDataset.GetString("UserUuid") << std::endl;
-                Qword qwSubmissionDate = oDataset.GetQword("DatasetSubmissionDate");
-                std::cout << "Submission Date: " << ((qwSubmissionDate / 100) % 100) << "/" << (qwSubmissionDate % 100) << "/" << (qwSubmissionDate / 10000) << std::endl << std::endl;
+                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                {
+                    fIsEndOfHeader = true;
+                }
             }
         }
-        else
-        {
-          ::ShowErrorMessage("No datasets submitted.");
-        }
+
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
+        std::cout << "Leaf events added successfully!" << std::endl;
+        fSuccess = true;
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
     }
     catch(...)
     {
-        ::ShowErrorMessage(std::string(stlRestResponse.begin(), stlRestResponse.end()));
+        ::ShowErrorMessage("Error registering leaf events.");
     }
 
     ::WaitForUserToContinue();
 
-    return stlRestResponse;
+    return fSuccess;
 }
 
 /********************************************************************************************/
 
-std::vector<Byte> GetListOfAvailableDatasets(
-    _in const std::vector<Byte> & c_stlEosb
+bool GetListOfEvents(
+    _in const std::string & c_strEncodedEosb
     )
 {
     __DebugFunction();
 
-    std::vector<Byte> stlRestResponse;
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+    bool fSuccess = false;
 
-    // Create rest request
-    // Add data owner's Eosb
-    StructuredBuffer oEosb(c_stlEosb);
-
-    // Create rest packet
-    StructuredBuffer oRestRequestStructuredBuffer;
-    oRestRequestStructuredBuffer.PutString("PluginName", "DatasetDatabase");
-    oRestRequestStructuredBuffer.PutString("Verb", "GET");
-    oRestRequestStructuredBuffer.PutString("Resource", "SecureAiLabs/Dataset/GetAvailableDataset");
-    oRestRequestStructuredBuffer.PutBuffer("Eosb", oEosb.GetSerializedBuffer());
-
-    std::vector<Byte> stlRestRequest = ::CreateRequestPacket(oRestRequestStructuredBuffer);
-
-    // Send request packet
-    poTlsNode->Write(stlRestRequest.data(), (stlRestRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    stlRestResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Dead Packet.", nullptr);
-
-    try
+    try 
     {
-        StructuredBuffer oResponse(stlRestResponse);
-        if (200 == oResponse.GetWord("Status"))
-        {
-            std::cout << "List of Available Datsets: \n\n";
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
 
-            oResponse.RemoveElement("Status");
-            std::vector<std::string> stlDatasetUuids = oResponse.GetNamesOfElements();
-            for (std::string strUuid : stlDatasetUuids)
+        // Create rest request
+        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
+                                "\n    \"ParentGuid\": \"{9F049392-9EA7-4436-B737-1C40CC31CA38}\","
+                                "\n    \"Filters\":"
+                                "\n    {"
+                                "\n        \"MinimumDate\": 12340,"
+                                "\n        \"MaximumDate\": 12347,"
+                                "\n        \"TypeOfEvents\": 7"
+                                "\n    }"
+                                "\n}";
+        std::string strHttpRequest = "GET /SAIL/AuditLogManager/GetListOfEvents HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRequest.data(), (strHttpRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {
+            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
+            if (4 <= stlHeaderData.size())
             {
-                StructuredBuffer oDataset(oResponse.GetStructuredBuffer(strUuid.c_str()));
-                std::cout << "Name: " << oDataset.GetString("DatasetName") << std::endl;
-                std::cout << "Owner Organization: " << oDataset.GetString("DatasetOrganization") << std::endl;
-                Qword qwSubmissionDate = oDataset.GetQword("DatasetSubmissionDate");
-                std::cout << "Submission Date: " << ((qwSubmissionDate / 100) % 100) << "/" << (qwSubmissionDate % 100) << "/" << (qwSubmissionDate / 10000) << std::endl << std::endl;
+                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                {
+                    fIsEndOfHeader = true;
+                }
             }
         }
-        else
+
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+        
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error logging in.", nullptr);
+        std::cout << "List of Events:" << std::endl;
+        for (std::string strEventUuid : oResponse.GetStructuredBuffer("ListOfEvents").GetNamesOfElements())
         {
-          ::ShowErrorMessage("No datasets available.");
+            std::cout << strEventUuid << std::endl;
         }
+        fSuccess = true;
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
     }
     catch(...)
     {
-        ::ShowErrorMessage(std::string(stlRestResponse.begin(), stlRestResponse.end()));
+        ::ShowErrorMessage("Error getting list of events.");
     }
 
     ::WaitForUserToContinue();
 
-    return stlRestResponse;
-}
-
-/********************************************************************************************/
-
-std::vector<Byte> RegisterDigitalContract(
-    _in const std::vector<Byte> & c_stlEosb,
-    _in const std::string & c_strDataOwnerOrganization,
-    _in const std::string & c_strResearcherOrganization,
-    _in const std::string & c_strInvolvedDatasets,
-    _in Qword qwCreationDate,
-    _in Qword qwExpirationDate
-    )
-{
-    __DebugFunction();
-
-    std::vector<Byte> stlRestResponse;
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
-
-    // Create rest request
-    // Add data owner's Eosb
-    StructuredBuffer oEosb(c_stlEosb);
-
-    // Add plugin information
-    StructuredBuffer oRestRequestStructuredBuffer;
-    oRestRequestStructuredBuffer.PutString("PluginName", "DigitalContractDatabase");
-    oRestRequestStructuredBuffer.PutString("Verb", "POST");
-    oRestRequestStructuredBuffer.PutString("Resource", "SecureAiLabs/DigitalContract/RegisterDigitalContract");
-
-    // Add Digital contract information
-    oRestRequestStructuredBuffer.PutString("DataOwnerOrganization", c_strDataOwnerOrganization);
-    oRestRequestStructuredBuffer.PutString("ResearcherOrganization", c_strResearcherOrganization);
-    oRestRequestStructuredBuffer.PutString("InvolvedDatasets", c_strInvolvedDatasets);
-    oRestRequestStructuredBuffer.PutQword("CreationDate", qwCreationDate);
-    oRestRequestStructuredBuffer.PutQword("ExpirationDate", qwExpirationDate);
-    oRestRequestStructuredBuffer.PutBuffer("Eosb", oEosb.GetSerializedBuffer());
-
-    std::vector<Byte> stlRestRequest = ::CreateRequestPacket(oRestRequestStructuredBuffer);
-
-    // Send request packet
-    poTlsNode->Write(stlRestRequest.data(), (stlRestRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    stlRestResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Dead Packet.", nullptr);
-
-    try
-    {
-        StructuredBuffer oResponse(stlRestResponse);
-        std::cout << "Digital contract registered with UUID: " << oResponse.GetString("DigitalContractUuid") << std::endl;
-    }
-    catch(...)
-    {
-        ::ShowErrorMessage(std::string(stlRestResponse.begin(), stlRestResponse.end()));
-    }
-
-    ::WaitForUserToContinue();
-
-    return stlRestResponse;
-}
-
-/********************************************************************************************/
-
-std::vector<Byte> GetListOfDigitalContracts(
-    _in const std::vector<Byte> & c_stlEosb
-    )
-{
-    __DebugFunction();
-
-    std::vector<Byte> stlRestResponse;
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
-
-    // Create rest request
-    // Add data owner's Eosb
-    StructuredBuffer oEosb(c_stlEosb);
-
-    StructuredBuffer oRestRequestStructuredBuffer;
-    oRestRequestStructuredBuffer.PutString("PluginName", "DigitalContractDatabase");
-    oRestRequestStructuredBuffer.PutString("Verb", "GET");
-    oRestRequestStructuredBuffer.PutString("Resource", "SecureAiLabs/DigitalContract/MyDigitalContracts");
-    oRestRequestStructuredBuffer.PutBuffer("Eosb", oEosb.GetSerializedBuffer());
-
-    std::vector<Byte> stlRestRequest = ::CreateRequestPacket(oRestRequestStructuredBuffer);
-
-    // Send request packet
-    poTlsNode->Write(stlRestRequest.data(), (stlRestRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    stlRestResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Dead Packet.", nullptr);
-
-    try
-    {
-        StructuredBuffer oResponse(stlRestResponse);
-        if (200 == oResponse.GetWord("Status"))
-        {
-            std::cout << "List of Digital Contracts: \n\n";
-
-            oResponse.RemoveElement("Status");
-            std::vector<std::string> stlDigitalContractUuids = oResponse.GetNamesOfElements();
-            for (std::string strUuid : stlDigitalContractUuids)
-            {
-                StructuredBuffer oDigitalContract(oResponse.GetStructuredBuffer(strUuid.c_str()));
-                std::cout << "Owner Organization: " << oDigitalContract.GetString("DataOwnerOrganization") << std::endl;
-                std::cout << "Researcher Organization: " << oDigitalContract.GetString("ResearcherOrganization") << std::endl;
-                std::cout << "Involved Datasets: " << oDigitalContract.GetString("InvolvedDatasets") << std::endl;
-                Qword qwCreationDate = oDigitalContract.GetQword("CreationDate");
-                Qword qwExpirationDate = oDigitalContract.GetQword("ExpirationDate");
-                std::cout << "Creation Date: " << ((qwCreationDate / 100) % 100) << "/" << (qwCreationDate % 100) << "/" << (qwCreationDate / 10000) << std::endl;
-                std::cout << "Expiration Date: " << ((qwExpirationDate / 100) % 100) << "/" << (qwExpirationDate % 100) << "/" << (qwExpirationDate / 10000) << std::endl << std::endl;
-            }
-        }
-        else
-        {
-          ::ShowErrorMessage("No digital contracts found.");
-        }
-    }
-    catch(...)
-    {
-        ::ShowErrorMessage(std::string(stlRestResponse.begin(), stlRestResponse.end()));
-    }
-
-    ::WaitForUserToContinue();
-
-    return stlRestResponse;
-}
-
-/********************************************************************************************/
-
-std::vector<Byte> GetListOfWaitingDigitalContracts(
-    _in const std::vector<Byte> & c_stlEosb
-    )
-{
-    __DebugFunction();
-
-    std::vector<Byte> stlRestResponse;
-
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
-
-    // Create rest request
-    // Add data owner's Eosb
-    StructuredBuffer oEosb(c_stlEosb);
-
-    // Create rest packet
-    StructuredBuffer oRestRequestStructuredBuffer;
-    oRestRequestStructuredBuffer.PutString("PluginName", "DigitalContractDatabase");
-    oRestRequestStructuredBuffer.PutString("Verb", "GET");
-    oRestRequestStructuredBuffer.PutString("Resource", "SecureAiLabs/DigitalContract/WaitingDigitalContracts");
-    oRestRequestStructuredBuffer.PutBuffer("Eosb", oEosb.GetSerializedBuffer());
-
-    std::vector<Byte> stlRestRequest = ::CreateRequestPacket(oRestRequestStructuredBuffer);
-
-    // Send request packet
-    poTlsNode->Write(stlRestRequest.data(), (stlRestRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    stlRestResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Dead Packet.", nullptr);
-
-    try
-    {
-        StructuredBuffer oResponse(stlRestResponse);
-        if (200 == oResponse.GetWord("Status"))
-        {
-            std::cout << "List of Waiting Digital Contracts: \n\n";
-
-            oResponse.RemoveElement("Status");
-            std::vector<std::string> stlDigitalContractUuids = oResponse.GetNamesOfElements();
-            for (std::string strUuid : stlDigitalContractUuids)
-            {
-                StructuredBuffer oDigitalContract(oResponse.GetStructuredBuffer(strUuid.c_str()));
-                std::cout << "Owner Organization: " << oDigitalContract.GetString("DataOwnerOrganization") << std::endl;
-                std::cout << "Researcher Organization: " << oDigitalContract.GetString("ResearcherOrganization") << std::endl;
-                std::cout << "Involved Datasets: " << oDigitalContract.GetString("InvolvedDatasets") << std::endl;
-                Qword qwCreationDate = oDigitalContract.GetQword("CreationDate");
-                Qword qwExpirationDate = oDigitalContract.GetQword("ExpirationDate");
-                std::cout << "Creation Date: " << ((qwCreationDate / 100) % 100) << "/" << (qwCreationDate % 100) << "/" << (qwCreationDate / 10000) << std::endl;
-                std::cout << "Expiration Date: " << ((qwExpirationDate / 100) % 100) << "/" << (qwExpirationDate % 100) << "/" << (qwExpirationDate / 10000) << std::endl << std::endl;
-            }
-        }
-        else
-        {
-          ::ShowErrorMessage("No digital contracts are in flux.");
-        }
-    }
-    catch(...)
-    {
-        ::ShowErrorMessage(std::string(stlRestResponse.begin(), stlRestResponse.end()));
-    }
-
-    ::WaitForUserToContinue();
-
-    return stlRestResponse;
-}
-
-/********************************************************************************************/
-
-std::vector<Byte> RegisterVmInstance(
-  _in const std::vector<Byte> & c_stlEosb,
-  _in const std::string & c_strVmIPAddress,
-  _in Word wVmPortNumber,
-  _in bool fVmStatus,
-  _in Qword qwRegistrationDate,
-  _in Qword qwUpTime
-  )
-{
-    __DebugFunction();
-
-    std::vector<Byte> stlRestResponse;
-
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
-
-    // Create rest request
-    // Add data owner's Eosb
-    StructuredBuffer oEosb(c_stlEosb);
-
-    // Add plugin information
-    StructuredBuffer oRestRequestStructuredBuffer;
-    oRestRequestStructuredBuffer.PutString("PluginName", "VmDatabase");
-    oRestRequestStructuredBuffer.PutString("Verb", "POST");
-    oRestRequestStructuredBuffer.PutString("Resource", "SecureAiLabs/VM/RegisterVM");
-
-    // Add Vm information
-    oRestRequestStructuredBuffer.PutString("VmIpAddress", c_strVmIPAddress);
-    oRestRequestStructuredBuffer.PutWord("VmPortNumber", wVmPortNumber);
-    oRestRequestStructuredBuffer.PutBoolean("VmStatus", fVmStatus);
-    oRestRequestStructuredBuffer.PutQword("VmRegistrationDate", qwRegistrationDate);
-    oRestRequestStructuredBuffer.PutQword("VmUpTime", qwUpTime);
-    oRestRequestStructuredBuffer.PutBuffer("Eosb", oEosb.GetSerializedBuffer());
-
-    std::vector<Byte> stlRestRequest = ::CreateRequestPacket(oRestRequestStructuredBuffer);
-
-    // Send request packet
-    poTlsNode->Write(stlRestRequest.data(), (stlRestRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    stlRestResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Dead Packet.", nullptr);
-
-    try
-    {
-        StructuredBuffer oResponse(stlRestResponse);
-        std::cout << "VM Instance registered with UUID: " << oResponse.GetString("VmInstanceUuid") << std::endl;
-    }
-    catch(...)
-    {
-        ::ShowErrorMessage(std::string(stlRestResponse.begin(), stlRestResponse.end()));
-    }
-
-    ::WaitForUserToContinue();
-
-    return stlRestResponse;
-}
-
-/********************************************************************************************/
-
-std::vector<Byte> GetVMHeartBeat(
-    _in const std::vector<Byte> & c_stlEosb,
-    _in const std::string & c_strVmUuid
-    )
-{
-    __DebugFunction();
-
-    std::vector<Byte> stlRestResponse;
-
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
-
-    // Create rest request
-    // Add data owner's Eosb
-    StructuredBuffer oEosb(c_stlEosb);
-
-    // Create rest packet
-    StructuredBuffer oRestRequestStructuredBuffer;
-    oRestRequestStructuredBuffer.PutString("PluginName", "VmDatabase");
-    oRestRequestStructuredBuffer.PutString("Verb", "GET");
-    oRestRequestStructuredBuffer.PutString("Resource", "SecureAiLabs/VM/GetVMHeartBeat");
-    oRestRequestStructuredBuffer.PutBuffer("Eosb", oEosb.GetSerializedBuffer());
-
-    // Add Vm's uuid
-    oRestRequestStructuredBuffer.PutString("VmInstanceUuid", c_strVmUuid);
-
-    std::vector<Byte> stlRestRequest = ::CreateRequestPacket(oRestRequestStructuredBuffer);
-
-    // Send request packet
-    poTlsNode->Write(stlRestRequest.data(), (stlRestRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    stlRestResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Dead Packet.", nullptr);
-
-    try
-    {
-        StructuredBuffer oResponse(stlRestResponse);
-        std::string strStatus = oResponse.GetBoolean("VmStatus") ? "Active" : "InActive";
-        std::cout << "VM intance with UUID " << c_strVmUuid << " is: "<< strStatus << std::endl;
-    }
-    catch(...)
-    {
-        ::ShowErrorMessage(std::string(stlRestResponse.begin(), stlRestResponse.end()));
-    }
-
-    ::WaitForUserToContinue();
-
-    return stlRestResponse;
+    return fSuccess;
 }
 
 /********************************************************************************************/
@@ -751,17 +524,12 @@ int main()
         ::ClearScreen();
 
         std::cout << "************************\n  SAIL LOGIN\n************************\n" << std::endl;
-        std::string strUserName = ::GetStringInput("Enter username: ", 20, false, c_szValidInputCharacters);
+        std::string strEmail = ::GetStringInput("Enter email: ", 20, false, c_szValidInputCharacters);
         std::string strUserPassword = ::GetStringInput("Enter password: ", 50, true, c_szValidInputCharacters);
-        std::string strUserOrganization = ::GetStringInput("Enter organization name: ", 50, false, c_szValidInputCharacters);
 
-        std::vector<Byte> stlEosb;
-        bool fSuccess = Login(stlEosb, strUserName, strUserPassword, strUserOrganization);
-        _ThrowBaseExceptionIf((false == fSuccess), "Exiting\n", nullptr);
+        std::string strEncodedEosb = Login(strEmail, strUserPassword);
 
-        std::vector<Byte> stlIEosb;
-        fSuccess = ::GetImposterEosb(stlIEosb, stlEosb);
-        _ThrowBaseExceptionIf((false == fSuccess), "Exiting\n", nullptr);
+        _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
 
         bool fTerminatedSignalEncountered = false;
 
@@ -775,62 +543,22 @@ int main()
             {
                 case 1:
                 {
-                    std::string strDatasetName = ::GetStringInput("Enter dataset name: ", 20, false, c_szValidInputCharacters);
-                    std::string strDatasetOrganization = ::GetStringInput("Enter dataset organization: ", 50, false, c_szValidInputCharacters);
-                    Qword qwSubmissionDate = std::stoul(::GetStringInput("Enter dataset submission date in YYYYMMDD format (Example: 20201204): ", 50, false, "0123456789"));
-                    ::RegisterDataset(stlEosb, strDatasetName, strDatasetOrganization, qwSubmissionDate);
+                    ::RegisterRootEvent(strEncodedEosb);
                 break;
                }
                 case 2:
                 {
-                    std::string strDatasetUuid = ::GetStringInput("Enter dataset uuid: ", 38, false, c_szValidInputCharacters);
-                    ::DeleteDataset(stlEosb, strDatasetUuid);
+                    ::RegisterBranchEvent(strEncodedEosb);
                 break;
                 }
                 case 3:
                 {
-                    ::GetListOfAvailableDatasets(stlEosb);
+                    ::RegisterLeafEvents(strEncodedEosb);
                 break;
                 }
                 case 4:
                 {
-                    ::GetListOfSubmittedDatasets(stlEosb);
-                break;
-                }
-                case 5:
-                {
-                    std::string strDataOwnerOrganization = ::GetStringInput("Enter data owner's organization name: ", 20, false, c_szValidInputCharacters);
-                    std::string strResearcherOrganization = ::GetStringInput("Enter researcher's  organization name: ", 50, false, c_szValidInputCharacters);
-                    std::string strInvolvedDatasets = ::GetStringInput("Enter comma delimitted datasets involved in the contract: ", 50, false, c_szValidInputCharacters);
-                    Qword qwCreationDate = std::stoul(::GetStringInput("Enter digital contract creation date in YYYYMMDD format (Example: 20201204): ", 50, false, "0123456789"));
-                    Qword qwExpirationDate = std::stoul(::GetStringInput("Enter digital contract expiration date in YYYYMMDD format (Example: 20201204): ", 50, false, "0123456789"));
-                    ::RegisterDigitalContract(stlEosb, strDataOwnerOrganization, strResearcherOrganization, strInvolvedDatasets, qwCreationDate, qwExpirationDate);
-                break;
-                }
-                case 6:
-                {
-                    ::GetListOfDigitalContracts(stlEosb);
-                break;
-                }
-                case 7:
-                {
-                    ::GetListOfWaitingDigitalContracts(stlEosb);
-                break;
-                }
-                case 8:
-                {
-                    std::string strIpAddress = ::GetStringInput("Enter VM's IP Address: ", 12, false, c_szValidInputCharacters);
-                    Word wPort = std::stoul(::GetStringInput("Enter port number: ", 5, false, c_szValidInputCharacters));
-                    bool fIsActive = stoul(::GetStringInput("Enter Vm's active status, 0 for inactive and 1 for active: ", 1, false, "01"));
-                    Qword qwRegistrationDate = std::stoul(::GetStringInput("Enter Vm's registration date in YYYYMMDD format (Example: 20201204): ", 50, false, "0123456789"));
-                    Qword qwUpTime = std::stoul(::GetStringInput("Enter Vm's uptime : ", 50, false, "0123456789"));
-                    ::RegisterVmInstance(stlIEosb, strIpAddress, wPort, fIsActive, qwRegistrationDate, qwUpTime);
-                break;
-                }
-                case 9:
-                {
-                    std::string strVmUuid = ::GetStringInput("Enter VM UUID: ", 38, false, c_szValidInputCharacters);
-                    ::GetVMHeartBeat(stlIEosb, strVmUuid);
+                    ::GetListOfEvents(strEncodedEosb);
                 break;
                 }
                 case 0:
@@ -840,7 +568,7 @@ int main()
                 }
                 default:
                 {
-                    std::cout << "Invalid option. Usage: [1-9]" << std::endl;
+                    std::cout << "Invalid option. Usage: [1-4]" << std::endl;
                 break;
                 }
             }
@@ -850,9 +578,6 @@ int main()
     {
         std::cout << oBaseException.GetExceptionMessage() << std::endl;
     }
-    catch(...)
-    {
-
-    }
+    
     return 0;
 }

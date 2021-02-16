@@ -16,7 +16,7 @@ OBJDIR=$(ABSROOTDIR)/Binary/Objects
 # Add the new include folders here
 INCLUDE+=-I$(shell realpath ./Include)
 INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
-INCLUDE+=-I$(shell realpath ../../WebService/ApiPortal/Include)
+INCLUDE+=-I$(shell realpath ../../WebService/RestApiPortal/Include)
 
 # Add the new source directory here
 SRCDIRS+=$(shell realpath ./Sources)
@@ -24,6 +24,9 @@ SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
+SOURCES += $(shell realpath ../../WebService/RestApiPortal/Sources/HttpRequestParser.cpp)
+SOURCES += $(shell realpath ../../WebService/RestApiPortal/Sources/JsonValue.cpp)
+SOURCES += $(shell realpath ../../WebService/RestApiPortal/Sources/Utils.cpp)
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
 OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))

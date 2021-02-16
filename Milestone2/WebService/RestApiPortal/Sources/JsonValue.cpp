@@ -799,43 +799,43 @@ JsonValue * __thiscall JsonValue::ToJson(
             	case eJsonArrayType
             	:
                 {
-                    // TODO: add parsing for eJsonArrayType and eJsonObjectType
+                    // TODO: add parsing for eJsonArrayType
                     JsonArray oJsonArray = poJsonChildValue->GetJsonArrayValue();
-                    std::vector<Byte> stlArrayValue;
-                    stlArrayValue.resize(oJsonArray.size());
-                    Byte * pbSerializedJsonArray = (Byte *) stlArrayValue.data();
-                    JsonArray::iterator itrJsonArray;
-                    for (itrJsonArray = oJsonArray.begin(); itrJsonArray != oJsonArray.end(); ++itrJsonArray)
+                    StructuredBuffer oArrayValue;
+                    for (unsigned int unIndex = 0; unIndex < oJsonArray.size(); ++unIndex)
                     {
-                        JsonType oArrayMemberType = (*itrJsonArray)->GetValueType();
+                        JsonType oArrayMemberType = oJsonArray[unIndex]->GetValueType();
+                        std::string strElementName = *itrJsonKeys + std::to_string(unIndex);
                         switch(oArrayMemberType)
             			{
             				case eNullType
             				:
-            					*((Byte *) pbSerializedJsonArray) = 0;
-                                pbSerializedJsonArray += 1;
+            					oArrayValue.PutNull(strElementName.c_str());
             					break;
                             case eNumberType
             				:
-                                *((double *) pbSerializedJsonArray) = (*itrJsonArray)->GetNumberValue();
-                                pbSerializedJsonArray += sizeof(double);
+                                oArrayValue.PutFloat64(strElementName.c_str(), oJsonArray[unIndex]->GetNumberValue());
             					break;
             				case eBooleanType
             				:
-                                *((bool *) pbSerializedJsonArray) = (*itrJsonArray)->GetBooleanValue();
-                                pbSerializedJsonArray += sizeof(bool);
+                                oArrayValue.PutBoolean(strElementName.c_str(), oJsonArray[unIndex]->GetBooleanValue());
             					break;
             				case eStringType
             				:
                             {
-                                std::string strStringValue = (*itrJsonArray)->GetStringValue();
-                                ::memcpy((void *) pbSerializedJsonArray, (const void *) (strStringValue).data(), (strStringValue).size());
-                                pbSerializedJsonArray += sizeof((strStringValue).size());
+                                oArrayValue.PutString(strElementName.c_str(), oJsonArray[unIndex]->GetStringValue());
+            					break;
+                            }
+                            case eJsonObjectType
+            				:
+                            {
+                                StructuredBuffer oObject(oJsonArray[unIndex]->JsonToStructuredBuffer(oJsonArray[unIndex]));
+                                oArrayValue.PutStructuredBuffer(strElementName.c_str(), oObject);
             					break;
                             }
                         }
                     }
-            		oJsonValueStructuredBuffer.PutBuffer((*itrJsonKeys).c_str(), stlArrayValue);
+            		oJsonValueStructuredBuffer.PutStructuredBuffer((*itrJsonKeys).c_str(), oArrayValue);
             		break;
                 }
             	case eJsonObjectType
@@ -1032,14 +1032,14 @@ JsonValue * __stdcall JsonValue::ParseNumber(
         (*c_pszData)++;
     }
 
-    // Ignore the first 0s
-    while ('0' == **c_pszData)
-    {
-        (*c_pszData)++;
-    }
+    // // Ignore the first 0s
+    // while ('0' == **c_pszData)
+    // {
+    //     (*c_pszData)++;
+    // }
 
     // Parse whole part of the integer
-    if (('1' <= **c_pszData) && ('9' >= **c_pszData))
+    if (('0' <= **c_pszData) && ('9' >= **c_pszData))
     {
         fl64Number = GetWholePart(c_pszData);
     }
@@ -1052,7 +1052,7 @@ JsonValue * __stdcall JsonValue::ParseNumber(
     if (('.' == **c_pszData) && (true == fSuccess))
     {
         (*c_pszData)++;
-        if (('1' > **c_pszData) && ('9' < **c_pszData))
+        if (('0' > **c_pszData) && ('9' < **c_pszData))
         {
             fSuccess = false;
         }
@@ -1079,7 +1079,7 @@ JsonValue * __stdcall JsonValue::ParseNumber(
         }
 
         // Check for valid digits
-        if (('1' > **c_pszData) && ('9' < **c_pszData))
+        if (('0' > **c_pszData) && ('9' < **c_pszData))
         {
             fSuccess = false;
         }

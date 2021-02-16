@@ -73,4 +73,7 @@ sudo ldconfig
 # Remove files
 sudo rm -rf mongo-c-driver-1.17.3*
 
+# Enable mongod
+sudo systemctl enable mongod
+
 echo "Installation complete!"

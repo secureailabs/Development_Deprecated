@@ -9,12 +9,18 @@
  ********************************************************************************************/
 
 #include "DatabaseManager.h"
+#include "Utils.h"
 
 #include <bsoncxx/json.hpp>
 #include <bsoncxx/types.hpp>
 #include <mongocxx/instance.hpp>
 #include <mongocxx/stdx.hpp>
 #include <mongocxx/uri.hpp>
+#include <mongocxx/client.hpp>
+#include <mongocxx/client_session.hpp>
+#include <mongocxx/cursor.hpp>
+#include <mongocxx/exception/logic_error.hpp>
+#include <mongocxx/exception/operation_exception.hpp>
 #include <bsoncxx/builder/stream/helpers.hpp>
 #include <bsoncxx/builder/stream/document.hpp>
 #include <bsoncxx/builder/stream/array.hpp>
@@ -121,9 +127,6 @@ DatabaseManager::~DatabaseManager(void)
     {
         delete oUserAccount;
     }
-
-    delete m_poMongoClient;
-
 }
 
 /********************************************************************************************
@@ -207,10 +210,9 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     __DebugFunction();
 
     mongocxx::instance oMongoInstance{}; // Create only one instance
-    m_poMongoClient = new mongocxx::client   // Use mongocxx client to connect to MongoDB instance
-    {
-        mongocxx::uri{"mongodb://localhost:27017"}
-    };
+    mongocxx::uri oUri{"mongodb://localhost:27017"};
+
+    m_poMongoPool = std::unique_ptr<mongocxx::pool>(new mongocxx::pool(oUri));
 
     // Get basic user record
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/BasicUser");
@@ -218,6 +220,11 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     // Get Confidential User Record
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/ConfidentialUser");
 
+    // Add a non-leaf audit log event
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/NonLeafEvent");
+
+    // Add a leaf audit log event
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/LeafEvent");
 }
 
 /********************************************************************************************
@@ -259,6 +266,25 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             else if ("/SAIL/DatabaseManager/ConfidentialUser" == strResource)
             {
                 stlResponseBuffer = this->GetConfidentialUserRecord(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/Events" == strResource)
+            {
+                stlResponseBuffer = this->GetListOfEvents(c_oRequestStructuredBuffer);
+            }
+            else
+            {
+                _ThrowBaseException("Invalid resource.", nullptr);
+            }
+        }
+        else if ("POST" == strVerb)
+        {
+            if ("/SAIL/DatabaseManager/NonLeafEvent" == strResource)
+            {
+                stlResponseBuffer = this->AddNonLeafEvent(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/LeafEvent" == strResource)
+            {
+                stlResponseBuffer = this->AddLeafEvent(c_oRequestStructuredBuffer);
             }
             else
             {
@@ -355,15 +381,17 @@ std::vector<Byte> __thiscall DatabaseManager::GetBasicUserRecord(
 
     Qword qw64BitHash = c_oRequest.GetQword("Passphrase");
 
+    // ::pthread_mutex_lock(&m_sMutex);
+    // Each cleint and transaction can only be used in a single thread
+    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
     // Access SailDatabase
-    ::pthread_mutex_lock(&m_sMutex);
-    mongocxx::database oSailDatabase = (*m_poMongoClient)["SailDatabase"];
+    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
     // Access BasicUser collection
     mongocxx::collection oBasicUserCollection = oSailDatabase["BasicUser"];
     // Fetch basic user record associated with the qw64BitHash
     bool fFound = false;
     bsoncxx::stdx::optional<bsoncxx::document::value> oBasicUser = oBasicUserCollection.find_one(document{} << "64BitHash" << (double)qw64BitHash << finalize);
-    ::pthread_mutex_unlock(&m_sMutex);
+    // ::pthread_mutex_unlock(&m_sMutex);
     if (bsoncxx::stdx::nullopt != oBasicUser)
     {
         std::cout << bsoncxx::to_json(*oBasicUser) << std::endl;
@@ -429,15 +457,17 @@ std::vector<Byte> __thiscall DatabaseManager::GetConfidentialUserRecord(
 
     std::string strUserUuid = c_oRequest.GetString("UserUuid");
 
+    // ::pthread_mutex_lock(&m_sMutex);
+    // Each cleint and transaction can only be used in a single thread
+    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
     // Access SailDatabase
-    ::pthread_mutex_lock(&m_sMutex);
-    mongocxx::database oSailDatabase = (*m_poMongoClient)["SailDatabase"];
+    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
     // Access ConfidentialOrganizationOrUser collection
     mongocxx::collection oConfidentialUserCollection = oSailDatabase["ConfidentialOrganizationOrUser"];
     // Fetch confidential user record associated with the strUserUuid
     bool fFound = false;
     bsoncxx::stdx::optional<bsoncxx::document::value> oConfidentialUser = oConfidentialUserCollection.find_one(document{} << "OrganizationOrUserUuid" << strUserUuid << finalize);
-    ::pthread_mutex_unlock(&m_sMutex);
+    // ::pthread_mutex_unlock(&m_sMutex);
     if (bsoncxx::stdx::nullopt != oConfidentialUser)
     {
         std::cout << bsoncxx::to_json(*oConfidentialUser) << std::endl;
@@ -467,6 +497,409 @@ std::vector<Byte> __thiscall DatabaseManager::GetConfidentialUserRecord(
     {
         oResponse.PutDword("Status", 404);
     }
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
+ * @function GetListOfEvents
+ * @brief Fetch confidential user record from the database
+ * @param[in] c_oRequest contains the user information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Serialized StructuredBuffer containing confidential user record
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::GetListOfEvents(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    // ::pthread_mutex_lock(&m_sMutex);
+    // Each client and transaction can only be used in a single thread
+    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+    // Access SailDatabase
+    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+    // Fetch events from the AuditLog collection associated with a parent guid
+    mongocxx::cursor oAuditLogCursor = oSailDatabase["AuditLog"].find(document{} << "ParentGuid" << c_oRequest.GetString("ParentGuid") << finalize);
+    // ::pthread_mutex_unlock(&m_sMutex);
+    
+    StructuredBuffer oListOfEvents;
+    StructuredBuffer oFilters(c_oRequest.GetStructuredBuffer("Filters"));
+    // Parse all returned documents, apply filters, and add to the structured buffer containing the list of events
+    for (auto&& oDocumentView : oAuditLogCursor)
+    {
+        // Get values from the document and generate the event log StructuredBuffer
+        StructuredBuffer oEvent;
+        bsoncxx::document::element strPlainTextObjectBlobGuid = oDocumentView["PlainTextObjectBlobGuid"];
+        bsoncxx::document::element strEventGuid = oDocumentView["EventGuid"];
+        bsoncxx::document::element strOrganizationGuid = oDocumentView["OrganizationGuid"];
+        bsoncxx::document::element fIsLeaf = oDocumentView["IsLeaf"];
+
+        // Get the PlainTextObjectBlob and then get the Object blob
+        // Apply filters if any
+        // If the object is not filtered out then add the audit log information to the Event structured buffer
+        bool fAddToListOfEvents = false;
+        if (strPlainTextObjectBlobGuid && strPlainTextObjectBlobGuid.type() == type::k_utf8)
+        {
+            Guid oPlainTextObjectBlobGuid(strPlainTextObjectBlobGuid.get_utf8().value.to_string().c_str());
+            // Fetch events from the PlainTextObjectBlob collection associated with the event guid
+            bsoncxx::stdx::optional<bsoncxx::document::value> oPlainTextObjectBlobDocument = oSailDatabase["PlainTextObjectBlob"].find_one(document{} << "PlainTextObjectBlobGuid" <<  oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces) << finalize);
+            if (bsoncxx::stdx::nullopt != oPlainTextObjectBlobDocument)
+            {
+                bsoncxx::document::element strObjectGuid = oPlainTextObjectBlobDocument->view()["ObjectGuid"];
+                if (strObjectGuid && strObjectGuid.type() == type::k_utf8)
+                {
+                    Guid oObjectGuid(strObjectGuid.get_utf8().value.to_string().c_str());
+                    oEvent.PutGuid("ObjectGuid", oObjectGuid);
+                    // Fetch events from the Object collection associated with the object guid
+                    bsoncxx::stdx::optional<bsoncxx::document::value> oObjectDocument = oSailDatabase["Object"].find_one(document{} << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces) << finalize);
+                    if (bsoncxx::stdx::nullopt != oObjectDocument)
+                    {
+                        bsoncxx::document::element stlObjectBlob = oObjectDocument->view()["ObjectBlob"];
+                        if (stlObjectBlob && stlObjectBlob.type() == type::k_binary)
+                        {
+                            // Apply supplied filters on audit logs
+                            StructuredBuffer oObject(stlObjectBlob.get_binary().bytes, stlObjectBlob.get_binary().size);
+                            std::vector<std::string> stlFilters = oFilters.GetNamesOfElements();
+                            try 
+                            {
+                                for (std::string stlFilter : stlFilters)
+                                {
+                                    if ("MinimumDate" == stlFilter)
+                                    {
+                                        uint64_t unObjectTimestamp = oObject.GetUnsignedInt64("Timestamp");
+                                        uint64_t unFilterMinimumDate = oFilters.GetUnsignedInt64("MinimumDate");
+                                        _ThrowBaseExceptionIf((unObjectTimestamp < unFilterMinimumDate), "Object timestamp is less than the specified minimum date.", nullptr);
+                                    }
+                                    else if ("MaximumDate" == stlFilter)
+                                    {
+                                        uint64_t unObjectTimestamp = oObject.GetUnsignedInt64("Timestamp");
+                                        uint64_t unFilterMaximumDate = oFilters.GetUnsignedInt64("MaximumDate");
+                                        _ThrowBaseExceptionIf((unObjectTimestamp > unFilterMaximumDate), "Object timestamp is greater than the specified maximum date.", nullptr);
+                                    }
+                                    else if ("TypeOfEvents" == stlFilter)
+                                    {
+                                        Qword qwObjectEventType = oObject.GetQword("EventType");
+                                        Qword qwFilterEventType = oFilters.GetQword("TypeOfEvents");
+                                        _ThrowBaseExceptionIf((qwObjectEventType != qwFilterEventType), "Object type is not the same as the specified event type.", nullptr);
+                                    }
+                                    // TODO: Add VMGuid and DCGuid filters
+                                    // else if ("DCGuid" == stlFilter)
+                                    // {
+                                    //     Word wType = oEvent.GetGuid("EventGuid").GetObjectType();
+                                    //     _ThrowBaseExceptionIf((eAuditEventBranchNode != wType), "No DC guid exists for this type of object.", nullptr);
+                                    //     _ThrowBaseExceptionIf(0 == oObject.GetUnsignedInt64("SequenceNumber"), "No DC guid exists for root node.", nullptr);
+                                    //     StructuredBuffer oPlainTextMetadata(oObject.GetStructuredBuffer("PlainTextEventData"));
+                                    //     _ThrowBaseExceptionIf((eDigitalContract != oPlainTextMetadata.GetDword("TypeOfBranch"), "The audit log is not ", nullptr);
+                                    // }
+                                    // else if ("VMGuid" == stlFilter)
+                                    // {
+
+                                    // }
+                                }
+                                fAddToListOfEvents = true;
+                            }
+                            catch (BaseException oException)
+                            {
+                                fAddToListOfEvents = false;
+                            }
+                            if (true == fAddToListOfEvents)
+                            {
+                                // If the audit log object is not filtered out then add it to the Event structured buffer
+                                oEvent.PutBuffer("ObjectBlob", oObject.GetSerializedBuffer());
+                                // Add PlainTextObjectBlobGuid to the Event structured buffer
+                                oEvent.PutGuid("PlainTextObjectBlobGuid", oPlainTextObjectBlobGuid);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // If the object is not filtered out then add the audit log information to the Event structured buffer
+        if (true == fAddToListOfEvents)
+        {
+            // Add other information to the event 
+            if (strEventGuid && strEventGuid.type() == type::k_utf8)
+            {
+                if (strOrganizationGuid && strOrganizationGuid.type() == type::k_utf8)
+                {
+                    oEvent.PutGuid("OrganizationGuid", Guid(strOrganizationGuid.get_utf8().value.to_string().c_str()));
+                }
+                if (fIsLeaf && fIsLeaf.type() == type::k_bool)
+                {
+                    oEvent.PutBoolean("isLeaf", fIsLeaf.get_bool().value);
+                }
+                // Add event to the response structured buffer that contains list of audit events 
+                oListOfEvents.PutStructuredBuffer(strEventGuid.get_utf8().value.to_string().c_str(), oEvent);
+            }
+        }
+    }
+
+    // Send back status of the transaction and list of events
+    oResponse.PutDword("Status", 200);
+    oResponse.PutStructuredBuffer("ListOfEvents", oListOfEvents);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
+ * @function AddNonLeafEvent
+ * @brief Add a non leaf audit log event to the database
+ * @param[in] c_oRequest contains the event information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Serialized StructuredBuffer containing request status
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::AddNonLeafEvent(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Guid oObjectGuid, oPlainTextObjectBlobGuid;
+
+    StructuredBuffer oNonLeafEvent(c_oRequest.GetStructuredBuffer("NonLeafEvent"));
+    // Create an audit log event document
+    bsoncxx::document::value oEventDocumentValue = bsoncxx::builder::stream::document{}
+      << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
+      << "OrganizationGuid" << oNonLeafEvent.GetString("OrganizationGuid")
+      << "ParentGuid" << oNonLeafEvent.GetString("ParentGuid")
+      << "EventGuid" << oNonLeafEvent.GetString("EventGuid")
+      << "IsLeaf" << false
+      << finalize;
+
+    // Create an object document
+    StructuredBuffer oObject;
+    oObject.PutString("EventGuid", oNonLeafEvent.GetString("EventGuid"));
+    oObject.PutString("ParentGuid", oNonLeafEvent.GetString("ParentGuid"));
+    oObject.PutString("OrganizationGuid", oNonLeafEvent.GetString("OrganizationGuid"));
+    oObject.PutQword("EventType", oNonLeafEvent.GetQword("EventType"));
+    oObject.PutUnsignedInt64("Timestamp", oNonLeafEvent.GetUnsignedInt64("Timestamp"));
+    oObject.PutUnsignedInt32("SequenceNumber", oNonLeafEvent.GetUnsignedInt32("SequenceNumber"));
+    oObject.PutStructuredBuffer("PlainTextEventData", oNonLeafEvent.GetStructuredBuffer("PlainTextEventData"));
+    bsoncxx::types::b_binary oObjectBlob
+    {
+        bsoncxx::binary_sub_type::k_binary,
+        uint32_t(oObject.GetSerializedBufferRawDataSizeInBytes()),
+        oObject.GetSerializedBufferRawDataPtr()
+    };
+    bsoncxx::document::value oObjectDocumentValue = bsoncxx::builder::stream::document{}
+      << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
+      << "ObjectType" << eAuditEventBranchNode
+      << "IsEncrypted" << false
+      << "ObjectBlob" << oObjectBlob
+      << finalize;
+
+    // Create a plain text object document
+    bsoncxx::document::value oPlainTextObjectDocumentValue = bsoncxx::builder::stream::document{}
+      << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
+      << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
+      << "ObjectType" << eAuditEventBranchNode
+      << finalize;
+
+    // ::pthread_mutex_lock(&m_sMutex);
+    // Each client and transaction can only be used in a single thread
+    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+    // Access SailDatabase
+    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+    // Access AuditLog collection
+    mongocxx::collection oAuditLogCollection = oSailDatabase["AuditLog"];
+    // Create a transaction callback
+    Dword dwStatus = 204;
+    mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
+    {
+        // Insert document in the AuditLog collection
+        auto oResult = oAuditLogCollection.insert_one(oEventDocumentValue.view());
+        if (!oResult) {
+            std::cout << "Error while writing to the database." << std::endl;
+        }
+        else
+        {
+            // Access Object collection
+            mongocxx::collection oObjectCollection = oSailDatabase["Object"];
+            // Insert document in the Object collection
+            oResult = oObjectCollection.insert_one(oObjectDocumentValue.view());
+            if (!oResult) {
+                std::cout << "Error while writing to the database." << std::endl;
+            }
+            else
+            {
+                // Access PlainTextObjectBlob collection
+                mongocxx::collection oPlainTextObjectCollection = oSailDatabase["PlainTextObjectBlob"];
+                // Insert document in the PlainTextObjectBlob collection
+                oResult = oPlainTextObjectCollection.insert_one(oPlainTextObjectDocumentValue.view());
+                if (!oResult) {
+                    std::cout << "Error while writing to the database." << std::endl;
+                }
+                else
+                {
+                    dwStatus = 200;
+                }
+            }
+        }
+    };
+    // Create a session and start the transaction
+    mongocxx::client_session oSession = oClient->start_session();
+    try 
+    {
+        oSession.with_transaction(oCallback);
+    }
+    catch (mongocxx::exception& e) 
+    {
+        std::cout << "Collection transaction exception: " << e.what() << std::endl;
+    }
+
+    // ::pthread_mutex_unlock(&m_sMutex);
+
+    // Send back the status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
+ * @function AddLeafEvent
+ * @brief Add leaf audit log events to the database
+ * @param[in] c_oRequest contains the event information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Serialized StructuredBuffer containing request status
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::AddLeafEvent(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    // Get required parameters from the request
+    std::string strIdentifierOfParent = c_oRequest.GetString("ParentGuid");
+    StructuredBuffer oLeafEvents(c_oRequest.GetStructuredBuffer("LeafEvents"));
+    std::vector<std::string> stlEvents = oLeafEvents.GetNamesOfElements();
+    // Loop through the array of events, create document for each event, and add them to the relevant vector:
+    // stlEventDocuments: holds audit log documents
+    // stlObjectDocuments: holds object documents
+    // stlPlainTextObjectDocuments: holds plain text object documents
+    std::vector<bsoncxx::document::value> stlEventDocuments, stlObjectDocuments, stlPlainTextObjectDocuments;
+    for (unsigned int unIndex = 0; unIndex < stlEvents.size(); ++unIndex)
+    {
+        Guid oObjectGuid, oPlainTextObjectBlobGuid;
+
+        StructuredBuffer oEvent(oLeafEvents.GetStructuredBuffer(stlEvents[unIndex].c_str()));
+
+        // Create an audit log event document and add it to stlEventDocuments vector
+        stlEventDocuments.push_back(bsoncxx::builder::stream::document{}
+        << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
+        << "OrganizationGuid" << oEvent.GetString("OrganizationGuid")
+        << "ParentGuid" << strIdentifierOfParent
+        << "EventGuid" << oEvent.GetString("EventGuid")
+        << "IsLeaf" << true
+        << finalize);
+
+        // Create an object document and add it to stlObjectDocuments vector
+        // Parse and cast event parameters as json arrays are not parsed by rest portal
+        StructuredBuffer oObject;
+        oObject.PutString("EventGuid", oEvent.GetString("EventGuid"));
+        oObject.PutString("ParentGuid", strIdentifierOfParent);
+        // Convert number type parameters to the required data type 
+        oObject.PutQword("EventType", (Qword) oEvent.GetFloat64("EventType"));
+        oObject.PutUnsignedInt64("Timestamp", (uint64_t) oEvent.GetFloat64("Timestamp"));
+        oObject.PutUnsignedInt32("SequenceNumber", (uint32_t) oEvent.GetFloat64("SequenceNumber"));
+        // Decode string first and then initialize a vector from it
+        std::string strDecodedEventData = ::Base64Decode(oEvent.GetString("EncryptedEventData"));
+        std::vector<Byte> stlEventData(strDecodedEventData.begin(), strDecodedEventData.end());
+        oObject.PutBuffer("EncryptedEventData", stlEventData);
+        // Create a binary blob to be inserted in the document
+        bsoncxx::types::b_binary oObjectBlob
+        {
+            bsoncxx::binary_sub_type::k_binary,
+            uint32_t(oObject.GetSerializedBufferRawDataSizeInBytes()),
+            oObject.GetSerializedBufferRawDataPtr()
+        };
+        stlObjectDocuments.push_back(bsoncxx::builder::stream::document{}
+        << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
+        << "ObjectBlob" << oObjectBlob
+        << finalize);
+
+        // Create a plain text object document and add it to stlPlainTextObjectDocuments vector
+        stlPlainTextObjectDocuments.push_back(bsoncxx::builder::stream::document{}
+        << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
+        << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
+        << "ObjectType" << eAuditEventPlainTextLeafNode
+        << finalize);
+    }
+
+    // ::pthread_mutex_lock(&m_sMutex);
+    // Each client and transaction can only be used in a single thread
+    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+    // Access SailDatabase
+    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+    // Access AuditLog collection
+    mongocxx::collection oAuditLogCollection = oSailDatabase["AuditLog"];
+    // Create a transaction callback
+    Dword dwStatus = 204;
+    mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
+    {
+        // Insert audit log documents in the AuditLog collection
+        auto oResult = oAuditLogCollection.insert_many(stlEventDocuments);
+        if (!oResult) {
+            std::cout << "Error while writing to the database." << std::endl;
+        }
+        else
+        {
+            // Access Object collection
+            mongocxx::collection oObjectCollection = oSailDatabase["Object"];
+            // Insert object documents in the Object collection
+            oResult = oObjectCollection.insert_many(stlObjectDocuments);
+            if (!oResult) {
+                std::cout << "Error while writing to the database." << std::endl;
+            }
+            else
+            {
+                // Access PlainTextObjectBlob collection
+                mongocxx::collection oPlainTextObjectCollection = oSailDatabase["PlainTextObjectBlob"];
+                // Insert plain text object blob documents in the PlainTextObjectBlob collection
+                oResult = oPlainTextObjectCollection.insert_many(stlPlainTextObjectDocuments);
+                if (!oResult) {
+                    std::cout << "Error while writing to the database." << std::endl;
+                }
+                else
+                {
+                    dwStatus = 200;
+                }
+            }
+        }
+    };
+    // Create a session and start the transaction
+    mongocxx::client_session oSession = oClient->start_session();
+    try 
+    {
+        oSession.with_transaction(oCallback);
+    }
+    catch (mongocxx::exception& e) 
+    {
+        std::cout << "Collection transaction exception: " << e.what() << std::endl;
+    }
+
+    // ::pthread_mutex_unlock(&m_sMutex);
+
+    // Send back the status of the transaction
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }

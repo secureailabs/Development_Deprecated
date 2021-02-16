@@ -18,7 +18,7 @@
 #include "StructuredBuffer.h"
 #include "UserAccount.h"
 
-#include <mongocxx/client.hpp>
+#include <mongocxx/pool.hpp>
 #include <pthread.h>
 #include <string.h>
 
@@ -75,13 +75,28 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Fetch sudit log records from the database
+        std::vector<Byte> __thiscall GetListOfEvents(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Store root/branch event in the database
+        std::vector<Byte> __thiscall AddNonLeafEvent(
+            _in const StructuredBuffer & c_oRequest
+        );
+
+        // Store leaf event(s) in the database
+        std::vector<Byte> __thiscall AddLeafEvent(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Private data members
         mutable pthread_mutex_t m_sMutex;
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;
         uint64_t m_unNextAvailableIdentifier;
         PluginDictionary m_oDictionary;
         std::vector<UserAccount *> m_stlUserAccounts;
-        mongocxx::client * m_poMongoClient;
+        std::unique_ptr<mongocxx::pool> m_poMongoPool;
 };
 
 /********************************************************************************************/

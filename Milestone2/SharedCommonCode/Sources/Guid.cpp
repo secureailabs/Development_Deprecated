@@ -17,7 +17,7 @@
 #include <string.h>
 #include <uuid/uuid.h>
 
-// 0         1         2         3       
+// 0         1         2         3
 // 01234567890123456789012345678901234567
 // 6E574DA3068843FD9690B5E15DE11402 --------> raw
 // 6E574DA3-0688-43FD-9690-B5E15DE11402 ----> with hyphens
@@ -49,11 +49,48 @@ static const Byte gsc_abFastHexadecimalTranslation[256] =
 Guid::Guid(void)
 {
     __DebugFunction();
-    
+
     uuid_t oUniqueIdentifier;
     uuid_generate(oUniqueIdentifier);
     m_stlRawData.resize(16);
     ::memcpy((void *) m_stlRawData.data(), (void *) &oUniqueIdentifier, 16);
+}
+
+/********************************************************************************************
+ *
+ * @class Guid
+ * @function Guid
+ * @brief Constructor which takes input from a incoming byte representing an object type and replaces
+ * 4 MSBs with it
+ * @param[in] bObjectType Byte representation of an object type
+ * @throw bad_alloc If there isn't enough memory left to allocate the internal GUID/UUID buffer
+ * @par
+ *    The Guid() constructor accepts the following object types:
+ *    (1) 0000 --> Organizatiom
+ *    (2) 0001 --> User
+ *    (3) 0010 --> Cryptographic Key
+ *    (4) 0011 --> Digital Contract
+ *    (5) 0100 --> Dataset
+ *    (6) 0101 --> Function Node
+ *    (7) 0110 --> Virtual Machine
+ *    (8) 0111 --> Audit Event (Branch Node)
+ *    (9) 1000 --> Audit Event (Encrypted Leaf Node)
+ *    (10) 10001 --> Audit Evet (Plain-text Leaf Node)
+ *    (2) 1111 --> Others
+ *
+ ********************************************************************************************/
+
+Guid::Guid(
+    _in GuidOfObjectType eObjectType
+    )
+{
+    __DebugFunction();
+
+    uuid_t oUniqueIdentifier;
+    uuid_generate(oUniqueIdentifier);
+    m_stlRawData.resize(16);
+    ::memcpy((void *) m_stlRawData.data(), (void *) &eObjectType, 4);
+    ::memcpy((void *) (m_stlRawData.data() + 4), (void *) &oUniqueIdentifier, 12);
 }
 
 /********************************************************************************************
@@ -74,13 +111,13 @@ Guid::Guid(void)
  *    Any other format will cause the constructor to throw an exception
  *
  ********************************************************************************************/
- 
+
 Guid::Guid(
     _in const char * c_szGuid
     )
 {
     __DebugFunction();
-    
+
     this->InitializeFromString(c_szGuid);
 }
 
@@ -91,7 +128,7 @@ Guid::Guid(
  * @brief Constructor which takes input from a incoming 16 byte buffer containing a raw GUID/UUID
  * @param[in] c_pbBinaryBuffer 16 byte buffer containing a raw GUID/UUID
  * @throw bad_alloc If there isn't enough memory left to allocate the internal GUID/UUID buffer
- * @note This instance of the Guid object will be initialized with the GUID/UUID value contained 
+ * @note This instance of the Guid object will be initialized with the GUID/UUID value contained
  * in the first 16 bytes within the buffer pointed to by @p c_pbBinaryBuffer
  *
  ********************************************************************************************/
@@ -101,7 +138,7 @@ Guid::Guid(
     )
 {
     __DebugFunction();
-    
+
     m_stlRawData.resize(16);
     if (nullptr != c_pbBinaryBuffer)
     {
@@ -129,7 +166,7 @@ Guid::Guid(
 {
     __DebugFunction();
     __DebugAssert(16 == c_oGuid.m_stlRawData.size());
-    
+
     m_stlRawData = c_oGuid.m_stlRawData;
 }
 
@@ -188,7 +225,7 @@ Guid & __thiscall Guid::operator = (
 {
     __DebugFunction();
     __DebugAssert(16 == c_oGuid.m_stlRawData.size());
-    
+
     m_stlRawData = c_oGuid.m_stlRawData;
 
     return *this;
@@ -211,7 +248,7 @@ bool __thiscall Guid::operator == (
 {
     __DebugFunction();
     __DebugAssert(16 == m_stlRawData.size());
-    
+
     bool fIsEqual = false;
 
     try
@@ -247,7 +284,7 @@ bool __thiscall Guid::operator == (
     __DebugFunction();
     __DebugAssert(16 == m_stlRawData.size());
     __DebugAssert(16 == c_oGuid.m_stlRawData.size());
-    
+
     return (m_stlRawData == c_oGuid.m_stlRawData);
 }
 
@@ -268,7 +305,7 @@ bool __thiscall Guid::operator != (
 {
     __DebugFunction();
     __DebugAssert(16 == m_stlRawData.size());
-    
+
     bool fIsDifferent = false;
 
     try
@@ -304,7 +341,7 @@ bool __thiscall Guid::operator != (
     __DebugFunction();
     __DebugAssert(16 == m_stlRawData.size());
     __DebugAssert(16 == c_oGuid.m_stlRawData.size());
-    
+
     return (m_stlRawData != c_oGuid.m_stlRawData);
 }
 
@@ -321,7 +358,7 @@ const Byte * __thiscall Guid::GetRawDataPtr(void) const throw()
 {
     __DebugFunction();
     __DebugAssert(16 == m_stlRawData.size());
-    
+
     return (const Byte *) m_stlRawData.data();
 }
 
@@ -338,7 +375,7 @@ std::vector<Byte> __thiscall Guid::GetRawData(void) const throw()
 {
     __DebugFunction();
     __DebugAssert(16 == m_stlRawData.size());
-    
+
     return m_stlRawData;
 }
 
@@ -363,7 +400,7 @@ std::string __thiscall Guid::ToString(
 {
     __DebugFunction();
     __DebugAssert(16 == m_stlRawData.size());
-    
+
     char szGuid[39];
 
     switch(eGuidFormat)
@@ -385,6 +422,27 @@ std::string __thiscall Guid::ToString(
 /********************************************************************************************
  *
  * @class Guid
+ * @function GetObjectType
+ * @brief Method used to fetch type of object represented by the 4 MSBs of the Guid
+ * @return Work representing type of object represented by the 4 MSBs of the Guid
+ *
+ ********************************************************************************************/
+
+Byte __thiscall Guid::GetObjectType(void) const throw()
+{
+    __DebugFunction();
+
+    Word wType;
+
+    const Byte * pbCurrentByte = m_stlRawData.data();
+    wType = *((Word *) pbCurrentByte);
+
+    return wType;
+}
+
+/********************************************************************************************
+ *
+ * @class Guid
  * @function InitializeFromString
  * @brief Method used to initialize the internal GUID/UUID 16 byte buffer with the value represented with an incoming formatted @p c_szGuid string
  * @param[in] c_szGuid Formatted GUID/UUID string
@@ -398,7 +456,7 @@ void __thiscall Guid::InitializeFromString(
     )
 {
     __DebugFunction();
-    
+
     m_stlRawData.resize(16);
     if (nullptr == c_szGuid)
     {
@@ -409,7 +467,7 @@ void __thiscall Guid::InitializeFromString(
     {
         unsigned int unStartingIndex = 0;
         unsigned int unSizeInCharactersOfGuidString = (unsigned int) ::strnlen(c_szGuid, 39);
-        
+
         if ('{' == c_szGuid[0])
         {
             if ((38 == unSizeInCharactersOfGuidString)&&('-' == c_szGuid[9])&&('-' == c_szGuid[14])&&('-' == c_szGuid[19])&&('-' == c_szGuid[24])&&('}' == c_szGuid[37]))

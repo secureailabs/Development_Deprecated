@@ -33,6 +33,11 @@ class HttpRequestParser : public Object
             _in const std::string & c_strRequestData
             );
 
+        // Parse response data
+        bool __thiscall ParseResponse(
+            _in const std::string & c_strResponseData
+            );
+
         // Parse http body if Content-Type is application/x-www-form-urlencoded
         void __thiscall ParseUrlEncodedString(
             _in const std::string & c_strRequestBody

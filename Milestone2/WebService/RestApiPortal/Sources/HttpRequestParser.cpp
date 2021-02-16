@@ -101,6 +101,57 @@ bool __thiscall HttpRequestParser::ParseRequest(
 /********************************************************************************************
  *
  * @class HttpRequestParser
+ * @function ParseResponse
+ * @brief Parse response data
+ * @param[in] c_strResponseData response data
+ * @return true if parsed successfully
+ * @return false otherwise
+ *
+ ********************************************************************************************/
+
+bool __thiscall HttpRequestParser::ParseResponse(
+    _in const std::string & c_strResponseData
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = true;
+    std::string strFirstLine, strHeaders;
+    std::stringstream oParser(c_strResponseData);
+
+    std::getline(oParser, strFirstLine, '\r');
+
+    // Get response Headers
+    unsigned int unCurrentPosition = oParser.tellg();
+    // Get position of end of http response headers
+    m_unHeaderEndPosition = c_strResponseData.find("\r\n\r\n") + 4;
+    if (std::string::npos != m_unHeaderEndPosition)
+    {
+        strHeaders = c_strResponseData.substr(unCurrentPosition, (m_unHeaderEndPosition - unCurrentPosition));
+    }
+    else
+    {
+        m_unHeaderEndPosition = c_strResponseData.find("\n\r\n\r");
+        if (std::string::npos != m_unHeaderEndPosition)
+        {
+            strHeaders = c_strResponseData.substr(unCurrentPosition, (m_unHeaderEndPosition - unCurrentPosition));
+        }
+        else
+        {
+            strHeaders = c_strResponseData.substr(unCurrentPosition);
+        }
+
+    }
+
+    // Parse Headers
+    this->ExtractHeaders(strHeaders);
+
+    return fSuccess;
+}
+
+/********************************************************************************************
+ *
+ * @class HttpRequestParser
  * @function ParseUrlEncodedString
  * @brief Parse url encoded string to get the parameters(if any)
  * @param[in] c_strRequestBody request body

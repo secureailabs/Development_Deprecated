@@ -20,6 +20,13 @@ using bsoncxx::builder::stream::finalize;
 using bsoncxx::builder::stream::open_array;
 using bsoncxx::builder::stream::open_document;
 
+// For testing mongocxx::pool
+#include <sstream>
+#include <thread>
+#include <vector>
+#include <mongocxx/pool.hpp>
+using bsoncxx::builder::basic::kvp;
+
 void AddUserAccountsToDatabase(
     const StructuredBuffer & c_oBasicUser,
     const StructuredBuffer & c_oConfidentialUser
@@ -79,6 +86,33 @@ void AddUserAccountsToDatabase(
     delete oClient;
 }
 
+// Testing mongocxx::pool
+void RunThreadedInserts()
+{
+    mongocxx::instance oInstance{}; // Create only one instance
+    mongocxx::pool oPool{mongocxx::uri{"mongodb://localhost:27017"}};
+    std::vector<std::thread> threads{};
+
+    for (auto i : {0, 1, 2, 3, 4, 5}) {
+        auto run = [&](std::int64_t j) {
+            // Each client and collection can only be used in a single thread.
+            auto client = oPool.acquire();
+            auto coll = (*client)["TestThreading"]["TestCase"];
+
+            bsoncxx::types::b_int64 index = {j};
+            coll.insert_one(bsoncxx::builder::basic::make_document(kvp("x", index)));
+        };
+
+        std::thread runner{run, i};
+
+        threads.push_back(std::move(runner));
+    }
+
+    for (auto&& runner : threads) {
+        runner.join();
+    }
+}
+
 int main()
 {
     try
@@ -123,6 +157,7 @@ int main()
 
         // Insert documents
         ::AddUserAccountsToDatabase(oBasicUserRecord, oEncryptedBuffer);
+        // ::RunThreadedInserts();
     }
     catch(BaseException & oBaseException)
     {

@@ -200,8 +200,9 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
 
         // Parse Header of the Rest Request
         HttpRequestParser oParser;
-        std::string strRequestData = std::string(stlHeaderData.begin(), stlHeaderData.end());
-        bool fSuccess = oParser.ParseRequest(strRequestData);
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::cout << "Rest header: \n" << strRequestHeader << std::endl;
+        bool fSuccess = oParser.ParseRequest(strRequestHeader);
         _ThrowBaseExceptionIf((false == fSuccess), "Error: Parsing request failed.", nullptr);
         // Get Verb and Resource from the parsed request
         std::string strVerb = oParser.GetHeaderValue("Verb");
@@ -296,7 +297,7 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
             // Create a response packet
             JsonValue * poResponseJson = JsonValue::ParseStructuredBufferToJson(oResponseStructuredBuffer);
             std::string strResponseString = poResponseJson->ToString();
-            std::string strResponseHeader = "HTTP/1.1 200 OK\r\nContent-Length: " + std::to_string(strResponseString.size()) + "\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
+            std::string strResponseHeader = "HTTP/1.1 200 OK \r\nContent-Length: " + std::to_string(strResponseString.size()) + "\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
             std::string strResponseData(strResponseHeader);
             strResponseData += strResponseString;
             std::cout << "\n\nRest Response:\n\n" << strResponseData << std::endl;
@@ -311,7 +312,7 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
     {
         std::cerr << oBaseException.GetExceptionMessage() << '\n';
         // send back error message
-        std::string strErrorMessage = "HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n";
+        std::string strErrorMessage = "HTTP/1.1 404 NotFound\r\nConnection: close\r\n\r\n";
         // Send back error
         poTlsNode->Write((const Byte *) strErrorMessage.data(), strErrorMessage.size());
     }
@@ -322,7 +323,7 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
         Byte bErrorResponse[] = "Error while processing the request";
         std::cerr << bErrorResponse << std::endl;
         // send back error message
-        std::string strErrorMessage = "HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n";
+        std::string strErrorMessage = "HTTP/1.1 500 InternalServerError\r\nConnection: close\r\n\r\n";
         // Send back error
         poTlsNode->Write((const Byte *) strErrorMessage.data(), strErrorMessage.size());
     }
@@ -418,7 +419,7 @@ int __thiscall RestFrameworkRuntimeData::ParseRequestContent(
         // Validate request data
         std::vector<Byte> stlSerializedRestRequest = poRequestParameters->GetSerializedBuffer();
         bool fValid = this->ValidateRequestData(stlSerializedRestRequest, nMatchingPluginIndex, strResource, poValidatedRequestData);
-        _ThrowBaseExceptionIf((false == fValid), "Invalid request format.", nullptr);
+        _ThrowBaseExceptionIf((false == fValid), "Invalid request data.", nullptr);
         // Add verb and resource to the parsed and validated structured buffer
         poValidatedRequestData->PutString("Verb", strVerb);
         poValidatedRequestData->PutString("Resource", strResource);
@@ -802,11 +803,11 @@ bool __thiscall RestFrameworkRuntimeData::ValidateParameter(
                 if ((0 != strcmp( c_szName, "ElementType")) && (0 != strcmp( c_szName, "IsRequired")) && (0 != strcmp( c_szName, "Range")) && (0 != strcmp( c_szName, "RangeType")))
                 {
                     fValid = this->ValidateParameter(c_szName, oRequestStructuredBufferParameter, c_oPluginParameter.GetStructuredBuffer(c_szName), &oRequestStructuredBufferParameter);
-                    if (true == fValid)
-                    {
-                        poRequestStructuredBuffer->PutStructuredBuffer(c_szRequireParameterName, oRequestStructuredBufferParameter);
-                    }
                 }
+            }
+            if (true == fValid)
+            {
+                poRequestStructuredBuffer->PutStructuredBuffer(c_szRequireParameterName, oRequestStructuredBufferParameter);
             }
         }
     }

@@ -19,15 +19,10 @@
 FontColor oFontColor;
 
 std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
-            oFontColor.strGreen + "1- Register Dataset\n" +
-            oFontColor.strGreen + "2- Delete Dataset\n" +
-            oFontColor.strGreen + "3- Get list of all Available Datasets\n" +
-            oFontColor.strGreen + "4- Get list of Datasets Submitted within your Organization\n" +
-            oFontColor.strBlue + "5- Register Digital Contract\n" +
-            oFontColor.strBlue + "6- Get list of Digital Contracts associated with your Organization\n" +
-            oFontColor.strBlue + "7- Get list of Waiting Digital Contracts associated with your Organization\n" +
-            oFontColor.strYellow + "8- Register VM Instance\n" +
-            oFontColor.strYellow + "9- Get VM Instance's Status\n" +
+            oFontColor.strGreen + "1- Register Root Event\n" +
+            oFontColor.strGreen + "2- Register Branch Event\n" +
+            oFontColor.strBlue + "3- Register Leaf Event(s)\n" +
+            oFontColor.strCyan + "4- Get list of Events\n" +
             oFontColor.strYellow + "0- Quit\n";
 
 /********************************************************************************************/

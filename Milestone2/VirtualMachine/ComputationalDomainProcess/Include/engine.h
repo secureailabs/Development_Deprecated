@@ -12,7 +12,6 @@
 
 #include "job.h"
 #include "CoreTypes.h"
-
 #include <deque>
 #include <map>
 #include <thread>

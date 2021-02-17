@@ -103,6 +103,7 @@ void __thiscall JobEngine::ProcessOneJob(void)
             if(0==nPid)
             {
                 m_stlJobMap[strJob]->JobRunFunctionNode();
+                exit(0);
             }
 
             //the main process will create a thread to wait for the job to finish

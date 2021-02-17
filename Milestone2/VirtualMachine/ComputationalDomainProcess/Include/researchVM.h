@@ -15,17 +15,10 @@
 #include "Socket.h"
 #include "engine.h"
 #include "job.h"
+#include "utils.h"
+#include "function_node.h"
 
 #define HEADERLENGTH 2
-
-/********************************************************************************************/
-
-enum RequestType{
-    eQUIT = 0,
-    eRUN,
-    eCHECK,
-    eINSPECT
-};
 
 /********************************************************************************************/
 
@@ -33,6 +26,8 @@ class ComputationVM{
     private:
         JobEngine m_oEngine;
         SocketServer m_oSocketServer;
+        std::map<std::string, std::unique_ptr<FunctionNode>> m_stlFNMap;
+        std::string m_strVMID;
         bool m_fStop;
 
         void __thiscall HandleConnection
@@ -40,22 +35,88 @@ class ComputationVM{
             _in Socket* poSocket
         );
         void __thiscall SocketListen(void);
-        void __thiscall HandleQuit(void);
-        std::string __thiscall HandleRun
+        void __thiscall HandleConnect
         (
-            _in std::string strRequest,
-            _in std::string strJobName
+            _in StructuredBuffer& oContent,
+            _in StructuredBuffer& oResponse
         );
-        std::string __thiscall HandleInspect
+        void __thiscall HandleQuit
         (
-            _in std::string strRequest
+            _in StructuredBuffer& oContent, 
+            _in StructuredBuffer& oResponse
         );
-        std::string __thiscall HandleCheck
+        void __thiscall HandleRun
         (
-            _in std::string strRequest
+            _in StructuredBuffer& oContent, 
+            _in StructuredBuffer& oResponse
+        );
+        void __thiscall Run
+        (
+            _in StructuredBuffer& oContent, 
+            _in StructuredBuffer& oResponse
+        );
+        void __thiscall HandleInspect
+        (
+            _in StructuredBuffer& oContent, 
+            _in StructuredBuffer& oResponse
+        );
+        void __thiscall HandleCheck
+        (
+            _in StructuredBuffer& oContent, 
+            _in StructuredBuffer& oResponse
+        );
+        void __thiscall HandleGetTable
+        (
+            _in StructuredBuffer& oContent, 
+            _in StructuredBuffer& oResponse
+        );
+        void __thiscall HandlePushFN
+        (
+            _in StructuredBuffer& oContent, 
+            _in StructuredBuffer& oResponse
+        );
+        void __thiscall SaveFN
+        (
+            std::string& strFNID,
+            std::string& strFNScript
+        );
+        void  __thiscall SaveOutput
+        (
+            _in StructuredBuffer& oContent, 
+            _in StructuredBuffer& oResponse
+        );
+        void __thiscall HandleDeleteData
+        (
+            _in StructuredBuffer& oContent, 
+            _in StructuredBuffer& oResponse
+        );
+        void __thiscall HandlePullData
+        (
+            _in StructuredBuffer& oContent, 
+            _in StructuredBuffer& oResponse
+        );
+        void __thiscall SaveBuffer
+        (
+            std::string& strJobID,
+            std::vector<std::string>& stlVarIDs,
+            std::vector<std::vector<Byte>>& stlVars 
+        );
+        void __thiscall HandlePushData
+        (
+            _in StructuredBuffer& oContent, 
+            _in StructuredBuffer& oResponse
+        );
+        void __thiscall LoadDataToBuffer
+        (
+            _in std::string& strJobID,
+            _in std::vector<std::string>& stlVarIDs,
+            _in std::vector<std::vector<Byte>>& stlVars
+        );
+        std::string __thiscall RetrieveDatasets
+        (
+            void
         );
         void __thiscall Halt(void);
-        std::string __thiscall RetrieveDatasets(void);
 
     public:
         ComputationVM

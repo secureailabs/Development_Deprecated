@@ -18,10 +18,14 @@
 #include "StructuredBuffer.h"
 #include "IpcTransactionHelperFunctions.h"
 #include "Guid.h"
+#include "utils.h"
 #include <thread>
 #include <vector>
 #include <iostream>
 #include <sstream>
+#include <filesystem>
+#include <regex>
+#include <cstdio>
 
 /********************************************************************************************
  *
@@ -39,7 +43,7 @@ ComputationVM::ComputationVM(
     )
     : m_oEngine(nMaxProcess), m_oSocketServer(wPortIdentifier), m_fStop(false)
 {
-    
+    m_strVMID = Guid().ToString(eRaw);
 }
 
 /********************************************************************************************
@@ -103,58 +107,52 @@ void ComputationVM::HandleConnection(
     bool bConnectionState = true;
     while(bConnectionState)
     {
-        //message structure
-        //|-------------------------------------|---------------|
-        //|----Header:PayLoadLength(4 bytes)----|----PayLoad----|
-        //|-------------------------------------|---------------|
-    	std::vector<Byte> stlHeader;
-    	while(0==stlHeader.size())
-    	{
-            stlHeader = poSocket->Read(HEADERLENGTH, 1000);
-    	}
+        std::vector<Byte> stlContent = GetIpcTransaction(poSocket);
 
-        size_t nPayloadLength = stlHeader[0]*256 + stlHeader[1];
-
-        std::vector<Byte> stlContent = poSocket->Read(nPayloadLength, 1000);
-
-        StructuredBuffer oContent(stlContent);
-        StructuredBuffer oResponse;
-        std::string strReply;
-
-        switch((RequestType)(oContent.GetInt8("Type")))
+        if(0<stlContent.size())
         {
-            //TODO: handle failure cases
-            case eQUIT:
-                HandleQuit();
-                oResponse.PutBoolean("Status", true);
-                bConnectionState =false;
-                Halt();
-                break;
-            case eRUN:   
-                strReply = HandleRun(oContent.GetString("FunctionNodeNumber"), oContent.GetString("InputNodeNumber"));
-                oResponse.PutBoolean("Status", true);
-                oResponse.PutString("Payload", strReply);
-                break;
-            case eCHECK: 
-                strReply = HandleCheck(oContent.GetString("JobName"));
-                oResponse.PutBoolean("Status", true);
-                oResponse.PutString("Payload", strReply);
-                break;
-            case eINSPECT:
-                strReply = HandleInspect(oContent.GetString("InspectTarget"));
-                oResponse.PutBoolean("Status", true);
-                oResponse.PutString("Payload", strReply);
-                break;
-            default:
-                oResponse.PutBoolean("Status", false);
-                oResponse.PutString("Payload", "invalid request");
-        }
+			StructuredBuffer oContent(stlContent);
+			StructuredBuffer oResponse;
+			std::string strReply;
 
-        std::vector<Byte> stlResponseHeader;
-        stlResponseHeader.push_back(oResponse.GetSerializedBufferRawDataSizeInBytes()/256);
-        stlResponseHeader.push_back(oResponse.GetSerializedBufferRawDataSizeInBytes()%256);
-        poSocket->Write(stlResponseHeader.data(), stlResponseHeader.size());
-        poSocket->Write(oResponse.GetSerializedBufferRawDataPtr(), oResponse.GetSerializedBufferRawDataSizeInBytes());
+			switch((RequestType)(oContent.GetInt8("Type")))
+			{
+				//TODO: handle failure cases
+				case eQUIT:
+					HandleQuit(oContent, oResponse);
+					bConnectionState =false;
+					Halt();
+					break;
+				case eRUN:
+					HandleRun(oContent, oResponse);
+					break;
+                case eCONNECT:
+					HandleConnect(oContent, oResponse);
+					break;
+				case eINSPECT:
+					HandleInspect(oContent, oResponse);
+					break;
+				case eGETTABLE:
+					HandleGetTable(oContent, oResponse);
+					break;
+				case ePUSHDATA:
+					HandlePushData(oContent, oResponse);
+					break;
+				case ePULLDATA:
+					HandlePullData(oContent, oResponse);
+					break;
+				case eDELETEDATA:
+					HandleDeleteData(oContent, oResponse);
+					break;
+				case ePUSHFN:
+					HandlePushFN(oContent, oResponse);
+					break;
+				default:
+					oResponse.PutBoolean("Status", false);
+					oResponse.PutString("Payload", "invalid request");
+			}
+			PutIpcTransaction(poSocket, oResponse);
+        }
     }
 }
 
@@ -166,9 +164,37 @@ void ComputationVM::HandleConnection(
  *
  ********************************************************************************************/
 
-void __thiscall ComputationVM::HandleQuit(void)
+void __thiscall ComputationVM::HandleQuit
+(
+    _in StructuredBuffer& oContent,
+    _in StructuredBuffer& oResponse
+)
 {
     m_oEngine.Halt();
+}
+
+void __thiscall ComputationVM::HandleConnect
+(
+    _in StructuredBuffer& oContent,
+    _in StructuredBuffer& oResponse
+)
+{
+    oResponse.PutString("VMID", m_strVMID);
+}
+
+void __thiscall ComputationVM::HandleRun
+(
+    _in StructuredBuffer& oContent, 
+    _in StructuredBuffer& oResponse
+)
+{
+    std::string strFunctionNode = oContent.GetString("FNID");
+    std::string strJobID = oContent.GetString("JobID");
+    std::vector<std::string> stlInput = m_stlFNMap[strFunctionNode]->GetInput();
+    std::vector<std::string> stlOutput = m_stlFNMap[strFunctionNode]->GetOutput();
+
+    std::unique_ptr<Job> stlNewJob = std::make_unique<PythonJob>(strFunctionNode, strJobID, stlInput, stlOutput);
+    m_oEngine.AddOneJob(std::move(stlNewJob));
 }
 
 /********************************************************************************************
@@ -180,17 +206,6 @@ void __thiscall ComputationVM::HandleQuit(void)
  *
  ********************************************************************************************/
 
-std::string __thiscall ComputationVM::HandleRun(
-    _in std::string strFunctionNodeNumber,
-    _in std::string strInputNodeNumber
-    )
-{
-    Guid oJobID;
-    std::unique_ptr<Job> stlNewJob = std::make_unique<PythonJob>(Guid(strFunctionNodeNumber.c_str()), eScript, oJobID, Guid(strInputNodeNumber.c_str()));
-    m_oEngine.AddOneJob(std::move(stlNewJob));
-    return oJobID.ToString(eRaw);
-}
-
 /********************************************************************************************
  *
  * @class ComputationVM
@@ -200,21 +215,29 @@ std::string __thiscall ComputationVM::HandleRun(
  *
  ********************************************************************************************/
 
-std::string __thiscall ComputationVM::HandleInspect
+void __thiscall ComputationVM::HandleInspect
 (
-    _in std::string strRequest
+    _in StructuredBuffer& oContent, 
+    _in StructuredBuffer& oResponse
 )
 {
     std::string strReply;
-    if(!strRequest.compare("job"))
-    {
-        strReply = m_oEngine.RetrieveJobs();
-    }
-    else if(!strRequest.compare("dataset"))
-    {
-        strReply = RetrieveDatasets();
-    }
-    return strReply;
+
+    strReply = m_oEngine.RetrieveJobs();
+    oResponse.PutString("Payload", strReply);
+}
+
+void __thiscall ComputationVM::HandleGetTable
+(
+    _in StructuredBuffer& oContent, 
+    _in StructuredBuffer& oResponse
+)
+{
+    //ToDo
+    std::string strReply;
+
+    strReply = RetrieveDatasets();
+    oResponse.PutString("Payload", strReply);
 }
 
 /********************************************************************************************
@@ -225,9 +248,12 @@ std::string __thiscall ComputationVM::HandleInspect
  *
  ********************************************************************************************/
 
-std::string __thiscall ComputationVM::RetrieveDatasets(void)
+std::string __thiscall ComputationVM::RetrieveDatasets
+(
+    void
+)
 {
-    Socket * poSocket =  ConnectToUnixDomainSocket("/tmp/{0bd8a254-49e4-4b86-b1b8-f353c18013c5}");
+    Socket * poSocket =  ConnectToUnixDomainSocket("/tmp/");
     StructuredBuffer oRequest;
     
     oRequest.PutInt8("RequestType",eGetTableMetadata);
@@ -262,11 +288,154 @@ std::string __thiscall ComputationVM::RetrieveDatasets(void)
  *
  ********************************************************************************************/
 
-std::string __thiscall ComputationVM::HandleCheck(
-    _in std::string strRequest
-    )
+void __thiscall ComputationVM::HandleCheck
+(
+    _in StructuredBuffer& oContent, 
+    _in StructuredBuffer& oResponse
+)
 {
-    return m_oEngine.GetJobResult(strRequest);
+    std::string strRequest = oContent.GetString("JobID");
+
+    std::string strReply = m_oEngine.GetJobResult(strRequest);
+    oResponse.PutString("Payload", strReply);
+}
+
+void __thiscall ComputationVM::HandlePushData
+(
+    _in StructuredBuffer& oContent, 
+    _in StructuredBuffer& oResponse
+)
+{
+
+    std::vector<std::string> stlVarIDs;
+    std::vector<std::vector<Byte>> stlVars;
+    std::string strJobID = oContent.GetString("JobID");
+    StructuredBuffer oVarIDs = oContent.GetStructuredBuffer("VarIDs");
+    StructuredBuffer oVars = oContent.GetStructuredBuffer("Vars");
+
+    BufToVec<std::vector<std::vector<Byte>>>(oVars, stlVars);
+    BufToVec<std::vector<std::string>>(oVarIDs, stlVarIDs);
+
+    SaveBuffer(strJobID, stlVarIDs, stlVars);
+}
+
+void __thiscall ComputationVM::SaveBuffer
+(
+    std::string& strJobID,
+    std::vector<std::string>& stlVarIDs,
+    std::vector<std::vector<Byte>>& stlVars 
+)
+{
+    size_t nNumber = stlVars.size();
+    for(size_t i =0; i<nNumber; i++)
+    {
+        std::ofstream stlVarFile;
+        stlVarFile.open(std::string("/tmp/"+strJobID+stlVarIDs[i]).c_str(), std::ios::out | std::ios::binary);
+        stlVarFile.write((char*)&stlVars[i][0], stlVars[i].size());
+        stlVarFile.close();
+    }
+}
+
+void __thiscall ComputationVM::HandlePullData
+(
+    _in StructuredBuffer& oContent, 
+    _in StructuredBuffer& oResponse
+)
+{
+    std::string strJobID = oContent.GetString("JobID");
+    StructuredBuffer oOutputIDs = oContent.GetStructuredBuffer("VarIDs");
+    std::vector<std::string> stlOutputIDs;
+    std::vector<std::vector<Byte>> stlOutputs;
+
+    BufToVec<std::vector<std::string>>(oOutputIDs, stlOutputIDs);
+
+    LoadDataToBuffer(strJobID, stlOutputIDs, stlOutputs);
+
+    StructuredBuffer oBuffer;
+    VecToBuf<std::vector<std::vector<Byte>>>(stlOutputs, oBuffer);
+    oResponse.PutStructuredBuffer("Vars", oBuffer);
+}
+
+void __thiscall ComputationVM::LoadDataToBuffer
+(
+    _in std::string& strJobID,
+    _in std::vector<std::string>& stlVarIDs,
+    _in std::vector<std::vector<Byte>>& stlVars
+)
+{
+    size_t nNumber = stlVarIDs.size();
+    for(size_t i=0; i<nNumber; i++)
+    {
+        std::ifstream stlVarFile;
+        stlVarFile.open(std::string("/tmp/"+strJobID+stlVarIDs[i]).c_str(), std::ios::out | std::ios::binary);
+
+        stlVarFile.unsetf(std::ios::skipws);
+
+        stlVarFile.seekg (0, stlVarFile.end);
+        int length = stlVarFile.tellg();
+        stlVarFile.seekg (0, stlVarFile.beg);
+
+        std::vector<Byte> stlVec;
+        stlVec.reserve(length);
+
+        stlVec.insert(stlVec.begin(),std::istream_iterator<Byte>(stlVarFile), std::istream_iterator<Byte>());
+        stlVars.push_back(stlVec);
+        
+        stlVarFile.close();
+    }
+}
+
+
+void __thiscall ComputationVM::HandleDeleteData
+(
+    _in StructuredBuffer& oContent, 
+    _in StructuredBuffer& oResponse
+)
+{
+    //TODO
+    std::vector<std::string> stlVars;
+    StructuredBuffer oVars = oContent.GetStructuredBuffer("Vars");
+
+    BufToVec(oVars, stlVars);
+
+    for(size_t i=0;i<stlVars.size();i++)
+    {
+        std::remove(std::string("/tmp/"+stlVars[i]).c_str());
+    }
+}
+
+void __thiscall ComputationVM::HandlePushFN
+(
+    _in StructuredBuffer& oContent, 
+    _in StructuredBuffer& oResponse
+)
+{
+    std::string strFNID = oContent.GetString("FNID");
+    std::string strFNScript = oContent.GetString("FNScript");
+    SaveFN(strFNID, strFNScript);
+
+    StructuredBuffer oInput = oContent.GetStructuredBuffer("Input");
+    StructuredBuffer oOutput = oContent.GetStructuredBuffer("Output");
+    std::vector<std::string> stlOutputIDs;
+    std::vector<std::string> stlInputIDs;
+ 
+    BufToVec(oInput, stlInputIDs);
+    BufToVec(oOutput, stlOutputIDs);
+
+    std::unique_ptr<FunctionNode> stlFN = std::make_unique<FunctionNode>(stlInputIDs, stlOutputIDs, strFNID);
+    m_stlFNMap.insert({strFNID,std::move(stlFN)});
+}
+
+void __thiscall ComputationVM::SaveFN
+(
+    std::string& strFNID,
+    std::string& strFNScript
+)
+{
+    std::ofstream stlFNFile;
+    stlFNFile.open("/tmp/"+strFNID);
+    stlFNFile<<strFNScript;
+    stlFNFile.close();
 }
 
 /********************************************************************************************

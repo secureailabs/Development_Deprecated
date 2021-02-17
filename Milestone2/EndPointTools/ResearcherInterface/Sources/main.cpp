@@ -1,26 +1,72 @@
-#include "frontendCLI.h"
-
+#include "frontend.h"
+#include "Guid.h"
+#include <vector>
+#include <fstream>
+#include <iterator>
+#include <string>
 #include <Python.h>
 #include <stdio.h>
 
-void test(){
-    wchar_t* argv[1];
-    const char* arg = "sail_logistic_regression.logistic_regression(0, [0,1,2,3], 4)";
+void prepare(std::vector<std::vector<Byte>>& stlVars)
+{
+	int number = 2;
 
-    argv[0] = Py_DecodeLocale(arg, NULL);
+	for(int i =0; i<number; i++)
+	{
+	        std::ifstream stlVarFile;
+	        stlVarFile.open("/home/jjj/"+std::to_string(i+1)+".pkl", std::ios::in | std::ios::binary);
+	        stlVarFile.unsetf(std::ios::skipws);
 
-    FILE* fp = fopen("/usr/local/lib/python3.8/site-packages/scripts/main.py", "r+");
-    Py_Initialize();
+	        stlVarFile.seekg (0, stlVarFile.end);
+	        int length = stlVarFile.tellg();
+	        stlVarFile.seekg (0, stlVarFile.beg);
 
-    PySys_SetArgv(1, argv);
-    PyRun_SimpleFile(fp, "main.py");
+	        std::vector<Byte> stlVec;
+	        stlVec.reserve(length);
 
-    Py_Finalize();
+	        stlVec.insert(stlVec.begin(),std::istream_iterator<Byte>(stlVarFile), std::istream_iterator<Byte>());
+	        stlVars.push_back(stlVec);
+
+	        stlVarFile.close();
+	}
+}
+
+void unpack(std::vector<std::vector<Byte>>& stlVars)
+{
+	size_t number =1;
+	for(size_t i =0; i<number; i++)
+	    {
+	        std::ofstream stlVarFile;
+	        stlVarFile.open("/home/jjj/out.pkl", std::ios::out | std::ios::binary);
+	        stlVarFile.write((char*)&stlVars[i][0], stlVars[i].size());
+	        stlVarFile.close();
+	    }
 }
 
 int main(){
 
     //test();
-    EngineCLI oEngineCLI("test", "127.0.0.1", 7000);
-    oEngineCLI.CLImain();
+    Frontend oFrontend;
+    std::string strVMID;
+    std::string strFNID;
+    std::string strIP("127.0.0.1");
+    oFrontend.SetFrontend(strIP, 5000, strVMID);
+
+    oFrontend.RegisterFN("/home/jjj/playground/test.py", 2, 1, strFNID);
+
+    oFrontend.HandlePushFN(strVMID, strFNID);
+
+    std::string strJobID = Guid().ToString(eRaw);
+    std::vector<std::string> stlInput;
+    std::vector<std::string> stlOutput;
+    std::vector<std::vector<Byte>> stlInputVars;
+    std::vector<std::vector<Byte>> stlOutputVars;
+    oFrontend.GetInputVec(strFNID, stlInput);
+    oFrontend.GetOutputVec(strFNID, stlOutput);
+    prepare(stlInputVars);
+    oFrontend.HandlePushData(strVMID, strJobID, stlInput, stlInputVars);
+
+    oFrontend.HandleExecJob(strVMID, strFNID, strJobID);
+    oFrontend.HandlePullData(strVMID, strJobID, stlOutput, stlOutputVars);
+    unpack(stlOutputVars);
 }

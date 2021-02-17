@@ -34,16 +34,17 @@
 
 Job::Job
     (
-       	_in Guid oFunctionNodeNumber,
-        _in JobFormat oFormat,
-        _in Guid oJobID,
-        _in Guid oInputNodeNumber
+       	_in std::string& strFunctionNode,
+        _in std::string& strJobID,
+        _in std::vector<std::string>& stlInput,
+        _in std::vector<std::string>& stlOutput
     )
-    : m_oFunctionNodeNumber(oFunctionNodeNumber), 
-      m_oStatus(eIdle), 
-      m_oFormat(oFormat),
-      m_oJobID(oJobID),
-      m_oInputNodeNumber(oInputNodeNumber)
+    : m_oStatus(eIdle),
+      m_strFunctionNodeNumber(strFunctionNode),  
+      m_strJobID(strJobID),
+      m_stlInput(stlInput),
+      m_stlOutput(stlOutput)
+
 {
     
 }
@@ -58,7 +59,7 @@ Job::Job
 
 std::string __thiscall Job::GetJobID(void) const
 {
-    return m_oJobID.ToString(eRaw);
+    return m_strJobID;
 }
 
 
@@ -138,8 +139,8 @@ JobStatus& __thiscall Job::GetStatus(void)
 
 void __thiscall Job::SetOutputAndErrFile(void)
 {
-    m_strOutputFile = "/tmp/" + m_oJobID.ToString(eRaw) + ".output";
-    m_strErrFile = "/tmp/" + m_oJobID.ToString(eRaw) + ".error";
+    m_strOutputFile = "/tmp/" + m_strJobID + ".output";
+    m_strErrFile = "/tmp/" + m_strJobID + ".error";
 }
 
 /********************************************************************************************
@@ -237,14 +238,30 @@ void __thiscall Job::SetOutputAndErrFile(void)
 
 void __thiscall PythonJob::JobRunFunctionNode(void)
 {
-    const char* pArgv[1];
-    wchar_t* wszArgv[1];
+    size_t nInArgCount = m_stlInput.size();
+    size_t nOutArgCount = m_stlOutput.size();
+    const char* pArgv[nInArgCount+nOutArgCount];
+    wchar_t* wszArgv[nInArgCount+nOutArgCount];
     FILE* pFile;
 
-    pArgv[0] = m_oInputNodeNumber.ToString(eRaw).c_str();
-    wszArgv[0] = Py_DecodeLocale(pArgv[0], NULL);
+    size_t i;
+    size_t j=0;
+    for(i=0;i<nInArgCount;i++)
+    {
+    	std::string strTmp("/tmp/"+m_strJobID+m_stlInput[i]);
+        pArgv[j] = strTmp.c_str();
+        wszArgv[j] = Py_DecodeLocale(pArgv[j], NULL);
+        j++;
+    }
+    for(i=0;i<nOutArgCount;i++)
+    {
+    	std::string strTmp("/tmp/"+m_strJobID+m_stlOutput[i]);
+        pArgv[j]= strTmp.c_str();
+        wszArgv[j]= Py_DecodeLocale(pArgv[j], NULL);
+        j++;
+    }
 
-    const char* pCodeFileName = std::string("/tmp/"+m_oFunctionNodeNumber.ToString(eRaw)).c_str();
+    std::string pCodeFileName = "/tmp/"+m_strFunctionNodeNumber;
 
     Py_Initialize();
 
@@ -260,15 +277,15 @@ void __thiscall PythonJob::JobRunFunctionNode(void)
     rewind(pPyOutFile);
     rewind(pPyErrFile);
 
-    //PySys_SetArgv(nArgc, (char**)pArgv);
-    PySys_SetArgv(1, wszArgv);
-    pFile = fopen(pArgv[0],"r+");
+    PySys_SetArgv(nInArgCount+nOutArgCount, wszArgv);
+    pFile = fopen(pCodeFileName.c_str(),"r+");
 
-    int nRes = PyRun_SimpleFile(pFile, pCodeFileName);
+    PyRun_SimpleFile(pFile, pCodeFileName.c_str());
     //the cpython internal function to init, run and finalize a python interpreter
 
     fclose(pPyOutFile);
     fclose(pPyErrFile);
+    fclose(pFile);
 
     Py_Finalize();
 }

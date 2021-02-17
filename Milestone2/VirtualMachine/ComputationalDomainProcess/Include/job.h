@@ -32,11 +32,6 @@ enum JobStatus
     eUnknown
 };
 
-enum JobFormat
-{
-    eString,
-    eScript
-};
 /********************************************************************************************/
 
 class Job
@@ -44,15 +39,14 @@ class Job
     public:
         Job
         (
-        	_in Guid oFunctionNodeNumber,
-            _in JobFormat oFormat,
-            _in Guid oJobID,
-            _in Guid oInputNodeNumber
+        	_in std::string& strFunctionNode,
+            _in std::string& strJobID,
+            _in std::vector<std::string>& stlInputNode,
+            _in std::vector<std::string>& stlOutputNode
 		);
 
 	    JobStatus& __thiscall GetStatus(void);
-        const JobFormat& __thiscall GetFormat(void) const { return m_oFormat; }
-        const std::string& __thiscall GetJobName(void) const { return m_strJobName; }
+        //const std::string& __thiscall GetJobName(void) const { return m_strJobName; }
         const std::string& __thiscall GetOutputFile(void) const { return m_strOutputFile; }
         std::string __thiscall GetJobID(void) const;
 
@@ -64,16 +58,17 @@ class Job
         virtual void __thiscall JobRunFunctionNode(void) {}
 
     protected:
-        const Guid m_oFunctionNodeNumber;
-        const std::string m_c_strJobScript;
+        //const std::string m_oFunctionNode;
+        //const std::string m_c_strJobScript;
 	    JobStatus m_oStatus;
-        const JobFormat m_oFormat;
-        const std::string m_strJobName;
-        const Guid m_oJobID;
-        const Guid m_oInputNodeNumber;
+        //const std::string m_strJobName;
+        const std::string m_strFunctionNodeNumber;
+        const std::string m_strJobID;
+        const std::vector<std::string> m_stlInput;
+        const std::vector<std::string> m_stlOutput;
         std::string m_strOutputFile;
         std::string m_strErrFile;
-	    std::thread::id m_stlJobId;
+	    //std::thread::id m_stlJobId;
 };
 
 /********************************************************************************************/
@@ -83,11 +78,11 @@ class PythonJob : public Job
     public:
         PythonJob
         (
-       	    _in Guid oFunctionNodeNumber,
-            _in JobFormat oFormat,
-            _in Guid oJobID,
-            _in Guid oInputNodeNumber
-		): Job(oFunctionNodeNumber, oFormat, oJobID, oInputNodeNumber) {}
+       	    _in std::string& strFunctionNode,
+            _in std::string& strJobID,
+            _in std::vector<std::string>& stlInputNode,
+            _in std::vector<std::string>& stlOutputNode
+		): Job(strFunctionNode, strJobID, stlInputNode, stlOutputNode) {}
 
         // virtual void __thiscall JobRunString(void);
         // virtual void __thiscall JobRunScript(void);

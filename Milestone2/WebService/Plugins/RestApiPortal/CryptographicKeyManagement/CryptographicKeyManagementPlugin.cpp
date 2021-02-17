@@ -427,6 +427,14 @@ void __thiscall CryptographicKeyManagementPlugin::HandleIpcRequest(
         :
             stlResponse = this->GenerateEosb(oRequestParameters);
             break;
+        case 0x00000002 // RegisterEosb
+        :
+            stlResponse = this->RegisterEosb(oRequestParameters);
+            break;
+        case 0x00000003 // UnregisterEosb
+        :
+            stlResponse = this->UnregisterEosb(oRequestParameters);
+            break;
     }
 
     // Send back the response
@@ -468,6 +476,10 @@ uint64_t __thiscall CryptographicKeyManagementPlugin::SubmitRequest(
     if ("GET" == strVerb)
     {
         if ("/SAIL/CryptographicManager/User/RefreshEosb" == strResource)
+        {
+            stlResponseBuffer = this->RefreshEosb(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/CryptographicManager/User/SignDigest" == strResource)
         {
             stlResponseBuffer = this->RefreshEosb(c_oRequestStructuredBuffer);
         }
@@ -642,6 +654,22 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     return this->CreateEosbFromPlainSsb(oStructuredBufferEosb.GetSerializedBuffer());
 }
 
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function RefreshEosb
+ * @brief Encrypt the Eosb with the new Eosb key
+ * @param[in] c_oStructuredBufferRequest contains the request body
+ * @throw BaseException on failure
+ * @returns Buffer with encrypted Eosb and decryption information
+ * @note
+ *      The c_oStructuredBufferRequest StructuredBuffer should have
+ *        +----------------------------------------------------------------------------------+
+ *        | ["Eosb":Buffer] {Required} eosb to refresh                                       |
+ *        +----------------------------------------------------------------------------------+
+ *
+ ********************************************************************************************/
+
 std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RefreshEosb(
     _in const StructuredBuffer & c_oStructuredBufferRequest
     )
@@ -652,11 +680,57 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RefreshEosb(
     oResponseEosb.PutDword("Status", 404);
 
     std::vector<Byte> stlEncryptedEsobBuffer = c_oStructuredBufferRequest.GetBuffer("Eosb");
-    std::size_t unEsobCounter = 0;
 
+    // Esob Buffer Header check
+    _ThrowBaseExceptionIf((*((Qword *)m_stlEosbHeader.data()) != *((Qword *)stlEncryptedEsobBuffer.data())), "Invalid Header", nullptr);
+
+    std::size_t unEsobCounter = 0;
+    unEsobCounter += m_stlEosbHeader.size();
+    unEsobCounter += AES_GCM_IV_LENGTH;
+    unEsobCounter += AES_TAG_LENGTH;
+    Guid oGuidEsobEncryptKey(stlEncryptedEsobBuffer.data() + unEsobCounter);
+    // Check the EosbKey Guid and procees only if it was encrypted with the predecessor Key
+    // TODO: add locks
+    if (m_oGuidEosbCurrentKey == oGuidEsobEncryptKey)
+    {
+        oResponseEosb.PutDword("Status", 201);
+        oResponseEosb.PutBuffer("Eosb", stlEncryptedEsobBuffer);
+    }
+    else if (m_oGuidEosbPredecessorKey == oGuidEsobEncryptKey)
+    {
+        std::vector<Byte> stlPlainTextEsob = this->GetPlainTextSsbFromEosb(stlEncryptedEsobBuffer);
+
+        // Put the Esob buffer into the StrucutredBuffer
+        oResponseEosb.PutDword("Status", 201);
+        oResponseEosb.PutBuffer("Eosb", this->CreateEosbFromPlainSsb(stlPlainTextEsob));
+    }
+
+    return oResponseEosb.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function CreateEosbFromPlainSsb
+ * @brief Helper function to put all EOSB data into a buffer
+ * @param[in] c_oStructuredBufferRequest contains the request body
+ * @throw BaseException on failure
+ * @returns Buffer with encrypted Eosb and decryption information
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GetPlainTextSsbFromEosb(
+    _in const std::vector<Byte> & stlEncryptedEsobBuffer
+    )
+{
+    __DebugFunction();
+
+    std::vector<Byte> stlPlainTextEsob;
+
+    std::size_t unEsobCounter = 0;
     // Esob Buffer Header
-    _ThrowBaseExceptionIf((*((Qword *)m_EosbHeader.data()) != *((Qword *)stlEncryptedEsobBuffer.data())), "Invalid Header", nullptr);
-    unEsobCounter += m_EosbHeader.size();
+    _ThrowBaseExceptionIf((*((Qword *)m_stlEosbHeader.data()) != *((Qword *)stlEncryptedEsobBuffer.data())), "Invalid Header", nullptr);
+    unEsobCounter += m_stlEosbHeader.size();
 
     StructuredBuffer oStructuredBufferDecryptionParameters;
     // AES GCM IV
@@ -670,12 +744,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RefreshEosb(
     unEsobCounter += 16;
     // Check the EosbKey Guid and procees only if it was encrypted with the predecessor Key
     // TODO: add locks
-    if (m_oGuidEosbCurrentKey == oGuidEsobEncryptKey)
-    {
-        oResponseEosb.PutDword("Status", 200);
-        oResponseEosb.PutString("Eosb", ::Base64Encode(stlEncryptedEsobBuffer.data(), stlEncryptedEsobBuffer.size()));
-    }
-    else if (m_oGuidEosbPredecessorKey == oGuidEsobEncryptKey)
+    if ((m_oGuidEosbPredecessorKey == oGuidEsobEncryptKey) || (m_oGuidEosbCurrentKey == oGuidEsobEncryptKey))
     {
         // Size in bytes of encrypted SSB
         unsigned int unSizeOfEncryptedSsb = *(unsigned int *)(stlEncryptedEsobBuffer.data() + unEsobCounter);
@@ -686,23 +755,28 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RefreshEosb(
         unEsobCounter += unSizeOfEncryptedSsb;
 
         // Esob Buffer Footer
-        _ThrowBaseExceptionIf((*((Qword *)m_EosbFooter.data()) != *((Qword *)(stlEncryptedEsobBuffer.data() + unEsobCounter))), "Invalid Footer. Expected %ull Got %ull", nullptr);
+        _ThrowBaseExceptionIf((*((Qword *)m_stlEosbFooter.data()) != *((Qword *)(stlEncryptedEsobBuffer.data() + unEsobCounter))), "Invalid Footer. Expected %ull Got %ull", nullptr);
 
-        std::vector<Byte> stlPlainTextEsob;
         CryptographicEngine & oCryptographicEngine = CryptographicEngine::Get();
         OperationID oEsobDecryptId = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, oGuidEsobEncryptKey, &oStructuredBufferDecryptionParameters);
         oCryptographicEngine.OperationUpdate(oEsobDecryptId, stlEncryptedSsb, stlPlainTextEsob);
         bool fDeryptionStatus = oCryptographicEngine.OperationFinish(oEsobDecryptId, stlPlainTextEsob);
         _ThrowBaseExceptionIf((false == fDeryptionStatus), "Eosb decryption failed", nullptr);
-
-        // Put the Esob buffer into the StrucutredBuffer
-        oResponseEosb.PutDword("Status", 200);
-        std::vector<Byte> stlEosb = this->CreateEosbFromPlainSsb(stlPlainTextEsob);
-        oResponseEosb.PutBuffer("Eosb", stlEosb);
     }
 
-    return oResponseEosb.GetSerializedBuffer();
+    return stlPlainTextEsob;
 }
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function CreateEosbFromPlainSsb
+ * @brief Helper function to put all EOSB data into a buffer
+ * @param[in] c_oStructuredBufferRequest contains the request body
+ * @throw BaseException on failure
+ * @returns Buffer with encrypted Eosb and decryption information
+ *
+ ********************************************************************************************/
 
 std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::CreateEosbFromPlainSsb(
     _in const std::vector<Byte> & c_stlPlainTextSsb
@@ -740,12 +814,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::CreateEosbFromPla
     stlEncryptedSsb.resize(stlEncryptedSsb.size() - AES_TAG_LENGTH);
 
     // Fill the output buffer
-    const unsigned int unSizeOfEsobInBytes = m_EosbHeader.size() + stlAesInitializationVector.size() + stlAesGcmTag.size() + oGuidEncryptKey.ToString(eRaw).length() +  sizeof(uint32_t) + stlEncryptedSsb.size() + m_EosbFooter.size();
+    const unsigned int unSizeOfEsobInBytes = m_stlEosbHeader.size() + stlAesInitializationVector.size() + stlAesGcmTag.size() + oGuidEncryptKey.ToString(eRaw).length() +  sizeof(uint32_t) + stlEncryptedSsb.size() + m_stlEosbFooter.size();
     // Call reserve to just allocate memory and not initialize with
     stlResponseEosb.reserve(unSizeOfEsobInBytes);
 
     // Header
-    stlResponseEosb.insert(stlResponseEosb.end(), m_EosbHeader.begin(), m_EosbHeader.end());
+    stlResponseEosb.insert(stlResponseEosb.end(), m_stlEosbHeader.begin(), m_stlEosbHeader.end());
     // AES GCM IV
     stlResponseEosb.insert(stlResponseEosb.end(), stlAesInitializationVector.begin(), stlAesInitializationVector.end());
     // AES GCM TAG
@@ -762,7 +836,119 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::CreateEosbFromPla
     // Encrypted SSB containing DC information
     stlResponseEosb.insert(stlResponseEosb.end(), stlEncryptedSsb.begin(), stlEncryptedSsb.end());
     // Footer
-    stlResponseEosb.insert(stlResponseEosb.end(), m_EosbFooter.begin(), m_EosbFooter.end());
+    stlResponseEosb.insert(stlResponseEosb.end(), m_stlEosbFooter.begin(), m_stlEosbFooter.end());
 
     return stlResponseEosb;
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function RegisterEosb
+ * @brief Decrypt the Eosb and return the decrypted Eosb without the AES key
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException on failure
+ * @returns Serialized structuredBuffer
+ * @note
+ *      The RequiredParameters StructuredBuffer should have
+ *        +-----------------------------------------------------------------------------------+
+ *        | ["Eosb":Buffer] {Required} Encrypted Eosb to register                             |
+ *        +-----------------------------------------------------------------------------------+
+ *
+ *      The Return StructuredBuffer is the decrypted Digital Contract without the AES accont
+ *      key as defined in the CreateEosb key
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RegisterEosb(
+    _in const StructuredBuffer & c_oStructuredBufferRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponseEosb;
+    oResponseEosb.PutDword("Status", 405);
+
+    std::vector<Byte> stlEncryptedEsobBuffer = c_oStructuredBufferRequest.GetBuffer("Eosb");
+
+    // Esob Buffer Header check
+    _ThrowBaseExceptionIf((*((Qword *)m_stlEosbHeader.data()) != *((Qword *)stlEncryptedEsobBuffer.data())), "Invalid Header", nullptr);
+
+    // Get the Guid of the key used to encrypt the Eosb
+    std::size_t unEsobCounter = 0;
+    unEsobCounter += m_stlEosbHeader.size();
+    unEsobCounter += AES_GCM_IV_LENGTH;
+    unEsobCounter += AES_TAG_LENGTH;
+    Guid oGuidEsobEncryptKey(stlEncryptedEsobBuffer.data() + unEsobCounter);
+
+    // Check the EosbKey Guid and procees only if it was encrypted with the predecessor Key
+    // TODO: add locks
+    if ((m_oGuidEosbCurrentKey == oGuidEsobEncryptKey) || (m_oGuidEosbPredecessorKey == oGuidEsobEncryptKey))
+    {
+        std::vector<Byte> stlPlainTextEsob = this->GetPlainTextSsbFromEosb(stlEncryptedEsobBuffer);
+
+        StructuredBuffer oStructuredBufferEosbWithoutKey(stlPlainTextEsob);
+        std::vector<Byte> stlAccountKey = oStructuredBufferEosbWithoutKey.GetBuffer("AccountKey");
+        oStructuredBufferEosbWithoutKey.RemoveElement("AccountKey");
+
+        // Cache the key, which acts as a proof of authentic and valid Eosb for furhter Cryptographic Operations
+        // Just the presence of the 64bit hash of the strucutred Buffer is sufficient to conclude that
+        // the Eosb is valid.
+        ::pthread_mutex_lock(&m_sEosbCacheMutex);
+        m_stlCachedKeysForEosb.insert(std::make_pair<Qword, std::vector<Byte>>(oStructuredBufferEosbWithoutKey.Get64BitHash(), std::move(stlAccountKey)));
+        ::pthread_mutex_unlock(&m_sEosbCacheMutex);
+
+        oResponseEosb.PutDword("Status", 201);
+        oResponseEosb.PutStructuredBuffer("Eosb", oStructuredBufferEosbWithoutKey);
+    }
+
+    return oResponseEosb.GetSerializedBuffer();
+}
+
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function UnregisterEosb
+ * @brief Add the AES key to the Ssb and Encrypt it with Current Eosb Key.
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException on failure
+ * @returns Serialized structuredBuffer
+ * @note
+ *      The RequiredParameters StructuredBuffer should have
+ *        +-----------------------------------------------------------------------------------+
+ *        | ["Eosb":Buffer] {Required} Encrypted Eosb to register                             |
+ *        +-----------------------------------------------------------------------------------+
+ *
+ *      The Return StructuredBuffer is the decrypted Digital Contract without the AES accont
+ *      key as defined in the CreateEosb key
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::UnregisterEosb(
+    _in const StructuredBuffer & c_oStructuredBufferRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponseEosb;
+    oResponseEosb.PutDword("Status", 404);
+
+    StructuredBuffer oStructuredBufferEosbWithoutKey = c_oStructuredBufferRequest.GetStructuredBuffer("Eosb");
+
+    try
+    {
+        ::pthread_mutex_lock(&m_sEosbCacheMutex);
+        oStructuredBufferEosbWithoutKey.PutBuffer("AccountKey", m_stlCachedKeysForEosb.at(oStructuredBufferEosbWithoutKey.Get64BitHash()));
+        m_stlCachedKeysForEosb.erase(oStructuredBufferEosbWithoutKey.Get64BitHash());
+        ::pthread_mutex_unlock(&m_sEosbCacheMutex);
+        oResponseEosb.PutDword("Status", 201);
+        oResponseEosb.PutBuffer("Eosb", this->CreateEosbFromPlainSsb(oStructuredBufferEosbWithoutKey.GetSerializedBuffer()));
+    }
+    catch(...)
+    {
+        oResponseEosb.PutDword("Status", 500);
+    }
+
+    return oResponseEosb.GetSerializedBuffer();
 }

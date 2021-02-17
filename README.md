@@ -17,6 +17,7 @@ Generate executables in the following directories using make:
 | Development/Milestone2/InternalTools/DatabaseTools/ | DatabaseTools |
 | Development/Milestone2/WebService/DatabaseGateway/ | DatabaseGateway |
 | Development/Milestone2/WebService/RestApiPortal/ | RestApiPortal |
+| Development/Milestone2/EndPointTools/RestPortalTester/ | RestPortalTester |
 
 # Installing and Configuring MongoDB
 
@@ -56,7 +57,12 @@ Start the DatabaseGateway server:
 $ ./DatabaseGateway
 ```
 
-Use postman to make an Http request:
+Run the interactive client (RestPortalTester) to test login, event registration, and event enumeration:
+```sh
+$ ./RestPortalTester
+```
+
+You can also use Postman to make Http requests to the RestApiPortal. An example request is as following:
 * Verb: POST
 * Resource: https://localhost:6200/SAIL/AuthenticationManager/User/Login
 * Params: Add entries for Email and Password

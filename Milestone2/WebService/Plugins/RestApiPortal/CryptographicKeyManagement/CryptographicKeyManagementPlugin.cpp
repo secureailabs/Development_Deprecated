@@ -669,6 +669,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
 
     StructuredBuffer oStructuredBufferEosb;
     oStructuredBufferEosb.PutGuid("UserId", oStructuredBufferBasicUserRecord.GetGuid("UserGuid"));
+    oStructuredBufferEosb.PutGuid("OrganizationGuid", oStructuredBufferBasicUserRecord.GetGuid("OrganizationGuid"));
     oStructuredBufferEosb.PutGuid("SessionId", Guid());
     oStructuredBufferEosb.PutBuffer("AccountKey", stlAccountKey);
     // TODO: fill this in future

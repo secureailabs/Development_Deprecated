@@ -217,6 +217,15 @@ class CryptographicEngine : public Object
             _in HashAlgorithm eHashAlgorithm,
             _in const std::string & c_szPassword
             ) const;
+        std::vector<Byte> __thiscall GenerateSignature(
+            _in const Guid & c_oGuidOfkey,
+            _in const std::vector<Byte> & c_stlMessageDigest
+            ) const;
+        bool __thiscall VerifySignature(
+            _in const Guid & c_oGuidOfkey,
+            _in const std::vector<Byte> & c_stlSignature,
+            _in const std::vector<Byte> & c_stlMessageDigest
+            ) const;
 
     private:
 

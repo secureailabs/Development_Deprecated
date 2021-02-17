@@ -720,3 +720,111 @@ bool __thiscall CryptographicEngine::DecryptFinal(
 
     return fDecryptSuccessResponse;
 }
+
+/********************************************************************************************
+ *
+ * @class CryptographicEngine
+ * @function GenerateSignature
+ * @brief Generate the digital signature of the message digest
+ * @param[in] poKey Signature key
+ * @param[in] c_stlMessageDigest Message digest to sign
+ * @return Signed Message
+ * @throw BaseException on failure
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall CryptographicEngine::GenerateSignature(
+    _in const Guid & c_oGuidOfkey,
+    _in const std::vector<Byte> & c_stlMessageDigest
+) const
+{
+    __DebugFunction();
+
+    std::vector<Byte> stlSignature;
+
+    CryptographicKey oKey(c_oGuidOfkey);
+    KeySpec eKeySpec = oKey.GetKeySpec();
+
+    int nOpenSslStatus = 0;
+
+    if ((KeySpec::eECC384 == eKeySpec) || (KeySpec::eRSA2048 == eKeySpec) || (KeySpec::eRSA3076 == eKeySpec) || (KeySpec::eRSA4096 == eKeySpec))
+    {
+        if (nullptr != oKey.GetPrivateKey())
+        {
+            EVP_PKEY_CTX * poEvpPkeyCtx = ::EVP_PKEY_CTX_new(oKey.GetPrivateKey(), nullptr);
+            _ThrowIfNull(poEvpPkeyCtx, "Fail to Initialize Key Context", nullptr);
+
+            nOpenSslStatus = ::EVP_PKEY_sign_init(poEvpPkeyCtx);
+            _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Signature Init failed.", nullptr);
+
+            size_t nSignatureLength;
+            int nOpenSslStatus = ::EVP_PKEY_sign(poEvpPkeyCtx, nullptr, &nSignatureLength, c_stlMessageDigest.data(), c_stlMessageDigest.size());
+            _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Getting signature max size failed.", nullptr);
+
+            stlSignature.resize(nSignatureLength);
+            nOpenSslStatus = ::EVP_PKEY_sign(poEvpPkeyCtx, stlSignature.data(), &nSignatureLength, c_stlMessageDigest.data(), c_stlMessageDigest.size());
+            _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Digest Signing failed.", nullptr);
+
+            // The first call to EVP_PKEY_sign gives the max size of the hash but not the exact size.
+            // The second EVP_PKEY_sign returns the actual size of the signature in nSignatureLength
+            // If not resized properly, it will result in a corrupted signature.
+            stlSignature.resize(nSignatureLength);
+
+            // TODO: use a smart pointer to make it thread safe
+            ::EVP_PKEY_CTX_free(poEvpPkeyCtx);
+        }
+    }
+
+    return stlSignature;
+}
+
+
+/********************************************************************************************
+ *
+ * @class CryptographicEngine
+ * @function VerifySignature
+ * @brief Verify the digital signature of the message digest
+ * @param[in] poKey Signature verification key
+ * @param[in] c_stlSignature Signature to verify
+ * @param[in] c_stlMessageDigest Message digest to be verified
+ * @return True on Successful verification
+ * @throw BaseException on failure
+ *
+ ********************************************************************************************/
+
+bool __thiscall CryptographicEngine::VerifySignature(
+    _in const Guid & c_oGuidOfkey,
+    _in const std::vector<Byte> & c_stlSignature,
+    _in const std::vector<Byte> & c_stlMessageDigest
+) const
+{
+    __DebugFunction();
+
+    bool fSignatureVerifyStatus = false;
+
+    CryptographicKey oKey(c_oGuidOfkey);
+    KeySpec eKeySpec = oKey.GetKeySpec();
+
+    if ((KeySpec::eECC384 == eKeySpec) || (KeySpec::eRSA2048 == eKeySpec) || (KeySpec::eRSA3076 == eKeySpec) || (KeySpec::eRSA4096 == eKeySpec))
+    {
+        if (nullptr != oKey.GetPublicKey())
+        {
+            EVP_PKEY_CTX * poEvpPkeyCtx = ::EVP_PKEY_CTX_new(oKey.GetPublicKey(), nullptr);
+            _ThrowIfNull(poEvpPkeyCtx, "Cannot create EVP_PKEY context for signature verification", nullptr);
+
+            int nOpenSslStatus = ::EVP_PKEY_verify_init(poEvpPkeyCtx);
+            _ThrowBaseExceptionIf((1 != nOpenSslStatus),"Signature verification failed", nullptr);
+
+            size_t nSignatureLength = 0;
+            nOpenSslStatus = ::EVP_PKEY_verify(poEvpPkeyCtx, c_stlSignature.data(), c_stlSignature.size(), c_stlMessageDigest.data(), c_stlMessageDigest.size());
+
+            if (1 == nOpenSslStatus)
+            {
+                fSignatureVerifyStatus = true;
+            }
+            ::EVP_PKEY_CTX_free(poEvpPkeyCtx);
+        }
+    }
+
+    return fSignatureVerifyStatus;
+}

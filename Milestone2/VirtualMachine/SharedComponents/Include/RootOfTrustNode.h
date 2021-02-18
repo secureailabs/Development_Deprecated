@@ -42,6 +42,11 @@ class RootOfTrustNode : public Object
         StructuredBuffer __thiscall GetDigitalContract(void) const;
         std::vector<Byte> __thiscall GetDataset(void) const;
         
+        void __thiscall RecordAuditEvent(
+            _in Dword dwEventType,
+            _in const StructuredBuffer & c_oEventData
+            ) const;
+            
     private:
     
         Byte m_bProcessType;

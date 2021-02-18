@@ -589,9 +589,6 @@ bool GetListOfEvents(
                                 "\n    \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n    \"Filters\":"
                                 "\n    {"
-                                "\n        \"MinimumDate\": 12340,"
-                                "\n        \"MaximumDate\": 12347,"
-                                "\n        \"TypeOfEvents\": 7"
                                 "\n    }"
                                 "\n}";
         std::string strHttpRequest = "GET /SAIL/AuditLogManager/GetListOfEvents HTTP/1.1\r\n"

@@ -89,8 +89,11 @@ Guid::Guid(
     uuid_t oUniqueIdentifier;
     uuid_generate(oUniqueIdentifier);
     m_stlRawData.resize(16);
-    ::memcpy((void *) m_stlRawData.data(), (void *) &eObjectType, 4);
-    ::memcpy((void *) (m_stlRawData.data() + 4), (void *) &oUniqueIdentifier, 12);
+    ::memcpy((void *) m_stlRawData.data(), (void *) &oUniqueIdentifier, 16);
+    // Change Most significat 4 bits to eObjectType
+    int nMsb = eObjectType << 4;
+    m_stlRawData[0] &= ~(1111 << 4);
+    m_stlRawData[0] |= (eObjectType << 4);
 }
 
 /********************************************************************************************
@@ -432,10 +435,7 @@ Byte __thiscall Guid::GetObjectType(void) const throw()
 {
     __DebugFunction();
 
-    Word wType;
-
-    const Byte * pbCurrentByte = m_stlRawData.data();
-    wType = *((Word *) pbCurrentByte);
+    Word wType = m_stlRawData[0] & (1111 < 4);
 
     return wType;
 }

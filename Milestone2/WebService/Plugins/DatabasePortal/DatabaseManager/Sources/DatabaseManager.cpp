@@ -531,11 +531,11 @@ std::vector<Byte> __thiscall DatabaseManager::GetConfidentialUserRecord(
     StructuredBuffer oFilters;
     oGetRootRequest.PutStructuredBuffer("Filters", oFilters);
     StructuredBuffer oRootEvent(this->GetListOfEvents(oGetRootRequest));
-    std::string strRootGuid = oRootEvent.GetString("RootEventGuid");
+    std::string strRootEventGuid = oRootEvent.GetStructuredBuffer("ListOfEvents").GetNamesOfElements()[0];
 
     // Check if DC branch event exists
     StructuredBuffer oGetDCRequest;
-    oGetDCRequest.PutString("ParentGuid", strRootGuid);
+    oGetDCRequest.PutString("ParentGuid", strRootEventGuid);
     oGetDCRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
     oGetDCRequest.PutStructuredBuffer("Filters", c_oRequest.GetStructuredBuffer("Filters"));
     StructuredBuffer oBranchEvent(this->GetListOfEvents(oGetDCRequest));
@@ -549,7 +549,7 @@ std::vector<Byte> __thiscall DatabaseManager::GetConfidentialUserRecord(
     }
     else 
     {
-        oResponse.PutString("RootEventGuid", strRootGuid);
+        oResponse.PutString("RootEventGuid", strRootEventGuid);
     }
     
     // Add transaction status
@@ -599,7 +599,8 @@ std::vector<Byte> __thiscall DatabaseManager::GetListOfEvents(
         if (strEventGuid && strEventGuid.type() == type::k_utf8)
         {
             // Add root event to the response structured buffer 
-            oResponse.PutString("RootEventGuid", strEventGuid.get_utf8().value.to_string().c_str());
+            StructuredBuffer oEvent;
+            oListOfEvents.PutStructuredBuffer(strEventGuid.get_utf8().value.to_string().c_str(), oEvent);
         }
     }
     else 
@@ -650,39 +651,39 @@ std::vector<Byte> __thiscall DatabaseManager::GetListOfEvents(
                                 std::vector<std::string> stlFilters = oFilters.GetNamesOfElements();
                                 try 
                                 {
-                                    for (std::string stlFilter : stlFilters)
+                                    for (std::string strFilter : stlFilters)
                                     {
-                                        if ("MinimumDate" == stlFilter)
+                                        if ("MinimumDate" == strFilter)
                                         {
                                             uint64_t unObjectTimestamp = oObject.GetUnsignedInt64("Timestamp");
                                             uint64_t unFilterMinimumDate = oFilters.GetUnsignedInt64("MinimumDate");
                                             _ThrowBaseExceptionIf((unObjectTimestamp < unFilterMinimumDate), "Object timestamp is less than the specified minimum date.", nullptr);
                                         }
-                                        else if ("MaximumDate" == stlFilter)
+                                        else if ("MaximumDate" == strFilter)
                                         {
                                             uint64_t unObjectTimestamp = oObject.GetUnsignedInt64("Timestamp");
                                             uint64_t unFilterMaximumDate = oFilters.GetUnsignedInt64("MaximumDate");
                                             _ThrowBaseExceptionIf((unObjectTimestamp > unFilterMaximumDate), "Object timestamp is greater than the specified maximum date.", nullptr);
                                         }
-                                        else if ("TypeOfEvents" == stlFilter)
+                                        else if ("TypeOfEvents" == strFilter)
                                         {
                                             Qword qwObjectEventType = oObject.GetQword("EventType");
                                             Qword qwFilterEventType = oFilters.GetQword("TypeOfEvents");
                                             _ThrowBaseExceptionIf((qwObjectEventType != qwFilterEventType), "Object type is not the same as the specified event type.", nullptr);
                                         }
-                                        else if ("DCGuid" == stlFilter)
+                                        else if ("DCGuid" == strFilter)
                                         {
-                                            Word wType = oEvent.GetGuid("EventGuid").GetObjectType();
-                                            _ThrowBaseExceptionIf((eAuditEventBranchNode != wType), "No DC guid exists for this type of object.", nullptr);
-                                            _ThrowBaseExceptionIf((0 == oObject.GetUnsignedInt64("SequenceNumber")), "No DC guid exists for root node.", nullptr);
+                                            // Word wType = Guid(strEventGuid.get_utf8().value.to_string().c_str()).GetObjectType();
+                                            // _ThrowBaseExceptionIf((eAuditEventBranchNode != wType), "No DC guid exists for this type of object.", nullptr);
+                                            _ThrowBaseExceptionIf((0 == oObject.GetUnsignedInt32("SequenceNumber")), "No DC guid exists for root node.", nullptr);
                                             StructuredBuffer oPlainTextMetadata(oObject.GetStructuredBuffer("PlainTextEventData"));
-                                            std::string strPlainObjectDCGuid = oPlainTextMetadata.GetString("DCGuid");
+                                            std::string strPlainObjectDCGuid = oPlainTextMetadata.GetString("GuidOfDcOrVm");
                                             std::string strFilterDcGuid = oFilters.GetString("DCGuid");
-                                            _ThrowBaseExceptionIf((1 != oPlainTextMetadata.GetDword("TypeOfBranch")), "The audit log is not for a digital contract", nullptr);
+                                            _ThrowBaseExceptionIf((1 != oPlainTextMetadata.GetDword("BranchType")), "The audit log is not for a digital contract", nullptr);
                                             _ThrowBaseExceptionIf((strPlainObjectDCGuid != strFilterDcGuid), "The DC guid does not match the requested dc guid", nullptr);
                                         }
                                         // TODO: Add VMGuid filters
-                                        // else if ("VMGuid" == stlFilter)
+                                        // else if ("VMGuid" == strFilter)
                                         // {
 
                                         // }
@@ -696,7 +697,7 @@ std::vector<Byte> __thiscall DatabaseManager::GetListOfEvents(
                                 if (true == fAddToListOfEvents)
                                 {
                                     // If the audit log object is not filtered out then add it to the Event structured buffer
-                                    oEvent.PutBuffer("ObjectBlob", oObject.GetSerializedBuffer());
+                                    oEvent.PutStructuredBuffer("ObjectBlob", oObject);
                                     // Add PlainTextObjectBlobGuid to the Event structured buffer
                                     oEvent.PutGuid("PlainTextObjectBlobGuid", oPlainTextObjectBlobGuid);
                                 }

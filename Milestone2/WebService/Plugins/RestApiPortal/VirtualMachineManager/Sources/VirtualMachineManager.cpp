@@ -516,8 +516,6 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
     std::string strDcGuid = c_oRequest.GetString("DCGuid");
     std::string strVmGuid = c_oRequest.GetString("VMGuid");
 
-    std::cout << "1\n";
-
     // Call CryptographicManager plugin to get the organization guid
     StructuredBuffer oDecryptEosbRequest;
     oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
@@ -528,8 +526,6 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
     _ThrowBaseExceptionIf(((0 == oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 != oDecryptedEosb.GetDword("Status"))), "Error decrypting Eosb", nullptr);
     // Get the organization guid
     Guid oOrganizationGuid = oDecryptedEosb.GetStructuredBuffer("Eosb").GetGuid("OrganizationGuid");
-
-    std::cout << "2\n";
 
     // Check whether DC branch event log exists for DCGuid in the database or not
     // If not then create a DC branch event log
@@ -544,14 +540,12 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
     Socket * poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
     StructuredBuffer oDCEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oGetDcBranchEventRequest));
     _ThrowBaseExceptionIf((0 > oDCEventLog.GetSerializedBufferRawDataSizeInBytes()), "Error checking for DC event", nullptr);
-    std::cout << "3\n";
     if (200 == oDCEventLog.GetDword("Status"))
     {
         strDcEventGuid = oDCEventLog.GetString("DCEventGuid");
     }
     else 
     {
-        std::cout << "4\n";
         // Create a DC branch event for DCGuid
         std::string strRootEventGuid = oDCEventLog.GetString("RootEventGuid");
         StructuredBuffer oDcBranchEvent;
@@ -574,11 +568,9 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
         poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
         StructuredBuffer oDcEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oDcBranchEvent));
         _ThrowBaseExceptionIf(((0 > oDcEventLog.GetSerializedBufferRawDataSizeInBytes())&&(201 != oDcEventLog.GetDword("Status"))), "Error creating DC branch event.", nullptr);
-        std::cout << "5\n";
     }
 
     // Create a Vm branch event log
-    std::cout << "6\n";
     StructuredBuffer oVmBranchEvent;
     oVmBranchEvent.PutDword("TransactionType", 0x00000001);
     oVmBranchEvent.PutBuffer("Eosb", stlEosb);
@@ -595,7 +587,6 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
     oPlainTextMetadata.PutString("GuidOfDcOrVm", strVmGuid);
     oVmMetadata.PutStructuredBuffer("PlainTextEventData", oPlainTextMetadata);
     oVmBranchEvent.PutStructuredBuffer("NonLeafEvent", oVmMetadata);
-    std::cout << "7\n";
     // Call AuditLogManager plugin to create a Vm event log
     bool fSuccess = false;
     poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
@@ -607,7 +598,6 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
         oResponse.PutGuid("VmEventGuid", oVmEventGuid);
         fSuccess = true;
     }
-    std::cout << "8\n";
     // Add error code if transaction was unsuccessful
     if (false == fSuccess)
     {

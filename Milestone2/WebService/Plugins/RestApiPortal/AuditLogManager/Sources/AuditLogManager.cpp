@@ -417,7 +417,7 @@ void __thiscall AuditLogManager::InitializePlugin(void)
     StructuredBuffer oGetListOfEvents;
     oGetListOfEvents.PutStructuredBuffer("Eosb", oEosb);
     oGetListOfEvents.PutStructuredBuffer("ParentGuid", oIdentifierOfParentNode);
-    oRegisterLeafEvents.PutStructuredBuffer("OrganizationGuid", oOrganizationGuid);
+    oGetListOfEvents.PutStructuredBuffer("OrganizationGuid", oOrganizationGuid);
     // Add optional filter parameters for fetching list of events
     StructuredBuffer oFilters;
     oFilters.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);

@@ -75,6 +75,11 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Given an organization guid fetch digital contract event guid, if exists
+        std::vector<Byte> __thiscall DigitalContractBranchExists(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Fetch sudit log records from the database
         std::vector<Byte> __thiscall GetListOfEvents(
             _in const StructuredBuffer & c_oRequest

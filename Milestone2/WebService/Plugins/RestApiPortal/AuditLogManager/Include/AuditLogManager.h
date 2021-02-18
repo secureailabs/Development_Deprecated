@@ -92,6 +92,11 @@ class AuditLogManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Given an organization guid fetch digital contract event guid, if exists
+        std::vector<Byte> __thiscall DigitalContractBranchExists(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Private data members
         mutable pthread_mutex_t m_sMutex;
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;

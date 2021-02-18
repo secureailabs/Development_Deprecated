@@ -81,6 +81,11 @@ class SailAuthentication : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Take in a full EOSB, call Cryptographic plugin and fetches user guid and organization guid
+        std::vector<Byte> __thiscall GetBasicUserInformation(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // private data members
         mutable pthread_mutex_t m_sMutex;
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;

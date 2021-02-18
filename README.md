@@ -35,7 +35,7 @@ Run the script:
 ./install.sh
 ```
 
-# Testing Login Transaction
+# Testing
 
 Change working directory to Binary:
 ```sh

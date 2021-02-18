@@ -240,3 +240,24 @@ std::vector<Byte> __thiscall RootOfTrustNode::GetDataset(void) const
 
     return oTransactionResponse.GetBuffer("DataSet");
 }
+
+/********************************************************************************************/
+
+void __thiscall RootOfTrustNode::RecordAuditEvent(
+    _in const std::string & c_oEncryptedOpaqueSessionBlob,
+    _in Dword dwEventType,
+    _in const StructuredBuffer & c_oEventData
+    ) const
+{
+    __DebugFunction();
+
+    Socket * poSocket = ::ConnectToUnixDomainSocket(m_strRootOfTrustIpcPath.c_str());
+    StructuredBuffer oTransactionData;
+    oTransactionData.PutString("Eosb", c_oEncryptedOpaqueSessionBlob);
+    oTransactionData.PutGuid("DomainIdentifier", m_oDomainIdentifier);
+    oTransactionData.PutDword("Transaction", 0x00000009);
+    oTransactionData.PutDword("EventType", dwEventType);
+    oTransactionData.PutStructuredBuffer("EventData", c_oEventData);
+    StructuredBuffer oTransactionResponse(::PutIpcTransactionAndGetResponse(poSocket, oTransactionData));
+    poSocket->Release();
+}

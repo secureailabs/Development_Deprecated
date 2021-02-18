@@ -417,6 +417,7 @@ void __thiscall AuditLogManager::InitializePlugin(void)
     StructuredBuffer oGetListOfEvents;
     oGetListOfEvents.PutStructuredBuffer("Eosb", oEosb);
     oGetListOfEvents.PutStructuredBuffer("ParentGuid", oIdentifierOfParentNode);
+    oGetListOfEvents.PutStructuredBuffer("OrganizationGuid", oOrganizationGuid);
     // Add optional filter parameters for fetching list of events
     StructuredBuffer oFilters;
     oFilters.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
@@ -432,11 +433,11 @@ void __thiscall AuditLogManager::InitializePlugin(void)
     StructuredBuffer oIdentifierOfDcNode;
     oIdentifierOfDcNode.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oIdentifierOfDcNode.PutBoolean("IsRequired", false);
-    oFilters.PutStructuredBuffer("IdentifierOfDCNode", oIdentifierOfDcNode);
+    oFilters.PutStructuredBuffer("DCGuid", oIdentifierOfDcNode);
     StructuredBuffer oIdentifierOfVmNode;
     oIdentifierOfVmNode.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oIdentifierOfVmNode.PutBoolean("IsRequired", false);
-    oFilters.PutStructuredBuffer("IdentifierOfVMNode", oIdentifierOfVmNode);
+    oFilters.PutStructuredBuffer("VMGuid", oIdentifierOfVmNode);
     StructuredBuffer oTypeOfEvents;
     oTypeOfEvents.PutByte("ElementType", QWORD_VALUE_TYPE);
     oTypeOfEvents.PutBoolean("IsRequired", false);
@@ -525,10 +526,18 @@ void __thiscall AuditLogManager::HandleIpcRequest(
 
     switch (dwTransactionType)
     {
-        // Add cases
-        default
+        case 0x00000001 // AddNonLeafEvent
         :
+            stlResponse = this->AddNonLeafEvent(oRequestParameters);
             break;
+        case 0x00000002 // GetListOfEvents
+        :
+            stlResponse = this->GetListOfEvents(oRequestParameters);
+            break;
+        case 0x00000003 // DigitalContractBranchExists
+        :
+            stlResponse = this->DigitalContractBranchExists(oRequestParameters);
+            break; 
     }
 
     // Send back the response
@@ -659,7 +668,7 @@ std::vector<Byte> __thiscall AuditLogManager::AddNonLeafEvent(
 {
     __DebugFunction();
 
-    StructuredBuffer oStatus;
+    StructuredBuffer oResponse;
 
     // Make a Tls connection with the database portal
     TlsNode * poTlsNode = nullptr;
@@ -683,16 +692,16 @@ std::vector<Byte> __thiscall AuditLogManager::AddNonLeafEvent(
 
     Dword dwStatus = 204;
     // Check if DatabaseManager registered the events or not
-    StructuredBuffer oResponse(stlResponse);
-    if (404 != oResponse.GetDword("Status"))
+    StructuredBuffer oDatabaseResponse(stlResponse);
+    if (404 != oDatabaseResponse.GetDword("Status"))
     {
-        dwStatus = 200;
+        dwStatus = 201;
     }
     
     // Send back status of the transaction
-    oStatus.PutDword("Status", dwStatus);
+    oResponse.PutDword("Status", dwStatus);
 
-    return oStatus.GetSerializedBuffer();
+    return oResponse.GetSerializedBuffer();
 }
 
 /********************************************************************************************
@@ -740,7 +749,7 @@ std::vector<Byte> __thiscall AuditLogManager::AddLeafEvent(
     StructuredBuffer oResponse(stlResponse);
     if (200 == oResponse.GetDword("Status"))
     {
-        dwStatus = 200;
+        dwStatus = 201;
     }
 
     // Send back status of the transaction
@@ -776,6 +785,7 @@ std::vector<Byte> __thiscall AuditLogManager::GetListOfEvents(
     oRequest.PutString("Verb", "GET");
     oRequest.PutString("Resource", "/SAIL/DatabaseManager/Events");
     oRequest.PutString("ParentGuid", c_oRequest.GetString("ParentGuid"));
+    oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
     oRequest.PutStructuredBuffer("Filters", c_oRequest.GetStructuredBuffer("Filters"));
     std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
     // Send request packet
@@ -800,4 +810,61 @@ std::vector<Byte> __thiscall AuditLogManager::GetListOfEvents(
     oAuditLogs.PutDword("Status", dwStatus);
 
     return oAuditLogs.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AuditLogManager
+ * @function DigitalContractBranchExists
+ * @brief Given an organization guid fetch digital contract event guid, if exists
+ * @param[in] c_oRequest contains the request body
+ * @returns Digital contract event guid
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AuditLogManager::DigitalContractBranchExists(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oAuditLog;
+
+    // Make a Tls connection with the database portal
+    TlsNode * poTlsNode = nullptr;
+    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+    // Create a request to fetch list of events
+    StructuredBuffer oRequest;
+    oRequest.PutString("PluginName", "DatabaseManager");
+    oRequest.PutString("Verb", "GET");
+    oRequest.PutString("Resource", "/SAIL/DatabaseManager/GetDCEvent");
+    oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
+    oRequest.PutStructuredBuffer("Filters", c_oRequest.GetStructuredBuffer("Filters"));
+    std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+    // Send request packet
+    poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+    // Read header and body of the response
+    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+    std::vector<Byte> stlResponse= poTlsNode->Read(unResponseDataSizeInBytes, 100);
+    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+    Dword dwStatus = 204;
+    StructuredBuffer oResponse(stlResponse);
+    if (200 == oResponse.GetDword("Status"))
+    {
+        oAuditLog.PutString("DCEventGuid", oResponse.GetString("DCEventGuid"));
+        dwStatus = 200;
+    }
+    else 
+    {
+        oAuditLog.PutString("RootEventGuid", oResponse.GetString("RootEventGuid"));
+    }
+
+    // Send back status of the transaction
+    oAuditLog.PutDword("Status", dwStatus);
+
+    return oAuditLog.GetSerializedBuffer();
 }

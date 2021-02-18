@@ -180,7 +180,7 @@ int __cdecl main(
         // the try...catch block since doing so will destroy the RootOfTrust core object
         oRootOfTrustCore.WaitForTermination();
     }
-    
+
     catch (BaseException oException)
     {
         // If there is an exception here, this means that the RootOfTrust process is

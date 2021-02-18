@@ -178,13 +178,70 @@ std::string Login(
 
 /********************************************************************************************/
 
-bool RegisterRootEvent(
-    _in const std::string & c_strEncodedEosb
+std::string GetBasicUserInformation(
+    _in const std::string & c_strEosb
     )
 {
     __DebugFunction();
 
-    bool fSuccess = false;
+    std::string strOrganizationGuid;
+
+    try
+    {
+        bool fSuccess = false;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+
+        std::string strHttpLoginRequest = "GET /SAIL/AuthenticationManager/GetBasicUserInformation?Eosb="+ c_strEosb +" HTTP/1.1\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: 0\r\n"
+                                        "\r\n";
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpLoginRequest.data(), (strHttpLoginRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {
+            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
+            if (4 <= stlHeaderData.size())
+            {
+                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                {
+                    fIsEndOfHeader = true;
+                }
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error decrypting eosb.", nullptr);
+        strOrganizationGuid = oResponse.GetString("OrganizationGuid");
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+
+    return strOrganizationGuid;
+}
+
+/********************************************************************************************/
+
+std::string RegisterRootEvent(
+    _in const std::string & c_strEncodedEosb,
+    _in const std::string & c_strOrganizationGuid
+    )
+{
+    __DebugFunction();
+
+    std::string strRootEventGuid = Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces);
 
     try
     {
@@ -193,13 +250,12 @@ bool RegisterRootEvent(
         poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
 
         // Create rest request
-
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
                                 "\n    \"NonLeafEvent\":"
                                 "\n    {"
-                                "\n        \"EventGuid\": \""+ Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces) +"\","
+                                "\n        \"EventGuid\": \""+ strRootEventGuid +"\","
                                 "\n        \"ParentGuid\": \"{00000000-0000-0000-0000-000000000000}\","
-                                "\n        \"OrganizationGuid\": \""+ Guid(eOrganization).ToString(eHyphensAndCurlyBraces) +"\","
+                                "\n        \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n        \"EventType\": 1,"
                                 "\n        \"Timestamp\": 12345,"
                                 "\n        \"SequenceNumber\": 0,"
@@ -241,9 +297,9 @@ bool RegisterRootEvent(
         std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         StructuredBuffer oResponse(stlSerializedResponse);
-        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
         std::cout << "Root event added successfully!" << std::endl;
-        fSuccess = true;
+        std::cout << "Root event guid: " << strRootEventGuid << std::endl;
     }
     catch(BaseException oBaseException)
     {
@@ -256,13 +312,16 @@ bool RegisterRootEvent(
 
     ::WaitForUserToContinue();
 
-    return fSuccess;
+    return strRootEventGuid;
 }
 
 /********************************************************************************************/
 
 bool RegisterBranchEvent(
-    _in const std::string & c_strEncodedEosb
+    _in const std::string & c_strEncodedEosb,
+    _in const std::string & c_strParentGuid,
+    _in const std::string & c_strOrganizationGuid,
+    _in const std::string & c_strDcGuid
     )
 {
     __DebugFunction();
@@ -280,15 +339,15 @@ bool RegisterBranchEvent(
                                 "\n    \"NonLeafEvent\":"
                                 "\n    {"
                                 "\n        \"EventGuid\": \""+ Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces) +"\","
-                                "\n        \"ParentGuid\": \"{9F049392-9EA7-4436-B737-1C40CC31CA38}\","
-                                "\n        \"OrganizationGuid\": \""+ Guid(eOrganization).ToString(eHyphensAndCurlyBraces) +"\","
+                                "\n        \"ParentGuid\": \""+ c_strParentGuid +"\","
+                                "\n        \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n        \"EventType\": 2,"
                                 "\n        \"Timestamp\": 12345,"
                                 "\n        \"SequenceNumber\": 1,"
                                 "\n        \"PlainTextEventData\": "
                                 "\n        {"
                                 "\n            \"BranchType\": 1,"
-                                "\n            \"GuidOfDcOrVm\" : \""+ Guid(eDigitalContract).ToString(eHyphensAndCurlyBraces) +"\""
+                                "\n            \"GuidOfDcOrVm\" : \""+ c_strDcGuid +"\""
                                 "\n        }"
                                 "\n    }"
                                 "\n}";
@@ -324,7 +383,7 @@ bool RegisterBranchEvent(
         std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         StructuredBuffer oResponse(stlSerializedResponse);
-        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
         std::cout << "Branch event added successfully!" << std::endl;
         fSuccess = true;
     }
@@ -345,7 +404,9 @@ bool RegisterBranchEvent(
 /********************************************************************************************/
 
 bool RegisterLeafEvents(
-    _in const std::string & c_strEncodedEosb
+    _in const std::string & c_strEncodedEosb,
+    _in const std::string & c_strOrganizationGuid,
+    _in const std::string & c_strParentGuid
     )
 {
     __DebugFunction();
@@ -360,11 +421,11 @@ bool RegisterLeafEvents(
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"ParentGuid\": \"{9F049392-9EA7-4436-B737-1C40CC31CA38}\","
+                                "\n    \"ParentGuid\": \""+ c_strParentGuid +"\","
                                 "\n    \"LeafEvents\": ["
                                 "\n        {"
                                 "\n            \"EventGuid\": \""+ Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces) +"\","
-                                "\n            \"OrganizationGuid\": \""+ Guid(eOrganization).ToString(eHyphensAndCurlyBraces) +"\","
+                                "\n            \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n            \"EventType\": 6,"
                                 "\n            \"Timestamp\": 12345,"
                                 "\n            \"SequenceNumber\": 2,"
@@ -372,7 +433,7 @@ bool RegisterLeafEvents(
                                 "\n        },"
                                 "\n        {"
                                 "\n            \"EventGuid\": \""+ Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces) +"\","
-                                "\n            \"OrganizationGuid\": \""+ Guid(eOrganization).ToString(eHyphensAndCurlyBraces) +"\","
+                                "\n            \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n            \"EventType\": 6,"
                                 "\n            \"Timestamp\": 12345,"
                                 "\n            \"SequenceNumber\": 3,"
@@ -412,7 +473,7 @@ bool RegisterLeafEvents(
         std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         StructuredBuffer oResponse(stlSerializedResponse);
-        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
         std::cout << "Leaf events added successfully!" << std::endl;
         fSuccess = true;
     }
@@ -432,8 +493,84 @@ bool RegisterLeafEvents(
 
 /********************************************************************************************/
 
+std::string RegisterVirtualMachine(
+    _in const std::string & c_strEncodedEosb,
+    _in const std::string & c_strDcGuid,
+    _in const std::string & c_strVmGuid
+    )
+{
+    __DebugFunction();
+
+    std::string strVmEventGuid;
+
+    try
+    {
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+
+        // Create rest request
+        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
+                                "\n    \"DCGuid\": \""+ c_strDcGuid +"\","
+                                "\n    \"VMGuid\": \""+ c_strVmGuid +"\""
+                                "\n}";
+        std::string strHttpRegisterRequest = "POST /SAIL/VirtualMachineManager/RegisterVM HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRegisterRequest.data(), (strHttpRegisterRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {
+            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
+            if (4 <= stlHeaderData.size())
+            {
+                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                {
+                    fIsEndOfHeader = true;
+                }
+            }
+        }
+
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
+        strVmEventGuid = oResponse.GetString("VmEventGuid");
+        std::cout << "Vm registered successfully!" << std::endl;
+        std::cout << "Vm event guid: " << strVmEventGuid << std::endl;
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+    catch(...)
+    {
+        ::ShowErrorMessage("Error registering virtual machine.");
+    }
+
+    ::WaitForUserToContinue();
+
+    return strVmEventGuid;
+}
+
+/********************************************************************************************/
+
 bool GetListOfEvents(
-    _in const std::string & c_strEncodedEosb
+    _in const std::string & c_strEncodedEosb,
+    _in const std::string & c_strParentGuid,
+    _in const std::string & c_strOrganizationGuid
     )
 {
     __DebugFunction();
@@ -448,12 +585,10 @@ bool GetListOfEvents(
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"ParentGuid\": \"{9F049392-9EA7-4436-B737-1C40CC31CA38}\","
+                                "\n    \"ParentGuid\": \""+ c_strParentGuid +"\","
+                                "\n    \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n    \"Filters\":"
                                 "\n    {"
-                                "\n        \"MinimumDate\": 12340,"
-                                "\n        \"MaximumDate\": 12347,"
-                                "\n        \"TypeOfEvents\": 7"
                                 "\n    }"
                                 "\n}";
         std::string strHttpRequest = "GET /SAIL/AuditLogManager/GetListOfEvents HTTP/1.1\r\n"
@@ -524,12 +659,23 @@ int main()
         ::ClearScreen();
 
         std::cout << "************************\n  SAIL LOGIN\n************************\n" << std::endl;
-        std::string strEmail = ::GetStringInput("Enter email: ", 20, false, c_szValidInputCharacters);
+        std::string strEmail = ::GetStringInput("Enter email: ", 50, false, c_szValidInputCharacters);
         std::string strUserPassword = ::GetStringInput("Enter password: ", 50, true, c_szValidInputCharacters);
 
         std::string strEncodedEosb = Login(strEmail, strUserPassword);
 
         _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
+
+        // Get organization guid from eosb
+        std::string strOrganizationGuid = ::GetBasicUserInformation(strEncodedEosb);
+        // Hardcoded digital contract guid, and vm guid
+        std::string strDcGuid = "{33DB1751-66AE-4EB5-BF7B-614CBC09BC4C}";
+        std::string strVmGuid = Guid(eVirtualMachine).ToString(eHyphensAndCurlyBraces);
+
+        // Get RootEventGuid after adding a root event
+        std::string strRootEventGuid;
+        // Get VmEventGuid after registering a VM and use it to get list of events
+        std::string strVmEventGuid;
 
         bool fTerminatedSignalEncountered = false;
 
@@ -543,22 +689,57 @@ int main()
             {
                 case 1:
                 {
-                    ::RegisterRootEvent(strEncodedEosb);
+                    strRootEventGuid = ::RegisterRootEvent(strEncodedEosb, strOrganizationGuid);
                 break;
                }
                 case 2:
                 {
-                    ::RegisterBranchEvent(strEncodedEosb);
+                    if (0 < strRootEventGuid.size())
+                    {
+                        ::RegisterBranchEvent(strEncodedEosb, strRootEventGuid, strOrganizationGuid, strDcGuid);
+                    }
+                    else 
+                    {
+                        std::cout << "Register a root event first!" << std::endl;
+                        ::WaitForUserToContinue();
+                    }
                 break;
                 }
                 case 3:
                 {
-                    ::RegisterLeafEvents(strEncodedEosb);
+                    if (0 < strVmEventGuid.size())
+                    {
+                        ::RegisterLeafEvents(strEncodedEosb, strOrganizationGuid, strVmEventGuid);
+                    }
+                    else 
+                    {
+                        std::cout << "Register a Vm event first!" << std::endl;
+                        ::WaitForUserToContinue();
+                    }
                 break;
                 }
                 case 4:
                 {
-                    ::GetListOfEvents(strEncodedEosb);
+                    strVmEventGuid = ::RegisterVirtualMachine(strEncodedEosb, strDcGuid, strVmGuid);
+                break;
+                }
+                case 5:
+                {
+                    std::string strParentGuid = ::GetStringInput("Enter hyphen and curly braces formatted parent guid: ", 38, true, c_szValidInputCharacters);
+                    ::GetListOfEvents(strEncodedEosb, strParentGuid, strOrganizationGuid);
+                break;
+                }
+                case 6:
+                {
+                    if (0 < strVmEventGuid.size())
+                    {
+                        ::GetListOfEvents(strEncodedEosb, strVmEventGuid, strOrganizationGuid);
+                    }
+                    else 
+                    {
+                        std::cout << "Register a Vm event first" << std::endl;
+                        ::WaitForUserToContinue();
+                    }
                 break;
                 }
                 case 0:
@@ -568,7 +749,7 @@ int main()
                 }
                 default:
                 {
-                    std::cout << "Invalid option. Usage: [1-4]" << std::endl;
+                    std::cout << "Invalid option. Usage: [1-6]" << std::endl;
                 break;
                 }
             }

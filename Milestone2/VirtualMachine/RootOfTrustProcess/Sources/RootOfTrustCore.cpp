@@ -47,7 +47,6 @@ static void * RootOfTrustIpcListenerThread(
 {
     __DebugFunction();
     __DebugAssert(nullptr != pParameter);
-    
     try
     {
         ((RootOfTrustCore *) pParameter)->RunIpcListener();
@@ -166,7 +165,7 @@ RootOfTrustCore::RootOfTrustCore(
     m_stlGlobalRootKeyCertificate = oInitializationData.GetBuffer("GlobalRootKeyCertificate");
     m_stlComputationalDomainRootKeyCertificate = oInitializationData.GetBuffer("ComputationalDomainRootKeyCertificate");
     m_stlDataDomainRootKeyCertificate = oInitializationData.GetBuffer("DataDomainRootKeyCertificate");
-    m_stlDataOwnerImpostorEncryptedOpaqueSessionBlob = oInitializationData.GetBuffer("DataOwnerAccessToken");
+    m_stlDataOwnerImpostorEncryptedOpaqueSessionBlob = oInitializationData.GetString("DataOwnerAccessToken");
     m_oClusterInstanceIdentifier = oInitializationData.GetGuid("ClusterUuid");
     m_oRootOfTrustDomainIdentifier = oInitializationData.GetGuid("RootOfTrustDomainUuid");
     m_oComputationalDomainIdentifier = oInitializationData.GetGuid("ComputationalDomainUuid");
@@ -387,7 +386,6 @@ void __thiscall RootOfTrustCore::HandleIncomingTransaction(
 void __thiscall RootOfTrustCore::WaitForTermination(void) throw()
 {
     __DebugFunction();
-    
     // Wait for ALL threads started by the RootOfTrustCore object
     ThreadManager * poThreadManager = ThreadManager::GetInstance();
     poThreadManager->JoinThreadGroup("RootOfTrustCodeListener");

@@ -13,3 +13,5 @@
 #include "CoreTypes.h"
 
 extern uint64_t __stdcall GetEpochTimeInSeconds(void) throw();
+
+extern uint64_t __stdcall GetEpochTimeInMilliseconds(void) throw();

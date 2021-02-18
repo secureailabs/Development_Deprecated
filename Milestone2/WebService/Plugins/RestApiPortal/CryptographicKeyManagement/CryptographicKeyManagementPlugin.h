@@ -106,6 +106,12 @@ class CryptographicKeyManagementPlugin : public Object
         std::vector<Byte> __thiscall GetPlainTextSsbFromEosb(
             _in const std::vector<Byte> & c_stlPlainTextSsb
             );
+        std::vector<Byte> __thiscall SignMessageDigest(
+            _in const StructuredBuffer & c_stlRequest
+            );
+        std::vector<Byte> __thiscall VerifySignature(
+            _in const StructuredBuffer & c_stlRequest
+            );
 
         // private data members
         const Guid m_oPluginGuid;

@@ -233,12 +233,19 @@ void __thiscall SailAuthentication::InitializePlugin(void)
     oEosb.PutBoolean("IsRequired", true);
     oGetImposterParameters.PutStructuredBuffer("Eosb", oEosb);
 
+    // Add parameters for GetBasicUserInformation resource in a StructuredBuffer.
+    StructuredBuffer oGetBasicUserInformationParameters;
+    oGetBasicUserInformationParameters.PutStructuredBuffer("Eosb", oEosb);
+
     // Verifies user credentials and starts an authenticated session with SAIL SaaS
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuthenticationManager/User/Login", oLoginParameters);
 
     // Takes in an EOSB and sends back an imposter EOSB (IEOSB)
     // IEOSB has restricted rights and thus minimizes security risks when initializing and logging onto VM's
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuthenticationManager/User/IEOSB", oGetImposterParameters);
+
+    // Take in a full EOSB, call Cryptographic plugin and fetches user guid and organization guid
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AuthenticationManager/GetBasicUserInformation", oGetBasicUserInformationParameters);
 
 }
 
@@ -279,6 +286,13 @@ uint64_t __thiscall SailAuthentication::SubmitRequest(
         else if ("/SAIL/AuthenticationManager/User/IEOSB" == strResource)
         {
             stlResponseBuffer = this->GetImposterEOSB(c_oRequestStructuredBuffer);
+        }
+    }
+    else if ("GET" == strVerb)
+    {
+        if ("/SAIL/AuthenticationManager/GetBasicUserInformation" == strResource)
+        {
+            stlResponseBuffer = this->GetBasicUserInformation(c_oRequestStructuredBuffer);
         }
     }
 
@@ -442,4 +456,50 @@ std::vector<Byte> __thiscall SailAuthentication::GetImposterEOSB(
     oIEosb.PutBuffer("Eosb", stlEosb);
 
     return oIEosb.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class SailAuthentication
+ * @function GetBasicUserInformation
+ * @brief Take in a full EOSB, call Cryptographic plugin and get user guid and organization guid
+ * @param[in] c_oRequest contains the Eosb
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Serialized buffer containing user guid and organization guid
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall SailAuthentication::GetBasicUserInformation(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+
+    StructuredBuffer oDecryptEosbRequest;
+    oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
+    oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
+
+    // Call CryptographicManager plugin to get the decrypted eosb
+    bool fSuccess = false;
+    Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+    StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+    if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
+    {
+        StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
+        oResponse.PutDword("Status", 201);
+        oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
+        oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
+        fSuccess = true;
+    }
+    // Add error code if transaction was unsuccessful
+    if (false == fSuccess)
+    {
+        oResponse.PutDword("Status", 404);
+    }
+
+    return oResponse.GetSerializedBuffer();
 }

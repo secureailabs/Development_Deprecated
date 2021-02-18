@@ -73,7 +73,7 @@ static void __stdcall PromptForCredentials(
     )
 {
     __DebugFunction();
-    
+
     try
     {
         // Clear the screen
@@ -101,10 +101,10 @@ static void __stdcall PromptForCredentials(
         }
         while (false == fSuccess);
     }
-    
+
     catch(...)
     {
-        
+
     }
 }
 
@@ -328,7 +328,7 @@ int __cdecl main(
         // Now we fetch all of the SaaS data required to fill in the oInitializerData object. This
         // will download things like the list of digital contracts, digital certificates, the
         // imposter encrypted opaque session blob, etc...
-        
+
         do
         {
             // Allow the user to select which digital contract to use

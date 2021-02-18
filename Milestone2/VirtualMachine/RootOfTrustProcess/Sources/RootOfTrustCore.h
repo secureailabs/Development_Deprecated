@@ -74,21 +74,21 @@ class RootOfTrustCore : public Object
         
         bool m_fIsInitialized;
         bool m_fIsRunning;
-        
+
         std::vector<Byte> m_stlSerializedDigitalContract;
-        std::vector<Byte> m_stlDataOwnerImpostorEncryptedOpaqueSessionBlob;
-        std::vector<Byte> m_stlResearcherImpostorEncryptedOpaqueSessionBlob;
+        std::string m_stlDataOwnerImpostorEncryptedOpaqueSessionBlob;
+        std::string m_stlResearcherImpostorEncryptedOpaqueSessionBlob;
         std::vector<Byte> m_stlGlobalRootKeyCertificate;
         std::vector<Byte> m_stlComputationalDomainRootKeyCertificate;
         std::vector<Byte> m_stlDataDomainRootKeyCertificate;
-        
+
         Guid m_oClusterInstanceIdentifier;
-        
+
         Guid m_oRootOfTrustDomainIdentifier;
         Guid m_oComputationalDomainIdentifier;
         Guid m_oDataDomainIdentifier;
         Guid m_oInitializerDomainIdentifier;
-        
+
         std::string m_strRootOfTrustIpcPath;
         std::string m_strComputationalDomainIpcPath;
         std::string m_strDataDomainIpcPath;

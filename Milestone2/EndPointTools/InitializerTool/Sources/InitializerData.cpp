@@ -13,9 +13,8 @@
 #include "Exceptions.h"
 #include "HardCodedCryptographicKeys.h"
 #include "InitializerData.h"
-#include "IpcTransactionHelperFunctions.h"
+#include "TlsTransactionHelperFunctions.h"
 #include "StructuredBuffer.h"
-#include "SocketClient.h"
 #include "TlsClient.h"
 #include "JsonValue.h"
 
@@ -207,7 +206,7 @@ bool __thiscall InitializerData::InitializeNode(
     ) const
 {
     __DebugFunction();
-    
+
     bool fSuccess;
     StructuredBuffer oInitializationParameters;
     oInitializationParameters.PutBuffer("DigitalContract", m_stlEffectiveDigitalContract);
@@ -221,9 +220,9 @@ bool __thiscall InitializerData::InitializeNode(
     oInitializationParameters.PutGuid("DataDomainUuid", m_oDataDomainIdentifier);
     oInitializationParameters.PutBuffer("Dataset", m_stlDataset);
 
-    Socket * poSocket = ::ConnectToUnixDomainSocket("{b675be6d-b092-4b37-9e07-f1d645fc0f32}");
-    ::PutIpcTransaction(poSocket, oInitializationParameters);
-    poSocket->Release();
+    TlsNode * poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6800);
+    ::PutTlsTransaction(poTlsNode, oInitializationParameters);
+    poTlsNode->Release();
 
     return true;
 }

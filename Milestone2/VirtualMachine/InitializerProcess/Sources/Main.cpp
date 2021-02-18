@@ -13,9 +13,10 @@
 #include "DebugLibrary.h"
 #include "Exceptions.h"
 #include "HardCodedCryptographicKeys.h"
+#include "TlsTransactionHelperFunctions.h"
 #include "IpcTransactionHelperFunctions.h"
 #include "SocketClient.h"
-#include "SocketServer.h"
+#include "TlsServer.h"
 #include "StructuredBuffer.h"
 #include "Azure.h"
 
@@ -32,19 +33,19 @@ static std::vector<Byte> __stdcall WaitForInitializationParameters(void)
     __DebugFunction();
 
     std::vector<Byte> stlSerializedParameters;
-    SocketServer oSocketServer("{b675be6d-b092-4b37-9e07-f1d645fc0f32}");
-    while (false == oSocketServer.WaitForConnection(1000))
+    TlsServer oTlsServer(6800);
+    while (false == oTlsServer.WaitForConnection(1000))
     {
         // Put the thread into efficient sleep to give a chance for the other process
         // to connect. This reduces thread contention.
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     // There is a connection is waiting to be made!!!
-    Socket * poSocket = oSocketServer.Accept();
-    _ThrowBaseExceptionIf((nullptr == poSocket), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
-    stlSerializedParameters = ::GetIpcTransaction(poSocket);
+    TlsNode * poTlsNode = oTlsServer.Accept();
+    _ThrowBaseExceptionIf((nullptr == poTlsNode), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
+    stlSerializedParameters = ::GetTlsTransaction(poTlsNode);
     // Close the connection
-    poSocket->Release();
+    poTlsNode->Release();
 
     return stlSerializedParameters;
 }

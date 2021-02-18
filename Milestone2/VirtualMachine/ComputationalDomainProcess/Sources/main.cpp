@@ -46,7 +46,7 @@ int __cdecl main(
         // First we initialize the RootOfTrustNode. Without that, nothing else matters
         RootOfTrustNode oRootOfTrustNode(oCommandLineArguments.GetString("ipc").c_str());
         // Run the computation engine
-        ComputationVM oTest(7000, 5);
+        ComputationVM oTest(7000, 5, oRootOfTrustNode);
         oTest.InitializeVM();
     }
     

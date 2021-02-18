@@ -9,7 +9,7 @@ else
 endif
 
 # The Root directory containing all the code
-ROOTDIR=../../../../
+ROOTDIR=../../../..
 ABSROOTDIR=$(shell realpath $(ROOTDIR))
 OBJDIR=$(ABSROOTDIR)/Binary/Objects
 
@@ -40,4 +40,4 @@ $(OUTPUT): $(OBJS)
 	$(CXX) -shared $(CXXFLAGS) $(INCLUDE) $^ -o ../../../SharedLibraries/RestApiPortal/libAccountDatabase.so $(LDFLAGS)
 
 clean:
-	rm -rf $(OUTPUT) $(OBJS)
+	rm -rf $(OBJS)

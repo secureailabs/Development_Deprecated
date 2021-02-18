@@ -178,13 +178,13 @@ std::string Login(
 
 /********************************************************************************************/
 
-std::string GetBasicUserInformation(
+std::vector<Byte> GetBasicUserInformation(
     _in const std::string & c_strEosb
     )
 {
     __DebugFunction();
 
-    std::string strOrganizationGuid;
+    StructuredBuffer oUserInformation;
 
     try
     {
@@ -220,16 +220,18 @@ std::string GetBasicUserInformation(
 
         std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        _ThrowBaseExceptionIf((0 == stlSerializedResponse.size()), "Dead Packet.", nullptr);
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error decrypting eosb.", nullptr);
-        strOrganizationGuid = oResponse.GetString("OrganizationGuid");
+        oUserInformation.PutString("OrganizationGuid", oResponse.GetString("OrganizationGuid"));
+        oUserInformation.PutString("UserGuid", oResponse.GetString("UserGuid"));
     }
     catch(BaseException oBaseException)
     {
         ::ShowErrorMessage(oBaseException.GetExceptionMessage());
     }
 
-    return strOrganizationGuid;
+    return oUserInformation.GetSerializedBuffer();
 }
 
 /********************************************************************************************/
@@ -570,7 +572,8 @@ std::string RegisterVirtualMachine(
 bool GetListOfEvents(
     _in const std::string & c_strEncodedEosb,
     _in const std::string & c_strParentGuid,
-    _in const std::string & c_strOrganizationGuid
+    _in const std::string & c_strOrganizationGuid,
+    _in unsigned int unIndentDepth
     )
 {
     __DebugFunction();
@@ -624,13 +627,18 @@ bool GetListOfEvents(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error logging in.", nullptr);
-        std::cout << "\nEvent Guid |   Parent Guid    |   Organization Guid    |   Timestamp   |   Sequence Number" << std::endl;
         StructuredBuffer oListOfEvents(oResponse.GetStructuredBuffer("ListOfEvents"));
+        std::string strIndentString((unIndentDepth++) * 4, ' ');
         for (std::string strEventUuid : oListOfEvents.GetNamesOfElements())
         {
             StructuredBuffer oEvent(oListOfEvents.GetStructuredBuffer(strEventUuid.c_str()));
             StructuredBuffer oEventObject(oEvent.GetStructuredBuffer("ObjectBlob"));
-            std::cout << strEventUuid << "  " << oEventObject.GetString("ParentGuid") << "  " << oEvent.GetString("OrganizationGuid") << "  " << oEventObject.GetFloat64("Timestamp") << "  " << oEventObject.GetFloat64("SequenceNumber") << std::endl;
+            std::cout << strIndentString << "EventGuid: " << strEventUuid << std::endl;
+            std::cout << strIndentString << "ParentGuid: " << oEventObject.GetString("ParentGuid") << std::endl;
+            std::cout << strIndentString << "OrganizationGuid: " << oEvent.GetString("OrganizationGuid") << std::endl;
+            std::cout << strIndentString << "Timestamp: " << oEventObject.GetFloat64("Timestamp") << std::endl;
+            std::cout << strIndentString << "Sequence Number: " << oEventObject.GetFloat64("SequenceNumber") << std::endl;
+            ::GetListOfEvents(c_strEncodedEosb, strEventUuid, c_strOrganizationGuid, unIndentDepth);
         }
         fSuccess = true;
     }
@@ -642,8 +650,6 @@ bool GetListOfEvents(
     {
         ::ShowErrorMessage("Error getting list of events.");
     }
-
-    ::WaitForUserToContinue();
 
     return fSuccess;
 }
@@ -665,103 +671,26 @@ int main()
         std::string strEmail = ::GetStringInput("Enter email: ", 50, false, c_szValidInputCharacters);
         std::string strUserPassword = ::GetStringInput("Enter password: ", 50, true, c_szValidInputCharacters);
 
+        // Login to the web services
         std::string strEncodedEosb = Login(strEmail, strUserPassword);
 
         _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
 
-        // Get organization guid from eosb
-        std::string strOrganizationGuid = ::GetBasicUserInformation(strEncodedEosb);
-        // Hardcoded digital contract guid, and vm guid
-        std::string strDcGuid = "{33DB1751-66AE-4EB5-BF7B-614CBC09BC4C}";
-        std::string strVmGuid = Guid(eVirtualMachine).ToString(eHyphensAndCurlyBraces);
+        // Get user and organization guid from eosb
+        StructuredBuffer oUserInformation(::GetBasicUserInformation(strEncodedEosb));
+        std::string strOrganizationGuid = oUserInformation.GetString("OrganizationGuid");
+        std::string strUserGuid = oUserInformation.GetString("UserGuid");
 
-        // Get RootEventGuid after adding a root event
-        std::string strRootEventGuid;
-        // Get VmEventGuid after registering a VM and use it to get list of events
-        std::string strVmEventGuid;
+        ::ClearScreen();
 
-        bool fTerminatedSignalEncountered = false;
-
-        while (false == fTerminatedSignalEncountered)
-        {
-            ::ShowTopMenu();
-
-            std::string strUserInput = ::GetStringInput("Selection: ", 1, false, c_szValidInputCharacters);
-
-            switch (stoi(strUserInput))
-            {
-                case 1:
-                {
-                    strRootEventGuid = ::RegisterRootEvent(strEncodedEosb, strOrganizationGuid);
-                break;
-               }
-                case 2:
-                {
-                    if (0 < strRootEventGuid.size())
-                    {
-                        ::RegisterBranchEvent(strEncodedEosb, strRootEventGuid, strOrganizationGuid, strDcGuid);
-                    }
-                    else 
-                    {
-                        std::cout << "Register a root event first!" << std::endl;
-                        ::WaitForUserToContinue();
-                    }
-                break;
-                }
-                case 3:
-                {
-                    if (0 < strVmEventGuid.size())
-                    {
-                        ::RegisterLeafEvents(strEncodedEosb, strOrganizationGuid, strVmEventGuid);
-                    }
-                    else 
-                    {
-                        std::cout << "Register a Vm event first!" << std::endl;
-                        ::WaitForUserToContinue();
-                    }
-                break;
-                }
-                case 4:
-                {
-                    strVmEventGuid = ::RegisterVirtualMachine(strEncodedEosb, strDcGuid, strVmGuid);
-                break;
-                }
-                case 5:
-                {
-                    std::string strParentGuid = ::GetStringInput("Enter hyphen and curly braces formatted parent guid: ", 38, true, c_szValidInputCharacters);
-                    ::GetListOfEvents(strEncodedEosb, strParentGuid, strOrganizationGuid);
-                break;
-                }
-                case 6:
-                {
-                    if (0 < strVmEventGuid.size())
-                    {
-                        ::GetListOfEvents(strEncodedEosb, strVmEventGuid, strOrganizationGuid);
-                    }
-                    else 
-                    {
-                        std::cout << "Register a Vm event first" << std::endl;
-                        ::WaitForUserToContinue();
-                    }
-                break;
-                }
-                case 0:
-                {
-                    fTerminatedSignalEncountered = true;
-                break;
-                }
-                default:
-                {
-                    std::cout << "Invalid option. Usage: [1-6]" << std::endl;
-                break;
-                }
-            }
-        }
+        std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
+        // Get list of all events for the organization
+        ::GetListOfEvents(strEncodedEosb, "{00000000-0000-0000-0000-000000000000}", strOrganizationGuid, 0);
     }
     catch(BaseException oBaseException)
     {
         std::cout << oBaseException.GetExceptionMessage() << std::endl;
     }
-    
-    return 0;
+
+        return 0;
 }

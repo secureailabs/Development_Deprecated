@@ -8,7 +8,7 @@
  *
  ********************************************************************************************/
 
-#include "64BitHashes.h" 
+#include "64BitHashes.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
 #include "HardCodedCryptographicKeys.h"
@@ -17,9 +17,11 @@
 #include "StructuredBuffer.h"
 #include "SocketClient.h"
 #include "TlsClient.h"
+#include "JsonValue.h"
 
 #include <iostream>
 #include <fstream>
+#include <memory>
 
 /********************************************************************************************/
 
@@ -51,22 +53,19 @@ bool __thiscall InitializerData::Login(
     __DebugFunction();
     
     bool fSuccess = false;
-    
-    // Create rest request
-    StructuredBuffer oRestRequestStructuredBuffer;
-    oRestRequestStructuredBuffer.PutString("PluginName", "SailAuthentication");
-    oRestRequestStructuredBuffer.PutString("Verb", "POST");
-    oRestRequestStructuredBuffer.PutString("Resource", "SecureAiLabs/Authentication/Login");
-    oRestRequestStructuredBuffer.PutString("Username", strUsername);
-    oRestRequestStructuredBuffer.PutString("Password", strPassword);
-    oRestRequestStructuredBuffer.PutString("Organization", strOrganization);
 
-    m_stlEncryptedOpaqueSessionBlob = this->SendSaasRequest(oRestRequestStructuredBuffer);
-    if (0 < m_stlEncryptedOpaqueSessionBlob.size())
+    const std::string stlLoginResponse = this->SendSaasRequest("POST", "AuthenticationManager/User/Login?Email="+ strUsername + "&Password="+ strPassword, "");
+    StructuredBuffer oRestResponse = JsonValue::ParseDataToStructuredBuffer(stlLoginResponse.substr(stlLoginResponse.find_last_of("\r\n\r\n")).c_str());
+    try
     {
-        fSuccess = this->GetImporterEncryptedOpaqueSessionBlob();
+        m_stlEncryptedOpaqueSessionBlob = oRestResponse.GetString("Eosb");
+        fSuccess = true;
     }
-    
+    catch(const BaseException & oBaseException)
+    {
+        fSuccess = false;
+    }
+
     return fSuccess;
 }
 
@@ -80,11 +79,11 @@ std::vector<std::string> __thiscall InitializerData::GetListOfDigitalContracts(v
     std::string strContractOne = "ACME <--> Wile E. Coyote Contract";
     std::string strContractTwo = "Devil <--> Trump's Soul Contract";
     std::string strContractThree = "SAIL <--> KPMG Contract";
-    
+
     stlListOfDigitalContracts.push_back(strContractOne);
     stlListOfDigitalContracts.push_back(strContractTwo);
     stlListOfDigitalContracts.push_back(strContractThree);
-    
+
     return stlListOfDigitalContracts;
 }
 
@@ -144,7 +143,7 @@ bool __thiscall InitializerData::AddNodeToCluster(
     )
 {
     __DebugFunction();
-    
+
     Qword qwNodeAddressHash = ::Get64BitHashOfNullTerminatedString(c_strNodeAddress.c_str(), false);
     
     m_stlClusterNodes.insert(std::pair<Qword, std::string>(qwNodeAddressHash, c_strNodeAddress));
@@ -211,12 +210,11 @@ bool __thiscall InitializerData::InitializeNode(
     
     bool fSuccess;
     StructuredBuffer oInitializationParameters;
-        
     oInitializationParameters.PutBuffer("DigitalContract", m_stlEffectiveDigitalContract);
     oInitializationParameters.PutBuffer("GlobalRootKeyCertificate", gc_abRootPublicKeyCertificate, gc_unRootPublicKeyCertificateSizeInBytes);
     oInitializationParameters.PutBuffer("ComputationalDomainRootKeyCertificate", gc_abResearcherPublicKeyCertificate, gc_unResearcherPublicKeyCertificateSizeInBytes);
     oInitializationParameters.PutBuffer("DataDomainRootKeyCertificate", gc_abDataOwnerPublicKeyCertificate, gc_unDataOwnerPublicKeyCertificateSizeInBytes);
-    oInitializationParameters.PutBuffer("DataOwnerAccessToken", m_stlImposterEncryptedOpaqueSessionBlob);
+    oInitializationParameters.PutString("DataOwnerAccessToken", m_stlEncryptedOpaqueSessionBlob);
     oInitializationParameters.PutGuid("ClusterUuid", m_oClusterIdentifier);
     oInitializationParameters.PutGuid("RootOfTrustDomainUuid", m_oRootOfTrustDomainIdentifier);
     oInitializationParameters.PutGuid("ComputationalDomainUuid", m_oComputationalDomainIdentifier);
@@ -226,90 +224,58 @@ bool __thiscall InitializerData::InitializeNode(
     Socket * poSocket = ::ConnectToUnixDomainSocket("{b675be6d-b092-4b37-9e07-f1d645fc0f32}");
     ::PutIpcTransaction(poSocket, oInitializationParameters);
     poSocket->Release();
-    
+
     return true;
 }
 
 /********************************************************************************************/
 
-bool __thiscall InitializerData::GetImporterEncryptedOpaqueSessionBlob(void)
+bool __thiscall InitializerData::GetImposterEncryptedOpaqueSessionBlob(void)
 {
     __DebugFunction();
-    
+
     bool fSuccess = false;
-    
-    StructuredBuffer oRestRequestStructuredBuffer;
-    oRestRequestStructuredBuffer.PutString("PluginName", "SailAuthentication");
-    oRestRequestStructuredBuffer.PutString("Verb", "POST");
-    oRestRequestStructuredBuffer.PutString("Resource", "SecureAiLabs/Authentication/ImposterEOSB");
-    oRestRequestStructuredBuffer.PutBuffer("Eosb", m_stlEncryptedOpaqueSessionBlob);
-    
-    m_stlImposterEncryptedOpaqueSessionBlob = this->SendSaasRequest(oRestRequestStructuredBuffer);
-    if (0 < m_stlImposterEncryptedOpaqueSessionBlob.size())
+
+    const std::string stlLoginResponse = this->SendSaasRequest("POST", "Authentication/ImposterEOSB", "");
+    StructuredBuffer oRestResponse = JsonValue::ParseDataToStructuredBuffer(stlLoginResponse.substr(stlLoginResponse.find_last_of("\r\n\r\n")).c_str());
+    try
     {
+        m_stlImposterEncryptedOpaqueSessionBlob = oRestResponse.GetString("Eosb");
         fSuccess = true;
     }
-    
+    catch(const BaseException & oBaseException)
+    {
+        fSuccess = false;
+    }
+
     return fSuccess;
 }
 
 /********************************************************************************************/
 
-std::vector<Byte> __thiscall InitializerData::SendSaasRequest(
-    _in const StructuredBuffer & c_oStructuredBuffer
+std::string __thiscall InitializerData::SendSaasRequest(
+    _in const std::string c_strVerb,
+    _in const std::string c_strResource,
+    _in const std::string & c_strBody
     )
 {
     __DebugFunction();
-    
-    std::vector<Byte> stlRestResponse;
-    // Establish the connection to the SaaS server
-    TlsNode * poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
-    _ThrowBaseExceptionIf((nullptr == poTlsNode), "TlsConnectToNetworkSocket() has failed...", nullptr);
-    // Format the request packet
-    std::vector<Byte> stlFormattedRequestPacket = this->FormatRequestPacket(c_oStructuredBuffer);
-    // Send request packet
-    poTlsNode->Write(stlFormattedRequestPacket.data(), (stlFormattedRequestPacket.size()));
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 1000);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    stlRestResponse = poTlsNode->Read(unResponseDataSizeInBytes, 1000);
-    _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Dead Packet.", nullptr);
 
-    return stlRestResponse;
-}
+    std::string strResponseString;
+    std::string strRestRequestHeader = c_strVerb + " /SAIL/" + c_strResource + " HTTP/1.1\r\n"
+                                       "Host: 127.0.0.1:6200" + "\r\n"
+                                       "Content-Length: " + std::to_string(c_strBody.length()) + "\r\n\r\n";
 
-/********************************************************************************************/
+    std::string strRestRequest = strRestRequestHeader + c_strBody + "\r\n\r\n";
+    std::unique_ptr<TlsNode> poTlsNode(::TlsConnectToNetworkSocket("127.0.0.1", 6200));
+    poTlsNode->Write((const Byte *)strRestRequest.c_str(), strRestRequest.length());
 
-std::vector<Byte> __thiscall InitializerData::FormatRequestPacket(
-    _in const StructuredBuffer & c_oStructuredBuffer
-    )
-{
-    __DebugFunction();
-    
-    unsigned int unSerializedBufferSizeInBytes = sizeof(Dword) + sizeof(uint32_t) + c_oStructuredBuffer.GetSerializedBufferRawDataSizeInBytes() + sizeof(Dword);
-    std::vector<Byte> stlSerializedBuffer(unSerializedBufferSizeInBytes);
-    Byte * pbSerializedBuffer = (Byte *) stlSerializedBuffer.data();
+    std::vector<Byte> oResponseByte = poTlsNode->Read(1, 5000);
+    while(0 != oResponseByte.size())
+    {
+        strResponseString.push_back(oResponseByte.at(0));
+        oResponseByte = poTlsNode->Read(1, 100);
+    }
 
-    // The format of the request data is:
-    //
-    // +------------------------------------------------------------------------------------+
-    // | [Dword] 0x436f6e74                                                                 |
-    // +------------------------------------------------------------------------------------+
-    // | [uint32_t] SizeInBytesOfRestRequestStructuredBuffer                                |
-    // +------------------------------------------------------------------------------------+
-    // | [SizeInBytesOfRestRequestStructuredBuffer] RestRequestStructuredBuffer             |
-    // +------------------------------------------------------------------------------------+
-    // | [Dword] 0x656e6420                                                                 |
-    // +------------------------------------------------------------------------------------+
-
-    *((Dword *) pbSerializedBuffer) = 0x436f6e74;
-    pbSerializedBuffer += sizeof(Dword);
-    *((uint32_t *) pbSerializedBuffer) = (uint32_t) c_oStructuredBuffer.GetSerializedBufferRawDataSizeInBytes();
-    pbSerializedBuffer += sizeof(uint32_t);
-    ::memcpy((void *) pbSerializedBuffer, (const void *) c_oStructuredBuffer.GetSerializedBufferRawDataPtr(), c_oStructuredBuffer.GetSerializedBufferRawDataSizeInBytes());
-    pbSerializedBuffer += c_oStructuredBuffer.GetSerializedBufferRawDataSizeInBytes();
-    *((Dword *) pbSerializedBuffer) = 0x656e6420;
-
-    return stlSerializedBuffer;
+    return strResponseString;
 }

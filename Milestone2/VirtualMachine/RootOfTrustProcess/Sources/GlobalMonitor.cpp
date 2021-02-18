@@ -320,7 +320,7 @@ void __thiscall GlobalMonitor::DisplayStatus(void) throw()
             // Format the string to print out
             
             std::string strElement((int) sWindowSize.ws_col, ' ');
-            std::snprintf(strElement.data(), strElement.size(), "[0x%08X%08X] %s (Pid=0x%08X, Tid=0x%08X, Time=%d, Event Count=%d)", HIDWORD(monitoredThread.first), LODWORD(monitoredThread.first), m_stlListOfDescriptionsByIdentifierHashes[monitoredThread.first].c_str(), m_stlListOfProcessIdentifiersByIdentifierHashes[monitoredThread.first], m_stlListOfThreadIdentifiersByIdentifierHashes[monitoredThread.first], m_stlListOfThreadTimestampsByIdentifierHashes[monitoredThread.first], m_stlTotalNumberOfEventsByIdentifierHashes[monitoredThread.first]);
+            std::snprintf(strElement.data(), strElement.size(), "[0x%08X%08X] %s (Pid=0x%08X, Tid=0x%08X, Time=%lu, Event Count=%d)", HIDWORD(monitoredThread.first), LODWORD(monitoredThread.first), m_stlListOfDescriptionsByIdentifierHashes[monitoredThread.first].c_str(), m_stlListOfProcessIdentifiersByIdentifierHashes[monitoredThread.first], m_stlListOfThreadIdentifiersByIdentifierHashes[monitoredThread.first], m_stlListOfThreadTimestampsByIdentifierHashes[monitoredThread.first], m_stlTotalNumberOfEventsByIdentifierHashes[monitoredThread.first]);
             strElement.resize(sWindowSize.ws_col, ' ');
             stlQueueOfMonitoredThreads.push(strElement);
         }

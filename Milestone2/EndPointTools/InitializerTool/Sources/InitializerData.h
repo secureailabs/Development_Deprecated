@@ -61,17 +61,16 @@ class InitializerData : public Object
     private:
     
         // Private methods
-        bool __thiscall GetImporterEncryptedOpaqueSessionBlob(void);
-        std::vector<Byte> __thiscall SendSaasRequest(
-            _in const StructuredBuffer & c_oStructuredBuffer
+        bool __thiscall GetImposterEncryptedOpaqueSessionBlob(void);
+        std::string __thiscall SendSaasRequest(
+            _in const std::string c_strVerb,
+            _in const std::string c_strResource,
+            _in const std::string & c_strBody
             );
-        std::vector<Byte> __thiscall FormatRequestPacket(
-            _in const StructuredBuffer & c_oStructuredBuffer
-            );
-            
+
         // Private data members
-        std::vector<Byte> m_stlEncryptedOpaqueSessionBlob;
-        std::vector<Byte> m_stlImposterEncryptedOpaqueSessionBlob;
+        std::string m_stlEncryptedOpaqueSessionBlob;
+        std::string m_stlImposterEncryptedOpaqueSessionBlob;
         Guid m_oClusterIdentifier;
         Guid m_oDataDomainIdentifier;
         Guid m_oComputationalDomainIdentifier;

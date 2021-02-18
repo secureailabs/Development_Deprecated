@@ -1,12 +1,49 @@
-CPROVDIR=.
-CXXFLAGS=-ggdb -std=c++11 -fstack-protector -DUNIX -DOS_UNIX -I$(CPROVDIR)/Include -fPIC
-LDFLAGS=-L$(CPROVDIR)/Libraries -lpthread -ldl -luuid -lcrypto -lssl
-OUTPUT=InitializerTool
+BUILD_MODE?=debug
+CXXFLAGS=-std=c++17 -fstack-protector -DUNIX -DOS_UNIX -fPIC
+LDFLAGS=-lpthread -ldl -luuid -lrt -lcrypto -lssl
+
+ifeq ($(BUILD_MODE), debug)
+	CXXFLAGS+= -ggdb
+else
+	CXXFLAGS+= -O3
+endif
+
+# The Root directory containing all the code
+ROOTDIR=../..
+ABSROOTDIR=$(shell realpath $(ROOTDIR))
+OBJDIR=$(ABSROOTDIR)/Binary/Objects
+
+# Add the new include folders here
+INCLUDE+=-I$(shell realpath ./Include)
+INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
+INCLUDE+=-I$(shell realpath ../../WebService/RestApiPortal/Include)
+
+# Add the new source directory here
+SRCDIRS+=$(shell realpath ./Sources)
+SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
+
+FINDFILES = $(wildcard $(DIR)/*.cpp)
+SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
+SOURCES+=$(shell realpath ../../WebService/RestApiPortal/Sources/JsonValue.cpp)
+SOURCES+=$(shell realpath ../../WebService/RestApiPortal/Sources/Utils.cpp)
+
+OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
+OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))
 
 all: $(OUTPUT)
+	@cp Telco1.csvp $(ABSROOTDIR)/Binary/
+	@cp Telco2.csvp $(ABSROOTDIR)/Binary/
 
-InitializerTool: 64BitHashes.o Base64Encoder.o BaseException.o Chronometer.o CommandLine.o ConsoleInputHelperFunctions.o FifoBuffer.o Guid.o HardCodedCryptographicKeys.o InitializerData.o IpcTransactionHelperFunctions.o Main.o Object.o SmartMemoryAllocator.o SocketClient.o Socket.o StructuredBuffer.o StructuredBufferElement.o TerminationSignal.o TlsClient.o TlsNode.o
-	$(CXX) $(LDFLAGS) $^ -o $@
+$(OBJDIR)%.o: $(ABSROOTDIR)%.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $^ -o $@
+
+$(OUTPUT): $(OBJS)
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ -o $@ $(LDFLAGS)
 
 clean:
-	-rm -rf $(OUTPUT) *.o
+	rm -rf $(OUTPUT) $(OBJS)
+
+cleanall:
+	rm -rf $(ABSROOTDIR)/Binary

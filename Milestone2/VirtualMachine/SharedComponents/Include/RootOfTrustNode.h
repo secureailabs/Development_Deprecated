@@ -43,6 +43,7 @@ class RootOfTrustNode : public Object
         std::vector<Byte> __thiscall GetDataset(void) const;
         
         void __thiscall RecordAuditEvent(
+            _in const std::vector<Byte> & c_oEncryptedOpaqueSessionBlob,
             _in Dword dwEventType,
             _in const StructuredBuffer & c_oEventData
             ) const;

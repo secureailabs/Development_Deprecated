@@ -22,7 +22,9 @@ std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strGreen + "1- Register Root Event\n" +
             oFontColor.strGreen + "2- Register Branch Event\n" +
             oFontColor.strBlue + "3- Register Leaf Event(s)\n" +
-            oFontColor.strCyan + "4- Get list of Events\n" +
+            oFontColor.strBlue + "4- Register a Virtual Machine\n" +
+            oFontColor.strCyan + "5- Get list of Events\n" +
+            oFontColor.strCyan + "6- Get list of Virtual Machine Events\n" +
             oFontColor.strYellow + "0- Quit\n";
 
 /********************************************************************************************/

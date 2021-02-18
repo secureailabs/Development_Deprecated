@@ -1,0 +1,618 @@
+/*********************************************************************************************
+ *
+ * @file VirtualMachineManager.cpp
+ * @author Shabana Akhtar Baig
+ * @date 19 Nov 2020
+ * @License Private and Confidential. Internal Use Only.
+ * @copyright Copyright (C) 2020 Secure AI Labs, Inc. All Rights Reserved.
+ * @brief
+ ********************************************************************************************/
+
+#include "VirtualMachineManager.h"
+#include "DateAndTime.h"
+#include "IpcTransactionHelperFunctions.h"
+#include "SmartMemoryAllocator.h"
+#include "SocketServer.h"
+#include "ThreadManager.h"
+#include "SocketClient.h"
+
+static VirtualMachineManager * gs_oVirtualMachineManager = nullptr;
+
+/********************************************************************************************
+ *
+ * @function GetVirtualMachineManager
+ * @brief Create a singleton object of VirtualMachineManager class
+ * @throw OutOfMemoryException If there isn't enough memory left to create a new instance
+ * @return Return the singleton object of VirtualMachineManager class
+ *
+ ********************************************************************************************/
+
+VirtualMachineManager * __stdcall GetVirtualMachineManager(void)
+{
+    __DebugFunction();
+
+    if (nullptr == gs_oVirtualMachineManager)
+    {
+        gs_oVirtualMachineManager = new VirtualMachineManager();
+        _ThrowOutOfMemoryExceptionIfNull(gs_oVirtualMachineManager);
+    }
+
+    return gs_oVirtualMachineManager;
+}
+
+/********************************************************************************************
+ *
+ * @function ShutdownVirtualMachineManager
+ * @brief Release the object resources and set global static pointer to NULL
+ *
+ ********************************************************************************************/
+
+void __stdcall ShutdownVirtualMachineManager(void)
+{
+    __DebugFunction();
+
+    if (nullptr != gs_oVirtualMachineManager)
+    {
+        gs_oVirtualMachineManager->Release();
+        gs_oVirtualMachineManager = nullptr;
+    }
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function VirtualMachineManager
+ * @brief Constructor
+ *
+ ********************************************************************************************/
+
+VirtualMachineManager::VirtualMachineManager(void)
+{
+    __DebugFunction();
+
+    m_sMutex = PTHREAD_MUTEX_INITIALIZER;
+    m_unNextAvailableIdentifier = 0;
+
+    this->InitializeUserAccounts();
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function VirtualMachineManager
+ * @brief Copy Constructor
+ * @param[in] c_oVirtualMachineManager Another instance of the class
+ * @note
+ *      This constructor triggers an assertion failure if called.
+ *
+ ********************************************************************************************/
+
+VirtualMachineManager::VirtualMachineManager(
+    _in const VirtualMachineManager & c_oVirtualMachineManager
+    )
+{
+    __DebugFunction();
+    __DebugAssert(false);
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function ~VirtualMachineManager
+ * @brief Destructor
+ *
+ ********************************************************************************************/
+
+VirtualMachineManager::~VirtualMachineManager(void)
+{
+    __DebugFunction();
+
+    for (VmInstance * oVmInstance : m_stlVmInstances)
+    {
+        delete oVmInstance;
+    }
+
+    for (UserAccount * oUserAccount : m_stlUserAccounts)
+    {
+        delete oUserAccount;
+    }
+
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function GetName
+ * @brief Fetch the name of the plugin
+ * @return Name of the plugin
+ *
+ ********************************************************************************************/
+
+const char * __thiscall VirtualMachineManager::GetName(void) const throw()
+{
+    __DebugFunction();
+
+    static const char * sc_szName = "VirtualMachineManager";
+
+    return sc_szName;
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function GetUuid
+ * @brief Fetch the UUID of the plugin
+ * @return UUID of the plugin
+ *
+ ********************************************************************************************/
+
+const char * __thiscall VirtualMachineManager::GetUuid(void) const throw()
+{
+    __DebugFunction();
+
+    static const char * sc_szUuid = "{FC48839C-AFA9-4D95-B83E-538A0B31CFD2}";
+
+    return sc_szUuid;
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function GetVersion
+ * @brief Fetch the current version of the plugin
+ * @return Version of the plugin
+ *
+ ********************************************************************************************/
+
+Qword __thiscall VirtualMachineManager::GetVersion(void) const throw()
+{
+    __DebugFunction();
+
+    return 0x0000000100000001;
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function GetDictionarySerializedBuffer
+ * @brief Fetch the serialized buffer of the plugin's dictionary
+ * @return Serialized buffer of the plugin's dictionary
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall VirtualMachineManager::GetDictionarySerializedBuffer(void) const throw()
+{
+    __DebugFunction();
+
+    return m_oDictionary.GetSerializedDictionary();
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function InitializeUserAccounts
+ * @brief Insert user data
+ *
+ ********************************************************************************************/
+
+void __thiscall VirtualMachineManager::InitializeUserAccounts(void)
+{
+    __DebugFunction();
+
+    m_stlUserAccounts.push_back(new UserAccount("{FEB1CAE7-0F10-4185-A1F2-DE71B85DBD25}", "johnsnow", "John Snow", "jsnow@example.com", "HBO", "1234567890", 999, 0x7));
+    m_stlUserAccounts.push_back(new UserAccount("{C1F45EF0-AB47-4799-9407-CA8A40CAC159}", "aryastark", "Arya Stark", "astark@example.com", "HBO", "1234567890", 888, 0x2));
+    m_stlUserAccounts.push_back(new UserAccount("{0A83BCF5-2845-4437-AEBE-E02DFB349BAB}", "belle", "Belle", "belle@example.com", "Walt Disney", "1234567890", 777, 0x1));
+    m_stlUserAccounts.push_back(new UserAccount("{64E4FAC3-63C9-4844-BF82-1581F9C750CE}", "gaston", "Gaston", "gaston@example.com", "Walt Disney", "1234567890", 666, 0x6));
+    m_stlUserAccounts.push_back(new UserAccount("{F732CA9C-217E-4E3D-BF25-E2425B480556}", "hermoinegranger", "Hermoine Granger", "hgranger@example.com", "Universal Studios", "1234567890", 555, 0x5));
+    m_stlUserAccounts.push_back(new UserAccount("{F3FBE722-1A42-4052-8815-0ABDDB3F2841}", "harrypotter", "Harry Potter", "hpotter@example.com", "Universal Studios", "1234567890", 444, 0x4));
+    m_stlUserAccounts.push_back(new UserAccount("{2B9C3814-79D4-456B-B64A-ED79F69373D3}", "antman", "Ant man", "antman@example.com", "Marvel Cinematic Universe", "1234567890", 333, 0x7));
+    m_stlUserAccounts.push_back(new UserAccount("{B40E1F9C-C100-46B3-BD7F-C80EB1351794}", "spiderman", "Spider man", "spiderman@example.com", "Marvel Cinematic Universe", "1234567890", 222, 0x6));
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function InitializePlugin
+ * @brief Initializer that initializes the plugin's dictionary
+ *
+ ********************************************************************************************/
+
+void __thiscall VirtualMachineManager::InitializePlugin(void)
+{
+    __DebugFunction();
+
+    // Add parameters for RegisterVM resource in a StructuredBuffer.
+    // Name, ElementType, and Range (if exists) are used by RestFrameworkRuntimeData::RunThread to vet request parameters.
+    // Required parameters are marked by setting IsRequired to true
+    // Otherwise the parameter is optional
+    StructuredBuffer oRegisterVmParameters;
+    StructuredBuffer oEosb;
+    oEosb.PutByte("ElementType", BUFFER_VALUE_TYPE);
+    oEosb.PutBoolean("IsRequired", true);
+    oRegisterVmParameters.PutStructuredBuffer("Eosb", oEosb);
+    StructuredBuffer oDcGuid;
+    oDcGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oDcGuid.PutBoolean("IsRequired", true);
+    oRegisterVmParameters.PutStructuredBuffer("DCGuid", oDcGuid);
+    StructuredBuffer oVmGuid;
+    oDcGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oDcGuid.PutBoolean("IsRequired", true);
+    oRegisterVmParameters.PutStructuredBuffer("VMGuid", oDcGuid);
+
+    // Takes in an EOSB and sends back list of all running VMs information associated with the smart contract
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/GetRunningVMs");
+
+    // Sends back report of VM's status
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/GetVMHeartBeat");
+
+    // Register a Virtual Machine 
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/RegisterVM", oRegisterVmParameters);
+
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function SubmitRequest
+ * @brief Method called by flat function SubmitRequest when a client requests for the plugin's resource
+ * @param[in] c_oRequestStructuredBuffer points to the request body
+ * @param[out] punSerializedResponseSizeInBytes stores the size of the response
+ * @throw BaseException Element not found
+ * @throw BaseException Error generating challenge nonce
+ * @returns a 64 bit unique transaction identifier
+ *
+ ********************************************************************************************/
+
+uint64_t __thiscall VirtualMachineManager::SubmitRequest(
+    _in const StructuredBuffer & c_oRequestStructuredBuffer,
+    _out unsigned int * punSerializedResponseSizeInBytes
+    )
+{
+    __DebugFunction();
+
+    uint64_t un64Identifier = 0xFFFFFFFFFFFFFFFF;
+    std::string strVerb = c_oRequestStructuredBuffer.GetString("Verb");
+    std::string strResource = c_oRequestStructuredBuffer.GetString("Resource");
+    // TODO: As an optimization, we should make sure to convert strings into 64 bit hashes
+    // in order to speed up comparison. String comparisons WAY expensive.
+    std::vector<Byte> stlResponseBuffer;
+
+    // Route to the requested resource
+    if ("GET" == strVerb)
+    {
+        if ("/SAIL/VirtualMachineManager/GetRunningVMs" == strResource)
+        {
+            stlResponseBuffer = this->GetListOfRunningVmInstances(c_oRequestStructuredBuffer);
+        }
+
+        else if ("/SAIL/VirtualMachineManager/GetVMHeartBeat" == strResource)
+        {
+            stlResponseBuffer = this->GetVmHeartBeat(c_oRequestStructuredBuffer);
+        }
+    }
+    else if ("POST" == strVerb)
+    {
+        if ("/SAIL/VirtualMachineManager/RegisterVM" == strResource)
+        {
+            stlResponseBuffer = this->RegisterVmInstance(c_oRequestStructuredBuffer);
+        }
+    }
+
+    // Return size of response buffer
+    *punSerializedResponseSizeInBytes = stlResponseBuffer.size();
+    __DebugAssert(0 < *punSerializedResponseSizeInBytes);
+
+    // Save the response buffer and increment transaction identifier which will be assigned to the next transaction
+    ::pthread_mutex_lock(&m_sMutex);
+    if (0xFFFFFFFFFFFFFFFF == m_unNextAvailableIdentifier)
+    {
+        m_unNextAvailableIdentifier = 0;
+    }
+    un64Identifier = m_unNextAvailableIdentifier;
+    m_unNextAvailableIdentifier++;
+    m_stlCachedResponse[un64Identifier] = stlResponseBuffer;
+    ::pthread_mutex_unlock(&m_sMutex);
+
+    return un64Identifier;
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function GetResponse
+ * @brief Method called by flat function GetResponse to get plugin's response
+ * @param[in] un64Identifier is the transaction identifier
+ * @param[out] c_pbSerializedResponseBuffer points to the GetResponse
+ * @params[in] unSerializedResponseBufferSizeInBytes is used to verify the request
+ * @returns a boolean that represents status of the request
+ *
+********************************************************************************************/
+
+bool __thiscall VirtualMachineManager::GetResponse(
+    _in uint64_t un64Identifier,
+    _out Byte * pbSerializedResponseBuffer,
+    _in unsigned int unSerializedResponseBufferSizeInBytes
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0xFFFFFFFFFFFFFFFF != un64Identifier);
+    __DebugAssert(nullptr != pbSerializedResponseBuffer);
+    __DebugAssert(0 < unSerializedResponseBufferSizeInBytes);
+
+    bool fSuccess = false;
+
+    ::pthread_mutex_lock(&m_sMutex);
+    if (m_stlCachedResponse.end() != m_stlCachedResponse.find(un64Identifier))
+    {
+        __DebugAssert(0 < m_stlCachedResponse[un64Identifier].size());
+
+        ::memcpy((void *) pbSerializedResponseBuffer, (const void *) m_stlCachedResponse[un64Identifier].data(), m_stlCachedResponse[un64Identifier].size());
+        m_stlCachedResponse.erase(un64Identifier);
+        fSuccess = true;
+    }
+    ::pthread_mutex_unlock(&m_sMutex);
+
+    return fSuccess;
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function GetListOfRunningVmInstances
+ * @brief Takes in IEOSB of Researcher or Dataset Owner and send back list of all running VMs information associated with the smart contract
+ * @param[in] c_oRequest contains the IEOSB
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns StructuredBuffer containing list of running VMs information associated with the smart contract
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall VirtualMachineManager::GetListOfRunningVmInstances(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+    // TODO: Fetch VMInstances records from the database
+    // TODO: Replace call to abstract class UserAccount::IsDatasetAdmin() with call to AccountDatabase plugin
+    //       and get TypeOfUser associated with strUserUuid
+
+    StructuredBuffer oResponse;
+
+    // Take in full IEOSB of Researcher or DatasetAdmin
+    StructuredBuffer oEosb(c_oRequest.GetBuffer("Eosb"));
+    std::string strUserUuid = oEosb.GetString("UserUuid");
+    bool fIsImposter = oEosb.GetBoolean("IsImposter");
+    _ThrowBaseExceptionIf((false == fIsImposter), "Imposter EOSB needed to get the list of running VMs.", nullptr);
+
+    // Verify that the user's TypeOfAccount is "Researcher or ""Dataset Admin"
+    bool fFound = false;
+    for (unsigned int unIndex = 0; ((false == fFound) && (unIndex < m_stlUserAccounts.size())); ++unIndex)
+    {
+        if (strUserUuid == m_stlUserAccounts[unIndex]->GetUserUuid())
+        {
+            if ((true == m_stlUserAccounts[unIndex]->IsResearcher()) || (true == m_stlUserAccounts[unIndex]->IsDatasetAdmin()))
+            {
+                fFound = true;
+            }
+            else
+            {
+                _ThrowBaseException("Error: User is not authorized for this transaction", nullptr);
+            }
+        }
+    }
+
+    _ThrowBaseExceptionIf((false == fFound), "Error: User not found", nullptr);
+
+    // Generate a StructuredBuffer containing all running VMs information associated with the smart contract
+    VmInstance * oVmInstance;
+    ::pthread_mutex_lock(&m_sMutex);
+    for (unsigned int unIndex = 0 ; unIndex < m_stlVmInstances.size(); ++unIndex)
+    {
+        // TODO: Add an if statement and add check for VMs associated with the smart contract
+        oVmInstance = m_stlVmInstances[unIndex];
+        StructuredBuffer oVmInstanceMetadata;
+        oVmInstanceMetadata.PutString("VmIpAddress", oVmInstance->GetVmInstanceIpAddress());
+        oVmInstanceMetadata.PutWord("VmPortNumber", oVmInstance->GetVmInstancePortNumber());
+        oVmInstanceMetadata.PutBoolean("VmStatus", oVmInstance->GetVmInstanceStatus());
+        oVmInstanceMetadata.PutQword("VmRegistrationDate", oVmInstance->GetVmInstanceRegistrationDate());
+        oVmInstanceMetadata.PutQword("VmUpTime", oVmInstance->GetVmInstanceUpTime());
+        oResponse.PutStructuredBuffer(oVmInstance->GetVmInstanceUuid().c_str(), oVmInstanceMetadata);
+
+    }
+    ::pthread_mutex_unlock(&m_sMutex);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function GetVmHeartBeat
+ * @brief Send back status of VM
+ * @param[in] c_oRequest contains the IEOSB of the Dataset Admin and uuid of the VMInstance
+ * @returns StructuredBuffer containing status of the VM
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall VirtualMachineManager::GetVmHeartBeat(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+    // TODO: Fetch VmInstances records from the database
+    // TODO: Replace call to abstract class UserAccount::IsDatasetAdmin() with call to AccountDatabase plugin
+    //       and get TypeOfUser associated with strUserUuid
+
+    StructuredBuffer oResponse;
+
+    // Take in full IEOSB of Researcher or DatasetAdmin
+    StructuredBuffer oEosb(c_oRequest.GetBuffer("Eosb"));
+    std::string strUserUuid = oEosb.GetString("UserUuid");
+    bool fIsImposter = oEosb.GetBoolean("IsImposter");
+    _ThrowBaseExceptionIf((false == fIsImposter), "Imposter EOSB needed to get status of a VM.", nullptr);
+
+    // Verify that the user's TypeOfAccount is "Dataset Admin"
+    bool fFound = false;
+    for (unsigned int unIndex = 0; ((false == fFound) && (unIndex < m_stlUserAccounts.size())); ++unIndex)
+    {
+        if (strUserUuid == m_stlUserAccounts[unIndex]->GetUserUuid())
+        {
+            if (true == m_stlUserAccounts[unIndex]->IsDatasetAdmin())
+            {
+                fFound = true;
+            }
+            else
+            {
+                _ThrowBaseException("Error: User is not authorized for this transaction", nullptr);
+            }
+        }
+    }
+
+    _ThrowBaseExceptionIf((false == fFound), "Error: User not found", nullptr);
+
+    // Get the VM UUID
+    std::string strVmUuid = c_oRequest.GetString("VmInstanceUuid");
+    // Find the VM and send back status of the VM
+    fFound = false;
+    bool fVmStatus = false;
+    ::pthread_mutex_lock(&m_sMutex);
+    for (unsigned int unIndex = 0 ; ((false == fFound) && (unIndex < m_stlVmInstances.size())); ++unIndex)
+    {
+        if (strVmUuid == m_stlVmInstances[unIndex]->GetVmInstanceUuid())
+        {
+            fVmStatus = m_stlVmInstances[unIndex]->GetVmInstanceStatus();
+            fFound = true;
+        }
+    }
+    ::pthread_mutex_unlock(&m_sMutex);
+
+    _ThrowBaseExceptionIf((false == fFound), "ERROR: VmInstance not found.", nullptr);
+
+    oResponse.PutBoolean("VmStatus", fVmStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function RegisterVmInstance
+ * @brief Take in IEOSB of a dataset admin and add the vm record to the database
+ * @param[in] c_oRequest contains IEOSB of the dataset admin and the VM information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Request status
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+    
+    StructuredBuffer oResponse;
+
+    // Take in EOSB, DCGuid, and VMGuid
+    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+    std::string strDcGuid = c_oRequest.GetString("DCGuid");
+    std::string strVmGuid = c_oRequest.GetString("VMGuid");
+
+    std::cout << "1\n";
+
+    // Call CryptographicManager plugin to get the organization guid
+    StructuredBuffer oDecryptEosbRequest;
+    oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
+    oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
+    Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+    StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+    // Throw base exception if transaction was unsuccessful
+    _ThrowBaseExceptionIf(((0 == oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 != oDecryptedEosb.GetDword("Status"))), "Error decrypting Eosb", nullptr);
+    // Get the organization guid
+    Guid oOrganizationGuid = oDecryptedEosb.GetStructuredBuffer("Eosb").GetGuid("OrganizationGuid");
+
+    std::cout << "2\n";
+
+    // Check whether DC branch event log exists for DCGuid in the database or not
+    // If not then create a DC branch event log
+    StructuredBuffer oGetDcBranchEventRequest;
+    oGetDcBranchEventRequest.PutDword("TransactionType", 0x00000003);
+    oGetDcBranchEventRequest.PutString("OrganizationGuid", oOrganizationGuid.ToString(eHyphensAndCurlyBraces));
+    StructuredBuffer oFilters;
+    oFilters.PutString("DCGuid", strDcGuid);
+    oGetDcBranchEventRequest.PutStructuredBuffer("Filters", oFilters);
+    // Call AuditLogManager plugin to get the guid of DC event log
+    std::string strDcEventGuid;
+    Socket * poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
+    StructuredBuffer oDCEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oGetDcBranchEventRequest));
+    _ThrowBaseExceptionIf((0 > oDCEventLog.GetSerializedBufferRawDataSizeInBytes()), "Error checking for DC event", nullptr);
+    std::cout << "3\n";
+    if (200 == oDCEventLog.GetDword("Status"))
+    {
+        strDcEventGuid = oDCEventLog.GetString("DCEventGuid");
+    }
+    else 
+    {
+        std::cout << "4\n";
+        // Create a DC branch event for DCGuid
+        std::string strRootEventGuid = oDCEventLog.GetString("RootEventGuid");
+        StructuredBuffer oDcBranchEvent;
+        oDcBranchEvent.PutDword("TransactionType", 0x00000001);
+        oDcBranchEvent.PutBuffer("Eosb", stlEosb);
+        StructuredBuffer oDcMetadata;
+        strDcEventGuid = Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces);
+        oDcMetadata.PutString("EventGuid", strDcEventGuid);
+        oDcMetadata.PutString("ParentGuid", strRootEventGuid);
+        oDcMetadata.PutString("OrganizationGuid", oOrganizationGuid.ToString(eHyphensAndCurlyBraces));
+        oDcMetadata.PutQword("EventType", 2); // where 2 is for non root event type
+        oDcMetadata.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+        oDcMetadata.PutUnsignedInt32("SequenceNumber", 1);
+        StructuredBuffer oPlainTextMetadata;
+        oPlainTextMetadata.PutDword("BranchType", 1); // where 1 is for for DC branch type
+        oPlainTextMetadata.PutString("GuidOfDcOrVm", strDcGuid);
+        oDcMetadata.PutStructuredBuffer("PlainTextEventData", oPlainTextMetadata);
+        oDcBranchEvent.PutStructuredBuffer("NonLeafEvent", oDcMetadata);
+        // Call AuditLogManager plugin to create a DC event log
+        poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
+        StructuredBuffer oDcEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oDcBranchEvent));
+        _ThrowBaseExceptionIf(((0 > oDcEventLog.GetSerializedBufferRawDataSizeInBytes())&&(201 != oDcEventLog.GetDword("Status"))), "Error creating DC branch event.", nullptr);
+        std::cout << "5\n";
+    }
+
+    // Create a Vm branch event log
+    std::cout << "6\n";
+    StructuredBuffer oVmBranchEvent;
+    oVmBranchEvent.PutDword("TransactionType", 0x00000001);
+    oVmBranchEvent.PutBuffer("Eosb", stlEosb);
+    StructuredBuffer oVmMetadata;
+    Guid oVmEventGuid(eAuditEventBranchNode);
+    oVmMetadata.PutString("EventGuid", oVmEventGuid.ToString(eHyphensAndCurlyBraces));
+    oVmMetadata.PutString("ParentGuid", strDcEventGuid);
+    oVmMetadata.PutString("OrganizationGuid", oOrganizationGuid.ToString(eHyphensAndCurlyBraces));
+    oVmMetadata.PutQword("EventType", 2); // where 2 is for non root event type
+    oVmMetadata.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+    oVmMetadata.PutUnsignedInt32("SequenceNumber", 2);
+    StructuredBuffer oPlainTextMetadata;
+    oPlainTextMetadata.PutDword("BranchType", 2); // where 2 is for for Vm branch type
+    oPlainTextMetadata.PutString("GuidOfDcOrVm", strVmGuid);
+    oVmMetadata.PutStructuredBuffer("PlainTextEventData", oPlainTextMetadata);
+    oVmBranchEvent.PutStructuredBuffer("NonLeafEvent", oVmMetadata);
+    std::cout << "7\n";
+    // Call AuditLogManager plugin to create a Vm event log
+    bool fSuccess = false;
+    poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
+    StructuredBuffer oVmEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oVmBranchEvent));
+    if ((0 < oVmEventLog.GetSerializedBufferRawDataSizeInBytes())&&(201 == oVmEventLog.GetDword("Status")))
+    {
+        oResponse.PutDword("Status", 201);
+        // Add Vm branch log event guid to the response
+        oResponse.PutGuid("VmEventGuid", oVmEventGuid);
+        fSuccess = true;
+    }
+    std::cout << "8\n";
+    // Add error code if transaction was unsuccessful
+    if (false == fSuccess)
+    {
+        oResponse.PutDword("Status", 404);
+    }
+
+    return oResponse.GetSerializedBuffer();
+}

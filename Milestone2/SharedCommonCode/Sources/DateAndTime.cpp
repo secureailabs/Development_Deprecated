@@ -21,3 +21,12 @@ uint64_t __stdcall GetEpochTimeInSeconds(void) throw()
     
     return (uint64_t) ::time(nullptr);
 }
+
+/********************************************************************************************/
+
+uint64_t __stdcall GetEpochTimeInMilliseconds(void) throw()
+{
+	__DebugFunction();
+    
+    return (uint64_t) ::time(nullptr) * 1000;
+}

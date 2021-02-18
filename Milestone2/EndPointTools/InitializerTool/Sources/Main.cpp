@@ -91,9 +91,9 @@ static void __stdcall PromptForCredentials(
         {
             // Fetch user credentials
             std::string strOrganization = ::GetStringInput("Organization : ", 128, false, gsc_szPrintableCharacters);
-            std::string strUsername = ::GetStringInput("Username : ", 64, false, gsc_szPrintableCharacters);
+            std::string strUserEmail = ::GetStringInput("Email : ", 64, false, gsc_szPrintableCharacters);
             std::string strPassword = ::GetStringInput("Password : ", 64, true, gsc_szPrintableCharacters);
-            fSuccess = oInitializerData.Login(strOrganization, strUsername, strPassword);
+            fSuccess = oInitializerData.Login(strOrganization, strUserEmail, strPassword);
             if (false == fSuccess)
             {
                 std::cout << "\r\033[1;31mInvalid credentials. Try again.\033[0m" << std::endl;

@@ -38,25 +38,25 @@ InitializerData::~InitializerData(void)
 {
     __DebugFunction();
     
-    
+
 }
 
 /********************************************************************************************/
 
 bool __thiscall InitializerData::Login(
     _in const std::string strOrganization,
-    _in const std::string strUsername,
+    _in const std::string strUserEmail,
     _in const std::string strPassword
     )
 {
     __DebugFunction();
-    
+
     bool fSuccess = false;
 
-    const std::string stlLoginResponse = this->SendSaasRequest("POST", "AuthenticationManager/User/Login?Email="+ strUsername + "&Password="+ strPassword, "");
-    StructuredBuffer oRestResponse = JsonValue::ParseDataToStructuredBuffer(stlLoginResponse.substr(stlLoginResponse.find_last_of("\r\n\r\n")).c_str());
     try
     {
+        const std::string strLoginResponse = this->SendSaasRequest("POST", "AuthenticationManager/User/Login?Email="+ strUserEmail + "&Password="+ strPassword, "");
+        StructuredBuffer oRestResponse = JsonValue::ParseDataToStructuredBuffer(strLoginResponse.substr(strLoginResponse.find_last_of("\r\n\r\n")).c_str());
         m_stlEncryptedOpaqueSessionBlob = oRestResponse.GetString("Eosb");
         fSuccess = true;
     }
@@ -73,7 +73,7 @@ bool __thiscall InitializerData::Login(
 std::vector<std::string> __thiscall InitializerData::GetListOfDigitalContracts(void) const
 {
     __DebugFunction();
-    
+
     std::vector<std::string> stlListOfDigitalContracts;
     std::string strContractOne = "ACME <--> Wile E. Coyote Contract";
     std::string strContractTwo = "Devil <--> Trump's Soul Contract";
@@ -91,7 +91,7 @@ std::vector<std::string> __thiscall InitializerData::GetListOfDigitalContracts(v
 std::string __thiscall InitializerData::GetEffectiveDigitalContractName(void) const throw()
 {
     __DebugFunction();
-    
+
     return m_strEffectiveDigitalContractName;
 }
 
@@ -114,7 +114,7 @@ std::vector<std::string> __thiscall InitializerData::GetUninitializedNodeAddress
     
     std::vector<std::string> strListOfUninitializedNodeAddresses;
     std::string strAddressOne = "127.0.0.1";
-    
+
     strListOfUninitializedNodeAddresses.push_back(strAddressOne);
     
     return strListOfUninitializedNodeAddresses;
@@ -235,10 +235,10 @@ bool __thiscall InitializerData::GetImposterEncryptedOpaqueSessionBlob(void)
 
     bool fSuccess = false;
 
-    const std::string stlLoginResponse = this->SendSaasRequest("POST", "Authentication/ImposterEOSB", "");
-    StructuredBuffer oRestResponse = JsonValue::ParseDataToStructuredBuffer(stlLoginResponse.substr(stlLoginResponse.find_last_of("\r\n\r\n")).c_str());
     try
     {
+        const std::string stlLoginResponse = this->SendSaasRequest("POST", "Authentication/ImposterEOSB", "");
+        StructuredBuffer oRestResponse = JsonValue::ParseDataToStructuredBuffer(stlLoginResponse.substr(stlLoginResponse.find_last_of("\r\n\r\n")).c_str());
         m_stlImposterEncryptedOpaqueSessionBlob = oRestResponse.GetString("Eosb");
         fSuccess = true;
     }

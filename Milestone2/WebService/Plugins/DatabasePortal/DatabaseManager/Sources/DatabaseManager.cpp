@@ -595,13 +595,7 @@ std::vector<Byte> __thiscall DatabaseManager::GetListOfEvents(
                                                                                                             << "ParentGuid" << strParentGuid 
                                                                                                             << "OrganizationGuid" << strOrganizationGuid
                                                                                                             << finalize);
-        bsoncxx::document::element strEventGuid = oAuditLogDocument->view()["EventGuid"];
-        if (strEventGuid && strEventGuid.type() == type::k_utf8)
-        {
-            // Add root event to the response structured buffer 
-            StructuredBuffer oEvent;
-            oListOfEvents.PutStructuredBuffer(strEventGuid.get_utf8().value.to_string().c_str(), oEvent);
-        }
+        this->GetEventObjectBlob(oSailDatabase, oFilters, oAuditLogDocument->view(), &oListOfEvents);
     }
     else 
     {
@@ -614,116 +608,7 @@ std::vector<Byte> __thiscall DatabaseManager::GetListOfEvents(
         // Parse all returned documents, apply filters, and add to the structured buffer containing the list of events
         for (auto&& oDocumentView : oAuditLogCursor)
         {
-            // Get values from the document and generate the event log StructuredBuffer
-            StructuredBuffer oEvent;
-            bsoncxx::document::element strPlainTextObjectBlobGuid = oDocumentView["PlainTextObjectBlobGuid"];
-            bsoncxx::document::element strEventGuid = oDocumentView["EventGuid"];
-            bsoncxx::document::element strOrganizationGuid = oDocumentView["OrganizationGuid"];
-            bsoncxx::document::element fIsLeaf = oDocumentView["IsLeaf"];
-
-            // Get the PlainTextObjectBlob and then get the Object blob
-            // Apply filters if any
-            // If the object is not filtered out then add the audit log information to the Event structured buffer
-            bool fAddToListOfEvents = false;
-            if (strPlainTextObjectBlobGuid && strPlainTextObjectBlobGuid.type() == type::k_utf8)
-            {
-                Guid oPlainTextObjectBlobGuid(strPlainTextObjectBlobGuid.get_utf8().value.to_string().c_str());
-                // Fetch events from the PlainTextObjectBlob collection associated with the event guid
-                bsoncxx::stdx::optional<bsoncxx::document::value> oPlainTextObjectBlobDocument = oSailDatabase["PlainTextObjectBlob"].find_one(document{} 
-                                                                                                                                                << "PlainTextObjectBlobGuid" <<  oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces) 
-                                                                                                                                                << finalize);
-                if (bsoncxx::stdx::nullopt != oPlainTextObjectBlobDocument)
-                {
-                    bsoncxx::document::element strObjectGuid = oPlainTextObjectBlobDocument->view()["ObjectGuid"];
-                    if (strObjectGuid && strObjectGuid.type() == type::k_utf8)
-                    {
-                        Guid oObjectGuid(strObjectGuid.get_utf8().value.to_string().c_str());
-                        oEvent.PutGuid("ObjectGuid", oObjectGuid);
-                        // Fetch events from the Object collection associated with the object guid
-                        bsoncxx::stdx::optional<bsoncxx::document::value> oObjectDocument = oSailDatabase["Object"].find_one(document{} << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces) << finalize);
-                        if (bsoncxx::stdx::nullopt != oObjectDocument)
-                        {
-                            bsoncxx::document::element stlObjectBlob = oObjectDocument->view()["ObjectBlob"];
-                            if (stlObjectBlob && stlObjectBlob.type() == type::k_binary)
-                            {
-                                // Apply supplied filters on audit logs
-                                StructuredBuffer oObject(stlObjectBlob.get_binary().bytes, stlObjectBlob.get_binary().size);
-                                std::vector<std::string> stlFilters = oFilters.GetNamesOfElements();
-                                try 
-                                {
-                                    for (std::string strFilter : stlFilters)
-                                    {
-                                        if ("MinimumDate" == strFilter)
-                                        {
-                                            uint64_t unObjectTimestamp = oObject.GetUnsignedInt64("Timestamp");
-                                            uint64_t unFilterMinimumDate = oFilters.GetUnsignedInt64("MinimumDate");
-                                            _ThrowBaseExceptionIf((unObjectTimestamp < unFilterMinimumDate), "Object timestamp is less than the specified minimum date.", nullptr);
-                                        }
-                                        else if ("MaximumDate" == strFilter)
-                                        {
-                                            uint64_t unObjectTimestamp = oObject.GetUnsignedInt64("Timestamp");
-                                            uint64_t unFilterMaximumDate = oFilters.GetUnsignedInt64("MaximumDate");
-                                            _ThrowBaseExceptionIf((unObjectTimestamp > unFilterMaximumDate), "Object timestamp is greater than the specified maximum date.", nullptr);
-                                        }
-                                        else if ("TypeOfEvents" == strFilter)
-                                        {
-                                            Qword qwObjectEventType = oObject.GetQword("EventType");
-                                            Qword qwFilterEventType = oFilters.GetQword("TypeOfEvents");
-                                            _ThrowBaseExceptionIf((qwObjectEventType != qwFilterEventType), "Object type is not the same as the specified event type.", nullptr);
-                                        }
-                                        else if ("DCGuid" == strFilter)
-                                        {
-                                            // Word wType = Guid(strEventGuid.get_utf8().value.to_string().c_str()).GetObjectType();
-                                            // _ThrowBaseExceptionIf((eAuditEventBranchNode != wType), "No DC guid exists for this type of object.", nullptr);
-                                            _ThrowBaseExceptionIf((0 == oObject.GetUnsignedInt32("SequenceNumber")), "No DC guid exists for root node.", nullptr);
-                                            StructuredBuffer oPlainTextMetadata(oObject.GetStructuredBuffer("PlainTextEventData"));
-                                            std::string strPlainObjectDCGuid = oPlainTextMetadata.GetString("GuidOfDcOrVm");
-                                            std::string strFilterDcGuid = oFilters.GetString("DCGuid");
-                                            _ThrowBaseExceptionIf((1 != oPlainTextMetadata.GetDword("BranchType")), "The audit log is not for a digital contract", nullptr);
-                                            _ThrowBaseExceptionIf((strPlainObjectDCGuid != strFilterDcGuid), "The DC guid does not match the requested dc guid", nullptr);
-                                        }
-                                        // TODO: Add VMGuid filters
-                                        // else if ("VMGuid" == strFilter)
-                                        // {
-
-                                        // }
-                                    }
-                                    fAddToListOfEvents = true;
-                                }
-                                catch (BaseException oException)
-                                {
-                                    fAddToListOfEvents = false;
-                                }
-                                if (true == fAddToListOfEvents)
-                                {
-                                    // If the audit log object is not filtered out then add it to the Event structured buffer
-                                    oEvent.PutStructuredBuffer("ObjectBlob", oObject);
-                                    // Add PlainTextObjectBlobGuid to the Event structured buffer
-                                    oEvent.PutGuid("PlainTextObjectBlobGuid", oPlainTextObjectBlobGuid);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            // If the object is not filtered out then add the audit log information to the Event structured buffer
-            if (true == fAddToListOfEvents)
-            {
-                // Add other information to the event 
-                if (strEventGuid && strEventGuid.type() == type::k_utf8)
-                {
-                    if (strOrganizationGuid && strOrganizationGuid.type() == type::k_utf8)
-                    {
-                        oEvent.PutGuid("OrganizationGuid", Guid(strOrganizationGuid.get_utf8().value.to_string().c_str()));
-                    }
-                    if (fIsLeaf && fIsLeaf.type() == type::k_bool)
-                    {
-                        oEvent.PutBoolean("isLeaf", fIsLeaf.get_bool().value);
-                    }
-                    // Add event to the response structured buffer that contains list of audit events 
-                    oListOfEvents.PutStructuredBuffer(strEventGuid.get_utf8().value.to_string().c_str(), oEvent);
-                }
-            }
+            this->GetEventObjectBlob(oSailDatabase, oFilters, oDocumentView, &oListOfEvents);
         }
     }
 
@@ -732,6 +617,192 @@ std::vector<Byte> __thiscall DatabaseManager::GetListOfEvents(
     oResponse.PutStructuredBuffer("ListOfEvents", oListOfEvents);
 
     return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
+ * @function GetEventObjectBlob
+ * @brief Apply filters and add logs to the listofevents
+ * @param[in] oDocumentView contains mongo document view
+ * @param[out] poListOfEvents contains pointer to the structured buffer containing list of events
+ * @throw BaseException Error StructuredBuffer element not found
+ *
+ ********************************************************************************************/
+
+void __thiscall DatabaseManager::GetEventObjectBlob(
+    _in const mongocxx::database & c_oSailDatabase,
+    _in const StructuredBuffer & c_oFilters,
+    _in const bsoncxx::document::view & c_oDocumentView,
+    _out StructuredBuffer * poListOfEvents
+    )
+{
+    __DebugFunction();
+
+    // Get values from the document and generate the event log StructuredBuffer
+    StructuredBuffer oEvent;
+    bsoncxx::document::element strPlainTextObjectBlobGuid = c_oDocumentView["PlainTextObjectBlobGuid"];
+    bsoncxx::document::element strEventGuid = c_oDocumentView["EventGuid"];
+    bsoncxx::document::element strOrganizationGuid = c_oDocumentView["OrganizationGuid"];
+    bsoncxx::document::element fIsLeaf = c_oDocumentView["IsLeaf"];
+
+    // Get the PlainTextObjectBlob and then get the Object blob
+    // Apply filters if any
+    // If the object is not filtered out then add the audit log information to the Event structured buffer
+    bool fAddToListOfEvents = false;
+    if (strPlainTextObjectBlobGuid && strPlainTextObjectBlobGuid.type() == type::k_utf8)
+    {
+        Guid oPlainTextObjectBlobGuid(strPlainTextObjectBlobGuid.get_utf8().value.to_string().c_str());
+        // Fetch events from the PlainTextObjectBlob collection associated with the event guid
+        bsoncxx::stdx::optional<bsoncxx::document::value> oPlainTextObjectBlobDocument = c_oSailDatabase["PlainTextObjectBlob"].find_one(document{} 
+                                                                                                                                        << "PlainTextObjectBlobGuid" <<  oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces) 
+                                                                                                                                        << finalize);
+        if (bsoncxx::stdx::nullopt != oPlainTextObjectBlobDocument)
+        {
+            bsoncxx::document::element strObjectGuid = oPlainTextObjectBlobDocument->view()["ObjectGuid"];
+            if (strObjectGuid && strObjectGuid.type() == type::k_utf8)
+            {
+                Guid oObjectGuid(strObjectGuid.get_utf8().value.to_string().c_str());
+                oEvent.PutGuid("ObjectGuid", oObjectGuid);
+                // Fetch events from the Object collection associated with the object guid
+                bsoncxx::stdx::optional<bsoncxx::document::value> oObjectDocument = c_oSailDatabase["Object"].find_one(document{} << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces) << finalize);
+                if (bsoncxx::stdx::nullopt != oObjectDocument)
+                {
+                    bsoncxx::document::element stlObjectBlob = oObjectDocument->view()["ObjectBlob"];
+                    if (stlObjectBlob && stlObjectBlob.type() == type::k_binary)
+                    {
+                        // Apply supplied filters on audit logs
+                        StructuredBuffer oObject(stlObjectBlob.get_binary().bytes, stlObjectBlob.get_binary().size);
+                        std::vector<std::string> stlFilters = c_oFilters.GetNamesOfElements();
+                        try 
+                        {
+                            for (std::string strFilter : stlFilters)
+                            {
+                                if ("MinimumDate" == strFilter)
+                                {
+                                    uint64_t unObjectTimestamp = oObject.GetUnsignedInt64("Timestamp");
+                                    uint64_t unFilterMinimumDate = c_oFilters.GetUnsignedInt64("MinimumDate");
+                                    _ThrowBaseExceptionIf((unObjectTimestamp < unFilterMinimumDate), "Object timestamp is less than the specified minimum date.", nullptr);
+                                }
+                                else if ("MaximumDate" == strFilter)
+                                {
+                                    uint64_t unObjectTimestamp = oObject.GetUnsignedInt64("Timestamp");
+                                    uint64_t unFilterMaximumDate = c_oFilters.GetUnsignedInt64("MaximumDate");
+                                    _ThrowBaseExceptionIf((unObjectTimestamp > unFilterMaximumDate), "Object timestamp is greater than the specified maximum date.", nullptr);
+                                }
+                                else if ("TypeOfEvents" == strFilter)
+                                {
+                                    Qword qwObjectEventType = oObject.GetQword("EventType");
+                                    Qword qwFilterEventType = c_oFilters.GetQword("TypeOfEvents");
+                                    _ThrowBaseExceptionIf((qwObjectEventType != qwFilterEventType), "Object type is not the same as the specified event type.", nullptr);
+                                }
+                                else if ("DCGuid" == strFilter)
+                                {
+                                    // Word wType = Guid(strEventGuid.get_utf8().value.to_string().c_str()).GetObjectType();
+                                    // _ThrowBaseExceptionIf((eAuditEventBranchNode != wType), "No DC guid exists for this type of object.", nullptr);
+                                    _ThrowBaseExceptionIf((0 == oObject.GetUnsignedInt32("SequenceNumber")), "No DC guid exists for root node.", nullptr);
+                                    StructuredBuffer oPlainTextMetadata(oObject.GetStructuredBuffer("PlainTextEventData"));
+                                    std::string strPlainObjectDCGuid = oPlainTextMetadata.GetString("GuidOfDcOrVm");
+                                    std::string strFilterDcGuid = c_oFilters.GetString("DCGuid");
+                                    _ThrowBaseExceptionIf((1 != oPlainTextMetadata.GetDword("BranchType")), "The audit log is not for a digital contract", nullptr);
+                                    _ThrowBaseExceptionIf((strPlainObjectDCGuid != strFilterDcGuid), "The DC guid does not match the requested dc guid", nullptr);
+                                }
+                                // TODO: Add VMGuid filters
+                                // else if ("VMGuid" == strFilter)
+                                // {
+
+                                // }
+                            }
+                            fAddToListOfEvents = true;
+                        }
+                        catch (BaseException oException)
+                        {
+                            fAddToListOfEvents = false;
+                        }
+                        if (true == fAddToListOfEvents)
+                        {
+                            // If the audit log object is not filtered out then add it to the Event structured buffer
+                            oEvent.PutStructuredBuffer("ObjectBlob", oObject);
+                            // Add PlainTextObjectBlobGuid to the Event structured buffer
+                            oEvent.PutGuid("PlainTextObjectBlobGuid", oPlainTextObjectBlobGuid);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // If the object is not filtered out then add the audit log information to the Event structured buffer
+    if (true == fAddToListOfEvents)
+    {
+        // Add other information to the event 
+        if (strEventGuid && strEventGuid.type() == type::k_utf8)
+        {
+            if (strOrganizationGuid && strOrganizationGuid.type() == type::k_utf8)
+            {
+                oEvent.PutGuid("OrganizationGuid", Guid(strOrganizationGuid.get_utf8().value.to_string().c_str()));
+            }
+            if (fIsLeaf && fIsLeaf.type() == type::k_bool)
+            {
+                oEvent.PutBoolean("isLeaf", fIsLeaf.get_bool().value);
+            }
+            // Add event to the response structured buffer that contains list of audit events 
+            poListOfEvents->PutStructuredBuffer(strEventGuid.get_utf8().value.to_string().c_str(), oEvent);
+        }
+    }
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
+ * @function GetNextSequenceNumber
+ * @brief Fetch next sequence number from the root event and update the root event
+ * @param[in] c_oRequest contains organization guid
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Sequence number for a non leaf event
+ *
+ ********************************************************************************************/
+
+uint32_t __thiscall DatabaseManager::GetNextSequenceNumber(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+    uint32_t unSequenceNumber = -1;
+
+    std::string strParentGuid = "{00000000-0000-0000-0000-000000000000}";
+    std::string strOrganizationGuid = c_oRequest.GetString("OrganizationGuid");
+
+    // ::pthread_mutex_lock(&m_sMutex);
+    // Each client and transaction can only be used in a single thread
+    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+    // Access SailDatabase
+    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+    // Get root event if it exists
+    // Otherwise return 0 as the next sequence number
+    
+    bsoncxx::stdx::optional<bsoncxx::document::value> oAuditLogDocument = oSailDatabase["AuditLog"].find_one(document{} 
+                                                                                                        << "ParentGuid" << strParentGuid 
+                                                                                                        << "OrganizationGuid" << strOrganizationGuid
+                                                                                                        << finalize);
+    if (oAuditLogDocument)
+    {
+        bsoncxx::document::element strEventGuid = oAuditLogDocument->view()["EventGuid"];
+        bsoncxx::document::element unNextSequenceNumber = oAuditLogDocument->view()["NextSequenceNumber"];
+        if (unNextSequenceNumber && unNextSequenceNumber.type() == type::k_double)
+        {
+            unSequenceNumber = (uint32_t) unNextSequenceNumber.get_double().value;
+        }
+        if (strEventGuid && strEventGuid.type() == type::k_utf8)
+        {
+            oSailDatabase["AuditLog"].update_one(document{} << "EventGuid" << strEventGuid.get_utf8().value.to_string() << finalize,
+                                                document{} << "$set" << open_document <<
+                                                "NextSequenceNumber" << (double)(unSequenceNumber + 1) << close_document << finalize);
+        }
+    }
+
+    return unSequenceNumber;
 }
 
 /********************************************************************************************
@@ -753,15 +824,33 @@ std::vector<Byte> __thiscall DatabaseManager::AddNonLeafEvent(
 
     StructuredBuffer oResponse;
 
+    // Create guids for the documents
     Guid oObjectGuid, oPlainTextObjectBlobGuid;
 
     StructuredBuffer oNonLeafEvent(c_oRequest.GetStructuredBuffer("NonLeafEvent"));
+    // Get next sequence number from the root event
+    uint32_t unSequenceNumber, unNextSequenceNumber;
+    // Get root event
+    StructuredBuffer oGetRoot;
+    oGetRoot.PutString("OrganizationGuid", oNonLeafEvent.GetString("OrganizationGuid"));
+    unSequenceNumber = this->GetNextSequenceNumber(oGetRoot);
+    if (-1 == unSequenceNumber)
+    {
+        unSequenceNumber = 0;
+        unNextSequenceNumber = unSequenceNumber + 1;
+    }
+    else 
+    {
+        unNextSequenceNumber = unSequenceNumber + 1;
+    }
+
     // Create an audit log event document
     bsoncxx::document::value oEventDocumentValue = bsoncxx::builder::stream::document{}
       << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
       << "OrganizationGuid" << oNonLeafEvent.GetString("OrganizationGuid")
       << "ParentGuid" << oNonLeafEvent.GetString("ParentGuid")
       << "EventGuid" << oNonLeafEvent.GetString("EventGuid")
+      << "NextSequenceNumber" << (double) unNextSequenceNumber
       << "IsLeaf" << false
       << finalize;
 
@@ -772,7 +861,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddNonLeafEvent(
     oObject.PutString("OrganizationGuid", oNonLeafEvent.GetString("OrganizationGuid"));
     oObject.PutQword("EventType", oNonLeafEvent.GetQword("EventType"));
     oObject.PutUnsignedInt64("Timestamp", oNonLeafEvent.GetUnsignedInt64("Timestamp"));
-    oObject.PutUnsignedInt32("SequenceNumber", oNonLeafEvent.GetUnsignedInt32("SequenceNumber"));
+    oObject.PutUnsignedInt32("SequenceNumber", unSequenceNumber);
     oObject.PutStructuredBuffer("PlainTextEventData", oNonLeafEvent.GetStructuredBuffer("PlainTextEventData"));
     bsoncxx::types::b_binary oObjectBlob
     {

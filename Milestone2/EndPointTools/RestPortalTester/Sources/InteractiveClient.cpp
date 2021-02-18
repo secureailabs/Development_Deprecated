@@ -624,10 +624,13 @@ bool GetListOfEvents(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error logging in.", nullptr);
-        std::cout << "List of Events:" << std::endl;
-        for (std::string strEventUuid : oResponse.GetStructuredBuffer("ListOfEvents").GetNamesOfElements())
+        std::cout << "\nEvent Guid |   Parent Guid    |   Organization Guid    |   Timestamp   |   Sequence Number" << std::endl;
+        StructuredBuffer oListOfEvents(oResponse.GetStructuredBuffer("ListOfEvents"));
+        for (std::string strEventUuid : oListOfEvents.GetNamesOfElements())
         {
-            std::cout << strEventUuid << std::endl;
+            StructuredBuffer oEvent(oListOfEvents.GetStructuredBuffer(strEventUuid.c_str()));
+            StructuredBuffer oEventObject(oEvent.GetStructuredBuffer("ObjectBlob"));
+            std::cout << strEventUuid << "  " << oEventObject.GetString("ParentGuid") << "  " << oEvent.GetString("OrganizationGuid") << "  " << oEventObject.GetFloat64("Timestamp") << "  " << oEventObject.GetFloat64("SequenceNumber") << std::endl;
         }
         fSuccess = true;
     }

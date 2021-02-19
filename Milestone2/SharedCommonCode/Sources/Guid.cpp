@@ -435,7 +435,7 @@ Byte __thiscall Guid::GetObjectType(void) const throw()
 {
     __DebugFunction();
 
-    Word wType = m_stlRawData[0] & (1111 < 4);
+    Word wType = m_stlRawData[0] & (1111 << 4);
 
     return wType;
 }

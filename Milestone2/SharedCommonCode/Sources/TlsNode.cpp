@@ -19,6 +19,7 @@
 #include <string.h>
 #include <iostream>
 #include <unistd.h>
+#include <memory>
 
 /********************************************************************************************
  *
@@ -331,27 +332,27 @@ void __thiscall TlsNode::LoadServerCTXKeyAndCertificate(
     ) const
 {
     // Create a BIO buffer to read the keys and certificates from
-    BIO * poBIO = ::BIO_new(BIO_s_mem());
-    _ThrowBaseExceptionIf((nullptr == poBIO), "Creating BIO buffer failed.", nullptr);
+    std::unique_ptr<BIO, decltype(&::BIO_free)> poBio(::BIO_new(BIO_s_mem()), ::BIO_free);
+    _ThrowBaseExceptionIf((nullptr == poBio), "Creating BIO buffer failed.", nullptr);
 
     // Convert the private key from the PEM format to EVP_PKEY
-    int nBytesWrittenToBio = ::BIO_write(poBIO, gc_abInitializerTlsPrivateKey, gc_unInitializerTlsPrivateKeySizeInBytes);
+    int nBytesWrittenToBio = ::BIO_write(poBio.get(), gc_abInitializerTlsPrivateKey, gc_unInitializerTlsPrivateKeySizeInBytes);
     _ThrowBaseExceptionIf((gc_unInitializerTlsPrivateKeySizeInBytes != nBytesWrittenToBio), "Writing to BIO buffer failed.", nullptr);
 
     EVP_PKEY * poPrivateKey = nullptr;
-    ::PEM_read_bio_PrivateKey(poBIO, &poPrivateKey, 0, 0);
+    ::PEM_read_bio_PrivateKey(poBio.get(), &poPrivateKey, 0, 0);
 
-    long nBIOctrlStatus = ::BIO_ctrl(poBIO, BIO_CTRL_RESET, 0, nullptr);
+    long nBIOctrlStatus = ::BIO_ctrl(poBio.get(), BIO_CTRL_RESET, 0, nullptr);
     _ThrowBaseExceptionIf((1 != nBIOctrlStatus),"TLS failed: Write BIO reset failed", nullptr);
 
     // Convert the certificate from PEM to X509
-    nBytesWrittenToBio = ::BIO_write(poBIO, gc_abInitializerTlsPublicKeyCertificate, gc_unInitializerTlsPublicKeyCertificateSizeInBytes);
+    nBytesWrittenToBio = ::BIO_write(poBio.get(), gc_abInitializerTlsPublicKeyCertificate, gc_unInitializerTlsPublicKeyCertificateSizeInBytes);
     _ThrowBaseExceptionIf((gc_unInitializerTlsPublicKeyCertificateSizeInBytes != nBytesWrittenToBio), "Writing to BIO buffer failed.", nullptr);
 
     X509 * poX509Certificate = nullptr;
-    ::PEM_read_bio_X509(poBIO, &poX509Certificate, 0, 0);
+    ::PEM_read_bio_X509(poBio.get(), &poX509Certificate, 0, 0);
 
-    nBIOctrlStatus = ::BIO_ctrl(poBIO, BIO_CTRL_RESET, 0, nullptr);
+    nBIOctrlStatus = ::BIO_ctrl(poBio.get(), BIO_CTRL_RESET, 0, nullptr);
     _ThrowBaseExceptionIf((1 != nBIOctrlStatus),"TLS failed: Write BIO reset failed", nullptr);
 
     int nSSLStatus = ::SSL_CTX_use_certificate(poSSL_CTX, poX509Certificate);

@@ -9,7 +9,7 @@ else
 endif
 
 # The Root directory containing all the code
-ROOTDIR=../../../../
+ROOTDIR=../../../..
 ABSROOTDIR=$(shell realpath $(ROOTDIR))
 OBJDIR=$(ABSROOTDIR)/Binary/Objects
 

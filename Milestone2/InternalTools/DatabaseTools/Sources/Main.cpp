@@ -27,18 +27,23 @@ using bsoncxx::builder::stream::open_document;
 #include <mongocxx/pool.hpp>
 using bsoncxx::builder::basic::kvp;
 
+typedef struct
+{
+    std::string m_strEmail;
+    std::string m_strName;
+    std::string m_strTitle;
+} AccountCredentials;
+
+mongocxx::instance oInstance{}; // Create only one instance
+mongocxx::client * g_oClient = nullptr;
+
 void AddUserAccountsToDatabase(
     const StructuredBuffer & c_oBasicUser,
     const StructuredBuffer & c_oConfidentialUser
     )
 {
-    mongocxx::instance oInstance{}; // Create only one instance
-    mongocxx::client * oClient = new mongocxx::client   // Use mongocxx client to connect to MongoDB instance
-    {
-        mongocxx::uri{"mongodb://localhost:27017"}
-    };
     // Access the SailDatabase
-    mongocxx::database oDatabase = (*oClient)["SailDatabase"];
+    mongocxx::database oDatabase = (*g_oClient)["SailDatabase"];
     // Access the ConfidentialOrganizationOrUser collection
     mongocxx::collection oConfidentialCollection = oDatabase["ConfidentialOrganizationOrUser"];
     // Create a document
@@ -83,7 +88,6 @@ void AddUserAccountsToDatabase(
         }
     }
 
-    delete oClient;
 }
 
 // Testing mongocxx::pool
@@ -115,49 +119,66 @@ void RunThreadedInserts()
 
 int main()
 {
+    // Create the instance of monogd client
+    g_oClient = new mongocxx::client   // Use mongocxx client to connect to MongoDB instance
+    {
+        mongocxx::uri{"mongodb://localhost:27017"}
+    };
+    _ThrowIfNull(g_oClient, "Cannot connect to mongod server", nullptr);
+
     try
     {
         std::string strEmail, strPassword = "sailpassword", strPassphrase, strUserName, strTitle;
-        std::cout << "Enter email address: ";
-        getline(std::cin, strEmail, '\n');
-        std::cout << "Enter user name: ";
-        getline(std::cin, strUserName, '\n');
-        std::cout << "Enter title in the organization: ";
-        getline(std::cin, strTitle, '\n');
-        strPassphrase = strEmail + "/" + strPassword;
-        Qword qw64BitHashedPassphrase = ::Get64BitHashOfNullTerminatedString(strPassphrase.c_str(), false);
 
-        std::string strHashedPassphrase = ::Base64HashOfEmailPassword(strEmail, strPassword);
+        std::vector<AccountCredentials> stlAccountDb;
+        stlAccountDb.push_back({"marine@terran.com", "Eren", "Security Expert"});
+        stlAccountDb.push_back({"scv@t1erran.com", "Gon", "Hardware Engineer"});
+        stlAccountDb.push_back({"overlord@zerg.com", "Naruto", "Supply Generator"});
+        stlAccountDb.push_back({"nydus@zerg.com", "Saitama", "Network Engineer"});
+        stlAccountDb.push_back({"pylon@protos.com", "Alex", "Field Engineer"});
+        stlAccountDb.push_back({"probe@protos.com", "Yagami", "Market Discovery Expert"});
 
-        // Generate Account Key
-        std::vector<Byte> stlAccountKey = ::GenerateAccountKey();
-        // Encrypt it using the password derived key
-        std::vector<Byte> stlWrappedAccountKey = ::EncryptUsingPasswordKey(stlAccountKey, strHashedPassphrase);
-        // Create a Basic User Record as described in the 'Account' subsection of Internal Web Service Constructs
-        Guid oUserId, oOrganizationId, oUserRootKeyId;
-        StructuredBuffer oBasicUserRecord;
-        oBasicUserRecord.PutQword("64BitHashedPassphrase", qw64BitHashedPassphrase);
-        oBasicUserRecord.PutString("OrganizationUuid", oOrganizationId.ToString(eHyphensAndCurlyBraces));
-        oBasicUserRecord.PutString("UserUuid", oUserId.ToString(eHyphensAndCurlyBraces));
-        oBasicUserRecord.PutDword("AccountStatus", 0x1);
-        oBasicUserRecord.PutBuffer("WrappedAccountKey", stlWrappedAccountKey);
+        for (int i = 0; i < stlAccountDb.size(); i++)
+        {
+            strEmail = stlAccountDb.at(i).m_strEmail;
+            strUserName = stlAccountDb.at(i).m_strName;
+            strTitle = stlAccountDb.at(i).m_strTitle;
 
-        // Create a the Confidential User Record
-        StructuredBuffer oConfidentialUserRecord;
-        oConfidentialUserRecord.PutGuid("UserGuid", oUserId);
-        oConfidentialUserRecord.PutGuid("UserRootKeyGuid", oUserRootKeyId);
-        oConfidentialUserRecord.PutQword("AccountRights", 0x1);
-        oConfidentialUserRecord.PutString("Username", strUserName);
-        oConfidentialUserRecord.PutString("Title", strTitle);
-        oConfidentialUserRecord.PutString("EmailAddress", strEmail);
-        oConfidentialUserRecord.PutString("PhoneNumber", "000-000-0000");
+            strPassphrase = strEmail + "/" + strPassword;
+            Qword qw64BitHashedPassphrase = ::Get64BitHashOfNullTerminatedString(strPassphrase.c_str(), false);
 
-        std::vector<Byte> stlPasswordKeyEncrypted = ::EncryptUsingPasswordKey(oConfidentialUserRecord.GetSerializedBuffer(), strHashedPassphrase);
-        StructuredBuffer oEncryptedBuffer = ::EncryptUsingSailSecretKey(stlPasswordKeyEncrypted);
+            std::string strHashedPassphrase = ::Base64HashOfEmailPassword(strEmail, strPassword);
 
-        // Insert documents
-        ::AddUserAccountsToDatabase(oBasicUserRecord, oEncryptedBuffer);
-        // ::RunThreadedInserts();
+            // Generate Account Key
+            std::vector<Byte> stlAccountKey = ::GenerateAccountKey();
+            // Encrypt it using the password derived key
+            std::vector<Byte> stlWrappedAccountKey = ::EncryptUsingPasswordKey(stlAccountKey, strHashedPassphrase);
+            // Create a Basic User Record as described in the 'Account' subsection of Internal Web Service Constructs
+            Guid oUserId, oOrganizationId, oUserRootKeyId;
+            StructuredBuffer oBasicUserRecord;
+            oBasicUserRecord.PutQword("64BitHashedPassphrase", qw64BitHashedPassphrase);
+            oBasicUserRecord.PutString("OrganizationUuid", oOrganizationId.ToString(eHyphensAndCurlyBraces));
+            oBasicUserRecord.PutString("UserUuid", oUserId.ToString(eHyphensAndCurlyBraces));
+            oBasicUserRecord.PutDword("AccountStatus", 0x1);
+            oBasicUserRecord.PutBuffer("WrappedAccountKey", stlWrappedAccountKey);
+
+            // Create a the Confidential User Record
+            StructuredBuffer oConfidentialUserRecord;
+            oConfidentialUserRecord.PutGuid("UserGuid", oUserId);
+            oConfidentialUserRecord.PutGuid("UserRootKeyGuid", oUserRootKeyId);
+            oConfidentialUserRecord.PutQword("AccountRights", 0x1);
+            oConfidentialUserRecord.PutString("Username", strUserName);
+            oConfidentialUserRecord.PutString("Title", strTitle);
+            oConfidentialUserRecord.PutString("EmailAddress", strEmail);
+            oConfidentialUserRecord.PutString("PhoneNumber", "000-000-0000");
+
+            std::vector<Byte> stlPasswordKeyEncrypted = ::EncryptUsingPasswordKey(oConfidentialUserRecord.GetSerializedBuffer(), strHashedPassphrase);
+            StructuredBuffer oEncryptedBuffer = ::EncryptUsingSailSecretKey(stlPasswordKeyEncrypted);
+
+            // Insert documents
+            ::AddUserAccountsToDatabase(oBasicUserRecord, oEncryptedBuffer);
+            // ::RunThreadedInserts();
+        }
     }
     catch(BaseException & oBaseException)
     {
@@ -171,5 +192,6 @@ int main()
 
     std::cout << "That's all folks\n";
 
+    delete g_oClient;
     return 0;
 }

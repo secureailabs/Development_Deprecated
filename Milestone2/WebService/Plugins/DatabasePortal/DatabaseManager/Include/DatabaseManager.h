@@ -80,8 +80,21 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
-        // Fetch sudit log records from the database
+        // Fetch audit log records from the database
         std::vector<Byte> __thiscall GetListOfEvents(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Apply filters and add logs to the listofevents
+        void __thiscall GetEventObjectBlob(
+            _in const mongocxx::database & c_oSailDatabase,
+            _in const StructuredBuffer & c_oFilters,
+            _in const bsoncxx::document::view & oDocumentView,
+            _out StructuredBuffer * poListOfEvents
+            );
+
+        // Fetch next sequence number from the root event and update the root event
+        uint32_t __thiscall GetNextSequenceNumber(
             _in const StructuredBuffer & c_oRequest
             );
 

@@ -375,12 +375,12 @@ void __thiscall ComputationVM::HandlePullData
     std::string strJobID = oContent.GetString("JobID");
     StructuredBuffer oOutputIDs = oContent.GetStructuredBuffer("VarIDs");
 
-    StructuredBuffer oAudit;
-    oAudit.PutString("Event", "PullData");
-    oAudit.PutString("JobID", strJobID);
-    oAudit.PutString("ClientEOSB", m_strEOSB);
+    //StructuredBuffer oAudit;
+    //oAudit.PutString("Event", "PullData");
+    //oAudit.PutString("JobID", strJobID);
+    //oAudit.PutString("ClientEOSB", m_strEOSB);
 
-    m_oRootOfTrustNode.RecordAuditEvent(m_strEOSB,3000, oAudit);
+    //m_oRootOfTrustNode.RecordAuditEvent(m_strEOSB,3000, oAudit);
 
     std::vector<std::string> stlOutputIDs;
     std::vector<std::vector<Byte>> stlOutputs;

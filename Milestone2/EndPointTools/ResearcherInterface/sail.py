@@ -18,7 +18,8 @@ def pulldata(vm, jobID, fnID, home):
     vars = []
     varIDs = sail.pulldata(vm, jobID, fnID, home)
     for varID in varIDs:
-        vars.append(pickle.load(open(home+"/"+jobID+varID, "rb")))
+        with open(home+"/"+jobID+varID, "rb") as h:
+            vars.append(pickle.load(h))
     return vars
 
 def deletedata(vm, varIDs):

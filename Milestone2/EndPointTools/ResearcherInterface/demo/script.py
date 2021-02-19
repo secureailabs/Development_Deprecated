@@ -16,3 +16,13 @@ result = sail.pulldata(vm, jobid, fnid, "/home/jjj/playground")
 result[1] #confusion matrix
 result[2] #errors
 result[3].fig #feature importance picture
+
+fn2 = sail.registerfn("/home/jjj/Downloads/predFN.py", 2, 1)
+fnid[2] = fn2[0]
+jobid2 = sail.newguid()
+sail.pushfn(vm, fnid2)
+sail.pushdata(vm, jobid2, fnid2, [1, result[0]], "/home/jjj/playground")
+sail.execjob(vm, fnid2, jobid2)
+result2 = sail.pulldata(vm, jobid2, fnid2, "/home/jjj/playground")
+
+resutl[0]

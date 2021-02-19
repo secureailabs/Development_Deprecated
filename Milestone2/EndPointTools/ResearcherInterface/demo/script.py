@@ -25,6 +25,7 @@ result = sail.pulldata(vm, jobid, fnid, "/home/jjj/playground")
 result[1] #confusion matrix
 result[2] #errors
 result[3].figure #feature importance picture
+result[3].figure.savefig("/home/jjj/playground/featureImportance.png") #save the figure
 
 #Job2, use the model obtained from job 1 to make prediction on new data set
 

@@ -531,6 +531,7 @@ std::vector<Byte> __thiscall DatabaseManager::GetConfidentialUserRecord(
     StructuredBuffer oFilters;
     oGetRootRequest.PutStructuredBuffer("Filters", oFilters);
     StructuredBuffer oRootEvent(this->GetListOfEvents(oGetRootRequest));
+    _ThrowBaseExceptionIf((0 == oRootEvent.GetStructuredBuffer("ListOfEvents").GetNamesOfElements().size()), "Root event does not exist", nullptr);
     std::string strRootEventGuid = oRootEvent.GetStructuredBuffer("ListOfEvents").GetNamesOfElements()[0];
 
     // Check if DC branch event exists

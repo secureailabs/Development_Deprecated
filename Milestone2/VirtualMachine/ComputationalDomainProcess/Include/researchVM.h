@@ -12,6 +12,7 @@
 
 #include "StructuredBuffer.h"
 #include "SocketServer.h"
+#include "RootOfTrustNode.h"
 #include "Socket.h"
 #include "engine.h"
 #include "job.h"
@@ -28,7 +29,9 @@ class ComputationVM{
         SocketServer m_oSocketServer;
         std::map<std::string, std::unique_ptr<FunctionNode>> m_stlFNMap;
         std::string m_strVMID;
+        std::string m_strEOSB;
         bool m_fStop;
+        RootOfTrustNode m_oRootOfTrustNode;
 
         void __thiscall HandleConnection
         (
@@ -117,12 +120,14 @@ class ComputationVM{
             void
         );
         void __thiscall Halt(void);
+        void __thiscall SetEOSB(std::string& strEOSB);
 
     public:
         ComputationVM
         (
             _in Word wPortIdentifier, 
-            _in size_t nMaxProcess
+            _in size_t nMaxProcess,
+            _in RootOfTrustNode& oRootOfTrustNode
         );
         void __thiscall InitializeVM(void);
 };

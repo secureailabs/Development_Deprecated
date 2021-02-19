@@ -1,7 +1,7 @@
 BUILD_MODE?=debug
 CXXFLAGS=-std=c++17 -fstack-protector -DUNIX -DOS_UNIX -Wall -g -MMD -MP -fPIC
 LDFLAGS = -Xlinker -export-dynamic -shared
-LDLIBS = -lpthread -ldl -luuid -lrt -lcrypto -lssl -lutil -lm -lstdc++fs -lpython3.6m
+LDLIBS = -lpthread -ldl -luuid -lrt -lcrypto -lssl -lutil -lm -lstdc++fs -lpython3.8
 
 ifeq ($(BUILD_MODE), debug)
 	CXXFLAGS+= -ggdb -O0
@@ -15,7 +15,7 @@ ABSROOTDIR=$(shell realpath $(ROOTDIR))
 OBJDIR=$(ABSROOTDIR)/Binary/Objects
 
 # Add the new include folders here
-PYTHONINC = /usr/include/python3.6m
+PYTHONINC = /usr/include/python3.8
 INCLUDE := -isystem$(PYTHONINC)
 
 INCLUDE+=-I$(shell realpath ./Sources)

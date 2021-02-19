@@ -17,6 +17,8 @@
 #include "StatusMonitor.h"
 #include "StructuredBuffer.h"
 #include "IpcTransactionHelperFunctions.h"
+#include "DebugLibrary.h"
+#include "Exceptions.h"
 #include "Guid.h"
 #include "utils.h"
 #include <thread>
@@ -26,6 +28,12 @@
 #include <filesystem>
 #include <regex>
 #include <cstdio>
+
+//Audit:
+//1000: ExecJob
+//2000: PushData
+//3000: PullData
+//4000: PushFN
 
 /********************************************************************************************
  *
@@ -39,9 +47,10 @@
 
 ComputationVM::ComputationVM(
     _in Word wPortIdentifier, 
-    _in size_t nMaxProcess
+    _in size_t nMaxProcess,
+    _in RootOfTrustNode& oRootOfTrustNode
     )
-    : m_oEngine(nMaxProcess), m_oSocketServer(wPortIdentifier), m_fStop(false)
+    : m_oEngine(nMaxProcess), m_oSocketServer(wPortIdentifier), m_fStop(false), m_oRootOfTrustNode(oRootOfTrustNode)
 {
     m_strVMID = Guid().ToString(eRaw);
 }
@@ -104,47 +113,50 @@ void ComputationVM::HandleConnection(
     _in Socket* poSocket
     )
 {
+    __DebugFunction();
+    
     bool bConnectionState = true;
     while(bConnectionState)
     {
         std::vector<Byte> stlContent = GetIpcTransaction(poSocket);
-
         if(0<stlContent.size())
         {
 			StructuredBuffer oContent(stlContent);
 			StructuredBuffer oResponse;
+			
 			std::string strReply;
+			unsigned int nType = (unsigned int)oContent.GetInt8("Type");
 
-			switch((RequestType)(oContent.GetInt8("Type")))
+			switch(nType)
 			{
 				//TODO: handle failure cases
-				case eQUIT:
+				case (unsigned int)eQUIT:
 					HandleQuit(oContent, oResponse);
 					bConnectionState =false;
 					Halt();
 					break;
-				case eRUN:
+				case (unsigned int)eRUN:
 					HandleRun(oContent, oResponse);
 					break;
-                case eCONNECT:
+                case (unsigned int)eCONNECT:
 					HandleConnect(oContent, oResponse);
 					break;
-				case eINSPECT:
+				case (unsigned int)eINSPECT:
 					HandleInspect(oContent, oResponse);
 					break;
-				case eGETTABLE:
+				case (unsigned int)eGETTABLE:
 					HandleGetTable(oContent, oResponse);
 					break;
-				case ePUSHDATA:
+				case (unsigned int)ePUSHDATA:
 					HandlePushData(oContent, oResponse);
 					break;
-				case ePULLDATA:
+				case (unsigned int)ePULLDATA:
 					HandlePullData(oContent, oResponse);
 					break;
-				case eDELETEDATA:
+				case (unsigned int)eDELETEDATA:
 					HandleDeleteData(oContent, oResponse);
 					break;
-				case ePUSHFN:
+				case (unsigned int)ePUSHFN:
 					HandlePushFN(oContent, oResponse);
 					break;
 				default:
@@ -179,6 +191,9 @@ void __thiscall ComputationVM::HandleConnect
     _in StructuredBuffer& oResponse
 )
 {
+    //__DebugFunction();
+    std::string strEOSB = oContent.GetString("EOSB");
+    SetEOSB(strEOSB);
     oResponse.PutString("VMID", m_strVMID);
 }
 
@@ -192,6 +207,14 @@ void __thiscall ComputationVM::HandleRun
     std::string strJobID = oContent.GetString("JobID");
     std::vector<std::string> stlInput = m_stlFNMap[strFunctionNode]->GetInput();
     std::vector<std::string> stlOutput = m_stlFNMap[strFunctionNode]->GetOutput();
+
+    StructuredBuffer oAudit;
+    oAudit.PutString("Event", "Run");
+    oAudit.PutString("FNID", strFunctionNode);
+    oAudit.PutString("JobID", strJobID);
+    oAudit.PutString("ClientEOSB", m_strEOSB);
+
+    m_oRootOfTrustNode.RecordAuditEvent(m_strEOSB,1000,oAudit);
 
     std::unique_ptr<Job> stlNewJob = std::make_unique<PythonJob>(strFunctionNode, strJobID, stlInput, stlOutput);
     m_oEngine.AddOneJob(std::move(stlNewJob));
@@ -253,7 +276,7 @@ std::string __thiscall ComputationVM::RetrieveDatasets
     void
 )
 {
-    Socket * poSocket =  ConnectToUnixDomainSocket("/tmp/");
+    Socket * poSocket =  ConnectToUnixDomainSocket("/tmp/{0bd8a254-49e4-4b86-b1b8-f353c18013c5}");
     StructuredBuffer oRequest;
     
     oRequest.PutInt8("RequestType",eGetTableMetadata);
@@ -313,6 +336,13 @@ void __thiscall ComputationVM::HandlePushData
     StructuredBuffer oVarIDs = oContent.GetStructuredBuffer("VarIDs");
     StructuredBuffer oVars = oContent.GetStructuredBuffer("Vars");
 
+    StructuredBuffer oAudit;
+    oAudit.PutString("Event", "PushData");
+    oAudit.PutString("JobID", strJobID);
+    oAudit.PutString("ClientEOSB", m_strEOSB);
+    
+    m_oRootOfTrustNode.RecordAuditEvent(m_strEOSB,2000, oAudit);
+
     BufToVec<std::vector<std::vector<Byte>>>(oVars, stlVars);
     BufToVec<std::vector<std::string>>(oVarIDs, stlVarIDs);
 
@@ -344,6 +374,14 @@ void __thiscall ComputationVM::HandlePullData
 {
     std::string strJobID = oContent.GetString("JobID");
     StructuredBuffer oOutputIDs = oContent.GetStructuredBuffer("VarIDs");
+
+    StructuredBuffer oAudit;
+    oAudit.PutString("Event", "PullData");
+    oAudit.PutString("JobID", strJobID);
+    oAudit.PutString("ClientEOSB", m_strEOSB);
+
+    m_oRootOfTrustNode.RecordAuditEvent(m_strEOSB,3000, oAudit);
+
     std::vector<std::string> stlOutputIDs;
     std::vector<std::vector<Byte>> stlOutputs;
 
@@ -353,8 +391,11 @@ void __thiscall ComputationVM::HandlePullData
 
     StructuredBuffer oBuffer;
     VecToBuf<std::vector<std::vector<Byte>>>(stlOutputs, oBuffer);
+    
+    std::cout<<oBuffer.GetInt16("size")<<std::endl;
     oResponse.PutStructuredBuffer("Vars", oBuffer);
 }
+
 
 void __thiscall ComputationVM::LoadDataToBuffer
 (
@@ -366,6 +407,8 @@ void __thiscall ComputationVM::LoadDataToBuffer
     size_t nNumber = stlVarIDs.size();
     for(size_t i=0; i<nNumber; i++)
     {
+        //while(!std::filesystem::exists(std::filesystem::path("/tmp/"+strJobID+stlVarIDs[i])));
+
         std::ifstream stlVarFile;
         stlVarFile.open(std::string("/tmp/"+strJobID+stlVarIDs[i]).c_str(), std::ios::out | std::ios::binary);
 
@@ -373,10 +416,10 @@ void __thiscall ComputationVM::LoadDataToBuffer
 
         stlVarFile.seekg (0, stlVarFile.end);
         int length = stlVarFile.tellg();
+        std::cout<<length<<std::endl;
         stlVarFile.seekg (0, stlVarFile.beg);
 
         std::vector<Byte> stlVec;
-        stlVec.reserve(length);
 
         stlVec.insert(stlVec.begin(),std::istream_iterator<Byte>(stlVarFile), std::istream_iterator<Byte>());
         stlVars.push_back(stlVec);
@@ -412,6 +455,15 @@ void __thiscall ComputationVM::HandlePushFN
 {
     std::string strFNID = oContent.GetString("FNID");
     std::string strFNScript = oContent.GetString("FNScript");
+
+    StructuredBuffer oAudit;
+    std::string strType("PushFN");
+    oAudit.PutString("Event", strType);
+    oAudit.PutString("FNID", strFNID);
+    oAudit.PutString("ClientEOSB", m_strEOSB);
+    
+    m_oRootOfTrustNode.RecordAuditEvent(m_strEOSB, 4000, oAudit);
+
     SaveFN(strFNID, strFNScript);
 
     StructuredBuffer oInput = oContent.GetStructuredBuffer("Input");
@@ -449,4 +501,10 @@ void __thiscall ComputationVM::SaveFN
 void __thiscall ComputationVM::Halt(void)
 {
     m_fStop = true;
+}
+
+void __thiscall ComputationVM::SetEOSB(std::string& strEOSB)
+{
+    __DebugFunction();
+    m_strEOSB = strEOSB;
 }

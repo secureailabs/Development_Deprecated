@@ -20,6 +20,7 @@ INCLUDE := -isystem$(PYTHONINC)
 
 INCLUDE+=-I$(shell realpath ./Include)
 INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
+INCLUDE+=-I$(shell realpath ../../WebService/RestApiPortal/Include)
 INCLUDE+=-I$(shell realpath ./Utils/Include)
 INCLUDE+=-I$(shell realpath ../../VirtualMachine/ComputationalDomainProcess/Include)
 
@@ -27,6 +28,7 @@ INCLUDE+=-I$(shell realpath ../../VirtualMachine/ComputationalDomainProcess/Incl
 SRCDIRS+=$(shell realpath ./Sources)
 SRCDIRS+=$(shell realpath ./Utils/Sources)
 SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
+SRCDIRS+=$(shell realpath ../../WebService/RestApiPortal/Sources)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))

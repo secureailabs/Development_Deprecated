@@ -1,2 +1,1 @@
-cp libDataConnector.so /usr/local/lib/python3.8/site-packages/_DataConnector.so
-cp -a scripts /usr/local/lib/python3.8/site-packages/
+cp libDataConnector.so /usr/local/lib/python3.8/dist-packages/_DataConnector.so

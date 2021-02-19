@@ -80,9 +80,15 @@ RootOfTrustNode::RootOfTrustNode(
     )
 {
     __DebugFunction();
-    __DebugAssert(false);
+    //__DebugAssert(false);
     
-    UNREFERENCED_PARAMETER(c_oRootOfTrustNode);
+    //UNREFERENCED_PARAMETER(c_oRootOfTrustNode);
+    m_bProcessType=c_oRootOfTrustNode.m_bProcessType;
+    m_oDomainIdentifier= c_oRootOfTrustNode.m_oDomainIdentifier;
+    m_strRootOfTrustIpcPath = c_oRootOfTrustNode.m_strRootOfTrustIpcPath;
+    m_stlGlobalRootKeyCertificate = c_oRootOfTrustNode.m_stlGlobalRootKeyCertificate;
+    m_stlComputationalDomainRootKeyCertificate = c_oRootOfTrustNode.m_stlComputationalDomainRootKeyCertificate;
+    m_stlDataDomainRootKeyCertificate = c_oRootOfTrustNode.m_stlDataDomainRootKeyCertificate;
 }
 
 /********************************************************************************************
@@ -250,14 +256,38 @@ void __thiscall RootOfTrustNode::RecordAuditEvent(
     ) const
 {
     __DebugFunction();
-
-    Socket * poSocket = ::ConnectToUnixDomainSocket(m_strRootOfTrustIpcPath.c_str());
-    StructuredBuffer oTransactionData;
-    oTransactionData.PutString("Eosb", c_oEncryptedOpaqueSessionBlob);
-    oTransactionData.PutGuid("DomainIdentifier", m_oDomainIdentifier);
-    oTransactionData.PutDword("Transaction", 0x00000009);
-    oTransactionData.PutDword("EventType", dwEventType);
-    oTransactionData.PutStructuredBuffer("EventData", c_oEventData);
-    StructuredBuffer oTransactionResponse(::PutIpcTransactionAndGetResponse(poSocket, oTransactionData));
-    poSocket->Release();
+    try
+    {
+        Socket * poSocket = ::ConnectToUnixDomainSocket(m_strRootOfTrustIpcPath.c_str());
+        StructuredBuffer oTransactionData;
+        oTransactionData.PutString("Eosb", c_oEncryptedOpaqueSessionBlob);
+        oTransactionData.PutGuid("DomainIdentifier", m_oDomainIdentifier);
+        oTransactionData.PutDword("Transaction", 0x00000009);
+        oTransactionData.PutDword("EventType", dwEventType);
+        oTransactionData.PutStructuredBuffer("EventData", c_oEventData);
+        //StructuredBuffer oTransactionResponse(::PutIpcTransactionAndGetResponse(poSocket, oTransactionData));
+        ::PutIpcTransactionAndGetResponse(poSocket, oTransactionData);
+        poSocket->Release();
+    }
+    catch (BaseException oException)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
+                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+    catch (...)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
 }

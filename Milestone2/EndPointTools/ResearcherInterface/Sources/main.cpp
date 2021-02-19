@@ -43,14 +43,14 @@ void unpack(std::vector<std::vector<Byte>>& stlVars)
 	    }
 }
 
-int main(){
+int test_main(){
 
     //test();
     Frontend oFrontend;
     std::string strVMID;
     std::string strFNID;
     std::string strIP("127.0.0.1");
-    oFrontend.SetFrontend(strIP, 5000, strVMID);
+    oFrontend.SetFrontend(strIP, 7000, strVMID);
 
     oFrontend.RegisterFN("/home/jjj/playground/test.py", 2, 1, strFNID);
 

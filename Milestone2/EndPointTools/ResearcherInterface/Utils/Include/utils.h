@@ -7,7 +7,8 @@
 
 /********************************************************************************************/
 
-enum RequestType{
+typedef enum
+{
     eQUIT = 0,
     eRUN,
     eCONNECT,
@@ -18,7 +19,7 @@ enum RequestType{
     ePULLDATA,
     eDELETEDATA,
     ePUSHFN,
-};
+}  RequestType; 
 
 template <class T>
 void __cdecl BufToVec

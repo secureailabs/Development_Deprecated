@@ -11,6 +11,7 @@
 #pragma once
 
 #include "CoreTypes.h"
+ #include "StructuredBuffer.h"
 
 #include <string>
 
@@ -38,4 +39,23 @@ extern "C" std::string __stdcall Base64Encode(
 
 extern "C" std::string __stdcall Base64Decode(
     _in const std::string & c_strInputString
+    );
+
+extern "C" void PutJsonNumberToStructuredBuffer(
+    _in const char * c_szRequireParameterName,
+    _in Byte bElementType,
+    _in float64_t fl64ParameterValue,
+    _out StructuredBuffer * poRequestStructuredBuffer
+    );
+
+extern "C" bool ValidateUnsignedNumber(
+    _in Qword qwParameterValue,
+    _in const std::string & c_strRange,
+    _in Byte bRangeType
+    );
+
+extern "C" bool ValidateSignedNumber(
+    _in float64_t fl64ParameterValue,
+    _in const std::string & c_strRange,
+    _in Byte bRangeType
     );

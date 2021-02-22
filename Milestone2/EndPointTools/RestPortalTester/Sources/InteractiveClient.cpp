@@ -9,6 +9,7 @@
  ********************************************************************************************/
 
 #include "ConsoleInputHelperFunctions.h"
+#include "DateAndTime.h"
 #include "Exceptions.h"
 #include "PluginDictionary.h"
 #include "SmartMemoryAllocator.h"
@@ -25,6 +26,22 @@
 #include <string>
 #include <sstream>
 #include <vector>
+
+/********************************************************************************************/
+
+static std::string __stdcall _GetEpochTimeInMilliseconds(void)
+{
+    __DebugFunction();
+    
+    std::string strEpochTimeInMilliseconds;
+    uint64_t un64EpochTimeInMilliseconds = ::GetEpochTimeInMilliseconds();
+    char szString[64];
+    
+    ::sprintf(szString, "%ld", un64EpochTimeInMilliseconds);
+    strEpochTimeInMilliseconds = szString;
+    
+    return strEpochTimeInMilliseconds;
+}
 
 /********************************************************************************************
  *
@@ -150,14 +167,23 @@ std::string Login(
         bool fIsEndOfHeader = false;
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
-        {
-            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
-            if (4 <= stlHeaderData.size())
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
             {
-                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
                 {
-                    fIsEndOfHeader = true;
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
                 }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
             }
         }
         _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
@@ -206,14 +232,23 @@ std::vector<Byte> GetBasicUserInformation(
         bool fIsEndOfHeader = false;
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
-        {
-            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
-            if (4 <= stlHeaderData.size())
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
             {
-                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
                 {
-                    fIsEndOfHeader = true;
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
                 }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
             }
         }
         _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
@@ -259,7 +294,7 @@ std::string RegisterRootEvent(
                                 "\n        \"ParentGuid\": \"{00000000-0000-0000-0000-000000000000}\","
                                 "\n        \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n        \"EventType\": 1,"
-                                "\n        \"Timestamp\": 12345,"
+                                "\n        \"Timestamp\": "+ ::_GetEpochTimeInMilliseconds() +","
                                 "\n        \"SequenceNumber\": 0,"
                                 "\n        \"PlainTextEventData\": "
                                 "\n        {"
@@ -283,17 +318,25 @@ std::string RegisterRootEvent(
         bool fIsEndOfHeader = false;
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
-        {
-            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
-            if (4 <= stlHeaderData.size())
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
             {
-                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
                 {
-                    fIsEndOfHeader = true;
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
                 }
             }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
         }
-
         _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
 
         std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
@@ -344,7 +387,7 @@ bool RegisterBranchEvent(
                                 "\n        \"ParentGuid\": \""+ c_strParentGuid +"\","
                                 "\n        \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n        \"EventType\": 2,"
-                                "\n        \"Timestamp\": 12345,"
+                                "\n        \"Timestamp\": "+ ::_GetEpochTimeInMilliseconds() +","
                                 "\n        \"SequenceNumber\": 1,"
                                 "\n        \"PlainTextEventData\": "
                                 "\n        {"
@@ -369,17 +412,25 @@ bool RegisterBranchEvent(
         bool fIsEndOfHeader = false;
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
-        {
-            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
-            if (4 <= stlHeaderData.size())
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
             {
-                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
                 {
-                    fIsEndOfHeader = true;
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
                 }
             }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
         }
-
         _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
 
         std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
@@ -429,7 +480,7 @@ bool RegisterLeafEvents(
                                 "\n            \"EventGuid\": \""+ Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces) +"\","
                                 "\n            \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n            \"EventType\": 6,"
-                                "\n            \"Timestamp\": 12345,"
+                                "\n            \"Timestamp\": "+ ::_GetEpochTimeInMilliseconds() +","
                                 "\n            \"SequenceNumber\": 2,"
                                 "\n            \"EncryptedEventData\": \"5iEQAhtloSMplcUnh1L0nooYrO0TKDJZSOAIzOgfaItg8i+EFrmGkDE7SNm6icKgskkBpoMBAABO6L5OOW6aS0pw3aMZjP2Q0KeKL2XtoeVCmW+2sN34h0LuFaPqN48Ku2WytWVHK2t0ilp50Xo7RHxcMPKkiUqSatRD42UjaqcpFCoy3plz+JfogTONcCDiRe+4tRcmg1zHAk2zsXZhwFg5tJioNIQdSoG1bOz4dPYqltRtMYlpbea85IH3pMkB4qduM5OK5zDNCxB0SdlyNpsREhRzeUCxAAiiop7PYgZb/8Vdsd67BTeSd73JkyFr301nqaa5+LCJpnSv19B6yUqQK7ZoSVsTwNsUqO+mtIRTEomvRspqu4hwQf++4I4rIyCwIlN2daJtxNI5RVujFTellgaWB0BudhxqIk72EMEkE9vOihEdaPcJJC2FkEBJTH9Dg3DBNRSck5ZXYmP2MBGAM474iwisvSpfiUSBNNkM3AL6y782K3vrhNDxvY2uxKmR3rfs8TJI9V7lAvIogLht2VYKJi1DWWLtMbccGScTYfyqZgjBw5m7R5LL1CkREZsV6kVymL1kYDkyGlaxKZESbg==\""
                                 "\n        },"
@@ -437,7 +488,7 @@ bool RegisterLeafEvents(
                                 "\n            \"EventGuid\": \""+ Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces) +"\","
                                 "\n            \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n            \"EventType\": 6,"
-                                "\n            \"Timestamp\": 12345,"
+                                "\n            \"Timestamp\": "+ ::_GetEpochTimeInMilliseconds() +","
                                 "\n            \"SequenceNumber\": 3,"
                                 "\n            \"EncryptedEventData\": \"5iEQAhtloSMplcUnh1L0nooYrO0TKDJZSOAIzOgfaItg8i+EFrmGkDE7SNm6icKgskkBpoMBAABO6L5OOW6aS0pw3aMZjP2Q0KeKL2XtoeVCmW+2sN34h0LuFaPqN48Ku2WytWVHK2t0ilp50Xo7RHxcMPKkiUqSatRD42UjaqcpFCoy3plz+JfogTONcCDiRe+4tRcmg1zHAk2zsXZhwFg5tJioNIQdSoG1bOz4dPYqltRtMYlpbea85IH3pMkB4qduM5OK5zDNCxB0SdlyNpsREhRzeUCxAAiiop7PYgZb/8Vdsd67BTeSd73JkyFr301nqaa5+LCJpnSv19B6yUqQK7ZoSVsTwNsUqO+mtIRTEomvRspqu4hwQf++4I4rIyCwIlN2daJtxNI5RVujFTellgaWB0BudhxqIk72EMEkE9vOihEdaPcJJC2FkEBJTH9Dg3DBNRSck5ZXYmP2MBGAM474iwisvSpfiUSBNNkM3AL6y782K3vrhNDxvY2uxKmR3rfs8TJI9V7lAvIogLht2VYKJi1DWWLtMbccGScTYfyqZgjBw5m7R5LL1CkREZsV6kVymL1kYDkyGlaxKZESbg==\""
                                 "\n        }"
@@ -459,17 +510,25 @@ bool RegisterLeafEvents(
         bool fIsEndOfHeader = false;
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
-        {
-            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
-            if (4 <= stlHeaderData.size())
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
             {
-                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
                 {
-                    fIsEndOfHeader = true;
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
                 }
             }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
         }
-
         _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
 
         std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
@@ -487,8 +546,6 @@ bool RegisterLeafEvents(
     {
         ::ShowErrorMessage("Error registering leaf events.");
     }
-
-    ::WaitForUserToContinue();
 
     return fSuccess;
 }
@@ -532,17 +589,25 @@ std::string RegisterVirtualMachine(
         bool fIsEndOfHeader = false;
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
-        {
-            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
-            if (4 <= stlHeaderData.size())
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
             {
-                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
                 {
-                    fIsEndOfHeader = true;
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
                 }
             }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
         }
-
         _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
 
         std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
@@ -561,8 +626,6 @@ std::string RegisterVirtualMachine(
     {
         ::ShowErrorMessage("Error registering virtual machine.");
     }
-
-    ::WaitForUserToContinue();
 
     return strVmEventGuid;
 }
@@ -610,17 +673,25 @@ bool GetListOfEvents(
         bool fIsEndOfHeader = false;
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
-        {
-            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
-            if (4 <= stlHeaderData.size())
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
             {
-                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
                 {
-                    fIsEndOfHeader = true;
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
                 }
             }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
         }
-
         _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
         
         std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
@@ -681,16 +752,59 @@ int main()
         std::string strOrganizationGuid = oUserInformation.GetString("OrganizationGuid");
         std::string strUserGuid = oUserInformation.GetString("UserGuid");
 
-        ::ClearScreen();
+        bool fTerminatedSignalEncountered = false;
 
-        std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
-        // Get list of all events for the organization
-        ::GetListOfEvents(strEncodedEosb, "{00000000-0000-0000-0000-000000000000}", strOrganizationGuid, 0);
+        while (false == fTerminatedSignalEncountered)
+        {
+            ::ShowTopMenu();
+
+            std::string strUserInput = ::GetStringInput("Selection: ", 1, false, c_szValidInputCharacters);
+
+            switch (stoi(strUserInput))
+            {
+                case 1:
+                {
+                    ::RegisterRootEvent(strEncodedEosb, strOrganizationGuid);
+                break;
+                }
+                case 2:
+                {
+                    // Register a Vm
+                    std::string strVmGuid = Guid(eVirtualMachine).ToString(eHyphensAndCurlyBraces);
+                    std::string strDcGuid = "{33DB1751-66AE-4EB5-BF7B-614CBC09BC4C}";
+                    std::string strVmEventGuid = ::RegisterVirtualMachine(strEncodedEosb, strDcGuid, strVmGuid);
+                    // Register Leaf events
+                    ::RegisterLeafEvents(strEncodedEosb, strOrganizationGuid, strVmEventGuid);
+
+                    ::WaitForUserToContinue();
+                break;
+                }
+                case 3:
+                {
+                    std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
+                    // Get list of all events for the organization
+                    ::GetListOfEvents(strEncodedEosb, "{00000000-0000-0000-0000-000000000000}", strOrganizationGuid, 0);
+
+                    ::WaitForUserToContinue();
+                break;
+                }
+                case 0:
+                {
+                    fTerminatedSignalEncountered = true;
+                break;
+                }
+                default:
+                {
+                    std::cout << "Invalid option. Usage: [0-2]" << std::endl;
+                break;
+                }
+            }
+        }
     }
     catch(BaseException oBaseException)
     {
         std::cout << oBaseException.GetExceptionMessage() << std::endl;
     }
 
-        return 0;
+    return 0;
 }

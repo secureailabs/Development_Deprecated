@@ -93,7 +93,7 @@ class DatabaseManager : public Object
             _out StructuredBuffer * poListOfEvents
             );
 
-        // Fetch next sequence number from the root event and update the root event
+        // Fetch next sequence number from the parent event and update the parent event's next sequence number
         uint32_t __thiscall GetNextSequenceNumber(
             _in const StructuredBuffer & c_oRequest
             );

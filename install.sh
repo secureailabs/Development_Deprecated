@@ -10,6 +10,8 @@ sudo apt-get install -y cmake
 sudo apt-get install -y libssl-dev
 sudo apt-get install -y zlib1g-dev
 sudo apt-get install -y curl
+# Required for Guid
+sudo apt-get install -y uuid-dev 
 
 echo "Installing MongoDB"
 

@@ -15,6 +15,7 @@
  #include <algorithm>
  #include <cctype>
  #include <cstring>
+ #include <sstream>
 
 /********************************************************************************************
  *
@@ -356,4 +357,187 @@ std::string Base64Decode(
     }
 
     return strDecodedString;
+}
+
+/********************************************************************************************
+ *
+ * @function PutJsonNumberToStructuredBuffer
+ * @brief Add element to the structured buffer based on its type
+ * @param[in] c_szRequireParameterName element name
+ * @param[in] bElementType element type
+ * @param[in] fl64ParameterValue element value
+ * @param[in] poRequestStructuredBuffer pointer to StructuredBuffer containing parameters
+ *
+ ********************************************************************************************/
+
+void PutJsonNumberToStructuredBuffer(
+    _in const char * c_szRequireParameterName,
+    _in Byte bElementType,
+    _in float64_t fl64ParameterValue,
+    _out StructuredBuffer * poRequestStructuredBuffer
+    )
+{
+    __DebugFunction();
+
+    switch (bElementType)
+    {
+        case FLOAT32_VALUE_TYPE
+        :
+            poRequestStructuredBuffer->PutFloat32(c_szRequireParameterName, (float) fl64ParameterValue);
+            break;
+        case FLOAT64_VALUE_TYPE
+        :
+            poRequestStructuredBuffer->PutFloat64(c_szRequireParameterName, (double) fl64ParameterValue);
+            break;
+        case INT8_VALUE_TYPE
+        :
+            poRequestStructuredBuffer->PutInt8(c_szRequireParameterName, (int8_t) fl64ParameterValue);
+            break;
+        case INT16_VALUE_TYPE
+        :
+            poRequestStructuredBuffer->PutInt16(c_szRequireParameterName, (int16_t) fl64ParameterValue);
+            break;
+        case INT32_VALUE_TYPE
+        :
+            poRequestStructuredBuffer->PutInt32(c_szRequireParameterName, (int32_t) fl64ParameterValue);
+            break;
+        case INT64_VALUE_TYPE
+        :
+            poRequestStructuredBuffer->PutInt64(c_szRequireParameterName, (int64_t) fl64ParameterValue);
+            break;
+        case UINT8_VALUE_TYPE
+        :
+            poRequestStructuredBuffer->PutUnsignedInt8(c_szRequireParameterName, (uint8_t) fl64ParameterValue);
+            break;
+        case UINT16_VALUE_TYPE
+        :
+            poRequestStructuredBuffer->PutUnsignedInt16(c_szRequireParameterName, (uint16_t) fl64ParameterValue);
+            break;
+        case UINT32_VALUE_TYPE
+        :
+            poRequestStructuredBuffer->PutUnsignedInt32(c_szRequireParameterName, (uint32_t) fl64ParameterValue);
+            break;
+        case UINT64_VALUE_TYPE
+        :
+            poRequestStructuredBuffer->PutUnsignedInt64(c_szRequireParameterName, (uint64_t) fl64ParameterValue);
+            break;
+        case BYTE_VALUE_TYPE
+        :
+            poRequestStructuredBuffer->PutByte(c_szRequireParameterName, (Byte) fl64ParameterValue);
+            break;
+        case WORD_VALUE_TYPE
+        :
+            poRequestStructuredBuffer->PutWord(c_szRequireParameterName, (Word) fl64ParameterValue);
+            break;
+        case DWORD_VALUE_TYPE
+        :
+            poRequestStructuredBuffer->PutDword(c_szRequireParameterName, (Dword) fl64ParameterValue);
+            break;
+        case QWORD_VALUE_TYPE
+        :
+            poRequestStructuredBuffer->PutQword(c_szRequireParameterName, (Qword) fl64ParameterValue);
+            break;
+        default:
+            break;
+    }
+}
+
+/********************************************************************************************
+ *
+ * @function ValidateUnsignedNumber
+ * @brief Check if the unsigned number is valid according to the specified range or not
+ * @param[in] qwParameterValue element value
+ * @param[in] c_strRange comma delimitted range
+ * @param[in] bRangeType range type
+ * @return true if valid
+ * @return false otherwise
+ *
+ ********************************************************************************************/
+
+bool ValidateUnsignedNumber(
+    _in Qword qwParameterValue,
+    _in const std::string & c_strRange,
+    _in Byte bRangeType
+    )
+{
+    __DebugFunction();
+
+    bool fValid = true;
+
+    std::vector<Qword> stlRange;
+    std::stringstream oRangeStream(c_strRange);
+    std::string strAllowedElement;
+    while (getline(oRangeStream, strAllowedElement, ','))
+    {
+        stlRange.push_back(std::atof(strAllowedElement.c_str()));
+    }
+    // Check if the number is allowed or not
+    if (BIG_NUMBER_TYPE == bRangeType)
+    {
+        if (stlRange.end() == std::find(stlRange.begin(), stlRange.end(), qwParameterValue))
+        {
+            fValid = false;
+        }
+    }
+    else if (ANY_VALUE_TYPE == bRangeType)
+    {
+        _ThrowBaseExceptionIf((2 > stlRange.size()), "ERROR: Invalid range specified.", nullptr);
+        // Check if the number is in the range specified or not
+        if ((stlRange[0] > qwParameterValue) || (stlRange[1] < qwParameterValue))
+        {
+            fValid = false;
+        }
+    }
+
+    return fValid;
+}
+
+/********************************************************************************************
+ *
+ * @function ValidateSignedNumber
+ * @brief Check if the signed number is valid according to the specified range or not
+ * @param[in] fl64ParameterValue element value
+ * @param[in] c_strRange comma delimitted range
+ * @param[in] bRangeType range type
+ * @return true if valid
+ * @return false otherwise
+ *
+ ********************************************************************************************/
+
+bool ValidateSignedNumber(
+    _in float64_t fl64ParameterValue,
+    _in const std::string & c_strRange,
+    _in Byte bRangeType
+    )
+{
+    __DebugFunction();
+
+    bool fValid = true;
+
+    std::vector<float64_t> stlRange;
+    std::stringstream oRangeStream(c_strRange);
+    std::string strAllowedElement;
+    while (getline(oRangeStream, strAllowedElement, ','))
+    {
+        stlRange.push_back(std::atof(strAllowedElement.c_str()));
+    }
+    // Check if the number is allowed or not
+    if (BIG_NUMBER_TYPE == bRangeType)
+    {
+        if (stlRange.end() == std::find(stlRange.begin(), stlRange.end(), fl64ParameterValue))
+        {
+            fValid = false;
+        }
+    }
+    else if (ANY_VALUE_TYPE == bRangeType)
+    {
+        _ThrowBaseExceptionIf((2 > stlRange.size()), "ERROR: Invalid range specified.", nullptr);
+        // Check if the number is in the range specified or not
+        if ((stlRange[0] > fl64ParameterValue) || (stlRange[1] < fl64ParameterValue))
+        {
+            fValid = false;
+        }
+    }
+
+    return fValid;
 }

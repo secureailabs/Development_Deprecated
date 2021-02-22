@@ -319,16 +319,16 @@ std::vector<Byte> __stdcall JsonValue::ParseDataToStructuredBuffer(
 
     std::vector<Byte> stlJsonValue;
 
-    if (true == JsonValue::SkipWhitespaceAndCheckEndOfData(&c_pszData))
+    if (true == SkipWhitespaceAndCheckEndOfData(&c_pszData))
     {
         // Parse data to json object
-        JsonValue * poJsonValue = JsonValue::ToJson(&c_pszData);
+        JsonValue * poJsonValue = ToJson(&c_pszData);
         if (nullptr != poJsonValue)
         {
-            if (false == JsonValue::SkipWhitespaceAndCheckEndOfData(&c_pszData))
+            if (false == SkipWhitespaceAndCheckEndOfData(&c_pszData))
             {
                 // Parse json object to a StructuredBuffer and return the serialized buffer
-                stlJsonValue = JsonValue::JsonToStructuredBuffer(poJsonValue);
+                stlJsonValue = JsonToStructuredBuffer(poJsonValue);
                 delete poJsonValue;
             }
         }
@@ -357,7 +357,7 @@ JsonValue * __stdcall JsonValue::ParseStructuredBufferToJson(
 {
     __DebugFunction();
 
-    JsonValue * oJsonValue = new JsonValue(JsonValue::StructuredBufferToJson(c_oStructuredBufferObject));
+    JsonValue * oJsonValue = new JsonValue(StructuredBufferToJson(c_oStructuredBufferObject));
 
     return oJsonValue;
 
@@ -829,7 +829,7 @@ JsonValue * __thiscall JsonValue::ToJson(
                             case eJsonObjectType
             				:
                             {
-                                StructuredBuffer oObject(oJsonArray[unIndex]->JsonToStructuredBuffer(oJsonArray[unIndex]));
+                                StructuredBuffer oObject(JsonToStructuredBuffer(oJsonArray[unIndex]));
                                 oArrayValue.PutStructuredBuffer(strElementName.c_str(), oObject);
             					break;
                             }
@@ -840,7 +840,7 @@ JsonValue * __thiscall JsonValue::ToJson(
                 }
             	case eJsonObjectType
             	:
-                    StructuredBuffer oObjectValue(poJsonChildValue->JsonToStructuredBuffer(poJsonChildValue));
+                    StructuredBuffer oObjectValue(JsonToStructuredBuffer(poJsonChildValue));
                     oJsonValueStructuredBuffer.PutStructuredBuffer((*itrJsonKeys).c_str(), oObjectValue);
             		break;
             }

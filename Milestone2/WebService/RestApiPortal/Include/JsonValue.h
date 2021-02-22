@@ -97,10 +97,10 @@ class JsonValue : public Object
 
         // Fetch value of the JsonValue
         const std::string & __thiscall GetStringValue(void) const throw();
-		bool __thiscall GetBooleanValue(void) const throw();
-		double __thiscall GetNumberValue(void) const throw();
-		const JsonArray & __thiscall GetJsonArrayValue(void) const throw();
-		const JsonObject & __thiscall GetJsonObjectValue(void) const throw();
+        bool __thiscall GetBooleanValue(void) const throw();
+        double __thiscall GetNumberValue(void) const throw();
+        const JsonArray & __thiscall GetJsonArrayValue(void) const throw();
+        const JsonObject & __thiscall GetJsonObjectValue(void) const throw();
 
         // Fetch the keys in a JsonObject
         std::vector<std::string> __thiscall GetObjectKeys(void) const throw();

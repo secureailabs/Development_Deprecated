@@ -186,14 +186,23 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
         bool fIsEndOfHeader = false;
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
-        {
-            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
-            if (4 <= stlHeaderData.size())
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
             {
-                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
                 {
-                    fIsEndOfHeader = true;
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
                 }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
             }
         }
         _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
@@ -394,11 +403,7 @@ int __thiscall RestFrameworkRuntimeData::ParseRequestContent(
     std::vector<std::string> stlParameterKeys = c_oParser.GetParameterKeys();
     for (std::string strKey : stlParameterKeys)
     {
-        if (true == ::IsNumber(c_oParser.GetParameterValue(strKey)))
-        {
-            poRequestParameters->PutFloat64(strKey.c_str(), std::stol(c_oParser.GetParameterValue(strKey)));
-        }
-        else if (true == ::IsBoolean(c_oParser.GetParameterValue(strKey)))
+        if (true == ::IsBoolean(c_oParser.GetParameterValue(strKey)))
         {
             poRequestParameters->PutBoolean(strKey.c_str(), std::atoi(c_oParser.GetParameterValue(strKey).c_str()));
         }
@@ -649,109 +654,50 @@ bool __thiscall RestFrameworkRuntimeData::ValidateParameter(
     }
     else if ((0x04 <= bElementType) && (0x11 >= bElementType))
     {
+        float64_t fl64ParameterValue;
+        // Check if request has the parameter as a number or as a string
+        // If it has the parameter as the number then try casting to float64
         fExists = c_oSerializedRequest.IsElementPresent(c_szRequireParameterName, FLOAT64_VALUE_TYPE);
         if (true == fExists)
         {
-            double qwParameterValue = c_oSerializedRequest.GetFloat64(c_szRequireParameterName);
+            fl64ParameterValue = c_oSerializedRequest.GetFloat64(c_szRequireParameterName);
+        }
+        else if (false == fExists)
+        {
+            fExists = c_oSerializedRequest.IsElementPresent(c_szRequireParameterName, ANSI_CHARACTER_STRING_VALUE_TYPE);
+            if (true == fExists)
+            {
+                fl64ParameterValue = std::stod(c_oSerializedRequest.GetString(c_szRequireParameterName), 0); 
+            }
+        }
+        // Validate the parameter, if valid then add it to the StructuredBuffer w.r.t the plugin parameter type
+        if (true == fExists)
+        {
             if ((0x0A <= bElementType) && (0x11 >= bElementType))
             {
-                if (0 > qwParameterValue)
+                if (0 > (Qword) fl64ParameterValue)
                 {
                     fValid = false;
                 }
             }
             if (true == fRangeSpecified)
             {
-                std::vector<double> stlRange;
-                std::stringstream oRangeStream(c_oPluginParameter.GetString("Range"));
-                std::string strAllowedElement;
-                while (getline(oRangeStream, strAllowedElement, ','))
-                {
-                    stlRange.push_back(std::atof(strAllowedElement.c_str()));
-                }
+                std::string strRange = c_oPluginParameter.GetString("Range");
                 Byte bRangeType = c_oPluginParameter.GetByte("RangeType");
-                // Check if the number is allowed or not
-                if (BIG_NUMBER_TYPE == bRangeType)
+                // Check if the number is allowed and if it is in the range specified or not
+                if ((0x0A <= bElementType) && (0x11 >= bElementType))
                 {
-                    if (stlRange.end() == std::find(stlRange.begin(), stlRange.end(), qwParameterValue))
-                    {
-                        fValid = false;
-                    }
+                    fValid = ::ValidateUnsignedNumber((Qword) fl64ParameterValue, strRange, bRangeType);
                 }
-                else if (ANY_VALUE_TYPE == bRangeType)
+                else 
                 {
-                    _ThrowBaseExceptionIf((2 > stlRange.size()), "ERROR: Invalid range specified.", nullptr);
-                    // Check if the number is in the range specified or not
-                    if ((stlRange[0] > qwParameterValue) || (stlRange[1] < qwParameterValue))
-                    {
-                        fValid = false;
-                    }
+                    fValid = ::ValidateSignedNumber(fl64ParameterValue, strRange, bRangeType);
                 }
             }
             // Parse the number type and cast it to plugin parameter type
             if (true == fValid)
             {
-                switch (bElementType)
-                {
-                case FLOAT32_VALUE_TYPE
-                :
-                    poRequestStructuredBuffer->PutFloat32(c_szRequireParameterName, (float) c_oSerializedRequest.GetFloat64(c_szRequireParameterName));
-                    break;
-                case FLOAT64_VALUE_TYPE
-                :
-                    poRequestStructuredBuffer->PutFloat64(c_szRequireParameterName, (double) c_oSerializedRequest.GetFloat64(c_szRequireParameterName));
-                    break;
-                case INT8_VALUE_TYPE
-                :
-                    poRequestStructuredBuffer->PutInt8(c_szRequireParameterName, (int8_t) c_oSerializedRequest.GetFloat64(c_szRequireParameterName));
-                    break;
-                case INT16_VALUE_TYPE
-                :
-                    poRequestStructuredBuffer->PutInt16(c_szRequireParameterName, (int16_t) c_oSerializedRequest.GetFloat64(c_szRequireParameterName));
-                    break;
-                case INT32_VALUE_TYPE
-                :
-                    poRequestStructuredBuffer->PutInt32(c_szRequireParameterName, (int32_t) c_oSerializedRequest.GetFloat64(c_szRequireParameterName));
-                    break;
-                case INT64_VALUE_TYPE
-                :
-                    poRequestStructuredBuffer->PutInt64(c_szRequireParameterName, (int64_t) c_oSerializedRequest.GetFloat64(c_szRequireParameterName));
-                    break;
-                case UINT8_VALUE_TYPE
-                :
-                    poRequestStructuredBuffer->PutUnsignedInt8(c_szRequireParameterName, (uint8_t) c_oSerializedRequest.GetFloat64(c_szRequireParameterName));
-                    break;
-                case UINT16_VALUE_TYPE
-                :
-                    poRequestStructuredBuffer->PutUnsignedInt16(c_szRequireParameterName, (uint16_t) c_oSerializedRequest.GetFloat64(c_szRequireParameterName));
-                    break;
-                case UINT32_VALUE_TYPE
-                :
-                    poRequestStructuredBuffer->PutUnsignedInt32(c_szRequireParameterName, (uint32_t) c_oSerializedRequest.GetFloat64(c_szRequireParameterName));
-                    break;
-                case UINT64_VALUE_TYPE
-                :
-                    poRequestStructuredBuffer->PutUnsignedInt64(c_szRequireParameterName, (uint64_t) c_oSerializedRequest.GetFloat64(c_szRequireParameterName));
-                    break;
-                case BYTE_VALUE_TYPE
-                :
-                    poRequestStructuredBuffer->PutByte(c_szRequireParameterName, (Byte) c_oSerializedRequest.GetFloat64(c_szRequireParameterName));
-                    break;
-                case WORD_VALUE_TYPE
-                :
-                    poRequestStructuredBuffer->PutWord(c_szRequireParameterName, (Word) c_oSerializedRequest.GetFloat64(c_szRequireParameterName));
-                    break;
-                case DWORD_VALUE_TYPE
-                :
-                    poRequestStructuredBuffer->PutDword(c_szRequireParameterName, (Dword) c_oSerializedRequest.GetFloat64(c_szRequireParameterName));
-                    break;
-                case QWORD_VALUE_TYPE
-                :
-                    poRequestStructuredBuffer->PutQword(c_szRequireParameterName, (Qword) c_oSerializedRequest.GetFloat64(c_szRequireParameterName));
-                    break;
-                default:
-                    break;
-                }
+                ::PutJsonNumberToStructuredBuffer(c_szRequireParameterName, bElementType, fl64ParameterValue, poRequestStructuredBuffer);
             }
         }
     }

@@ -701,7 +701,6 @@ void __thiscall DatabaseManager::GetEventObjectBlob(
                                 {
                                     // Word wType = Guid(strEventGuid.get_utf8().value.to_string().c_str()).GetObjectType();
                                     // _ThrowBaseExceptionIf((eAuditEventBranchNode != wType), "No DC guid exists for this type of object.", nullptr);
-                                    _ThrowBaseExceptionIf((0 == oObject.GetUnsignedInt32("SequenceNumber")), "No DC guid exists for root node.", nullptr);
                                     StructuredBuffer oPlainTextMetadata(oObject.GetStructuredBuffer("PlainTextEventData"));
                                     std::string strPlainObjectDCGuid = oPlainTextMetadata.GetString("GuidOfDcOrVm");
                                     std::string strFilterDcGuid = c_oFilters.GetString("DCGuid");
@@ -756,7 +755,7 @@ void __thiscall DatabaseManager::GetEventObjectBlob(
  *
  * @class DatabaseManager
  * @function GetNextSequenceNumber
- * @brief Fetch next sequence number from the root event and update the root event
+ * @brief Fetch next sequence number from the parent event and update the parent event's next sequence number
  * @param[in] c_oRequest contains organization guid
  * @throw BaseException Error StructuredBuffer element not found
  * @returns Sequence number for a non leaf event
@@ -772,7 +771,7 @@ uint32_t __thiscall DatabaseManager::GetNextSequenceNumber(
     StructuredBuffer oResponse;
     uint32_t unSequenceNumber = -1;
 
-    std::string strParentGuid = "{00000000-0000-0000-0000-000000000000}";
+    std::string strEventGuid = c_oRequest.GetString("EventGuid");
     std::string strOrganizationGuid = c_oRequest.GetString("OrganizationGuid");
 
     // ::pthread_mutex_lock(&m_sMutex);
@@ -784,23 +783,19 @@ uint32_t __thiscall DatabaseManager::GetNextSequenceNumber(
     // Otherwise return 0 as the next sequence number
     
     bsoncxx::stdx::optional<bsoncxx::document::value> oAuditLogDocument = oSailDatabase["AuditLog"].find_one(document{} 
-                                                                                                        << "ParentGuid" << strParentGuid 
+                                                                                                        << "EventGuid" << strEventGuid 
                                                                                                         << "OrganizationGuid" << strOrganizationGuid
                                                                                                         << finalize);
     if (oAuditLogDocument)
     {
-        bsoncxx::document::element strEventGuid = oAuditLogDocument->view()["EventGuid"];
         bsoncxx::document::element unNextSequenceNumber = oAuditLogDocument->view()["NextSequenceNumber"];
         if (unNextSequenceNumber && unNextSequenceNumber.type() == type::k_double)
         {
             unSequenceNumber = (uint32_t) unNextSequenceNumber.get_double().value;
         }
-        if (strEventGuid && strEventGuid.type() == type::k_utf8)
-        {
-            oSailDatabase["AuditLog"].update_one(document{} << "EventGuid" << strEventGuid.get_utf8().value.to_string() << finalize,
-                                                document{} << "$set" << open_document <<
-                                                "NextSequenceNumber" << (double)(unSequenceNumber + 1) << close_document << finalize);
-        }
+        oSailDatabase["AuditLog"].update_one(document{} << "EventGuid" << strEventGuid << finalize,
+                                            document{} << "$set" << open_document <<
+                                            "NextSequenceNumber" << (double)(unSequenceNumber + 1) << close_document << finalize);
     }
 
     return unSequenceNumber;
@@ -827,22 +822,16 @@ std::vector<Byte> __thiscall DatabaseManager::AddNonLeafEvent(
 
     // Create guids for the documents
     Guid oObjectGuid, oPlainTextObjectBlobGuid;
-
+    uint32_t unSequenceNumber, unNextSequenceNumber = 0;
     StructuredBuffer oNonLeafEvent(c_oRequest.GetStructuredBuffer("NonLeafEvent"));
-    // Get next sequence number from the root event
-    uint32_t unSequenceNumber, unNextSequenceNumber;
-    // Get root event
+    // Get parent event's next sequence number and use it to assign a sequence number to the branch event
     StructuredBuffer oGetRoot;
+    oGetRoot.PutString("EventGuid", oNonLeafEvent.GetString("ParentGuid"));
     oGetRoot.PutString("OrganizationGuid", oNonLeafEvent.GetString("OrganizationGuid"));
     unSequenceNumber = this->GetNextSequenceNumber(oGetRoot);
     if (-1 == unSequenceNumber)
     {
         unSequenceNumber = 0;
-        unNextSequenceNumber = unSequenceNumber + 1;
-    }
-    else 
-    {
-        unNextSequenceNumber = unSequenceNumber + 1;
     }
 
     // Create an audit log event document

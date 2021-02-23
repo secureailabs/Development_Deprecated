@@ -32,7 +32,6 @@ class Azure : public Object
             _in const std::string & c_strSecret,
             _in const std::string & c_strSubscriptionID,
             _in const std::string & c_strTenant,
-            _in const std::string & c_strResourceGroup,
             _in const std::string & c_strLocation
         );
         ~Azure(void);
@@ -51,6 +50,18 @@ class Azure : public Object
         bool __thiscall DeleteVirtualMachine(
             _in const std::string & c_strVmName
         );
+        void __thiscall SetResourceGroup(
+            _in const std::string c_strResourceGroupName
+        );
+        bool __thiscall CreateResourceGroup(
+            _in const std::string c_strResourceGroupName
+        );
+        std::string __thiscall CreateVirtualNetwork(
+            _in std::string c_strVirtualNetworkName
+        );
+        void __thiscall SetVirtualNetwork(
+            _in std::string & c_strVirtualNetworkName
+        );
         // TODO:
         bool __thiscall AssignImageAccess(
             _in const std::string c_strPrincipalId
@@ -61,7 +72,6 @@ class Azure : public Object
         bool __thiscall DeprovisionAndSaveVHD(
             _in StructuredBuffer & c_oInitializeData
         );
-
         bool __thiscall UploadImage(
             _in std::string & strImagePath
         );
@@ -74,7 +84,8 @@ class Azure : public Object
         const std::string m_strSecret;
         const std::string m_strTenant;
         const std::string m_strSubscriptionId;
-        const std::string m_strResourceGroup;
+        std::string m_strResourceGroup;
+        std::string m_strVirtualNetwork;
         const std::string m_strLocation;
 
         std::string __thiscall MakeRestCall(

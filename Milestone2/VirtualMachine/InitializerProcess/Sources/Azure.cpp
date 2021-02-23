@@ -100,10 +100,9 @@ Azure::Azure(
     _in const std::string & c_strSecret,
     _in const std::string & c_strSubcriptionID,
     _in const std::string & c_strTenant,
-    _in const std::string & c_strResourceGroup,
     _in const std::string & c_strLocation
     )
-    : m_strAppId(c_strAppId), m_strSecret(c_strSecret), m_strSubscriptionId(c_strSubcriptionID), m_strTenant(c_strTenant), m_strResourceGroup(c_strResourceGroup), m_strLocation(c_strLocation)
+    : m_strAppId(c_strAppId), m_strSecret(c_strSecret), m_strSubscriptionId(c_strSubcriptionID), m_strTenant(c_strTenant), m_strLocation(c_strLocation)
 {
     __DebugFunction();
 
@@ -123,6 +122,79 @@ Azure::~Azure(void)
 
 }
 
+/********************************************************************************************
+ *
+ * @class Azure
+ * @function CreateResourceGroup
+ * @brief Create a Resource Group for the Azure.
+ * @param[in] c_strResourceGroupName Name of the Resource Group
+ * @return Authenticated Azure
+ * @throw BaseException if the credentials fail
+ *
+ ********************************************************************************************/
+
+bool __thiscall Azure::CreateResourceGroup(
+    _in const std::string c_strResourceGroupName
+)
+{
+    __DebugFunction();
+
+    std::string strResponseString;
+
+    if (0 == m_strAuthToken.length())
+    {
+        this->Authenticate();
+    }
+
+    const std::string c_strBody = this->CompleteTemplate("ResourceGroup.json");
+    std::string strRestRequestHeader = "PUT /subscriptions/" + m_strSubscriptionId + "/resourcegroups/" + c_strResourceGroupName + "?api-version=2020-06-01" + " HTTP/1.1\r\n"
+                                       "Host: management.azure.com\r\n"
+                                       "Authorization: Bearer "+ m_strAuthToken + "\r\n"
+                                       "Content-Type: application/json\r\n"
+                                       "Content-Length: " + std::to_string(c_strBody.length()) + "\r\n\r\n";
+
+    std::string strRestRequest = strRestRequestHeader + c_strBody + "\r\n\r\n";
+    try
+    {
+        struct hostent * oHostent = ::gethostbyname("management.azure.com");
+        _ThrowIfNull(oHostent, "No DNS mapping for management.azure.com", nullptr);
+
+        std::unique_ptr<TlsNode> poTlsNode(::TlsConnectToNetworkSocket(inet_ntoa (*((struct in_addr *)oHostent->h_addr_list[0])), 443));
+        poTlsNode->Write((const Byte *)strRestRequest.c_str(), strRestRequest.length());
+
+        std::vector<Byte> oResponseByte = poTlsNode->Read(1, 5000);
+        while(0 != oResponseByte.size())
+        {
+            strResponseString.push_back(oResponseByte.at(0));
+            oResponseByte = poTlsNode->Read(1, 100);
+        }
+    }
+    catch(BaseException & oBaseException)
+    {
+        std::cout << "Exception caught: " << oBaseException.GetExceptionMessage() << '\n';
+    }
+
+    std::cout << strResponseString << std::endl;
+    return true;
+}
+
+/********************************************************************************************
+ *
+ * @class Azure
+ * @function SetResourceGroup
+ * @brief Set the Resource Group for the class
+ * @param[in] c_strResourceGroupName Name of the Resource Group
+ * @return Authenticated Azure
+ * @throw BaseException if the credentials fail
+ *
+ ********************************************************************************************/
+
+void __thiscall Azure::SetResourceGroup(
+    _in const std::string c_strResourceGroupName
+)
+{
+    m_strResourceGroup = c_strResourceGroupName;
+}
 
 /********************************************************************************************
  *
@@ -149,14 +221,14 @@ std::string __thiscall Azure::ProvisionVirtualMachine(void)
 
     // Create a network interface for the Virtual Machine
     std::string strNetworkInterfaceSpec = this->CompleteTemplate("NetworkInterface.json");
-    ReplaceAll(strNetworkInterfaceSpec, "{{Name}}", strVirtualMachineName + "-nic");
-    ReplaceAll(strNetworkInterfaceSpec, "{{IpAddressId}}", strVirtualMachineName + "-ip");
+    ::ReplaceAll(strNetworkInterfaceSpec, "{{Name}}", strVirtualMachineName + "-nic");
+    ::ReplaceAll(strNetworkInterfaceSpec, "{{IpAddressId}}", strVirtualMachineName + "-ip");
     this->MakeRestCall("PUT", "Microsoft.Network/networkInterfaces/" + strVirtualMachineName + "-nic", "management.azure.com", strNetworkInterfaceSpec, "2020-07-01");
 
     // Create the Virtual Machine on the cloud
     std::string strVirtualMachineSpec = this->CompleteTemplate("VmConfig.json");
-    ReplaceAll(strVirtualMachineSpec, "{{OsDiskName}}", strVirtualMachineName + "-disk");
-    ReplaceAll(strVirtualMachineSpec, "{{NetworkInterface}}", strVirtualMachineName + "-nic");
+    ::ReplaceAll(strVirtualMachineSpec, "{{OsDiskName}}", strVirtualMachineName + "-disk");
+    ::ReplaceAll(strVirtualMachineSpec, "{{NetworkInterface}}", strVirtualMachineName + "-nic");
     this->MakeRestCall("PUT", "Microsoft.Compute/virtualMachines/" + strVirtualMachineName, "management.azure.com", strVirtualMachineSpec, "2020-12-01");
 
     // When the VM is created, the first provisioning status is "Creating" indicating that the
@@ -176,27 +248,100 @@ std::string __thiscall Azure::ProvisionVirtualMachine(void)
     return strVirtualMachineName;
 }
 
+/********************************************************************************************
+ *
+ * @class Azure
+ * @function CreateVirtualNetwork
+ * @brief Creates a Virtual Network on the cloud
+ * @param[in] c_strVirtualMachineName Name of the virtual Network
+ * @throw BaseException if the credentials fail
+ *
+ ********************************************************************************************/
+
+std::string __thiscall Azure::CreateVirtualNetwork(
+    _in std::string c_strVirtualNetworkName
+)
+{
+    __DebugFunction();
+
+    std::string strVirtualNetworkSpec = this->CompleteTemplate("VirtualNetwork.json");
+    std::string strVirtualNetworkStatusJson = this->MakeRestCall("PUT", "Microsoft.Network/virtualNetworks/" + c_strVirtualNetworkName, "management.azure.com", strVirtualNetworkSpec, "2020-07-01");
+
+    return ::GetJsonValue(strVirtualNetworkStatusJson, "\"provisioningState\"");
+}
+
+/********************************************************************************************
+ *
+ * @class Azure
+ * @function SetVirtualNetwork
+ * @brief Creates a Virtual Network on the cloud
+ * @param[in] c_strVirtualMachineName Name of the virtual Network
+ * @throw BaseException if the credentials fail
+ *
+ ********************************************************************************************/
+
+void __thiscall Azure::SetVirtualNetwork(
+    _in std::string & c_strVirtualNetworkName
+)
+{
+    __DebugFunction();
+
+    m_strVirtualNetwork = c_strVirtualNetworkName;
+}
+
+/********************************************************************************************
+ *
+ * @class Azure
+ * @function GetVmProvisioningState
+ * @brief Returns the provisioning state of the VM
+ * @param[in] c_strVirtualMachineName Name of the virtual machine
+ * @return Authenticated Azure
+ * @throw BaseException if the credentials fail
+ *
+ ********************************************************************************************/
+
 std::string __thiscall Azure::GetVmProvisioningState(
     _in std::string & c_strVirtualMachineName
 )
 {
     __DebugFunction();
 
-    std::string strVmProvisioningStatusJson =  this->MakeRestCall("GET", "Microsoft.Compute/virtualMachines/" + c_strVirtualMachineName, "management.azure.com", "", "2020-12-01");
+    std::string strVmProvisioningStatusJson = this->MakeRestCall("GET", "Microsoft.Compute/virtualMachines/" + c_strVirtualMachineName, "management.azure.com", "", "2020-12-01");
 
     return ::GetJsonValue(strVmProvisioningStatusJson, "\"provisioningState\"");
 }
 
+/********************************************************************************************
+ *
+ * @class Azure
+ * @function GetVmIp
+ * @brief Returns the public IP of the VM
+ * @param[in] c_strVirtualMachineName Name of the virtual machine
+ * @return Authenticated Azure
+ * @throw BaseException if the credentials fail
+ *
+ ********************************************************************************************/
+
 std::string __thiscall Azure::GetVmIp(
-    _in std::string & c_strVmName
+    _in std::string & c_strVirtualMachineName
 )
 {
     __DebugFunction();
 
-    std::string strVmIpRestResponse = this->MakeRestCall("GET", "Microsoft.Network/publicIPAddresses/" + c_strVmName + "-ip", "management.azure.com", "", "2020-07-01");
+    std::string strVmIpRestResponse = this->MakeRestCall("GET", "Microsoft.Network/publicIPAddresses/" + c_strVirtualMachineName + "-ip", "management.azure.com", "", "2020-07-01");
 
     return ::GetJsonValue(strVmIpRestResponse, "\"ipAddress\"");
 }
+
+/********************************************************************************************
+ *
+ * @class Azure
+ * @function DeleteVirtualMachine
+ * @brief Deletes the VM instance
+ * @param[in] c_strVirtualMachineName Name of the virtual machine
+ * @return true on success, else false
+ *
+ ********************************************************************************************/
 
 bool __thiscall Azure::DeleteVirtualMachine(
     _in const std::string & c_strVirtualMachineName
@@ -270,6 +415,15 @@ bool __thiscall Azure::Authenticate(void)
     return fAuthenticationStatus;
 }
 
+/********************************************************************************************
+ *
+ * @class Azure
+ * @function MakeRestCall
+ * @brief Helper function to make REST calls to Azure API
+ * @return REST response from the server
+ *
+ ********************************************************************************************/
+
 std::string __thiscall Azure::MakeRestCall(
     _in const std::string c_strVerb,
     _in const std::string c_strResource,
@@ -286,7 +440,7 @@ std::string __thiscall Azure::MakeRestCall(
     {
         this->Authenticate();
     }
-    std::string strRestRequestHeader = c_strVerb + " /subscriptions/" + m_strSubscriptionId + "/resourceGroups/cloud-shell-storage-centralindia/providers/" + c_strResource + "?api-version=" + c_strApiVersionDate + " HTTP/1.1\r\n"
+    std::string strRestRequestHeader = c_strVerb + " /subscriptions/" + m_strSubscriptionId + "/resourceGroups/" + m_strResourceGroup + "/providers/" + c_strResource + "?api-version=" + c_strApiVersionDate + " HTTP/1.1\r\n"
                                        "Host: "+ c_strHost + "\r\n"
                                        "Authorization: Bearer "+ m_strAuthToken + "\r\n"
                                        "Content-Type: application/json\r\n"
@@ -316,22 +470,33 @@ std::string __thiscall Azure::MakeRestCall(
     return strResponseString;
 }
 
+/********************************************************************************************
+ *
+ * @class Azure
+ * @function CompleteTemplate
+ * @brief Helper function to make to complete the json config template
+ * @return The completed string
+ *
+ ********************************************************************************************/
+
 std::string Azure::CompleteTemplate(
     _in std::string c_strFileName
 )
 {
     __DebugFunction();
 
-    std::ifstream file(c_strFileName, std::ios::ate);
-    std::streamsize nSizeOfJsonFile = file.tellg();
-    file.seekg(0, std::ios::beg);
+    std::ifstream stlJsonFile(c_strFileName, std::ios::ate);
+    std::streamsize nSizeOfJsonFile = stlJsonFile.tellg();
+    stlJsonFile.seekg(0, std::ios::beg);
     std::string strRestRequestBody;
     strRestRequestBody.resize(nSizeOfJsonFile);
-    file.read(strRestRequestBody.data(), nSizeOfJsonFile);
+    stlJsonFile.read(strRestRequestBody.data(), nSizeOfJsonFile);
 
-    ReplaceAll(strRestRequestBody, "{{SubscriptionId}}", m_strSubscriptionId);
-    ReplaceAll(strRestRequestBody, "{{ResourceGroup}}", m_strResourceGroup);
-    ReplaceAll(strRestRequestBody, "{{Location}}", m_strLocation);
+    ::ReplaceAll(strRestRequestBody, "{{SubscriptionId}}", m_strSubscriptionId);
+    ::ReplaceAll(strRestRequestBody, "{{ResourceGroup}}", m_strResourceGroup);
+    ::ReplaceAll(strRestRequestBody, "{{Location}}", m_strLocation);
+    ::ReplaceAll(strRestRequestBody, "{{VirtualNetwork}}", m_strVirtualNetwork);
 
+    stlJsonFile.close();
     return strRestRequestBody;
 }

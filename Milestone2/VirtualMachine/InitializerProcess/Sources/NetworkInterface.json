@@ -9,7 +9,7 @@
             "id": "/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Network/publicIPAddresses/{{IpAddressId}}"
           },
           "subnet": {
-            "id": "/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Network/virtualNetworks/cloudshellstoragecentralindiavnet364/subnets/default"
+            "id": "/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Network/virtualNetworks/{{VirtualNetwork}}/subnets/default"
           }
         }
       }

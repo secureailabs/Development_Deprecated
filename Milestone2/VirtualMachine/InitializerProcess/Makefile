@@ -27,18 +27,11 @@ SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
-SOURCES+=$(shell realpath ../../WebService/RestApiPortal/Sources/JsonValue.cpp)
-SOURCES+=$(shell realpath ../../WebService/RestApiPortal/Sources/Utils.cpp)
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
 OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))
 
 all: $(OUTPUT)
-	@cp ./Sources/VmConfig.json $(ABSROOTDIR)/Binary/
-	@cp ./Sources/NetworkInterface.json $(ABSROOTDIR)/Binary/
-	@cp ./Sources/PublicIpAddress.json $(ABSROOTDIR)/Binary/
-	@cp ./Sources/ResourceGroup.json $(ABSROOTDIR)/Binary/
-	@cp ./Sources/VirtualNetwork.json $(ABSROOTDIR)/Binary/
 
 $(OBJDIR)%.o: $(ABSROOTDIR)%.cpp
 	@mkdir -p $(@D)

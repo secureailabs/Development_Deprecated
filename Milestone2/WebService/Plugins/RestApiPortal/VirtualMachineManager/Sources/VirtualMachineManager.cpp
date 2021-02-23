@@ -558,7 +558,6 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
         oDcMetadata.PutString("OrganizationGuid", oOrganizationGuid.ToString(eHyphensAndCurlyBraces));
         oDcMetadata.PutQword("EventType", 2); // where 2 is for non root event type
         oDcMetadata.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
-        oDcMetadata.PutUnsignedInt32("SequenceNumber", 1);
         StructuredBuffer oPlainTextMetadata;
         oPlainTextMetadata.PutDword("BranchType", 1); // where 1 is for for DC branch type
         oPlainTextMetadata.PutString("GuidOfDcOrVm", strDcGuid);
@@ -581,7 +580,6 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
     oVmMetadata.PutString("OrganizationGuid", oOrganizationGuid.ToString(eHyphensAndCurlyBraces));
     oVmMetadata.PutQword("EventType", 2); // where 2 is for non root event type
     oVmMetadata.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
-    oVmMetadata.PutUnsignedInt32("SequenceNumber", 2);
     StructuredBuffer oPlainTextMetadata;
     oPlainTextMetadata.PutDword("BranchType", 2); // where 2 is for for Vm branch type
     oPlainTextMetadata.PutString("GuidOfDcOrVm", strVmGuid);

@@ -679,7 +679,13 @@ void __thiscall DatabaseManager::GetEventObjectBlob(
                         {
                             for (std::string strFilter : stlFilters)
                             {
-                                if ("MinimumDate" == strFilter)
+                                if ("SequenceNumber" == strFilter)
+                                {
+                                    uint32_t unObjectSequenceNumber = oObject.GetUnsignedInt32("SequenceNumber");
+                                    uint32_t unFilterSequenceNumber = c_oFilters.GetUnsignedInt32("SequenceNumber");
+                                    _ThrowBaseExceptionIf((unObjectSequenceNumber < unFilterSequenceNumber), "Object sequence number is less than the specified starting sequence number.", nullptr);
+                                }
+                                else if ("MinimumDate" == strFilter)
                                 {
                                     uint64_t unObjectTimestamp = oObject.GetUnsignedInt64("Timestamp");
                                     uint64_t unFilterMinimumDate = c_oFilters.GetUnsignedInt64("MinimumDate");

@@ -684,7 +684,7 @@ bool __thiscall RestFrameworkRuntimeData::ValidateParameter(
             {
                 std::string strRange = c_oPluginParameter.GetString("Range");
                 Byte bRangeType = c_oPluginParameter.GetByte("RangeType");
-                // Check if the number is allowed and if it is in the range specified or not
+                // Check if the number is allowed and if it is in the specified range or not
                 if ((0x0A <= bElementType) && (0x11 >= bElementType))
                 {
                     fValid = ::ValidateUnsignedNumber((Qword) fl64ParameterValue, strRange, bRangeType);

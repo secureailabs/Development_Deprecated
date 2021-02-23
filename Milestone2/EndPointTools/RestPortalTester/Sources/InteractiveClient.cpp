@@ -295,7 +295,6 @@ std::string RegisterRootEvent(
                                 "\n        \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n        \"EventType\": 1,"
                                 "\n        \"Timestamp\": "+ ::_GetEpochTimeInMilliseconds() +","
-                                "\n        \"SequenceNumber\": 0,"
                                 "\n        \"PlainTextEventData\": "
                                 "\n        {"
                                 "\n        }"
@@ -388,7 +387,6 @@ bool RegisterBranchEvent(
                                 "\n        \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n        \"EventType\": 2,"
                                 "\n        \"Timestamp\": "+ ::_GetEpochTimeInMilliseconds() +","
-                                "\n        \"SequenceNumber\": 1,"
                                 "\n        \"PlainTextEventData\": "
                                 "\n        {"
                                 "\n            \"BranchType\": 1,"
@@ -481,7 +479,7 @@ bool RegisterLeafEvents(
                                 "\n            \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n            \"EventType\": 6,"
                                 "\n            \"Timestamp\": "+ ::_GetEpochTimeInMilliseconds() +","
-                                "\n            \"SequenceNumber\": 2,"
+                                "\n            \"SequenceNumber\": 1,"
                                 "\n            \"EncryptedEventData\": \"5iEQAhtloSMplcUnh1L0nooYrO0TKDJZSOAIzOgfaItg8i+EFrmGkDE7SNm6icKgskkBpoMBAABO6L5OOW6aS0pw3aMZjP2Q0KeKL2XtoeVCmW+2sN34h0LuFaPqN48Ku2WytWVHK2t0ilp50Xo7RHxcMPKkiUqSatRD42UjaqcpFCoy3plz+JfogTONcCDiRe+4tRcmg1zHAk2zsXZhwFg5tJioNIQdSoG1bOz4dPYqltRtMYlpbea85IH3pMkB4qduM5OK5zDNCxB0SdlyNpsREhRzeUCxAAiiop7PYgZb/8Vdsd67BTeSd73JkyFr301nqaa5+LCJpnSv19B6yUqQK7ZoSVsTwNsUqO+mtIRTEomvRspqu4hwQf++4I4rIyCwIlN2daJtxNI5RVujFTellgaWB0BudhxqIk72EMEkE9vOihEdaPcJJC2FkEBJTH9Dg3DBNRSck5ZXYmP2MBGAM474iwisvSpfiUSBNNkM3AL6y782K3vrhNDxvY2uxKmR3rfs8TJI9V7lAvIogLht2VYKJi1DWWLtMbccGScTYfyqZgjBw5m7R5LL1CkREZsV6kVymL1kYDkyGlaxKZESbg==\""
                                 "\n        },"
                                 "\n        {"
@@ -489,7 +487,7 @@ bool RegisterLeafEvents(
                                 "\n            \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n            \"EventType\": 6,"
                                 "\n            \"Timestamp\": "+ ::_GetEpochTimeInMilliseconds() +","
-                                "\n            \"SequenceNumber\": 3,"
+                                "\n            \"SequenceNumber\": 2,"
                                 "\n            \"EncryptedEventData\": \"5iEQAhtloSMplcUnh1L0nooYrO0TKDJZSOAIzOgfaItg8i+EFrmGkDE7SNm6icKgskkBpoMBAABO6L5OOW6aS0pw3aMZjP2Q0KeKL2XtoeVCmW+2sN34h0LuFaPqN48Ku2WytWVHK2t0ilp50Xo7RHxcMPKkiUqSatRD42UjaqcpFCoy3plz+JfogTONcCDiRe+4tRcmg1zHAk2zsXZhwFg5tJioNIQdSoG1bOz4dPYqltRtMYlpbea85IH3pMkB4qduM5OK5zDNCxB0SdlyNpsREhRzeUCxAAiiop7PYgZb/8Vdsd67BTeSd73JkyFr301nqaa5+LCJpnSv19B6yUqQK7ZoSVsTwNsUqO+mtIRTEomvRspqu4hwQf++4I4rIyCwIlN2daJtxNI5RVujFTellgaWB0BudhxqIk72EMEkE9vOihEdaPcJJC2FkEBJTH9Dg3DBNRSck5ZXYmP2MBGAM474iwisvSpfiUSBNNkM3AL6y782K3vrhNDxvY2uxKmR3rfs8TJI9V7lAvIogLht2VYKJi1DWWLtMbccGScTYfyqZgjBw5m7R5LL1CkREZsV6kVymL1kYDkyGlaxKZESbg==\""
                                 "\n        }"
                                 "\n    ]"
@@ -655,6 +653,7 @@ bool GetListOfEvents(
                                 "\n    \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n    \"Filters\":"
                                 "\n    {"
+                                "\n         \"SequenceNumber\": 0"
                                 "\n    }"
                                 "\n}";
         std::string strHttpRequest = "GET /SAIL/AuditLogManager/GetListOfEvents HTTP/1.1\r\n"
@@ -784,6 +783,23 @@ int main()
                     std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
                     // Get list of all events for the organization
                     ::GetListOfEvents(strEncodedEosb, "{00000000-0000-0000-0000-000000000000}", strOrganizationGuid, 0);
+
+                    ::WaitForUserToContinue();
+                break;
+                }
+                case 4:
+                {
+                    std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
+                    std::string strParentGuid = ::GetStringInput("Enter hyphen and curly braces formatted parent guid: ", 38, true, c_szValidInputCharacters);
+                    if (0 < strParentGuid.size())
+                    {
+                        // Get list of events for the given parent guid
+                        ::GetListOfEvents(strEncodedEosb, strParentGuid, strOrganizationGuid, 0);
+                    }
+                    else 
+                    {
+                        std::cout << "Error no parent guid specified, try again." << std::endl;
+                    }
 
                     ::WaitForUserToContinue();
                 break;

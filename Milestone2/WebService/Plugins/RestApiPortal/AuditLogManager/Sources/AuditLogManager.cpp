@@ -383,10 +383,6 @@ void __thiscall AuditLogManager::InitializePlugin(void)
     oTimestamp.PutByte("ElementType", UINT64_VALUE_TYPE);
     oTimestamp.PutBoolean("IsRequired", true);
     oMetadata.PutStructuredBuffer("Timestamp", oTimestamp);
-    StructuredBuffer oSequenceNumber;
-    oSequenceNumber.PutByte("ElementType", UINT32_VALUE_TYPE);
-    oSequenceNumber.PutBoolean("IsRequired", true);
-    oMetadata.PutStructuredBuffer("SequenceNumber", oSequenceNumber);
     StructuredBuffer oPlainTextMetadata;
     oPlainTextMetadata.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
     oPlainTextMetadata.PutBoolean("IsRequired", true);
@@ -422,6 +418,10 @@ void __thiscall AuditLogManager::InitializePlugin(void)
     StructuredBuffer oFilters;
     oFilters.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
     oFilters.PutBoolean("IsRequired", true);
+    StructuredBuffer oSequenceNumber;
+    oSequenceNumber.PutByte("ElementType", UINT32_VALUE_TYPE);
+    oSequenceNumber.PutBoolean("IsRequired", false);
+    oFilters.PutStructuredBuffer("SequenceNumber", oSequenceNumber);
     StructuredBuffer oMinimumDate;
     oMinimumDate.PutByte("ElementType", UINT64_VALUE_TYPE);
     oMinimumDate.PutBoolean("IsRequired", false);

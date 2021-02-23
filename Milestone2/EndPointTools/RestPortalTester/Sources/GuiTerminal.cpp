@@ -21,7 +21,8 @@ FontColor oFontColor;
 std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strGreen + "1- Register a root event\n" +
             oFontColor.strGreen + "2- Register a virtual machine and its leaf events\n" +
-            oFontColor.strCyan + "3- Get list of events\n" +
+            oFontColor.strCyan + "3- Get list of all events of the organization\n" +
+            oFontColor.strCyan + "4- Get list of events for a specified parent\n" +
             oFontColor.strYellow + "0- Quit\n";
 
 /********************************************************************************************/

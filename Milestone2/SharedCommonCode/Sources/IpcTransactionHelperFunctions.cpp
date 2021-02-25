@@ -30,7 +30,7 @@ std::vector<Byte> __stdcall GetIpcTransaction(
     {
         std::vector<Byte> stlTemporaryBuffer;
         
-        stlTemporaryBuffer = poSocket->Read(sizeof(Qword), 10000);
+        stlTemporaryBuffer = poSocket->Read(sizeof(Qword), 50000);
         _ThrowBaseExceptionIf((sizeof(Qword) != stlTemporaryBuffer.size()), "Failed to read data from the Ipc tunnel", nullptr);
         Qword qwHeadMarker = *((Qword *) stlTemporaryBuffer.data());
         _ThrowBaseExceptionIf((0xFFEEDDCCBBAA0099 != qwHeadMarker), "Invalid head marker encountered.", nullptr);

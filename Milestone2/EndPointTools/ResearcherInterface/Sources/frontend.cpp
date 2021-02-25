@@ -219,7 +219,7 @@ void __thiscall Frontend::HandleExecJob
     oBuffer.PutString("FNID", strFNID);
     oBuffer.PutString("JobID", strJobID);
     
-    std::vector<Byte> stlResponse = PutIpcTransactionAndGetResponse(m_stlConnectionMap[strVMID].get(),oBuffer);
+    PutIpcTransactionAndGetResponse(m_stlConnectionMap[strVMID].get(),oBuffer);
     //StructuredBuffer oResponse(stlResponse);
 }
 
@@ -313,7 +313,7 @@ void __thiscall Frontend::HandlePushData
     oBuffer.PutStructuredBuffer("VarIDs", oVarIDs);
     oBuffer.PutStructuredBuffer("Vars", oVars);
     
-    std::vector<Byte> stlResponse = PutIpcTransactionAndGetResponse(m_stlConnectionMap[strVMID].get(),oBuffer);
+    PutIpcTransactionAndGetResponse(m_stlConnectionMap[strVMID].get(),oBuffer);
     //StructuredBuffer oResponse(stlResponse);
 }
 
@@ -402,8 +402,7 @@ void __thiscall Frontend::HandlePushFN
     oBuffer.PutStructuredBuffer("Input", oInputBuffer);
     oBuffer.PutStructuredBuffer("Output", oOutputBuffer);
 
-    std::vector<Byte> stlResponse = PutIpcTransactionAndGetResponse(m_stlConnectionMap[strVMID].get(),oBuffer);
-    StructuredBuffer oResponse(stlResponse);
+    PutIpcTransactionAndGetResponse(m_stlConnectionMap[strVMID].get(),oBuffer);
 }
 
 void __thiscall Frontend::RegisterFN

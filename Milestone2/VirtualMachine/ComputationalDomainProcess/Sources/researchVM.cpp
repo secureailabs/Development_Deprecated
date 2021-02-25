@@ -182,6 +182,7 @@ void __thiscall ComputationVM::HandleQuit
     _in StructuredBuffer& oResponse
 )
 {
+    oResponse.PutBoolean("Status", true);
     m_oEngine.Halt();
 }
 
@@ -218,6 +219,8 @@ void __thiscall ComputationVM::HandleRun
 
     std::unique_ptr<Job> stlNewJob = std::make_unique<PythonJob>(strFunctionNode, strJobID, stlInput, stlOutput);
     m_oEngine.AddOneJob(std::move(stlNewJob));
+    
+    oResponse.PutBoolean("Status", true);
 }
 
 /********************************************************************************************
@@ -347,6 +350,8 @@ void __thiscall ComputationVM::HandlePushData
     BufToVec<std::vector<std::string>>(oVarIDs, stlVarIDs);
 
     SaveBuffer(strJobID, stlVarIDs, stlVars);
+    
+    oResponse.PutBoolean("Status", true);
 }
 
 void __thiscall ComputationVM::SaveBuffer
@@ -445,6 +450,8 @@ void __thiscall ComputationVM::HandleDeleteData
     {
         std::remove(std::string("/tmp/"+stlVars[i]).c_str());
     }
+    
+    oResponse.PutBoolean("Status", true);
 }
 
 void __thiscall ComputationVM::HandlePushFN
@@ -476,6 +483,8 @@ void __thiscall ComputationVM::HandlePushFN
 
     std::unique_ptr<FunctionNode> stlFN = std::make_unique<FunctionNode>(stlInputIDs, stlOutputIDs, strFNID);
     m_stlFNMap.insert({strFNID,std::move(stlFN)});
+    
+    oResponse.PutBoolean("Status", true);
 }
 
 void __thiscall ComputationVM::SaveFN

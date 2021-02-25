@@ -18,7 +18,7 @@
 #include "SocketClient.h"
 #include "TlsServer.h"
 #include "StructuredBuffer.h"
-#include "Azure.h"
+//#include "Azure.h"
 
 #include <iostream>
 #include <string>

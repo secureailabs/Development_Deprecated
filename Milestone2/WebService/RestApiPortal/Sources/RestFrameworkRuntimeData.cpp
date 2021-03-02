@@ -110,7 +110,6 @@ void __thiscall RestFrameworkRuntimeData::HandleConnection(
     __DebugFunction();
     __DebugAssert(nullptr != poTlsNode);
 
-
     ThreadParameters * poThreadParameters = ((ThreadParameters *) m_oSmartMemoryAllocator.Allocate(sizeof(ThreadParameters), true));
     poThreadParameters->m_poRestFrameworkRuntimeData = this;
     poThreadParameters->m_poTlsNode = poTlsNode;

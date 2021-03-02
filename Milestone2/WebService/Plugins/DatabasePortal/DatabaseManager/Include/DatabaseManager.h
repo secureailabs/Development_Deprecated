@@ -26,6 +26,11 @@
 #include <map>
 #include <vector>
 
+#define ACCOUNT_STATUS_NEW              0x00
+#define ACCOUNT_STATUS_ACTIVE           0x01
+#define ACCOUNT_STATUS_CLOSED           0x02
+#define ACCOUNT_STATUS_SUSPENDED        0x03
+
 /********************************************************************************************/
 
 class DatabaseManager : public Object
@@ -64,6 +69,11 @@ class DatabaseManager : public Object
             );
 
     private:
+
+        // Fetch basic organization record from the database
+        std::vector<Byte> __thiscall GetBasicOrganizationRecord(
+            _in const StructuredBuffer & c_oRequest
+            );
 
         // Fetch basic user record from the database
         std::vector<Byte> __thiscall GetBasicUserRecord(
@@ -105,6 +115,21 @@ class DatabaseManager : public Object
 
         // Store leaf event(s) in the database
         std::vector<Byte> __thiscall AddLeafEvent(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Add a new organization to the database and call AddSuperUser() to add the organziation's super user
+        std::vector<Byte> __thiscall RegisterOrganization(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Add organziation's super user to the database
+        std::vector<Byte> __thiscall AddSuperUser(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Add a new user to the database
+        std::vector<Byte> __thiscall RegisterUser(
             _in const StructuredBuffer & c_oRequest
             );
 

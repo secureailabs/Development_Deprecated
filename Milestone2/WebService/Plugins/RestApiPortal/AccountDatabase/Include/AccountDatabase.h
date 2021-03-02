@@ -28,6 +28,11 @@
 #include <map>
 #include <vector>
 
+#define ACCOUNT_STATUS_NEW              0x00
+#define ACCOUNT_STATUS_ACTIVE           0x01
+#define ACCOUNT_STATUS_CLOSED           0x02
+#define ACCOUNT_STATUS_SUSPENDED        0x03
+
 /********************************************************************************************/
 
 class AccountDatabase : public Object
@@ -85,6 +90,11 @@ class AccountDatabase : public Object
 
         // Given an EOSB, return a StructuredBuffer containing user metadata
         std::vector<Byte> __thiscall GetUserInfo(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Register an organization and the new user as it's super user
+        std::vector<Byte> __thiscall RegisterOrganizationAndSuperUser(
             _in const StructuredBuffer & c_oRequest
             );
 

@@ -257,9 +257,10 @@ std::vector<Byte> GetBasicUserInformation(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         _ThrowBaseExceptionIf((0 == stlSerializedResponse.size()), "Dead Packet.", nullptr);
         StructuredBuffer oResponse(stlSerializedResponse);
-        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error decrypting eosb.", nullptr);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error decrypting eosb.", nullptr);
         oUserInformation.PutString("OrganizationGuid", oResponse.GetString("OrganizationGuid"));
         oUserInformation.PutString("UserGuid", oResponse.GetString("UserGuid"));
+        oUserInformation.PutQword("AccessRights", (Qword) oResponse.GetFloat64("AccessRights"));
     }
     catch(BaseException oBaseException)
     {
@@ -696,20 +697,294 @@ bool GetListOfEvents(
         std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         StructuredBuffer oResponse(stlSerializedResponse);
-        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error logging in.", nullptr);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting list of events.", nullptr);
         StructuredBuffer oListOfEvents(oResponse.GetStructuredBuffer("ListOfEvents"));
         std::string strIndentString((unIndentDepth++) * 4, ' ');
-        for (std::string strEventUuid : oListOfEvents.GetNamesOfElements())
+        for (std::string strSequenceNumber : oListOfEvents.GetNamesOfElements())
         {
-            StructuredBuffer oEvent(oListOfEvents.GetStructuredBuffer(strEventUuid.c_str()));
+            StructuredBuffer oEvent(oListOfEvents.GetStructuredBuffer(strSequenceNumber.c_str()));
             StructuredBuffer oEventObject(oEvent.GetStructuredBuffer("ObjectBlob"));
+            std::string strEventUuid = oEvent.GetString("EventGuid");
             std::cout << strIndentString << "EventGuid: " << strEventUuid << std::endl;
             std::cout << strIndentString << "ParentGuid: " << oEventObject.GetString("ParentGuid") << std::endl;
             std::cout << strIndentString << "OrganizationGuid: " << oEvent.GetString("OrganizationGuid") << std::endl;
             std::cout << strIndentString << "Timestamp: " << oEventObject.GetFloat64("Timestamp") << std::endl;
-            std::cout << strIndentString << "Sequence Number: " << oEventObject.GetFloat64("SequenceNumber") << std::endl;
+            std::cout << strIndentString << "Sequence Number: " << strSequenceNumber << std::endl;
             ::GetListOfEvents(c_strEncodedEosb, strEventUuid, c_strOrganizationGuid, unIndentDepth);
         }
+        fSuccess = true;
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+    catch(...)
+    {
+        ::ShowErrorMessage("Error getting list of events.");
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool RegisterOrganizationAndSuperUser(void)
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get user and organization information
+    // std::cout << "************************\n New User Information \n************************\n" << std::endl;
+    // std::string strEmail = ::GetStringInput("Enter your email: ", 50, false, c_szValidInputCharacters);
+    // std::string strPassword = ::GetStringInput("Enter your new password: ", 50, true, c_szValidInputCharacters);
+    // std::string strName = ::GetStringInput("Enter your full name: ", 50, false, c_szValidInputCharacters);
+    // std::string strPhoneNumber = ::GetStringInput("Enter your phone number: ", 12, false, c_szValidInputCharacters);
+    // std::string strTitle = ::GetStringInput("Enter your title within your organization: ", 50, false, c_szValidInputCharacters);
+    // std::cout << "************************\n  New Organization Information \n************************\n" << std::endl;
+    // std::string strOrganizationName = ::GetStringInput("Enter your organization name: ", 50, false, c_szValidInputCharacters);
+    // std::string strOrganizationAddress = ::GetStringInput("Enter your organization address: ", 50, false, c_szValidInputCharacters);
+    // std::string strPrimaryContactName = ::GetStringInput("Enter primary contact name for the organization: ", 50, false, c_szValidInputCharacters);
+    // std::string strPrimaryContactTitle = ::GetStringInput("Enter primary contact title within the organization: ", 50, false, c_szValidInputCharacters);
+    // std::string strPrimaryContactEmail = ::GetStringInput("Enter primary contact email: ", 50, false, c_szValidInputCharacters);
+    // std::string strPrimaryContactPhoneNumber = ::GetStringInput("Enter primary contact phone number: ", 12, false, c_szValidInputCharacters);
+    // std::string strSecondaryContactName = ::GetStringInput("Enter secondary contact name for the organization: ", 50, false, c_szValidInputCharacters);
+    // std::string strSecondaryContactTitle= ::GetStringInput("Enter secondary contact title within the organization: ", 50, false, c_szValidInputCharacters);
+    // std::string strSecondaryContactEmail = ::GetStringInput("Enter secondary contact email: ", 50, false, c_szValidInputCharacters);
+    // std::string strSecondaryContactPhoneNumber = ::GetStringInput("Enter secondary contact phone number: ", 12, false, c_szValidInputCharacters);
+
+    // __DebugAssert(0 < strEmail.size());
+    // __DebugAssert(0 < strPassword.size());
+    // __DebugAssert(0 < strName.size());
+    // __DebugAssert(0 < strPhoneNumber.size());
+    // __DebugAssert(0 < strTitle.size());
+    // __DebugAssert(0 < strOrganizationName.size());
+    // __DebugAssert(0 < strOrganizationAddress.size());
+    // __DebugAssert(0 < strPrimaryContactName.size());
+    // __DebugAssert(0 < strPrimaryContactTitle.size());
+    // __DebugAssert(0 < strPrimaryContactEmail.size());
+    // __DebugAssert(0 < strPrimaryContactPhoneNumber.size());
+    // __DebugAssert(0 < strSecondaryContactName.size());
+    // __DebugAssert(0 < strSecondaryContactTitle.size());
+    // __DebugAssert(0 < strSecondaryContactEmail.size());
+    // __DebugAssert(0 < strSecondaryContactPhoneNumber.size());
+
+    try 
+    {
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+
+        // Create rest request
+        std::string strContent = "{\n    \"Email\": \"super@gmail.com\","
+                                "\n    \"Password\": \"sailpassword\","
+                                "\n    \"Name\": \"Super Admin\","
+                                "\n    \"PhoneNumber\": \"1111\","
+                                "\n    \"Title\": \"Engineer\","
+                                "\n    \"OrganizationName\": \"Hbo\","
+                                "\n    \"OrganizationAddress\": \"CA\","
+                                "\n    \"PrimaryContactName\": \"abc\","
+                                "\n    \"PrimaryContactTitle\": \"worker\","
+                                "\n    \"PrimaryContactEmail\": \"abc@gmail.com\","
+                                "\n    \"PrimaryContactPhoneNumber\": \"2222\","
+                                "\n    \"SecondaryContactName\": \"cde\","
+                                "\n    \"SecondaryContactTitle\": \"worker\","
+                                "\n    \"SecondaryContactEmail\": \"cde@gmail.com\","
+                                "\n    \"SecondaryContactPhoneNumber\": \"3333\""
+                                "\n}";
+        // std::string strContent = "{\n    \"Email\": \""+ strEmail +"\","
+        //                         "\n    \"Password\": \""+ strPassword +"\","
+        //                         "\n    \"Name\": \""+ strName +"\","
+        //                         "\n    \"PhoneNumber\": \""+ strPhoneNumber +"\","
+        //                         "\n    \"Title\": \""+ strTitle +"\","
+        //                         "\n    \"OrganizationName\": \""+ strOrganizationName +"\","
+        //                         "\n    \"OrganizationAddress\": \""+ strOrganizationAddress +"\","
+        //                         "\n    \"PrimaryContactName\": \""+ strPrimaryContactName +"\","
+        //                         "\n    \"PrimaryContactTitle\": \""+ strPrimaryContactTitle +"\","
+        //                         "\n    \"PrimaryContactEmail\": \""+ strPrimaryContactEmail +"\","
+        //                         "\n    \"PrimaryContactPhoneNumber\": \""+ strPrimaryContactPhoneNumber +"\","
+        //                         "\n    \"SecondaryContactName\": \""+ strSecondaryContactName +"\","
+        //                         "\n    \"SecondaryContactTitle\": \""+ strSecondaryContactTitle +"\","
+        //                         "\n    \"SecondaryContactEmail\": \""+ strSecondaryContactEmail +"\","
+        //                         "\n    \"SecondaryContactPhoneNumber\": \""+ strSecondaryContactPhoneNumber +"\""
+        //                         "\n}";
+        std::string strHttpRequest = "POST /SAIL/AccountManager/RegisterUser HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRequest.data(), (strHttpRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
+            {
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
+                {
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
+                }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+        
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error registering new organization and super user.", nullptr);
+        fSuccess = true;
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+    catch(...)
+    {
+        ::ShowErrorMessage("Error getting list of events.");
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool RegisterUser(
+    _in const std::string & c_strEncodedEosb
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get user and organization information
+    // std::cout << "************************\n New User Information \n************************\n" << std::endl;
+    // std::string strEmail = ::GetStringInput("Enter your email: ", 50, false, c_szValidInputCharacters);
+    // std::string strPassword = ::GetStringInput("Enter your new password: ", 50, true, c_szValidInputCharacters);
+    // std::string strName = ::GetStringInput("Enter your full name: ", 50, false, c_szValidInputCharacters);
+    // std::string strPhoneNumber = ::GetStringInput("Enter your phone number: ", 12, false, c_szValidInputCharacters);
+    // std::string strTitle = ::GetStringInput("Enter your title within your organization: ", 50, false, c_szValidInputCharacters);
+    // std::cout << "************************\n  New Organization Information \n************************\n" << std::endl;
+    // std::string strOrganizationName = ::GetStringInput("Enter your organization name: ", 50, false, c_szValidInputCharacters);
+    // std::string strOrganizationAddress = ::GetStringInput("Enter your organization address: ", 50, false, c_szValidInputCharacters);
+    // std::string strPrimaryContactName = ::GetStringInput("Enter primary contact name for the organization: ", 50, false, c_szValidInputCharacters);
+    // std::string strPrimaryContactTitle = ::GetStringInput("Enter primary contact title within the organization: ", 50, false, c_szValidInputCharacters);
+    // std::string strPrimaryContactEmail = ::GetStringInput("Enter primary contact email: ", 50, false, c_szValidInputCharacters);
+    // std::string strPrimaryContactPhoneNumber = ::GetStringInput("Enter primary contact phone number: ", 12, false, c_szValidInputCharacters);
+    // std::string strSecondaryContactName = ::GetStringInput("Enter secondary contact name for the organization: ", 50, false, c_szValidInputCharacters);
+    // std::string strSecondaryContactTitle= ::GetStringInput("Enter secondary contact title within the organization: ", 50, false, c_szValidInputCharacters);
+    // std::string strSecondaryContactEmail = ::GetStringInput("Enter secondary contact email: ", 50, false, c_szValidInputCharacters);
+    // std::string strSecondaryContactPhoneNumber = ::GetStringInput("Enter secondary contact phone number: ", 12, false, c_szValidInputCharacters);
+
+    // __DebugAssert(0 < strEmail.size());
+    // __DebugAssert(0 < strPassword.size());
+    // __DebugAssert(0 < strName.size());
+    // __DebugAssert(0 < strPhoneNumber.size());
+    // __DebugAssert(0 < strTitle.size());
+    // __DebugAssert(0 < strOrganizationName.size());
+    // __DebugAssert(0 < strOrganizationAddress.size());
+    // __DebugAssert(0 < strPrimaryContactName.size());
+    // __DebugAssert(0 < strPrimaryContactTitle.size());
+    // __DebugAssert(0 < strPrimaryContactEmail.size());
+    // __DebugAssert(0 < strPrimaryContactPhoneNumber.size());
+    // __DebugAssert(0 < strSecondaryContactName.size());
+    // __DebugAssert(0 < strSecondaryContactTitle.size());
+    // __DebugAssert(0 < strSecondaryContactEmail.size());
+    // __DebugAssert(0 < strSecondaryContactPhoneNumber.size());
+
+    try 
+    {
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+
+        // Create rest request
+        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
+                                "\n    \"Email\": \"user@gmail.com\","
+                                "\n    \"Password\": \"sailpassword\","
+                                "\n    \"Name\": \"User 1\","
+                                "\n    \"PhoneNumber\": \"2222\","
+                                "\n    \"Title\": \"Staff\","
+                                "\n    \"AccessRights\": 1,"
+                                "\n    \"OrganizationGuid\": \"{030952FE-3650-444E-AB66-DC2AB8C20DEF}\""
+                                "\n}";
+        // std::string strContent = "{\n    \"Email\": \""+ strEmail +"\","
+        //                         "\n    \"Password\": \""+ strPassword +"\","
+        //                         "\n    \"Name\": \""+ strName +"\","
+        //                         "\n    \"PhoneNumber\": \""+ strPhoneNumber +"\","
+        //                         "\n    \"Title\": \""+ strTitle +"\","
+        //                         "\n    \"OrganizationName\": \""+ strOrganizationName +"\","
+        //                         "\n    \"OrganizationAddress\": \""+ strOrganizationAddress +"\","
+        //                         "\n    \"PrimaryContactName\": \""+ strPrimaryContactName +"\","
+        //                         "\n    \"PrimaryContactTitle\": \""+ strPrimaryContactTitle +"\","
+        //                         "\n    \"PrimaryContactEmail\": \""+ strPrimaryContactEmail +"\","
+        //                         "\n    \"PrimaryContactPhoneNumber\": \""+ strPrimaryContactPhoneNumber +"\","
+        //                         "\n    \"SecondaryContactName\": \""+ strSecondaryContactName +"\","
+        //                         "\n    \"SecondaryContactTitle\": \""+ strSecondaryContactTitle +"\","
+        //                         "\n    \"SecondaryContactEmail\": \""+ strSecondaryContactEmail +"\","
+        //                         "\n    \"SecondaryContactPhoneNumber\": \""+ strSecondaryContactPhoneNumber +"\""
+        //                         "\n}";
+        std::string strHttpRequest = "POST /SAIL/AccountManager/Admin/RegisterUser HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRequest.data(), (strHttpRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
+            {
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
+                {
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
+                }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+        
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error registering new user.", nullptr);
         fSuccess = true;
     }
     catch(BaseException oBaseException)
@@ -735,72 +1010,127 @@ int main()
 
     try
     {
-        ::ClearScreen();
-
-        std::cout << "************************\n  SAIL LOGIN\n************************\n" << std::endl;
-        std::string strEmail = ::GetStringInput("Enter email: ", 50, false, c_szValidInputCharacters);
-        std::string strUserPassword = ::GetStringInput("Enter password: ", 50, true, c_szValidInputCharacters);
-
-        // Login to the web services
-        std::string strEncodedEosb = Login(strEmail, strUserPassword);
-
-        _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
-
-        // Get user and organization guid from eosb
-        StructuredBuffer oUserInformation(::GetBasicUserInformation(strEncodedEosb));
-        std::string strOrganizationGuid = oUserInformation.GetString("OrganizationGuid");
-        std::string strUserGuid = oUserInformation.GetString("UserGuid");
-
         bool fTerminatedSignalEncountered = false;
-
-        while (false == fTerminatedSignalEncountered)
+        while(false == fTerminatedSignalEncountered)
         {
-            ::ShowTopMenu();
-
+            ::ShowLoginMenu();
             std::string strUserInput = ::GetStringInput("Selection: ", 1, false, c_szValidInputCharacters);
 
             switch (stoi(strUserInput))
             {
                 case 1:
                 {
-                    ::RegisterRootEvent(strEncodedEosb, strOrganizationGuid);
+                    ::ClearScreen();
+
+                    std::cout << "************************\n  SAIL LOGIN\n************************\n" << std::endl;
+                    std::string strEmail = ::GetStringInput("Enter email: ", 50, false, c_szValidInputCharacters);
+                    std::string strUserPassword = ::GetStringInput("Enter password: ", 50, true, c_szValidInputCharacters);
+
+                    // Login to the web services
+                    std::string strEncodedEosb = Login(strEmail, strUserPassword);
+
+                    _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
+                    // Get user and organization guid from eosb
+                    StructuredBuffer oUserInformation(::GetBasicUserInformation(strEncodedEosb));
+                    for (std::string strName : oUserInformation.GetDescriptionOfElements())
+                        std::cout << strName << std::endl;
+                    std::string strOrganizationGuid = oUserInformation.GetString("OrganizationGuid");
+                    std::string strUserGuid = oUserInformation.GetString("UserGuid");
+                    Qword qwAccessRights = oUserInformation.GetQword("AccessRights");
+
+                    bool fTerminatedSignalEncountered = false;
+
+                    while (false == fTerminatedSignalEncountered)
+                    {
+                        ::ShowTopMenu();
+
+                        std::string strUserInput = ::GetStringInput("Selection: ", 1, false, c_szValidInputCharacters);
+
+                        switch (stoi(strUserInput))
+                        {
+                            case 1:
+                            {
+                                if (7 == qwAccessRights)
+                                {
+                                    bool fSuccess = ::RegisterUser(strEncodedEosb);
+                                    if (true == fSuccess)
+                                    {
+                                        std::cout << "User added successfully!\n";
+                                    }
+                                }
+                                else 
+                                {
+                                    ::ShowErrorMessage("Transaction not authorized.");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 2:
+                            {
+                                ::RegisterRootEvent(strEncodedEosb, strOrganizationGuid);
+                            break;
+                            }
+                            case 3:
+                            {
+                                // Register a Vm
+                                std::string strVmGuid = Guid(eVirtualMachine).ToString(eHyphensAndCurlyBraces);
+                                std::string strDcGuid = "{33DB1751-66AE-4EB5-BF7B-614CBC09BC4C}";
+                                std::string strVmEventGuid = ::RegisterVirtualMachine(strEncodedEosb, strDcGuid, strVmGuid);
+                                // Register Leaf events
+                                ::RegisterLeafEvents(strEncodedEosb, strOrganizationGuid, strVmEventGuid);
+
+                                ::WaitForUserToContinue();
+                            break;
+                            }
+                            case 4:
+                            {
+                                std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
+                                // Get list of all events for the organization
+                                ::GetListOfEvents(strEncodedEosb, "{00000000-0000-0000-0000-000000000000}", strOrganizationGuid, 0);
+
+                                ::WaitForUserToContinue();
+                            break;
+                            }
+                            case 5:
+                            {
+                                std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
+                                std::string strParentGuid = ::GetStringInput("Enter hyphen and curly braces formatted parent guid: ", 38, true, c_szValidInputCharacters);
+                                if (0 < strParentGuid.size())
+                                {
+                                    // Get list of events for the given parent guid
+                                    ::GetListOfEvents(strEncodedEosb, strParentGuid, strOrganizationGuid, 0);
+                                }
+                                else 
+                                {
+                                    std::cout << "Error no parent guid specified, try again." << std::endl;
+                                }
+
+                                ::WaitForUserToContinue();
+                            break;
+                            }
+                            case 0:
+                            {
+                                fTerminatedSignalEncountered = true;
+                            break;
+                            }
+                            default:
+                            {
+                                std::cout << "Invalid option. Usage: [0-4]" << std::endl;
+                            break;
+                            }
+                        }
+                    }
+    
                 break;
                 }
                 case 2:
                 {
-                    // Register a Vm
-                    std::string strVmGuid = Guid(eVirtualMachine).ToString(eHyphensAndCurlyBraces);
-                    std::string strDcGuid = "{33DB1751-66AE-4EB5-BF7B-614CBC09BC4C}";
-                    std::string strVmEventGuid = ::RegisterVirtualMachine(strEncodedEosb, strDcGuid, strVmGuid);
-                    // Register Leaf events
-                    ::RegisterLeafEvents(strEncodedEosb, strOrganizationGuid, strVmEventGuid);
-
-                    ::WaitForUserToContinue();
-                break;
-                }
-                case 3:
-                {
-                    std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
-                    // Get list of all events for the organization
-                    ::GetListOfEvents(strEncodedEosb, "{00000000-0000-0000-0000-000000000000}", strOrganizationGuid, 0);
-
-                    ::WaitForUserToContinue();
-                break;
-                }
-                case 4:
-                {
-                    std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
-                    std::string strParentGuid = ::GetStringInput("Enter hyphen and curly braces formatted parent guid: ", 38, true, c_szValidInputCharacters);
-                    if (0 < strParentGuid.size())
+                    
+                    bool fSuccess = ::RegisterOrganizationAndSuperUser();
+                    if (true == fSuccess)
                     {
-                        // Get list of events for the given parent guid
-                        ::GetListOfEvents(strEncodedEosb, strParentGuid, strOrganizationGuid, 0);
+                        std::cout << "Registration successful!\nLog in to access your dashboard.\n";
                     }
-                    else 
-                    {
-                        std::cout << "Error no parent guid specified, try again." << std::endl;
-                    }
-
                     ::WaitForUserToContinue();
                 break;
                 }
@@ -815,6 +1145,7 @@ int main()
                 break;
                 }
             }
+
         }
     }
     catch(BaseException oBaseException)

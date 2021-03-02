@@ -691,9 +691,8 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     oStructuredBufferEosb.PutGuid("OrganizationGuid", oStructuredBufferBasicUserRecord.GetGuid("OrganizationGuid"));
     oStructuredBufferEosb.PutGuid("SessionId", Guid());
     oStructuredBufferEosb.PutBuffer("AccountKey", stlAccountKey);
-    // TODO: fill this in future
-    oStructuredBufferEosb.PutQword("AccessRights", 0xDEADBEEF);
-    oStructuredBufferEosb.PutUnsignedInt64("Timestamp", ::GetEpochTimeInSeconds());
+    oStructuredBufferEosb.PutQword("AccessRights", oPlainTextConfidentialUserRecord.GetQword("AccessRights"));
+    oStructuredBufferEosb.PutUnsignedInt64("Timestamp", oPlainTextConfidentialUserRecord.GetUnsignedInt64("TimeOfAccountCreation"));
     oStructuredBufferEosb.PutGuid("UserRootKeyId", oPlainTextConfidentialUserRecord.GetGuid("UserRootKeyGuid"));
 
     return this->CreateEosbFromPlainSsb(oStructuredBufferEosb.GetSerializedBuffer());

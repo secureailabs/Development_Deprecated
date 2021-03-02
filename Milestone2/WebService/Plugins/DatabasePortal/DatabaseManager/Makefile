@@ -17,6 +17,8 @@ OBJDIR=$(ABSROOTDIR)/Binary/Objects
 INCLUDE+=-I$(shell realpath ./Include)
 INCLUDE+=-I$(shell realpath ../../../../WebService/DatabaseGateway/Include)
 INCLUDE+=-I$(shell realpath ../../../../SharedCommonCode/Include)
+INCLUDE+=-I$(shell realpath ../../../../InternalTools/CryptographicTools/Include)
+INCLUDE+=-I$(shell realpath ../../../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement)
 # Includes for MongoDB C++ driver
 INCLUDE+=-I/usr/local/include/mongocxx/v_noabi -I/usr/local/include/libmongoc-1.0 -I/usr/local/include/bsoncxx/v_noabi -I/usr/local/include/libbson-1.0 -L/usr/local/lib
 
@@ -27,6 +29,10 @@ SRCDIRS+=$(shell realpath ../../../../SharedCommonCode/Sources)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
+SOURCES += $(shell realpath ../../../../InternalTools/CryptographicTools/Sources/CryptoUtils.cpp)
+SOURCES += $(shell realpath ../../../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement/CryptographicEngine.cpp)
+SOURCES += $(shell realpath ../../../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement/CryptographicKey.cpp)
+SOURCES += $(shell realpath ../../../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement/CryptographyHelperFunctions.cpp)
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
 OUTPUT=plugin

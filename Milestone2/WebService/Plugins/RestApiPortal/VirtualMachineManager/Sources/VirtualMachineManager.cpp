@@ -526,7 +526,6 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
     _ThrowBaseExceptionIf(((0 == oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 != oDecryptedEosb.GetDword("Status"))), "Error decrypting Eosb", nullptr);
     // Get the organization guid
     Guid oOrganizationGuid = oDecryptedEosb.GetStructuredBuffer("Eosb").GetGuid("OrganizationGuid");
-
     // Check whether DC branch event log exists for DCGuid in the database or not
     // If not then create a DC branch event log
     StructuredBuffer oGetDcBranchEventRequest;

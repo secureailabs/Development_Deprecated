@@ -882,14 +882,27 @@ uint32_t __thiscall DatabaseManager::GetNextSequenceNumber(
                                                                                                         << finalize);
     if (oAuditLogDocument)
     {
-        bsoncxx::document::element unNextSequenceNumber = oAuditLogDocument->view()["NextSequenceNumber"];
-        if (unNextSequenceNumber && unNextSequenceNumber.type() == type::k_double)
+        mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
         {
-            unSequenceNumber = (uint32_t) unNextSequenceNumber.get_double().value;
+            bsoncxx::document::element unNextSequenceNumber = oAuditLogDocument->view()["NextSequenceNumber"];
+            if (unNextSequenceNumber && unNextSequenceNumber.type() == type::k_double)
+            {
+                unSequenceNumber = (uint32_t) unNextSequenceNumber.get_double().value;
+            }
+            oSailDatabase["AuditLog"].update_one(*poSession, document{} << "EventGuid" << strEventGuid << finalize,
+                                                document{} << "$set" << open_document <<
+                                                "NextSequenceNumber" << (double)(unSequenceNumber + 1) << close_document << finalize);
+        };
+        // Create a session and start the transaction
+        mongocxx::client_session oSession = oClient->start_session();
+        try 
+        {
+            oSession.with_transaction(oCallback);
         }
-        oSailDatabase["AuditLog"].update_one(document{} << "EventGuid" << strEventGuid << finalize,
-                                            document{} << "$set" << open_document <<
-                                            "NextSequenceNumber" << (double)(unSequenceNumber + 1) << close_document << finalize);
+        catch (mongocxx::exception& e) 
+        {
+            std::cout << "Collection transaction exception: " << e.what() << std::endl;
+        }
     }
 
     return unSequenceNumber;
@@ -979,7 +992,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddNonLeafEvent(
     mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
     {
         // Insert document in the AuditLog collection
-        auto oResult = oAuditLogCollection.insert_one(oEventDocumentValue.view());
+        auto oResult = oAuditLogCollection.insert_one(*poSession, oEventDocumentValue.view());
         if (!oResult) {
             std::cout << "Error while writing to the database." << std::endl;
         }
@@ -988,7 +1001,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddNonLeafEvent(
             // Access Object collection
             mongocxx::collection oObjectCollection = oSailDatabase["Object"];
             // Insert document in the Object collection
-            oResult = oObjectCollection.insert_one(oObjectDocumentValue.view());
+            oResult = oObjectCollection.insert_one(*poSession, oObjectDocumentValue.view());
             if (!oResult) {
                 std::cout << "Error while writing to the database." << std::endl;
             }
@@ -997,7 +1010,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddNonLeafEvent(
                 // Access PlainTextObjectBlob collection
                 mongocxx::collection oPlainTextObjectCollection = oSailDatabase["PlainTextObjectBlob"];
                 // Insert document in the PlainTextObjectBlob collection
-                oResult = oPlainTextObjectCollection.insert_one(oPlainTextObjectDocumentValue.view());
+                oResult = oPlainTextObjectCollection.insert_one(*poSession, oPlainTextObjectDocumentValue.view());
                 if (!oResult) {
                     std::cout << "Error while writing to the database." << std::endl;
                 }
@@ -1115,7 +1128,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddLeafEvent(
     mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
     {
         // Insert audit log documents in the AuditLog collection
-        auto oResult = oAuditLogCollection.insert_many(stlEventDocuments);
+        auto oResult = oAuditLogCollection.insert_many(*poSession, stlEventDocuments);
         if (!oResult) {
             std::cout << "Error while writing to the database." << std::endl;
         }
@@ -1124,7 +1137,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddLeafEvent(
             // Access Object collection
             mongocxx::collection oObjectCollection = oSailDatabase["Object"];
             // Insert object documents in the Object collection
-            oResult = oObjectCollection.insert_many(stlObjectDocuments);
+            oResult = oObjectCollection.insert_many(*poSession, stlObjectDocuments);
             if (!oResult) {
                 std::cout << "Error while writing to the database." << std::endl;
             }
@@ -1133,7 +1146,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddLeafEvent(
                 // Access PlainTextObjectBlob collection
                 mongocxx::collection oPlainTextObjectCollection = oSailDatabase["PlainTextObjectBlob"];
                 // Insert plain text object blob documents in the PlainTextObjectBlob collection
-                oResult = oPlainTextObjectCollection.insert_many(stlPlainTextObjectDocuments);
+                oResult = oPlainTextObjectCollection.insert_many(*poSession, stlPlainTextObjectDocuments);
                 if (!oResult) {
                     std::cout << "Error while writing to the database." << std::endl;
                 }
@@ -1251,7 +1264,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterOrganization(
         mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
         {
             // Insert document in the BasicOrganization collection
-            auto oResult = oBasicOrganziationCollection.insert_one(oBasicOrganizationDocumentValue.view());
+            auto oResult = oBasicOrganziationCollection.insert_one(*poSession, oBasicOrganizationDocumentValue.view());
             if (!oResult) {
                 std::cout << "Error while writing to the database." << std::endl;
             }
@@ -1260,7 +1273,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterOrganization(
                 // Access Object collection
                 mongocxx::collection oConfidentialOrganizationCollection = oSailDatabase["ConfidentialOrganizationOrUser"];
                 // Insert document in the ConfidentialOrganizationOrUser collection
-                oResult = oConfidentialOrganizationCollection.insert_one(oConfidentialOrganziationDocumentValue.view());
+                oResult = oConfidentialOrganizationCollection.insert_one(*poSession, oConfidentialOrganziationDocumentValue.view());
                 if (!oResult) {
                     std::cout << "Error while writing to the database." << std::endl;
                 }
@@ -1272,6 +1285,8 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterOrganization(
                     // Add new user as the super user of the organization
                     dwStatus = StructuredBuffer(this->AddSuperUser(oRequest)).GetDword("Status");
                     _ThrowBaseExceptionIf((201 != dwStatus), "Error creating super user", nullptr);
+                    // Send back organization guid to register a root event
+                    oResponse.PutString("OrganizationGuid", strOrganizationGuid);
                 }
             }
         };
@@ -1382,7 +1397,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddSuperUser(
     mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
     {
         // Insert document in the BasicUser collection
-        auto oResult = oBasicUserCollection.insert_one(oBasicUserDocumentValue.view());
+        auto oResult = oBasicUserCollection.insert_one(*poSession, oBasicUserDocumentValue.view());
         if (!oResult) {
             std::cout << "Error while writing to the database." << std::endl;
         }
@@ -1391,7 +1406,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddSuperUser(
             // Access Object collection
             mongocxx::collection oConfidentialUserCollection = oSailDatabase["ConfidentialOrganizationOrUser"];
             // Insert document in the ConfidentialOrganizationOrUser collection
-            oResult = oConfidentialUserCollection.insert_one(oConfidentialUserDocumentValue.view());
+            oResult = oConfidentialUserCollection.insert_one(*poSession, oConfidentialUserDocumentValue.view());
             if (!oResult) {
                 std::cout << "Error while writing to the database." << std::endl;
             }
@@ -1515,7 +1530,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterUser(
         mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
         {
             // Insert document in the BasicUser collection
-            auto oResult = oBasicUserCollection.insert_one(oBasicUserDocumentValue.view());
+            auto oResult = oBasicUserCollection.insert_one(*poSession, oBasicUserDocumentValue.view());
             if (!oResult) {
                 std::cout << "Error while writing to the database." << std::endl;
             }
@@ -1524,7 +1539,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterUser(
                 // Access Object collection
                 mongocxx::collection oConfidentialUserCollection = oSailDatabase["ConfidentialOrganizationOrUser"];
                 // Insert document in the ConfidentialOrganizationOrUser collection
-                oResult = oConfidentialUserCollection.insert_one(oConfidentialUserDocumentValue.view());
+                oResult = oConfidentialUserCollection.insert_one(*poSession, oConfidentialUserDocumentValue.view());
                 if (!oResult) {
                     std::cout << "Error while writing to the database." << std::endl;
                 }

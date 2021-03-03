@@ -10,6 +10,7 @@
 
 #include "AccountDatabase.h"
 #include "64BitHashes.h"
+#include "DateAndTime.h"
 #include "IpcTransactionHelperFunctions.h"
 #include "SmartMemoryAllocator.h"
 #include "SocketClient.h"
@@ -816,6 +817,29 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
     if (204 != oDatabaseResponse.GetDword("Status"))
     {
         dwStatus = 201;
+        // Create request to register a root node event for the organization
+        StructuredBuffer oRootEvent;
+        oRootEvent.PutDword("TransactionType", 0x00000001);
+        StructuredBuffer oMetadata;
+        oMetadata.PutString("EventGuid", Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces));
+        oMetadata.PutString("ParentGuid", "{00000000-0000-0000-0000-000000000000}");
+        oMetadata.PutString("OrganizationGuid", oDatabaseResponse.GetString("OrganizationGuid"));
+        oMetadata.PutQword("EventType", 1);    // 1 for Root event and 2 for Branch event type
+        oMetadata.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+        oMetadata.PutStructuredBuffer("PlainTextEventData", StructuredBuffer());
+        oRootEvent.PutStructuredBuffer("NonLeafEvent", oMetadata);
+        // Call AuditLog plugin to register root node event
+        bool fSuccess = false;
+        Socket * poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
+        StructuredBuffer oStatus(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oRootEvent));
+        if ((0 < oStatus.GetSerializedBufferRawDataSizeInBytes())&&(201 == oStatus.GetDword("Status")))
+        {
+            oResponse.PutDword("RootEventStatus", 200);
+        }
+        else
+        {
+            oResponse.PutDword("RootEventStatus", 204);
+        }
     }
     
     // Send back status of the transaction

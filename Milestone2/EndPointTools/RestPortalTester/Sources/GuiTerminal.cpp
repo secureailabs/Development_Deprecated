@@ -24,10 +24,9 @@ std::string strLoginMenu = oFontColor.strWhite + "1- Login \n" +
 
 std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strMagenta + "1- Add a new user - Admin privileges required!\n" +
-            oFontColor.strGreen + "2- Register a root event\n" +
-            oFontColor.strGreen + "3- Register a virtual machine and its leaf events\n" +
-            oFontColor.strCyan + "4- Get list of all events of the organization\n" +
-            oFontColor.strCyan + "5- Get list of events for a specified parent\n" +
+            oFontColor.strGreen + "2- Register a virtual machine and its leaf events\n" +
+            oFontColor.strCyan + "3- Get list of all events of the organization\n" +
+            oFontColor.strCyan + "4- Get list of events for a specified parent\n" +
             oFontColor.strYellow + "0- Logout\n";
 
 /********************************************************************************************/

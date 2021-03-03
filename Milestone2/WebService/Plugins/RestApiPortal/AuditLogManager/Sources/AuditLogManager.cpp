@@ -392,7 +392,7 @@ void __thiscall AuditLogManager::InitializePlugin(void)
     oPlainTextMetadata.PutStructuredBuffer("BranchType", oBranchType);
     StructuredBuffer oGuidOfDcOrVm;
     oGuidOfDcOrVm.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
-    oGuidOfDcOrVm.PutBoolean("IsRequired", false);
+    oGuidOfDcOrVm.PutBoolean("IsRequired", true);
     oPlainTextMetadata.PutStructuredBuffer("GuidOfDcOrVm", oGuidOfDcOrVm);
     oMetadata.PutStructuredBuffer("PlainTextEventData", oPlainTextMetadata);
     oRegisterNonLeafEvents.PutStructuredBuffer("NonLeafEvent", oMetadata);

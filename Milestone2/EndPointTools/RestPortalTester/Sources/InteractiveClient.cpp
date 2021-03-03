@@ -142,8 +142,8 @@ std::string Login(
     )
 {
     __DebugFunction();
-    __DebugAssert(0 != c_strEmail.length());
-    __DebugAssert(0 != c_strUserPassword.length());
+    __DebugAssert(0 < c_strEmail.size());
+    __DebugAssert(0 < c_strUserPassword.size());
 
     std::string strEosb;
 
@@ -209,6 +209,7 @@ std::vector<Byte> GetBasicUserInformation(
     )
 {
     __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
 
     StructuredBuffer oUserInformation;
 
@@ -278,6 +279,8 @@ std::string RegisterRootEvent(
     )
 {
     __DebugFunction();
+    __DebugAssert(0 < c_strEncodedEosb.size());
+    __DebugAssert(0 < c_strOrganizationGuid.size());
 
     std::string strRootEventGuid = Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces);
 
@@ -370,6 +373,10 @@ bool RegisterBranchEvent(
     )
 {
     __DebugFunction();
+    __DebugAssert(0 < c_strEncodedEosb.size());
+    __DebugAssert(0 < c_strParentGuid.size());
+    __DebugAssert(0 < c_strOrganizationGuid.size());
+    __DebugAssert(0 < c_strDcGuid.size());
 
     bool fSuccess = false;
 
@@ -462,6 +469,9 @@ bool RegisterLeafEvents(
     )
 {
     __DebugFunction();
+    __DebugAssert(0 < c_strEncodedEosb.size());
+    __DebugAssert(0 < c_strParentGuid.size());
+    __DebugAssert(0 < c_strOrganizationGuid.size());
 
     bool fSuccess = false;
 
@@ -558,6 +568,9 @@ std::string RegisterVirtualMachine(
     )
 {
     __DebugFunction();
+    __DebugAssert(0 < c_strEncodedEosb.size());
+    __DebugAssert(0 < c_strDcGuid.size());
+    __DebugAssert(0 < c_strVmGuid.size());
 
     std::string strVmEventGuid;
 
@@ -639,6 +652,9 @@ bool GetListOfEvents(
     )
 {
     __DebugFunction();
+    __DebugAssert(0 < c_strEncodedEosb.size());
+    __DebugAssert(0 < c_strParentGuid.size());
+    __DebugAssert(0 < c_strOrganizationGuid.size());
 
     bool fSuccess = false;
 
@@ -737,39 +753,39 @@ bool RegisterOrganizationAndSuperUser(void)
     const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
 
     // Get user and organization information
-    // std::cout << "************************\n New User Information \n************************\n" << std::endl;
-    // std::string strEmail = ::GetStringInput("Enter your email: ", 50, false, c_szValidInputCharacters);
-    // std::string strPassword = ::GetStringInput("Enter your new password: ", 50, true, c_szValidInputCharacters);
-    // std::string strName = ::GetStringInput("Enter your full name: ", 50, false, c_szValidInputCharacters);
-    // std::string strPhoneNumber = ::GetStringInput("Enter your phone number: ", 12, false, c_szValidInputCharacters);
-    // std::string strTitle = ::GetStringInput("Enter your title within your organization: ", 50, false, c_szValidInputCharacters);
-    // std::cout << "************************\n  New Organization Information \n************************\n" << std::endl;
-    // std::string strOrganizationName = ::GetStringInput("Enter your organization name: ", 50, false, c_szValidInputCharacters);
-    // std::string strOrganizationAddress = ::GetStringInput("Enter your organization address: ", 50, false, c_szValidInputCharacters);
-    // std::string strPrimaryContactName = ::GetStringInput("Enter primary contact name for the organization: ", 50, false, c_szValidInputCharacters);
-    // std::string strPrimaryContactTitle = ::GetStringInput("Enter primary contact title within the organization: ", 50, false, c_szValidInputCharacters);
-    // std::string strPrimaryContactEmail = ::GetStringInput("Enter primary contact email: ", 50, false, c_szValidInputCharacters);
-    // std::string strPrimaryContactPhoneNumber = ::GetStringInput("Enter primary contact phone number: ", 12, false, c_szValidInputCharacters);
-    // std::string strSecondaryContactName = ::GetStringInput("Enter secondary contact name for the organization: ", 50, false, c_szValidInputCharacters);
-    // std::string strSecondaryContactTitle= ::GetStringInput("Enter secondary contact title within the organization: ", 50, false, c_szValidInputCharacters);
-    // std::string strSecondaryContactEmail = ::GetStringInput("Enter secondary contact email: ", 50, false, c_szValidInputCharacters);
-    // std::string strSecondaryContactPhoneNumber = ::GetStringInput("Enter secondary contact phone number: ", 12, false, c_szValidInputCharacters);
+    std::cout << "************************\n New User Information \n************************\n" << std::endl;
+    std::string strEmail = ::GetStringInput("Enter your email: ", 50, false, c_szValidInputCharacters);
+    std::string strPassword = ::GetStringInput("Enter your new password: ", 50, true, c_szValidInputCharacters);
+    std::string strName = ::GetStringInput("Enter your full name: ", 50, false, c_szValidInputCharacters);
+    std::string strPhoneNumber = ::GetStringInput("Enter your phone number: ", 12, false, c_szValidInputCharacters);
+    std::string strTitle = ::GetStringInput("Enter your title within your organization: ", 50, false, c_szValidInputCharacters);
+    std::cout << "************************\n  New Organization Information \n************************\n" << std::endl;
+    std::string strOrganizationName = ::GetStringInput("Enter your organization name: ", 50, false, c_szValidInputCharacters);
+    std::string strOrganizationAddress = ::GetStringInput("Enter your organization address: ", 50, false, c_szValidInputCharacters);
+    std::string strPrimaryContactName = ::GetStringInput("Enter primary contact name for the organization: ", 50, false, c_szValidInputCharacters);
+    std::string strPrimaryContactTitle = ::GetStringInput("Enter primary contact title within the organization: ", 50, false, c_szValidInputCharacters);
+    std::string strPrimaryContactEmail = ::GetStringInput("Enter primary contact email: ", 50, false, c_szValidInputCharacters);
+    std::string strPrimaryContactPhoneNumber = ::GetStringInput("Enter primary contact phone number: ", 12, false, c_szValidInputCharacters);
+    std::string strSecondaryContactName = ::GetStringInput("Enter secondary contact name for the organization: ", 50, false, c_szValidInputCharacters);
+    std::string strSecondaryContactTitle= ::GetStringInput("Enter secondary contact title within the organization: ", 50, false, c_szValidInputCharacters);
+    std::string strSecondaryContactEmail = ::GetStringInput("Enter secondary contact email: ", 50, false, c_szValidInputCharacters);
+    std::string strSecondaryContactPhoneNumber = ::GetStringInput("Enter secondary contact phone number: ", 12, false, c_szValidInputCharacters);
 
-    // __DebugAssert(0 < strEmail.size());
-    // __DebugAssert(0 < strPassword.size());
-    // __DebugAssert(0 < strName.size());
-    // __DebugAssert(0 < strPhoneNumber.size());
-    // __DebugAssert(0 < strTitle.size());
-    // __DebugAssert(0 < strOrganizationName.size());
-    // __DebugAssert(0 < strOrganizationAddress.size());
-    // __DebugAssert(0 < strPrimaryContactName.size());
-    // __DebugAssert(0 < strPrimaryContactTitle.size());
-    // __DebugAssert(0 < strPrimaryContactEmail.size());
-    // __DebugAssert(0 < strPrimaryContactPhoneNumber.size());
-    // __DebugAssert(0 < strSecondaryContactName.size());
-    // __DebugAssert(0 < strSecondaryContactTitle.size());
-    // __DebugAssert(0 < strSecondaryContactEmail.size());
-    // __DebugAssert(0 < strSecondaryContactPhoneNumber.size());
+    __DebugAssert(0 < strEmail.size());
+    __DebugAssert(0 < strPassword.size());
+    __DebugAssert(0 < strName.size());
+    __DebugAssert(0 < strPhoneNumber.size());
+    __DebugAssert(0 < strTitle.size());
+    __DebugAssert(0 < strOrganizationName.size());
+    __DebugAssert(0 < strOrganizationAddress.size());
+    __DebugAssert(0 < strPrimaryContactName.size());
+    __DebugAssert(0 < strPrimaryContactTitle.size());
+    __DebugAssert(0 < strPrimaryContactEmail.size());
+    __DebugAssert(0 < strPrimaryContactPhoneNumber.size());
+    __DebugAssert(0 < strSecondaryContactName.size());
+    __DebugAssert(0 < strSecondaryContactTitle.size());
+    __DebugAssert(0 < strSecondaryContactEmail.size());
+    __DebugAssert(0 < strSecondaryContactPhoneNumber.size());
 
     try 
     {
@@ -778,38 +794,22 @@ bool RegisterOrganizationAndSuperUser(void)
         poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
 
         // Create rest request
-        std::string strContent = "{\n    \"Email\": \"super@gmail.com\","
-                                "\n    \"Password\": \"sailpassword\","
-                                "\n    \"Name\": \"Super Admin\","
-                                "\n    \"PhoneNumber\": \"1111\","
-                                "\n    \"Title\": \"Engineer\","
-                                "\n    \"OrganizationName\": \"Hbo\","
-                                "\n    \"OrganizationAddress\": \"CA\","
-                                "\n    \"PrimaryContactName\": \"abc\","
-                                "\n    \"PrimaryContactTitle\": \"worker\","
-                                "\n    \"PrimaryContactEmail\": \"abc@gmail.com\","
-                                "\n    \"PrimaryContactPhoneNumber\": \"2222\","
-                                "\n    \"SecondaryContactName\": \"cde\","
-                                "\n    \"SecondaryContactTitle\": \"worker\","
-                                "\n    \"SecondaryContactEmail\": \"cde@gmail.com\","
-                                "\n    \"SecondaryContactPhoneNumber\": \"3333\""
+        std::string strContent = "{\n    \"Email\": \""+ strEmail +"\","
+                                "\n    \"Password\": \""+ strPassword +"\","
+                                "\n    \"Name\": \""+ strName +"\","
+                                "\n    \"PhoneNumber\": \""+ strPhoneNumber +"\","
+                                "\n    \"Title\": \""+ strTitle +"\","
+                                "\n    \"OrganizationName\": \""+ strOrganizationName +"\","
+                                "\n    \"OrganizationAddress\": \""+ strOrganizationAddress +"\","
+                                "\n    \"PrimaryContactName\": \""+ strPrimaryContactName +"\","
+                                "\n    \"PrimaryContactTitle\": \""+ strPrimaryContactTitle +"\","
+                                "\n    \"PrimaryContactEmail\": \""+ strPrimaryContactEmail +"\","
+                                "\n    \"PrimaryContactPhoneNumber\": \""+ strPrimaryContactPhoneNumber +"\","
+                                "\n    \"SecondaryContactName\": \""+ strSecondaryContactName +"\","
+                                "\n    \"SecondaryContactTitle\": \""+ strSecondaryContactTitle +"\","
+                                "\n    \"SecondaryContactEmail\": \""+ strSecondaryContactEmail +"\","
+                                "\n    \"SecondaryContactPhoneNumber\": \""+ strSecondaryContactPhoneNumber +"\""
                                 "\n}";
-        // std::string strContent = "{\n    \"Email\": \""+ strEmail +"\","
-        //                         "\n    \"Password\": \""+ strPassword +"\","
-        //                         "\n    \"Name\": \""+ strName +"\","
-        //                         "\n    \"PhoneNumber\": \""+ strPhoneNumber +"\","
-        //                         "\n    \"Title\": \""+ strTitle +"\","
-        //                         "\n    \"OrganizationName\": \""+ strOrganizationName +"\","
-        //                         "\n    \"OrganizationAddress\": \""+ strOrganizationAddress +"\","
-        //                         "\n    \"PrimaryContactName\": \""+ strPrimaryContactName +"\","
-        //                         "\n    \"PrimaryContactTitle\": \""+ strPrimaryContactTitle +"\","
-        //                         "\n    \"PrimaryContactEmail\": \""+ strPrimaryContactEmail +"\","
-        //                         "\n    \"PrimaryContactPhoneNumber\": \""+ strPrimaryContactPhoneNumber +"\","
-        //                         "\n    \"SecondaryContactName\": \""+ strSecondaryContactName +"\","
-        //                         "\n    \"SecondaryContactTitle\": \""+ strSecondaryContactTitle +"\","
-        //                         "\n    \"SecondaryContactEmail\": \""+ strSecondaryContactEmail +"\","
-        //                         "\n    \"SecondaryContactPhoneNumber\": \""+ strSecondaryContactPhoneNumber +"\""
-        //                         "\n}";
         std::string strHttpRequest = "POST /SAIL/AccountManager/RegisterUser HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
@@ -851,6 +851,7 @@ bool RegisterOrganizationAndSuperUser(void)
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error registering new organization and super user.", nullptr);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("RootEventStatus")), "Error registering root event for the organization.", nullptr);
         fSuccess = true;
     }
     catch(BaseException oBaseException)
@@ -868,49 +869,33 @@ bool RegisterOrganizationAndSuperUser(void)
 /********************************************************************************************/
 
 bool RegisterUser(
-    _in const std::string & c_strEncodedEosb
+    _in const std::string & c_strEncodedEosb,
+    _in const std::string & c_strOrganizationGuid
     )
 {
     __DebugFunction();
+
+    __DebugAssert(0 < c_strEncodedEosb.size());
+    __DebugAssert(0 < c_strOrganizationGuid.size());
 
     bool fSuccess = false;
 
     const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
 
     // Get user and organization information
-    // std::cout << "************************\n New User Information \n************************\n" << std::endl;
-    // std::string strEmail = ::GetStringInput("Enter your email: ", 50, false, c_szValidInputCharacters);
-    // std::string strPassword = ::GetStringInput("Enter your new password: ", 50, true, c_szValidInputCharacters);
-    // std::string strName = ::GetStringInput("Enter your full name: ", 50, false, c_szValidInputCharacters);
-    // std::string strPhoneNumber = ::GetStringInput("Enter your phone number: ", 12, false, c_szValidInputCharacters);
-    // std::string strTitle = ::GetStringInput("Enter your title within your organization: ", 50, false, c_szValidInputCharacters);
-    // std::cout << "************************\n  New Organization Information \n************************\n" << std::endl;
-    // std::string strOrganizationName = ::GetStringInput("Enter your organization name: ", 50, false, c_szValidInputCharacters);
-    // std::string strOrganizationAddress = ::GetStringInput("Enter your organization address: ", 50, false, c_szValidInputCharacters);
-    // std::string strPrimaryContactName = ::GetStringInput("Enter primary contact name for the organization: ", 50, false, c_szValidInputCharacters);
-    // std::string strPrimaryContactTitle = ::GetStringInput("Enter primary contact title within the organization: ", 50, false, c_szValidInputCharacters);
-    // std::string strPrimaryContactEmail = ::GetStringInput("Enter primary contact email: ", 50, false, c_szValidInputCharacters);
-    // std::string strPrimaryContactPhoneNumber = ::GetStringInput("Enter primary contact phone number: ", 12, false, c_szValidInputCharacters);
-    // std::string strSecondaryContactName = ::GetStringInput("Enter secondary contact name for the organization: ", 50, false, c_szValidInputCharacters);
-    // std::string strSecondaryContactTitle= ::GetStringInput("Enter secondary contact title within the organization: ", 50, false, c_szValidInputCharacters);
-    // std::string strSecondaryContactEmail = ::GetStringInput("Enter secondary contact email: ", 50, false, c_szValidInputCharacters);
-    // std::string strSecondaryContactPhoneNumber = ::GetStringInput("Enter secondary contact phone number: ", 12, false, c_szValidInputCharacters);
+    std::cout << "************************\n New User Information \n************************\n" << std::endl;
+    std::string strEmail = ::GetStringInput("Enter email: ", 50, false, c_szValidInputCharacters);
+    std::string strPassword = ::GetStringInput("Enter new password: ", 50, true, c_szValidInputCharacters);
+    std::string strName = ::GetStringInput("Enter full name: ", 50, false, c_szValidInputCharacters);
+    std::string strPhoneNumber = ::GetStringInput("Enter phone number: ", 12, false, c_szValidInputCharacters);
+    std::string strTitle = ::GetStringInput("Enter title within the organization: ", 50, false, c_szValidInputCharacters);
+    Qword qwAccessRights = std::stoull(::GetStringInput("Enter user's access rights: ", 2, false, c_szValidInputCharacters));
 
-    // __DebugAssert(0 < strEmail.size());
-    // __DebugAssert(0 < strPassword.size());
-    // __DebugAssert(0 < strName.size());
-    // __DebugAssert(0 < strPhoneNumber.size());
-    // __DebugAssert(0 < strTitle.size());
-    // __DebugAssert(0 < strOrganizationName.size());
-    // __DebugAssert(0 < strOrganizationAddress.size());
-    // __DebugAssert(0 < strPrimaryContactName.size());
-    // __DebugAssert(0 < strPrimaryContactTitle.size());
-    // __DebugAssert(0 < strPrimaryContactEmail.size());
-    // __DebugAssert(0 < strPrimaryContactPhoneNumber.size());
-    // __DebugAssert(0 < strSecondaryContactName.size());
-    // __DebugAssert(0 < strSecondaryContactTitle.size());
-    // __DebugAssert(0 < strSecondaryContactEmail.size());
-    // __DebugAssert(0 < strSecondaryContactPhoneNumber.size());
+    __DebugAssert(0 < strEmail.size());
+    __DebugAssert(0 < strPassword.size());
+    __DebugAssert(0 < strName.size());
+    __DebugAssert(0 < strPhoneNumber.size());
+    __DebugAssert(0 < strTitle.size());
 
     try 
     {
@@ -920,30 +905,14 @@ bool RegisterUser(
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"Email\": \"user@gmail.com\","
-                                "\n    \"Password\": \"sailpassword\","
-                                "\n    \"Name\": \"User 1\","
-                                "\n    \"PhoneNumber\": \"2222\","
-                                "\n    \"Title\": \"Staff\","
-                                "\n    \"AccessRights\": 1,"
-                                "\n    \"OrganizationGuid\": \"{030952FE-3650-444E-AB66-DC2AB8C20DEF}\""
+                                "\n    \"Email\": \""+ strEmail +"\","
+                                "\n    \"Password\": \""+ strPassword +"\","
+                                "\n    \"Name\": \""+ strName +"\","
+                                "\n    \"PhoneNumber\": \""+ strPhoneNumber +"\","
+                                "\n    \"Title\": \""+ strTitle +"\","
+                                "\n    \"AccessRights\": "+ std::to_string(qwAccessRights) +","
+                                "\n    \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\""
                                 "\n}";
-        // std::string strContent = "{\n    \"Email\": \""+ strEmail +"\","
-        //                         "\n    \"Password\": \""+ strPassword +"\","
-        //                         "\n    \"Name\": \""+ strName +"\","
-        //                         "\n    \"PhoneNumber\": \""+ strPhoneNumber +"\","
-        //                         "\n    \"Title\": \""+ strTitle +"\","
-        //                         "\n    \"OrganizationName\": \""+ strOrganizationName +"\","
-        //                         "\n    \"OrganizationAddress\": \""+ strOrganizationAddress +"\","
-        //                         "\n    \"PrimaryContactName\": \""+ strPrimaryContactName +"\","
-        //                         "\n    \"PrimaryContactTitle\": \""+ strPrimaryContactTitle +"\","
-        //                         "\n    \"PrimaryContactEmail\": \""+ strPrimaryContactEmail +"\","
-        //                         "\n    \"PrimaryContactPhoneNumber\": \""+ strPrimaryContactPhoneNumber +"\","
-        //                         "\n    \"SecondaryContactName\": \""+ strSecondaryContactName +"\","
-        //                         "\n    \"SecondaryContactTitle\": \""+ strSecondaryContactTitle +"\","
-        //                         "\n    \"SecondaryContactEmail\": \""+ strSecondaryContactEmail +"\","
-        //                         "\n    \"SecondaryContactPhoneNumber\": \""+ strSecondaryContactPhoneNumber +"\""
-        //                         "\n}";
         std::string strHttpRequest = "POST /SAIL/AccountManager/Admin/RegisterUser HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
@@ -1052,7 +1021,7 @@ int main()
                             {
                                 if (7 == qwAccessRights)
                                 {
-                                    bool fSuccess = ::RegisterUser(strEncodedEosb);
+                                    bool fSuccess = ::RegisterUser(strEncodedEosb, strOrganizationGuid);
                                     if (true == fSuccess)
                                     {
                                         std::cout << "User added successfully!\n";
@@ -1067,11 +1036,6 @@ int main()
                             }
                             case 2:
                             {
-                                ::RegisterRootEvent(strEncodedEosb, strOrganizationGuid);
-                            break;
-                            }
-                            case 3:
-                            {
                                 // Register a Vm
                                 std::string strVmGuid = Guid(eVirtualMachine).ToString(eHyphensAndCurlyBraces);
                                 std::string strDcGuid = "{33DB1751-66AE-4EB5-BF7B-614CBC09BC4C}";
@@ -1082,7 +1046,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break;
                             }
-                            case 4:
+                            case 3:
                             {
                                 std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
                                 // Get list of all events for the organization
@@ -1091,7 +1055,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break;
                             }
-                            case 5:
+                            case 4:
                             {
                                 std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
                                 std::string strParentGuid = ::GetStringInput("Enter hyphen and curly braces formatted parent guid: ", 38, true, c_szValidInputCharacters);

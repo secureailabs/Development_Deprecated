@@ -41,7 +41,7 @@ static std::vector<Byte> __stdcall WaitForInitializationParameters(void)
     // There is a connection is waiting to be made!!!
     TlsNode * poTlsNode = oTlsServer.Accept();
     _ThrowBaseExceptionIf((nullptr == poTlsNode), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
-    stlSerializedParameters = ::GetTlsTransaction(poTlsNode);
+    stlSerializedParameters = ::GetTlsTransaction(poTlsNode, 10*1000);
     // Close the connection
     poTlsNode->Release();
 

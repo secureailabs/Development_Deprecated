@@ -13,12 +13,22 @@
 #include "DebugLibrary.h"
 #include "Exceptions.h"
 #include "InitializerData.h"
+#include "TlsClient.h"
+#include "TlsTransactionHelperFunctions.h"
 
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <iostream>
+
+#include <netdb.h>
+#include <memory>
+#include <arpa/inet.h>
+#include <fstream>
+#include <unistd.h>
+#include <sstream>
+#include <iterator>
 
 static const char * gsc_szPrintableCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`~!@#$%^&*()_-+={[}]|\\:;\"'<,>.?/";
 static const char * gsc_szNumericCharacters = "0123456789";
@@ -261,7 +271,7 @@ static bool __stdcall VerifyParametersAndProceed(
               << "nodes." << std::endl
               << "---------------------------------------------------------------------------------" << std::endl;
     // Print the name of the digital contract
-    std::cout << "Digital contract = " << c_oInitializerData.GetEffectiveDigitalContractName().c_str() << std::endl;    
+    std::cout << "Digital contract = " << c_oInitializerData.GetEffectiveDigitalContractName().c_str() << std::endl;
     // Print out the cluster of nodes
     std::vector<std::string> strListOfNodes = c_oInitializerData.GetClusterNodeAddresses();
     std::cout << "Cluster Nodes    = [0]." << "127.0.0.1" << std::endl;
@@ -288,7 +298,7 @@ static unsigned int __stdcall InitializeNodes(
     )
 {
     __DebugFunction();
-    
+
     unsigned int unNumberOfNodesSuccessfullyInitialized = 0;
     std::vector<std::string> strListOfNodes = c_oInitializerData.GetClusterNodeAddresses();
     for (unsigned int unIndex = 0; unIndex < strListOfNodes.size(); ++unIndex)
@@ -304,8 +314,30 @@ static unsigned int __stdcall InitializeNodes(
             std::cout << "Failed to initialize Node." << std::endl;
         }
     }
-    
+
     return unNumberOfNodesSuccessfullyInitialized;
+}
+
+std::vector<Byte> FileToBytes(
+    const std::string c_strFileName
+)
+{
+    __DebugFunction();
+
+    std::vector<Byte> stlFileData;
+
+    std::ifstream stlFile(c_strFileName.c_str(), (std::ios::in | std::ios::binary | std::ios::ate));
+    if (true == stlFile.good())
+    {
+        unsigned int unFileSizeInBytes = (unsigned int) stlFile.tellg();
+        stlFileData.resize(unFileSizeInBytes);
+        stlFile.seekg(0, std::ios::beg);
+        stlFile.read((char *)stlFileData.data(), unFileSizeInBytes);
+        stlFile.close();
+    }
+
+    std::cout << "vec.size()" << stlFileData.size() << std::endl;
+    return stlFileData;
 }
 
 /********************************************************************************************/
@@ -316,9 +348,23 @@ int __cdecl main(
     )
 {
     __DebugFunction();
- 
+
     try
     {
+        StructuredBuffer oPayloadToVm;
+
+        StructuredBuffer oFilesToPut;
+        oFilesToPut.PutBuffer("RootOfTrustProcess", ::FileToBytes("RootOfTrustProcess"));
+        oFilesToPut.PutBuffer("InitializerProcess", ::FileToBytes("InitializerProcess"));
+        // oFilesToPut.PutBuffer("", ::FileToBytes(""));
+
+        oPayloadToVm.PutStructuredBuffer("Files", oFilesToPut);
+        // return 0;
+        TlsNode * oTlsNode = TlsConnectToNetworkSocket("20.185.151.13", 9090);
+        ::PutTlsTransaction(oTlsNode, oPayloadToVm.GetSerializedBuffer());
+
+        return 0;
+
         InitializerData oInitializerData;
 
         // The first step is to fetch and verify the login credentials. This first step

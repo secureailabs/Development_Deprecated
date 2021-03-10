@@ -513,8 +513,9 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
 
     // Take in EOSB, DCGuid, and VMGuid
     std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
-    std::string strDcGuid = c_oRequest.GetString("DCGuid");
-    std::string strVmGuid = c_oRequest.GetString("VMGuid");
+    StructuredBuffer oVm(c_oRequest.GetStructuredBuffer("VirtualMachineInformation"));
+    std::string strDcGuid = oVm.GetString("DCGuid");
+    std::string strVmGuid = oVm.GetString("VMGuid");
 
     // Call CryptographicManager plugin to get the organization guid
     StructuredBuffer oDecryptEosbRequest;
@@ -525,81 +526,104 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
     // Throw base exception if transaction was unsuccessful
     _ThrowBaseExceptionIf(((0 == oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 != oDecryptedEosb.GetDword("Status"))), "Error decrypting Eosb", nullptr);
     // Get the organization guid
-    Guid oOrganizationGuid = oDecryptedEosb.GetStructuredBuffer("Eosb").GetGuid("OrganizationGuid");
-    // Check whether DC branch event log exists for DCGuid in the database or not
-    // If not then create a DC branch event log
-    StructuredBuffer oGetDcBranchEventRequest;
-    oGetDcBranchEventRequest.PutDword("TransactionType", 0x00000003);
-    oGetDcBranchEventRequest.PutString("OrganizationGuid", oOrganizationGuid.ToString(eHyphensAndCurlyBraces));
-    StructuredBuffer oFilters;
-    oFilters.PutString("DCGuid", strDcGuid);
-    oGetDcBranchEventRequest.PutStructuredBuffer("Filters", oFilters);
-    // Call AuditLogManager plugin to get the guid of DC event log
-    std::string strDcEventGuid;
-    Socket * poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
-    StructuredBuffer oDCEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oGetDcBranchEventRequest));
-    _ThrowBaseExceptionIf((0 > oDCEventLog.GetSerializedBufferRawDataSizeInBytes()), "Error checking for DC event", nullptr);
-    if (200 == oDCEventLog.GetDword("Status"))
-    {
-        strDcEventGuid = oDCEventLog.GetString("DCEventGuid");
-    }
-    else 
-    {
-        // Create a DC branch event for DCGuid
-        std::string strRootEventGuid = oDCEventLog.GetString("RootEventGuid");
-        StructuredBuffer oDcBranchEvent;
-        oDcBranchEvent.PutDword("TransactionType", 0x00000001);
-        oDcBranchEvent.PutBuffer("Eosb", stlEosb);
-        StructuredBuffer oDcMetadata;
-        strDcEventGuid = Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces);
-        oDcMetadata.PutString("EventGuid", strDcEventGuid);
-        oDcMetadata.PutString("ParentGuid", strRootEventGuid);
-        oDcMetadata.PutString("OrganizationGuid", oOrganizationGuid.ToString(eHyphensAndCurlyBraces));
-        oDcMetadata.PutQword("EventType", 2); // where 2 is for non root event type
-        oDcMetadata.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+    std::string strOrganizationGuid = oDecryptedEosb.GetStructuredBuffer("Eosb").GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
+    // Register the Virtual Machine 
+    // Make a Tls connection with the database portal
+    TlsNode * poTlsNode = nullptr;
+    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+    // Create a request to store a non leaf event in the database
+    StructuredBuffer oRequest;
+    oRequest.PutString("PluginName", "DatabaseManager");
+    oRequest.PutString("Verb", "POST");
+    oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterVirtualMachine");
+    oRequest.PutStructuredBuffer("VirtualMachineInformation", oVm);
+    oRequest.PutString("OrganizationGuid", strOrganizationGuid);
+    std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+    // Send request packet
+    poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+    // Read header and body of the response
+    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+    std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+    Dword dwStatus = 204;
+    // Check if DatabaseManager registered the virtual machine or not
+    StructuredBuffer oDatabaseResponse(stlResponse);
+    if (404 != oDatabaseResponse.GetDword("Status"))
+    {    
+        // Check whether DC branch event log exists for DCGuid in the database or not
+        // If not then create a DC branch event log
+        StructuredBuffer oGetDcBranchEventRequest;
+        oGetDcBranchEventRequest.PutDword("TransactionType", 0x00000003);
+        oGetDcBranchEventRequest.PutString("OrganizationGuid", strOrganizationGuid);
+        StructuredBuffer oFilters;
+        oFilters.PutString("DCGuid", strDcGuid);
+        oGetDcBranchEventRequest.PutStructuredBuffer("Filters", oFilters);
+        // Call AuditLogManager plugin to get the guid of DC event log
+        std::string strDcEventGuid;
+        Socket * poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
+        StructuredBuffer oDCEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oGetDcBranchEventRequest));
+        _ThrowBaseExceptionIf((0 > oDCEventLog.GetSerializedBufferRawDataSizeInBytes()), "Error checking for DC event", nullptr);
+        if (200 == oDCEventLog.GetDword("Status"))
+        {
+            strDcEventGuid = oDCEventLog.GetString("DCEventGuid");
+        }
+        else 
+        {
+            // Create a DC branch event for DCGuid
+            std::string strRootEventGuid = oDCEventLog.GetString("RootEventGuid");
+            StructuredBuffer oDcBranchEvent;
+            oDcBranchEvent.PutDword("TransactionType", 0x00000001);
+            oDcBranchEvent.PutBuffer("Eosb", stlEosb);
+            StructuredBuffer oDcMetadata;
+            strDcEventGuid = Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces);
+            oDcMetadata.PutString("EventGuid", strDcEventGuid);
+            oDcMetadata.PutString("ParentGuid", strRootEventGuid);
+            oDcMetadata.PutString("OrganizationGuid", strOrganizationGuid);
+            oDcMetadata.PutQword("EventType", 2); // where 2 is for non root event type
+            oDcMetadata.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+            StructuredBuffer oPlainTextMetadata;
+            oPlainTextMetadata.PutDword("BranchType", 1); // where 1 is for for DC branch type
+            oPlainTextMetadata.PutString("GuidOfDcOrVm", strDcGuid);
+            oDcMetadata.PutStructuredBuffer("PlainTextEventData", oPlainTextMetadata);
+            oDcBranchEvent.PutStructuredBuffer("NonLeafEvent", oDcMetadata);
+            // Call AuditLogManager plugin to create a DC event log
+            poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
+            StructuredBuffer oDcEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oDcBranchEvent));
+            _ThrowBaseExceptionIf(((0 > oDcEventLog.GetSerializedBufferRawDataSizeInBytes())&&(201 != oDcEventLog.GetDword("Status"))), "Error creating DC branch event.", nullptr);
+        }
+
+        // Create a Vm branch event log
+        StructuredBuffer oVmBranchEvent;
+        oVmBranchEvent.PutDword("TransactionType", 0x00000001);
+        oVmBranchEvent.PutBuffer("Eosb", stlEosb);
+        StructuredBuffer oVmMetadata;
+        Guid oVmEventGuid(eAuditEventBranchNode);
+        oVmMetadata.PutString("EventGuid", oVmEventGuid.ToString(eHyphensAndCurlyBraces));
+        oVmMetadata.PutString("ParentGuid", strDcEventGuid);
+        oVmMetadata.PutString("OrganizationGuid", strOrganizationGuid);
+        oVmMetadata.PutQword("EventType", 2); // where 2 is for non root event type
+        oVmMetadata.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
         StructuredBuffer oPlainTextMetadata;
-        oPlainTextMetadata.PutDword("BranchType", 1); // where 1 is for for DC branch type
-        oPlainTextMetadata.PutString("GuidOfDcOrVm", strDcGuid);
-        oDcMetadata.PutStructuredBuffer("PlainTextEventData", oPlainTextMetadata);
-        oDcBranchEvent.PutStructuredBuffer("NonLeafEvent", oDcMetadata);
-        // Call AuditLogManager plugin to create a DC event log
+        oPlainTextMetadata.PutDword("BranchType", 2); // where 2 is for for Vm branch type
+        oPlainTextMetadata.PutString("GuidOfDcOrVm", strVmGuid);
+        oVmMetadata.PutStructuredBuffer("PlainTextEventData", oPlainTextMetadata);
+        oVmBranchEvent.PutStructuredBuffer("NonLeafEvent", oVmMetadata);
+        // Call AuditLogManager plugin to create a Vm event log
         poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
-        StructuredBuffer oDcEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oDcBranchEvent));
-        _ThrowBaseExceptionIf(((0 > oDcEventLog.GetSerializedBufferRawDataSizeInBytes())&&(201 != oDcEventLog.GetDword("Status"))), "Error creating DC branch event.", nullptr);
+        StructuredBuffer oVmEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oVmBranchEvent));
+        if ((0 < oVmEventLog.GetSerializedBufferRawDataSizeInBytes())&&(201 == oVmEventLog.GetDword("Status")))
+        {
+            // Add Vm branch log event guid to the response
+            oResponse.PutGuid("VmEventGuid", oVmEventGuid);
+            dwStatus = 201;
+        }
     }
 
-    // Create a Vm branch event log
-    StructuredBuffer oVmBranchEvent;
-    oVmBranchEvent.PutDword("TransactionType", 0x00000001);
-    oVmBranchEvent.PutBuffer("Eosb", stlEosb);
-    StructuredBuffer oVmMetadata;
-    Guid oVmEventGuid(eAuditEventBranchNode);
-    oVmMetadata.PutString("EventGuid", oVmEventGuid.ToString(eHyphensAndCurlyBraces));
-    oVmMetadata.PutString("ParentGuid", strDcEventGuid);
-    oVmMetadata.PutString("OrganizationGuid", oOrganizationGuid.ToString(eHyphensAndCurlyBraces));
-    oVmMetadata.PutQword("EventType", 2); // where 2 is for non root event type
-    oVmMetadata.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
-    StructuredBuffer oPlainTextMetadata;
-    oPlainTextMetadata.PutDword("BranchType", 2); // where 2 is for for Vm branch type
-    oPlainTextMetadata.PutString("GuidOfDcOrVm", strVmGuid);
-    oVmMetadata.PutStructuredBuffer("PlainTextEventData", oPlainTextMetadata);
-    oVmBranchEvent.PutStructuredBuffer("NonLeafEvent", oVmMetadata);
-    // Call AuditLogManager plugin to create a Vm event log
-    bool fSuccess = false;
-    poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
-    StructuredBuffer oVmEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oVmBranchEvent));
-    if ((0 < oVmEventLog.GetSerializedBufferRawDataSizeInBytes())&&(201 == oVmEventLog.GetDword("Status")))
-    {
-        oResponse.PutDword("Status", 201);
-        // Add Vm branch log event guid to the response
-        oResponse.PutGuid("VmEventGuid", oVmEventGuid);
-        fSuccess = true;
-    }
-    // Add error code if transaction was unsuccessful
-    if (false == fSuccess)
-    {
-        oResponse.PutDword("Status", 404);
-    }
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }

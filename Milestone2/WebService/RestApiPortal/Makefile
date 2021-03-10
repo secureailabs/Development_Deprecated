@@ -1,5 +1,5 @@
 BUILD_MODE?=debug
-CXXFLAGS=-std=c++17 -fstack-protector -DUNIX -DOS_UNIX
+CXXFLAGS=-std=c++17 -fPIC -fstack-protector -DUNIX -DOS_UNIX
 LDFLAGS=-lpthread -ldl -luuid -lrt -lcrypto -lssl -lstdc++fs -lssl
 
 ifeq ($(BUILD_MODE), debug)

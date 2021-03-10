@@ -29,17 +29,17 @@ GuidFormat;
 
 typedef enum guidtype
 {
-    eOrganization = 0000,
-    eUser = 0001,
-    eCryptographicKey = 0010,
-    eDigitalContract = 0011,
-    eDataset = 0100,
-    eFunctionNode = 0101,
-    eVirtualMachine = 0110,
+    eOrganization = 0x0,
+    eUser = 0x1,
+    eCryptographicKey = 0x2,
+    eDigitalContract = 0x3,
+    eDataset = 0x4,
+    eFunctionNode = 0x5,
+    eVirtualMachine = 0x6,
     eAuditEventBranchNode = 0x7,
-    eAuditEventEncryptedLeafNode = 1000,
-    eAuditEventPlainTextLeafNode = 1001,
-    eOthers = 1111
+    eAuditEventEncryptedLeafNode = 0x8,
+    eAuditEventPlainTextLeafNode = 0x9,
+    eOthers = 0xF
 }
 GuidOfObjectType;
 
@@ -93,7 +93,7 @@ class Guid : public Object
             ) const throw();
         
         // Fetch type of Object
-        Byte __thiscall GetObjectType(void) const throw();
+        GuidOfObjectType __thiscall GetObjectType(void) const throw();
 
     private:
 
@@ -102,4 +102,5 @@ class Guid : public Object
             );
 
         std::vector<Byte> m_stlRawData;
+        GuidOfObjectType m_eObjectType;
 };

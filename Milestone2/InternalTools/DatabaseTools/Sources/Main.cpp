@@ -1,5 +1,6 @@
 #include "64BitHashes.h"
 #include "CryptoUtils.h"
+#include "DateAndTime.h"
 #include "Exceptions.h"
 
 #include <bsoncxx/json.hpp>
@@ -27,15 +28,31 @@ using bsoncxx::builder::stream::open_document;
 #include <mongocxx/pool.hpp>
 using bsoncxx::builder::basic::kvp;
 
+/********************************************************************************************/
+
+typedef enum rights
+{
+    eAdmin = 1,
+    eAuditor = 2,
+    eOrganizationUser = 3,
+    eDigitalContractAdmin = 4,
+    eDatasetAdmin = 5
+}
+AccessRights;
+
 typedef struct
 {
     std::string m_strEmail;
     std::string m_strName;
     std::string m_strTitle;
-} AccountCredentials;
+    std::string m_strPhoneNumber;
+    Qword m_qwAccessRights;
+} UserInformation;
 
 mongocxx::instance oInstance{}; // Create only one instance
 mongocxx::client * g_oClient = nullptr;
+
+/********************************************************************************************/
 
 void AddUserAccountsToDatabase(
     const StructuredBuffer & c_oBasicUser,
@@ -73,7 +90,7 @@ void AddUserAccountsToDatabase(
                                   uint32_t(stlWrappedAccountKey.size()),
                                   stlWrappedAccountKey.data()};
         bsoncxx::document::value oBasicUserDocumentValue = oBuilder
-        << "64BitHash" << (double)c_oBasicUser.GetQword("64BitHashedPassphrase")
+        << "64BitHash" << (double)c_oBasicUser.GetQword("64BitHash")
         << "OrganizationUuid" << c_oBasicUser.GetString("OrganizationUuid")
         << "UserUuid" << c_oBasicUser.GetString("UserUuid")
         << "AccountStatus" << (double)c_oBasicUser.GetDword("AccountStatus")
@@ -128,21 +145,23 @@ int main()
 
     try
     {
-        std::string strEmail, strPassword = "sailpassword", strPassphrase, strUserName, strTitle;
-
-        std::vector<AccountCredentials> stlAccountDb;
-        stlAccountDb.push_back({"marine@terran.com", "Eren", "Security Expert"});
-        stlAccountDb.push_back({"scv@t1erran.com", "Gon", "Hardware Engineer"});
-        stlAccountDb.push_back({"overlord@zerg.com", "Naruto", "Supply Generator"});
-        stlAccountDb.push_back({"nydus@zerg.com", "Saitama", "Network Engineer"});
-        stlAccountDb.push_back({"pylon@protos.com", "Alex", "Field Engineer"});
-        stlAccountDb.push_back({"probe@protos.com", "Yagami", "Market Discovery Expert"});
+        std::string strPassword = "sailpassword", strPassphrase;
+        // Add users to the database
+        std::vector<UserInformation> stlAccountDb;
+        stlAccountDb.push_back({"marine@terran.com", "Eren", "Security Expert", "000-000-0000", eAdmin});
+        stlAccountDb.push_back({"scv@t1erran.com", "Gon", "Hardware Engineer", "000-000-0000", eOrganizationUser});
+        stlAccountDb.push_back({"overlord@zerg.com", "Naruto", "Supply Generator", "000-000-0000", eOrganizationUser});
+        stlAccountDb.push_back({"nydus@zerg.com", "Saitama", "Network Engineer", "000-000-0000", eAuditor});
+        stlAccountDb.push_back({"pylon@protos.com", "Alex", "Field Engineer", "000-000-0000", eDigitalContractAdmin});
+        stlAccountDb.push_back({"probe@protos.com", "Yagami", "Market Discovery Expert", "000-000-0000", eDatasetAdmin});
 
         for (int i = 0; i < stlAccountDb.size(); i++)
         {
-            strEmail = stlAccountDb.at(i).m_strEmail;
-            strUserName = stlAccountDb.at(i).m_strName;
-            strTitle = stlAccountDb.at(i).m_strTitle;
+            std::string strEmail = stlAccountDb.at(i).m_strEmail;
+            std::string strUserName = stlAccountDb.at(i).m_strName;
+            std::string strTitle = stlAccountDb.at(i).m_strTitle;
+            std::string strPhoneNumber = stlAccountDb.at(i).m_strPhoneNumber;
+            Qword qwAccessRights = stlAccountDb.at(i).m_qwAccessRights;
 
             strPassphrase = strEmail + "/" + strPassword;
             Qword qw64BitHashedPassphrase = ::Get64BitHashOfNullTerminatedString(strPassphrase.c_str(), false);
@@ -156,29 +175,30 @@ int main()
             // Create a Basic User Record as described in the 'Account' subsection of Internal Web Service Constructs
             Guid oUserId, oOrganizationId, oUserRootKeyId;
             StructuredBuffer oBasicUserRecord;
-            oBasicUserRecord.PutQword("64BitHashedPassphrase", qw64BitHashedPassphrase);
+            oBasicUserRecord.PutQword("64BitHash", qw64BitHashedPassphrase);
             oBasicUserRecord.PutString("OrganizationUuid", oOrganizationId.ToString(eHyphensAndCurlyBraces));
             oBasicUserRecord.PutString("UserUuid", oUserId.ToString(eHyphensAndCurlyBraces));
             oBasicUserRecord.PutDword("AccountStatus", 0x1);
             oBasicUserRecord.PutBuffer("WrappedAccountKey", stlWrappedAccountKey);
 
-            // Create a the Confidential User Record
+            // Create Confidential User Record
             StructuredBuffer oConfidentialUserRecord;
             oConfidentialUserRecord.PutGuid("UserGuid", oUserId);
             oConfidentialUserRecord.PutGuid("UserRootKeyGuid", oUserRootKeyId);
-            oConfidentialUserRecord.PutQword("AccountRights", 0x1);
+            oConfidentialUserRecord.PutQword("AccessRights", qwAccessRights);
             oConfidentialUserRecord.PutString("Username", strUserName);
             oConfidentialUserRecord.PutString("Title", strTitle);
             oConfidentialUserRecord.PutString("EmailAddress", strEmail);
-            oConfidentialUserRecord.PutString("PhoneNumber", "000-000-0000");
+            oConfidentialUserRecord.PutString("PhoneNumber", strPhoneNumber);
+            oConfidentialUserRecord.PutUnsignedInt64("TimeOfAccountCreation", ::GetEpochTimeInMilliseconds());
 
             std::vector<Byte> stlPasswordKeyEncrypted = ::EncryptUsingPasswordKey(oConfidentialUserRecord.GetSerializedBuffer(), strHashedPassphrase);
             StructuredBuffer oEncryptedBuffer = ::EncryptUsingSailSecretKey(stlPasswordKeyEncrypted);
 
             // Insert documents
             ::AddUserAccountsToDatabase(oBasicUserRecord, oEncryptedBuffer);
-            // ::RunThreadedInserts();
         }
+        std::cout << "Accounts added!\n";
     }
     catch(BaseException & oBaseException)
     {
@@ -189,8 +209,6 @@ int main()
     {
         std::cout << "Some exception\n";
     }
-
-    std::cout << "That's all folks\n";
 
     delete g_oClient;
     return 0;

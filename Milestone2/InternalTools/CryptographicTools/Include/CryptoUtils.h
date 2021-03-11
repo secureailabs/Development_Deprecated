@@ -50,8 +50,21 @@ std::vector<Byte> __stdcall EncryptUsingPasswordKey(
 
 std::vector<Byte> __stdcall DecryptUsingPasswordKey(
     _in const std::vector<Byte> & stlCipherText,
+    _in const std::string & strBase64HashOfEmailPassword
+    );
+
+/********************************************************************************************/
+
+std::vector<Byte> __stdcall DecryptUsingPasswordKey(
+    _in const std::vector<Byte> & stlCipherText,
     _in const std::string & strEmail,
     _in const std::string & strPassword
+    );
+
+/********************************************************************************************/
+
+std::vector<Byte> __stdcall DecryptUsingSailSecretKey(
+    _in const std::vector<Byte> & stlCipherText
     );
 
 /********************************************************************************************/

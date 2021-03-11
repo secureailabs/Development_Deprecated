@@ -26,10 +26,28 @@
 #include <map>
 #include <vector>
 
-#define ACCOUNT_STATUS_NEW              0x00
-#define ACCOUNT_STATUS_ACTIVE           0x01
-#define ACCOUNT_STATUS_CLOSED           0x02
-#define ACCOUNT_STATUS_SUSPENDED        0x03
+/********************************************************************************************/
+
+typedef enum status
+{
+    eNew = 0,
+    eActive = 1,
+    eSuspended = 2,
+    eClosed = 3
+}
+AccountStatus;
+
+/********************************************************************************************/
+
+typedef enum rights
+{
+    eAdmin = 1,
+    eAuditor = 2,
+    eOrganizationUser = 3,
+    eDigitalContractAdmin = 4,
+    eDatasetAdmin = 5
+}
+AccessRights;
 
 /********************************************************************************************/
 
@@ -130,6 +148,51 @@ class DatabaseManager : public Object
 
         // Add a new user to the database
         std::vector<Byte> __thiscall RegisterUser(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Add metadata of a new virtual machine to the database
+        std::vector<Byte> __thiscall RegisterVirtualMachine(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update user's access rights
+        std::vector<Byte> __thiscall UpdateUserRights(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update organization information
+        std::vector<Byte> __thiscall UpdateOrganizationInformation(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update user information, excluding access rights
+        std::vector<Byte> __thiscall UpdateUserInformation(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch a list of all organizations
+        std::vector<Byte> __thiscall ListOrganizations(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Return a list of all users
+        std::vector<Byte> __thiscall ListUsers(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Return a list of users for an organization
+        std::vector<Byte> __thiscall ListOrganizationUsers(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Delete a user from the database
+        std::vector<Byte> __thiscall DeleteUser(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Delete an organization and its users from the database
+        std::vector<Byte> __thiscall DeleteOrganization(
             _in const StructuredBuffer & c_oRequest
             );
 

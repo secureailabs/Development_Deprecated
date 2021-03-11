@@ -24,9 +24,13 @@ std::string strLoginMenu = oFontColor.strWhite + "1- Login \n" +
 
 std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strMagenta + "1- Add a new user - Admin privileges required!\n" +
-            oFontColor.strGreen + "2- Register a virtual machine and its leaf events\n" +
-            oFontColor.strCyan + "3- Get list of all events of the organization\n" +
-            oFontColor.strCyan + "4- Get list of events for a specified parent\n" +
+            oFontColor.strMagenta + "2- Get list of organizations - Admin privileges required!\n" +
+            oFontColor.strMagenta + "3- Update organization information - Admin privileges required!\n" +
+            oFontColor.strMagenta + "4- Delete an organization - Admin privileges required!\n" +
+            oFontColor.strMagenta + "5- Delete a user - Admin privileges required!\n" +
+            oFontColor.strCyan + "6- Register a virtual machine and its leaf events\n" +
+            oFontColor.strCyan + "7- Get list of all events of the organization\n" +
+            oFontColor.strCyan + "8- Get list of events for a specified parent\n" +
             oFontColor.strYellow + "0- Logout\n";
 
 /********************************************************************************************/
@@ -47,6 +51,17 @@ void __stdcall ShowErrorMessage(
     __DebugFunction();
 
     std::cout << oFontColor.strRed << strErrorMessage << std::endl;
+}
+
+/********************************************************************************************/
+
+void __stdcall ShowSuccessMessage(
+  _in std::string strErrorMessage
+  ) throw()
+{
+    __DebugFunction();
+
+    std::cout << oFontColor.strGreen << strErrorMessage << std::endl;
 }
 
 /********************************************************************************************/

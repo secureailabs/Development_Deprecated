@@ -7,11 +7,11 @@
   },
   "properties": {
     "hardwareProfile": {
-      "vmSize": "Standard_D1_v2"
+      "vmSize": "Standard_B1ls"
     },
     "storageProfile": {
       "imageReference": {
-        "id": "/subscriptions/244097fe-35f1-4dc6-b0c9-627644813a48/resourceGroups/Attempt1Vm_group/providers/Microsoft.Compute/images/Attempt1Image"
+        "id": "/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Compute/images/{{ImageName}}"
       },
       "osDisk": {
         "caching": "ReadWrite",

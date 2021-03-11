@@ -80,6 +80,13 @@ void __cdecl InitVirtualMachine(
                 // deserialize the buffer
                 StructuredBuffer oVmInitializationInstructions(stlPayload);
 
+                std::string strVmType = oVmInitializationInstructions.GetString("VirtualMachineType");
+                if ("WebService" == strVmType)
+                {
+                    _ThrowBaseExceptionIf((-1 == ::mkdir("SharedLibraries", 0777)), "Could not create Shared Library", nullptr);
+                    _ThrowBaseExceptionIf((-1 == ::mkdir("SharedLibraries/DatabasePortal", 0777)), "Could not create Shared Library", nullptr);
+                    _ThrowBaseExceptionIf((-1 == ::mkdir("SharedLibraries/RestApiPortal", 0777)), "Could not create Shared Library", nullptr);
+                }
                 // There are two kinds of files that come with the structuredBuffer
                 // The executable file and the non-executable files.
                 // The executable files need execute permission while the normal files don't

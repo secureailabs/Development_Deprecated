@@ -14,6 +14,9 @@
 #include "SocketClient.h"
 #include "CoreTypes.h"
 #include "Exceptions.h"
+#include "Chronometer.h"
+
+#include <unistd.h>
 
 /********************************************************************************************/
 
@@ -38,6 +41,36 @@ TlsNode * __stdcall TlsConnectToNetworkSocket(
     __DebugFunction();
 
     Socket * poSocket = ::ConnectToNetworkSocket(c_strTargetIpAddress, wPortNumber);
+
+    return new TlsNode(poSocket, eSSLModeClient);
+}
+
+/********************************************************************************************/
+
+TlsNode * __stdcall TlsConnectToNetworkSocketWithTimeout(
+    _in const char * c_strTargetIpAddress,
+    _in Word wPortNumber,
+    _in unsigned int unMillisecondTimeout,
+    _in unsigned int unMillesecondStepTime
+    )
+{
+    __DebugFunction();
+
+    Chronometer oChronometer;
+    oChronometer.Start();
+    Socket * poSocket = nullptr;
+
+    while ((nullptr == poSocket) && (unMillisecondTimeout > oChronometer.GetElapsedTimeWithPrecision(Millisecond)))
+    {
+        try
+        {
+            poSocket = ::ConnectToNetworkSocket(c_strTargetIpAddress, wPortNumber);
+        }
+        catch(const BaseException & oBaseException)
+        {
+            ::sleep(unMillesecondStepTime/1000);
+        }
+    }
 
     return new TlsNode(poSocket, eSSLModeClient);
 }

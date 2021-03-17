@@ -129,6 +129,7 @@ class CryptographicKey : public Object
         EVP_PKEY * __thiscall GetPrivateKey();
         std::vector<Byte> & __thiscall GetSymmetricKey();
         KeySpec __thiscall GetKeySpec();
+        std::string __thiscall GetPublicKeyPEM(void );
 
     private:
 
@@ -226,6 +227,16 @@ class CryptographicEngine : public Object
             _in const std::vector<Byte> & c_stlSignature,
             _in const std::vector<Byte> & c_stlMessageDigest
             ) const;
+        std::vector<Byte> __thiscall GenerateDigitalSignature(
+            _in const Guid & c_oGuidOfkey,
+            _in const std::vector<Byte> & c_stlMessageDigest
+            ) const;
+        KeySpec __thiscall GetKeySpecification(
+            _in const Guid & c_oKeyGuid
+            );
+        std::string __thiscall GetPublicKeyPEM(
+            _in const Guid & c_oKeyGuid
+            );
 
     private:
 

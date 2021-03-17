@@ -8,24 +8,7 @@
  *
  ********************************************************************************************/
 
-#include "ConsoleInputHelperFunctions.h"
-#include "DateAndTime.h"
-#include "Exceptions.h"
-#include "PluginDictionary.h"
-#include "SmartMemoryAllocator.h"
-#include "StructuredBuffer.h"
-#include "TlsClient.h"
-#include "GuiTerminal.h"
-#include "Utils.h"
-#include "HttpRequestParser.h"
-#include "JsonValue.h"
-
-#include <string.h>
-
-#include <iostream>
-#include <string>
-#include <sstream>
-#include <vector>
+#include "InteractiveClient.h"
 
 /********************************************************************************************/
 
@@ -151,7 +134,7 @@ std::string Login(
     {
         bool fSuccess = false;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         std::string strHttpLoginRequest = "POST /SAIL/AuthenticationManager/User/Login?Email="+ c_strEmail +"&Password="+ c_strUserPassword +" HTTP/1.1\r\n"
                                         "Accept: */*\r\n"
@@ -217,7 +200,7 @@ std::vector<Byte> GetBasicUserInformation(
     {
         bool fSuccess = false;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         std::string strHttpLoginRequest = "GET /SAIL/AuthenticationManager/GetBasicUserInformation?Eosb="+ c_strEosb +" HTTP/1.1\r\n"
                                         "Accept: */*\r\n"
@@ -288,7 +271,7 @@ std::string RegisterRootEvent(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
@@ -384,7 +367,7 @@ bool RegisterBranchEvent(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
@@ -479,7 +462,7 @@ bool RegisterLeafEvents(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
@@ -578,7 +561,7 @@ std::string RegisterVirtualMachine(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
@@ -662,7 +645,7 @@ bool GetListOfEvents(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
@@ -787,28 +770,60 @@ bool RegisterOrganizationAndSuperUser(void)
     __DebugAssert(0 < strSecondaryContactEmail.size());
     __DebugAssert(0 < strSecondaryContactPhoneNumber.size());
 
+    StructuredBuffer oOrganizationInformation;
+    oOrganizationInformation.PutString("Email", strEmail);
+    oOrganizationInformation.PutString("Password", strPassword);
+    oOrganizationInformation.PutString("Name", strName);
+    oOrganizationInformation.PutString("PhoneNumber", strPhoneNumber);
+    oOrganizationInformation.PutString("Title", strTitle);
+    oOrganizationInformation.PutString("OrganizationName", strOrganizationName);
+    oOrganizationInformation.PutString("OrganizationAddress", strOrganizationAddress);
+    oOrganizationInformation.PutString("PrimaryContactName", strPrimaryContactName);
+    oOrganizationInformation.PutString("PrimaryContactTitle", strPrimaryContactTitle);
+    oOrganizationInformation.PutString("PrimaryContactEmail", strPrimaryContactEmail);
+    oOrganizationInformation.PutString("PrimaryContactPhoneNumber", strPrimaryContactPhoneNumber);
+    oOrganizationInformation.PutString("SecondaryContactName", strSecondaryContactName);
+    oOrganizationInformation.PutString("SecondaryContactTitle", strSecondaryContactTitle);
+    oOrganizationInformation.PutString("SecondaryContactEmail", strSecondaryContactEmail);
+    oOrganizationInformation.PutString("SecondaryContactPhoneNumber", strSecondaryContactPhoneNumber);
+
+    fSuccess = ::RegisterOrganizationAndSuperUser(oOrganizationInformation);
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool RegisterOrganizationAndSuperUser(
+    _in const StructuredBuffer & c_oOrganizationInformation
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         // Create rest request
-        std::string strContent = "{\n    \"Email\": \""+ strEmail +"\","
-                                "\n    \"Password\": \""+ strPassword +"\","
-                                "\n    \"Name\": \""+ strName +"\","
-                                "\n    \"PhoneNumber\": \""+ strPhoneNumber +"\","
-                                "\n    \"Title\": \""+ strTitle +"\","
-                                "\n    \"OrganizationName\": \""+ strOrganizationName +"\","
-                                "\n    \"OrganizationAddress\": \""+ strOrganizationAddress +"\","
-                                "\n    \"PrimaryContactName\": \""+ strPrimaryContactName +"\","
-                                "\n    \"PrimaryContactTitle\": \""+ strPrimaryContactTitle +"\","
-                                "\n    \"PrimaryContactEmail\": \""+ strPrimaryContactEmail +"\","
-                                "\n    \"PrimaryContactPhoneNumber\": \""+ strPrimaryContactPhoneNumber +"\","
-                                "\n    \"SecondaryContactName\": \""+ strSecondaryContactName +"\","
-                                "\n    \"SecondaryContactTitle\": \""+ strSecondaryContactTitle +"\","
-                                "\n    \"SecondaryContactEmail\": \""+ strSecondaryContactEmail +"\","
-                                "\n    \"SecondaryContactPhoneNumber\": \""+ strSecondaryContactPhoneNumber +"\""
+        std::string strContent = "{\n    \"Email\": \""+ c_oOrganizationInformation.GetString("Email") +"\","
+                                "\n    \"Password\": \""+ c_oOrganizationInformation.GetString("Password") +"\","
+                                "\n    \"Name\": \""+ c_oOrganizationInformation.GetString("Name") +"\","
+                                "\n    \"PhoneNumber\": \""+ c_oOrganizationInformation.GetString("PhoneNumber") +"\","
+                                "\n    \"Title\": \""+ c_oOrganizationInformation.GetString("Title") +"\","
+                                "\n    \"OrganizationName\": \""+ c_oOrganizationInformation.GetString("OrganizationName") +"\","
+                                "\n    \"OrganizationAddress\": \""+ c_oOrganizationInformation.GetString("OrganizationAddress") +"\","
+                                "\n    \"PrimaryContactName\": \""+ c_oOrganizationInformation.GetString("PrimaryContactName") +"\","
+                                "\n    \"PrimaryContactTitle\": \""+ c_oOrganizationInformation.GetString("PrimaryContactTitle") +"\","
+                                "\n    \"PrimaryContactEmail\": \""+ c_oOrganizationInformation.GetString("PrimaryContactEmail") +"\","
+                                "\n    \"PrimaryContactPhoneNumber\": \""+ c_oOrganizationInformation.GetString("PrimaryContactPhoneNumber") +"\","
+                                "\n    \"SecondaryContactName\": \""+ c_oOrganizationInformation.GetString("SecondaryContactName") +"\","
+                                "\n    \"SecondaryContactTitle\": \""+ c_oOrganizationInformation.GetString("SecondaryContactTitle") +"\","
+                                "\n    \"SecondaryContactEmail\": \""+ c_oOrganizationInformation.GetString("SecondaryContactEmail") +"\","
+                                "\n    \"SecondaryContactPhoneNumber\": \""+ c_oOrganizationInformation.GetString("SecondaryContactPhoneNumber") +"\""
                                 "\n}";
         std::string strHttpRequest = "POST /SAIL/AccountManager/RegisterUser HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
@@ -882,7 +897,7 @@ bool RegisterUser(
 
     const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
 
-    // Get user and organization information
+    // Get user information
     std::cout << "************************\n New User Information \n************************\n" << std::endl;
     std::string strEmail = ::GetStringInput("Enter email: ", 50, false, c_szValidInputCharacters);
     std::string strPassword = ::GetStringInput("Enter new password: ", 50, true, c_szValidInputCharacters);
@@ -897,20 +912,48 @@ bool RegisterUser(
     __DebugAssert(0 < strPhoneNumber.size());
     __DebugAssert(0 < strTitle.size());
 
+    StructuredBuffer oUserInformation;
+    oUserInformation.PutString("Email", strEmail);
+    oUserInformation.PutString("Password", strPassword);
+    oUserInformation.PutString("Name", strName);
+    oUserInformation.PutString("PhoneNumber", strPhoneNumber);
+    oUserInformation.PutString("Title", strTitle);
+    oUserInformation.PutQword("AccessRights", qwAccessRights);
+
+    fSuccess = ::RegisterUser(c_strEncodedEosb, c_strOrganizationGuid, oUserInformation);
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool RegisterUser(
+    _in const std::string & c_strEncodedEosb,
+    _in const std::string & c_strOrganizationGuid,
+    _in const StructuredBuffer & c_oUserInformation
+    )
+{
+    __DebugFunction();
+
+    __DebugAssert(0 < c_strEncodedEosb.size());
+    __DebugAssert(0 < c_strOrganizationGuid.size());
+
+    bool fSuccess = false;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"Email\": \""+ strEmail +"\","
-                                "\n    \"Password\": \""+ strPassword +"\","
-                                "\n    \"Name\": \""+ strName +"\","
-                                "\n    \"PhoneNumber\": \""+ strPhoneNumber +"\","
-                                "\n    \"Title\": \""+ strTitle +"\","
-                                "\n    \"AccessRights\": "+ std::to_string(qwAccessRights) +","
+                                "\n    \"Email\": \""+ c_oUserInformation.GetString("Email") +"\","
+                                "\n    \"Password\": \""+ c_oUserInformation.GetString("Password") +"\","
+                                "\n    \"Name\": \""+ c_oUserInformation.GetString("Name") +"\","
+                                "\n    \"PhoneNumber\": \""+ c_oUserInformation.GetString("PhoneNumber") +"\","
+                                "\n    \"Title\": \""+ c_oUserInformation.GetString("Title") +"\","
+                                "\n    \"AccessRights\": "+ std::to_string(c_oUserInformation.GetQword("AccessRights")) +","
                                 "\n    \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\""
                                 "\n}";
         std::string strHttpRequest = "POST /SAIL/AccountManager/Admin/RegisterUser HTTP/1.1\r\n"
@@ -962,7 +1005,7 @@ bool RegisterUser(
     }
     catch(...)
     {
-        ::ShowErrorMessage("Error getting list of events.");
+        ::ShowErrorMessage("Error registering new user.");
     }
 
     return fSuccess;
@@ -1010,7 +1053,7 @@ bool UpdateOrganizationInformation(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","
@@ -1098,7 +1141,7 @@ bool ListOrganizations(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\""
@@ -1198,7 +1241,7 @@ bool DeleteUser(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","
@@ -1282,7 +1325,7 @@ bool DeleteOrganization(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","
@@ -1346,215 +1389,462 @@ bool DeleteOrganization(
 
 /********************************************************************************************/
 
-
-int main()
+bool RegisterDigitalContract(
+    _in const std::string & c_strEncodedEosb
+    )
 {
     __DebugFunction();
 
+    __DebugAssert(0 < c_strEncodedEosb.size());
+
+    bool fSuccess = false;
+
     const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
 
-    try
+    // Get digital contract information
+    std::cout << "************************\n Register Digital Contract \n************************\n" << std::endl;
+    std::string strDooGuid = ::GetStringInput("Enter hyphen and curly braces formatted data owner organization guid: ", 38, true, c_szValidInputCharacters);
+    std::string strVersionNumber = "0x0000000100000001";
+    uint64_t unSubscriptionDays = std::stoull(::GetStringInput("Enter your requested subscription period (in days): ", 50, false, c_szValidInputCharacters));
+    std::string strDatasetGuid = Guid(eDataset).ToString(eHyphensAndCurlyBraces);
+    std::string strLegalAgreement = ::GetStringInput("Enter the legal agreement: ", 200, false, c_szValidInputCharacters);
+
+    __DebugAssert(38 == strDooGuid.size());
+    __DebugAssert(0 < unSubscriptionDays);
+    __DebugAssert(0 < strLegalAgreement.size());
+
+    try 
     {
-        bool fTerminatedSignalEncountered = false;
-        while(false == fTerminatedSignalEncountered)
-        {
-            ::ShowLoginMenu();
-            std::string strUserInput = ::GetStringInput("Selection: ", 1, false, c_szValidInputCharacters);
-            switch (stoi(strUserInput))
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+
+        // Create rest request
+        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
+                                "\n    \"DataOwnerOrganization\": \""+ strDooGuid +"\","
+                                "\n    \"VersionNumber\": \""+ strVersionNumber +"\","
+                                "\n    \"SubscriptionDays\": "+ std::to_string(unSubscriptionDays) +","
+                                "\n    \"DatasetGuid\": \""+ strDatasetGuid +"\","
+                                "\n    \"LegalAgreement\": \""+ strLegalAgreement +"\","
+                                "\n    \"DatasetDRMMetadataSize\": "+ std::to_string(0) +","
+                                "\n    \"DatasetDRMMetadata\":{}"
+                                "\n}";
+        std::string strHttpRequest = "POST /SAIL/DigitalContractManager/Applications HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRequest.data(), (strHttpRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
             {
-                case 1:
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
                 {
-                    ::ClearScreen();
-
-                    std::cout << "************************\n  SAIL LOGIN\n************************\n" << std::endl;
-                    std::string strEmail = ::GetStringInput("Enter email: ", 50, false, c_szValidInputCharacters);
-                    std::string strUserPassword = ::GetStringInput("Enter password: ", 50, true, c_szValidInputCharacters);
-
-                    // Login to the web services
-                    std::string strEncodedEosb = Login(strEmail, strUserPassword);
-
-                    _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
-                    // Get user and organization guid from eosb
-                    StructuredBuffer oUserInformation(::GetBasicUserInformation(strEncodedEosb));
-                    for (std::string strName : oUserInformation.GetDescriptionOfElements())
-                        std::cout << strName << std::endl;
-                    std::string strOrganizationGuid = oUserInformation.GetString("OrganizationGuid");
-                    std::string strUserGuid = oUserInformation.GetString("UserGuid");
-                    Qword qwAccessRights = oUserInformation.GetQword("AccessRights");
-
-                    bool fTerminatedSignalEncountered = false;
-
-                    while (false == fTerminatedSignalEncountered)
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
                     {
-                        ::ShowTopMenu();
-
-                        std::string strUserInput = ::GetStringInput("Selection: ", 1, false, c_szValidInputCharacters);
-
-                        switch (stoi(strUserInput))
-                        {
-                            case 1:
-                            {
-                                if (1 == qwAccessRights) // Check if user is an admin
-                                {
-                                    bool fSuccess = ::RegisterUser(strEncodedEosb, strOrganizationGuid);
-                                    if (true == fSuccess)
-                                    {
-                                        ::ShowSuccessMessage("User added successfully!");
-                                    }
-                                }
-                                else 
-                                {
-                                    ::ShowErrorMessage("Transaction not authorized.");
-                                }
-                                ::WaitForUserToContinue();
-                            break; 
-                            }
-                            case 2:
-                            {
-                                if (1 == qwAccessRights) // Check if user is an admin
-                                {
-                                    bool fSuccess = ::ListOrganizations(strEncodedEosb);
-                                }
-                                else 
-                                {
-                                    ::ShowErrorMessage("Transaction not authorized.");
-                                }
-                                ::WaitForUserToContinue();
-                            break; 
-                            }
-                            case 3:
-                            {
-                                if (1 == qwAccessRights) // Check if user is an admin
-                                {
-                                    bool fSuccess = ::UpdateOrganizationInformation(strEncodedEosb);
-                                    if (true == fSuccess)
-                                    {
-                                        ::ShowSuccessMessage("Organization information updated successfully!");
-                                    }
-                                }
-                                else 
-                                {
-                                    ::ShowErrorMessage("Transaction not authorized.");
-                                }
-                                ::WaitForUserToContinue();
-                            break; 
-                            }
-                            case 4:
-                            {
-                                if (1 == qwAccessRights) // Check if user is an admin
-                                {
-                                    bool fSuccess = ::DeleteOrganization(strEncodedEosb);
-                                    if (true == fSuccess)
-                                    {
-                                        ::ShowSuccessMessage("Organization deleted!");
-                                    }
-                                }
-                                else 
-                                {
-                                    ::ShowErrorMessage("Transaction not authorized.");
-                                }
-                                ::WaitForUserToContinue();
-                            break; 
-                            }
-                            case 5:
-                            {
-                                if (1 == qwAccessRights) // Check if user is an admin
-                                {
-                                    bool fSuccess = ::DeleteUser(strEncodedEosb);
-                                    if (true == fSuccess)
-                                    {
-                                        ::ShowSuccessMessage("User deleted!");
-                                    }
-                                }
-                                else 
-                                {
-                                    ::ShowErrorMessage("Transaction not authorized.");
-                                }
-                                ::WaitForUserToContinue();
-                            break; 
-                            }
-                            case 6:
-                            {
-                                // Register a Vm
-                                std::string strVmGuid = Guid(eVirtualMachine).ToString(eHyphensAndCurlyBraces);
-                                std::string strDcGuid = "{33DB1751-66AE-4EB5-BF7B-614CBC09BC4C}";
-                                std::string strVmEventGuid = ::RegisterVirtualMachine(strEncodedEosb, strDcGuid, strVmGuid);
-                                // Register Leaf events
-                                ::RegisterLeafEvents(strEncodedEosb, strOrganizationGuid, strVmEventGuid);
-
-                                ::WaitForUserToContinue();
-                            break;
-                            }
-                            case 7:
-                            {
-                                std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
-                                // Get list of all events for the organization
-                                ::GetListOfEvents(strEncodedEosb, "{00000000-0000-0000-0000-000000000000}", strOrganizationGuid, 0);
-
-                                ::WaitForUserToContinue();
-                            break;
-                            }
-                            case 8:
-                            {
-                                std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
-                                std::string strParentGuid = ::GetStringInput("Enter hyphen and curly braces formatted parent guid: ", 38, true, c_szValidInputCharacters);
-                                if (0 < strParentGuid.size())
-                                {
-                                    // Get list of events for the given parent guid
-                                    ::GetListOfEvents(strEncodedEosb, strParentGuid, strOrganizationGuid, 0);
-                                }
-                                else 
-                                {
-                                    ::ShowErrorMessage("Error no parent guid specified, try again.");
-                                }
-
-                                ::WaitForUserToContinue();
-                            break;
-                            }
-                            case 0:
-                            {
-                                fTerminatedSignalEncountered = true;
-                            break;
-                            }
-                            default:
-                            {
-                                ::ShowErrorMessage("Invalid option. Usage: [0-8]");
-                            break;
-                            }
-                        }
+                        fIsEndOfHeader = true;
                     }
-    
-                break;
-                }
-                case 2:
-                {
-                    
-                    bool fSuccess = ::RegisterOrganizationAndSuperUser();
-                    if (true == fSuccess)
-                    {
-                        std::cout << "Registration successful!\nLog in to access your dashboard.\n";
-                    }
-                    ::WaitForUserToContinue();
-                break;
-                }
-                case 0:
-                {
-                    fTerminatedSignalEncountered = true;
-                break;
-                }
-                default:
-                {
-                    std::cout << "Invalid option. Usage: [0-2]" << std::endl;
-                break;
                 }
             }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+        
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error registering new digital contract.", nullptr);
+        fSuccess = true;
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+    catch(...)
+    {
+        ::ShowErrorMessage("Error registering new digital contract.");
+    }
 
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool AcceptDigitalContract(
+    _in const std::string & c_strEncodedEosb
+    )
+{
+    __DebugFunction();
+
+    __DebugAssert(0 < c_strEncodedEosb.size());
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get digital contract information
+    std::cout << "************************\n Approve Digital Contract \n************************\n" << std::endl;
+    std::string strDcGuid = ::GetStringInput("Enter hyphen and curly braces formatted digital contract guid: ", 38, true, c_szValidInputCharacters);
+    uint64_t unRetentionTime = std::stoull(::GetStringInput("Enter the retention time: ", 50, false, c_szValidInputCharacters));
+    std::string strEula = ::GetStringInput("Enter the accepted EULA: ", 200, false, c_szValidInputCharacters);
+    std::string strLegalAgreement = ::GetStringInput("Enter the legal agreement: ", 200, false, c_szValidInputCharacters);
+
+    __DebugAssert(0 < strDcGuid.size());
+    __DebugAssert(0 < unRetentionTime);
+    __DebugAssert(0 < strEula.size());
+    __DebugAssert(0 < strLegalAgreement.size());
+
+    try 
+    {
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+
+        // Create rest request
+        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
+                                "\n    \"DigitalContractGuid\": \""+ strDcGuid +"\","
+                                "\n    \"RetentionTime\": "+ std::to_string(unRetentionTime) +","
+                                "\n    \"EULA\": \""+ strEula +"\","
+                                "\n    \"LegalAgreement\": \""+ strLegalAgreement +"\""
+                                "\n}";
+        std::string strHttpRequest = "PATCH /SAIL/DigitalContractManager/DataOwner/Accept HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRequest.data(), (strHttpRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
+            {
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
+                {
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
+                }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+        
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error approving the digital contract.", nullptr);
+        std::cout << "Instructions: " << oResponse.GetString("Instructions") << std::endl;
+        fSuccess = true;
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+    catch(...)
+    {
+        ::ShowErrorMessage("Error approving the digital contract.");
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool ActivateDigitalContract(
+    _in const std::string & c_strEncodedEosb
+    )
+{
+    __DebugFunction();
+
+    __DebugAssert(0 < c_strEncodedEosb.size());
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get digital contract information
+    std::cout << "************************\n Activate Digital Contract \n************************\n" << std::endl;
+    std::string strDcGuid = ::GetStringInput("Enter hyphen and curly braces formatted digital contract guid: ", 38, true, c_szValidInputCharacters);
+    std::string strEula = ::GetStringInput("Enter the accepted EULA: ", 200, false, c_szValidInputCharacters);
+    std::string strLegalAgreement = ::GetStringInput("Enter the legal agreement: ", 200, false, c_szValidInputCharacters);
+
+    __DebugAssert(0 < strDcGuid.size());
+    __DebugAssert(0 < strEula.size());
+    __DebugAssert(0 < strLegalAgreement.size());
+
+    try 
+    {
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+
+        // Create rest request
+        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
+                                "\n    \"DigitalContractGuid\": \""+ strDcGuid +"\","
+                                "\n    \"EULA\": \""+ strEula +"\","
+                                "\n    \"LegalAgreement\": \""+ strLegalAgreement +"\""
+                                "\n}";
+        std::string strHttpRequest = "PATCH /SAIL/DigitalContractManager/Researcher/Activate HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRequest.data(), (strHttpRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
+            {
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
+                {
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
+                }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+        
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error activating the digital contract.", nullptr);
+        std::cout << "Instructions: " << oResponse.GetString("Instructions") << std::endl;
+        fSuccess = true;
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+    catch(...)
+    {
+        ::ShowErrorMessage("Error activating the digital contract.");
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool ListDigitalContracts(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+
+    try 
+    {
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+
+        // Create rest request
+        std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\""
+                                "\n}";
+        std::string strHttpRequest = "GET /SAIL/DigitalContractManager/DigitalContracts HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRequest.data(), (strHttpRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
+            {
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
+                {
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
+                }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+        
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting list of digital contracts.", nullptr);
+        fSuccess = true;
+        std::cout << "************************\n List of Digital Contracts \n************************\n" << std::endl;
+        StructuredBuffer oDigitalContracts(oResponse.GetStructuredBuffer("DigitalContracts"));
+        for (std::string strElement : oDigitalContracts.GetNamesOfElements())
+        {
+            StructuredBuffer oElement(oDigitalContracts.GetStructuredBuffer(strElement.c_str()));
+            std::cout << "Digital contract guid: " << strElement << std::endl;
+            std::cout << "Version number: " << oElement.GetString("VersionNumber") << std::endl;
+            std::cout << "Contract stage: " << (Dword) oElement.GetFloat64("ContractStage") << std::endl;
+            std::cout << "Subscription days: " << (uint64_t) oElement.GetFloat64("SubscriptionDays") << std::endl;
+            std::cout << "Dataset guid: " << oElement.GetString("DatasetGuid") << std::endl;
+            std::cout << "Legal agreement: " << oElement.GetString("LegalAgreement") << std::endl;
+            std::cout << "------------------------------------------------------" << std::endl;
         }
     }
     catch(BaseException oBaseException)
     {
-        std::cout << oBaseException.GetExceptionMessage() << std::endl;
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+    catch(...)
+    {
+        ::ShowErrorMessage("Error getting list of digital contracts.");
     }
 
-    return 0;
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool PullDigitalContract(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get digital contract information
+    std::cout << "************************\n Pull Digital Contract \n************************\n" << std::endl;
+    std::string strDcGuid = ::GetStringInput("Enter hyphen and curly braces formatted digital contract guid: ", 38, true, c_szValidInputCharacters);
+
+    __DebugAssert(0 < strDcGuid.size());
+
+    try 
+    {
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+
+        // Create rest request
+        std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","
+                                "\n    \"DigitalContractGuid\": \""+ strDcGuid +"\""
+                                "\n}";
+        std::string strHttpRequest = "GET /SAIL/DigitalContractManager/PullDigitalContract HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRequest.data(), (strHttpRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
+            {
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
+                {
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
+                }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+        
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting list of digital contracts.", nullptr);
+        fSuccess = true;
+        StructuredBuffer oDigitalContract(oResponse.GetStructuredBuffer("DigitalContract"));
+        std::cout << "Digital contract guid: " << oDigitalContract.GetString("DigitalContractGuid") << std::endl;
+        std::cout << "Version number: " << oDigitalContract.GetString("VersionNumber") << std::endl;
+        std::cout << "Contract stage: " << (Dword) oDigitalContract.GetFloat64("ContractStage") << std::endl;
+        std::cout << "Subscription days: " << (uint64_t) oDigitalContract.GetFloat64("SubscriptionDays") << std::endl;
+        std::cout << "Dataset guid: " << oDigitalContract.GetString("DatasetGuid") << std::endl;
+        std::cout << "Legal agreement: " << oDigitalContract.GetString("LegalAgreement") << std::endl;
+        std::cout << "------------------------------------------------------" << std::endl;
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+    catch(...)
+    {
+        ::ShowErrorMessage("Error getting list of digital contracts.");
+    }
+
+    return fSuccess;
 }

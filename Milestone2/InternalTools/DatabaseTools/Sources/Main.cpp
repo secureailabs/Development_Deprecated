@@ -2,6 +2,7 @@
 #include "CryptoUtils.h"
 #include "DateAndTime.h"
 #include "Exceptions.h"
+#include "InteractiveClient.h"
 
 #include <bsoncxx/json.hpp>
 #include <mongocxx/client.hpp>
@@ -48,6 +49,20 @@ typedef struct
     std::string m_strPhoneNumber;
     Qword m_qwAccessRights;
 } UserInformation;
+
+typedef struct
+{
+    std::string m_strOrganizationName;
+    std::string m_strOrganizationAddress;
+    std::string m_strPrimaryContactName;
+    std::string m_strPrimaryContactTitle;
+    std::string m_strPrimaryContactEmail;
+    std::string m_strPrimaryContactPhoneNumber;
+    std::string m_strSecondaryContactName;
+    std::string m_strSecondaryContactTitle;
+    std::string m_strSecondaryContactEmail;
+    std::string m_strSecondaryContactPhoneNumber;
+} OrganizationInformation;
 
 mongocxx::instance oInstance{}; // Create only one instance
 mongocxx::client * g_oClient = nullptr;
@@ -145,58 +160,67 @@ int main()
 
     try
     {
-        std::string strPassword = "sailpassword", strPassphrase;
-        // Add users to the database
+        std::string strPassword = "sailpassword";
+        // Organizations informations
+        std::vector<OrganizationInformation> stlOrganizations;
+        stlOrganizations.push_back({"Zerg", "Char", "Naruto", "Supply Generator", "overlord@zerg.com", "000-000-0000", "Saitama", "Network Engineer", "nydus@zerg.com", "000-000-0000"});
+        stlOrganizations.push_back({"Terran", "Earth", "Eren", "Security Expert", "marine@terran.com", "000-000-0000", "Gon", "Hardware Engineer", "scv@t1erran.com", "000-000-0000"});
+        // Super admins information
+        std::vector<UserInformation> stlAdmins;
+        stlAdmins.push_back({"queen@zerg.com", "Queen of Blades", "Hardware Engineer", "000-000-0000", eAdmin});
+        stlAdmins.push_back({"marine@terran.com", "Eren", "Security Expert", "000-000-0000", eAdmin});
+        // Users information
         std::vector<UserInformation> stlAccountDb;
-        stlAccountDb.push_back({"marine@terran.com", "Eren", "Security Expert", "000-000-0000", eAdmin});
-        stlAccountDb.push_back({"scv@t1erran.com", "Gon", "Hardware Engineer", "000-000-0000", eOrganizationUser});
-        stlAccountDb.push_back({"overlord@zerg.com", "Naruto", "Supply Generator", "000-000-0000", eOrganizationUser});
-        stlAccountDb.push_back({"nydus@zerg.com", "Saitama", "Network Engineer", "000-000-0000", eAuditor});
-        stlAccountDb.push_back({"pylon@protos.com", "Alex", "Field Engineer", "000-000-0000", eDigitalContractAdmin});
-        stlAccountDb.push_back({"probe@protos.com", "Yagami", "Market Discovery Expert", "000-000-0000", eDatasetAdmin});
-
-        for (int i = 0; i < stlAccountDb.size(); i++)
+        stlAccountDb.push_back({"larva@zerg.com", "Larva", "Security Expert", "000-000-0000", eOrganizationUser});
+        stlAccountDb.push_back({"overlord@zerg.com", "Lord", "Supply Generator", "000-000-0000", eOrganizationUser});
+        stlAccountDb.push_back({"zergling@zerg.com", "Zergling", "Network Engineer", "000-000-0000", eAuditor});
+        stlAccountDb.push_back({"roach@zerg.com", "Roach", "Field Engineer", "000-000-0000", eDigitalContractAdmin});
+        stlAccountDb.push_back({"lurker@zerg.com", "Lurker", "Market Discovery Expert", "000-000-0000", eDatasetAdmin});
+        stlAccountDb.push_back({"scv@terran.com", "Gon", "Hardware Engineer", "000-000-0000", eOrganizationUser});
+        stlAccountDb.push_back({"marauder@terran.com", "Naruto", "Supply Generator", "000-000-0000", eOrganizationUser});
+        stlAccountDb.push_back({"reaper@terran.com", "Saitama", "Network Engineer", "000-000-0000", eAuditor});
+        stlAccountDb.push_back({"ghost@terran.com", "Alex", "Field Engineer", "000-000-0000", eDigitalContractAdmin});
+        stlAccountDb.push_back({"banshee@terran.com", "Yagami", "Market Discovery Expert", "000-000-0000", eDatasetAdmin});
+        // Register organizations, super admins and other users
+        for (unsigned int unIndex = 0; unIndex < stlOrganizations.size(); ++unIndex)
         {
-            std::string strEmail = stlAccountDb.at(i).m_strEmail;
-            std::string strUserName = stlAccountDb.at(i).m_strName;
-            std::string strTitle = stlAccountDb.at(i).m_strTitle;
-            std::string strPhoneNumber = stlAccountDb.at(i).m_strPhoneNumber;
-            Qword qwAccessRights = stlAccountDb.at(i).m_qwAccessRights;
-
-            strPassphrase = strEmail + "/" + strPassword;
-            Qword qw64BitHashedPassphrase = ::Get64BitHashOfNullTerminatedString(strPassphrase.c_str(), false);
-
-            std::string strHashedPassphrase = ::Base64HashOfEmailPassword(strEmail, strPassword);
-
-            // Generate Account Key
-            std::vector<Byte> stlAccountKey = ::GenerateAccountKey();
-            // Encrypt it using the password derived key
-            std::vector<Byte> stlWrappedAccountKey = ::EncryptUsingPasswordKey(stlAccountKey, strHashedPassphrase);
-            // Create a Basic User Record as described in the 'Account' subsection of Internal Web Service Constructs
-            Guid oUserId, oOrganizationId, oUserRootKeyId;
-            StructuredBuffer oBasicUserRecord;
-            oBasicUserRecord.PutQword("64BitHash", qw64BitHashedPassphrase);
-            oBasicUserRecord.PutString("OrganizationUuid", oOrganizationId.ToString(eHyphensAndCurlyBraces));
-            oBasicUserRecord.PutString("UserUuid", oUserId.ToString(eHyphensAndCurlyBraces));
-            oBasicUserRecord.PutDword("AccountStatus", 0x1);
-            oBasicUserRecord.PutBuffer("WrappedAccountKey", stlWrappedAccountKey);
-
-            // Create Confidential User Record
-            StructuredBuffer oConfidentialUserRecord;
-            oConfidentialUserRecord.PutGuid("UserGuid", oUserId);
-            oConfidentialUserRecord.PutGuid("UserRootKeyGuid", oUserRootKeyId);
-            oConfidentialUserRecord.PutQword("AccessRights", qwAccessRights);
-            oConfidentialUserRecord.PutString("Username", strUserName);
-            oConfidentialUserRecord.PutString("Title", strTitle);
-            oConfidentialUserRecord.PutString("EmailAddress", strEmail);
-            oConfidentialUserRecord.PutString("PhoneNumber", strPhoneNumber);
-            oConfidentialUserRecord.PutUnsignedInt64("TimeOfAccountCreation", ::GetEpochTimeInMilliseconds());
-
-            std::vector<Byte> stlPasswordKeyEncrypted = ::EncryptUsingPasswordKey(oConfidentialUserRecord.GetSerializedBuffer(), strHashedPassphrase);
-            StructuredBuffer oEncryptedBuffer = ::EncryptUsingSailSecretKey(stlPasswordKeyEncrypted);
-
-            // Insert documents
-            ::AddUserAccountsToDatabase(oBasicUserRecord, oEncryptedBuffer);
+            StructuredBuffer oOrganizationInformation;
+            oOrganizationInformation.PutString("Email", stlAdmins.at(unIndex).m_strEmail);
+            oOrganizationInformation.PutString("Password", strPassword);
+            oOrganizationInformation.PutString("Name", stlAdmins.at(unIndex).m_strName);
+            oOrganizationInformation.PutString("PhoneNumber", stlAdmins.at(unIndex).m_strPhoneNumber);
+            oOrganizationInformation.PutString("Title", stlAdmins.at(unIndex).m_strTitle);
+            oOrganizationInformation.PutString("OrganizationName", stlOrganizations.at(unIndex).m_strOrganizationName);
+            oOrganizationInformation.PutString("OrganizationAddress", stlOrganizations.at(unIndex).m_strOrganizationAddress);
+            oOrganizationInformation.PutString("PrimaryContactName", stlOrganizations.at(unIndex).m_strPrimaryContactName);
+            oOrganizationInformation.PutString("PrimaryContactTitle", stlOrganizations.at(unIndex).m_strPrimaryContactTitle);
+            oOrganizationInformation.PutString("PrimaryContactEmail", stlOrganizations.at(unIndex).m_strPrimaryContactEmail);
+            oOrganizationInformation.PutString("PrimaryContactPhoneNumber", stlOrganizations.at(unIndex).m_strPrimaryContactPhoneNumber);
+            oOrganizationInformation.PutString("SecondaryContactName", stlOrganizations.at(unIndex).m_strSecondaryContactName);
+            oOrganizationInformation.PutString("SecondaryContactTitle", stlOrganizations.at(unIndex).m_strSecondaryContactTitle);
+            oOrganizationInformation.PutString("SecondaryContactEmail", stlOrganizations.at(unIndex).m_strSecondaryContactEmail);
+            oOrganizationInformation.PutString("SecondaryContactPhoneNumber", stlOrganizations.at(unIndex).m_strSecondaryContactPhoneNumber);
+            // Add organizations and their super admins to the database
+            bool fSuccess = ::RegisterOrganizationAndSuperUser(oOrganizationInformation);
+            _ThrowBaseExceptionIf((false == fSuccess), "Error registering organization and its super admin.", nullptr);
+            // Login to the web services
+            std::string strEncodedEosb = Login(stlAdmins.at(unIndex).m_strEmail, strPassword);
+            _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
+            // Get organization guid from eosb
+            StructuredBuffer oUserInformation(::GetBasicUserInformation(strEncodedEosb));
+            std::string strOrganizationGuid = oUserInformation.GetString("OrganizationGuid");
+            unsigned int unUserIndex = unIndex * 5; // 5 is number of users being added per organization
+            for (; unUserIndex < (unIndex * 5 + 5); ++unUserIndex)
+            {
+                StructuredBuffer oUserInformation;
+                oUserInformation.PutString("Email", stlAccountDb.at(unUserIndex).m_strEmail);
+                oUserInformation.PutString("Password", strPassword);
+                oUserInformation.PutString("Name", stlAccountDb.at(unUserIndex).m_strName);
+                oUserInformation.PutString("PhoneNumber", stlAccountDb.at(unUserIndex).m_strPhoneNumber);
+                oUserInformation.PutString("Title", stlAccountDb.at(unUserIndex).m_strTitle);
+                oUserInformation.PutQword("AccessRights", stlAccountDb.at(unUserIndex).m_qwAccessRights);
+                ::RegisterUser(strEncodedEosb, strOrganizationGuid, oUserInformation);
+            }
         }
         std::cout << "Accounts added!\n";
     }

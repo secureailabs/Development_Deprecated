@@ -16,6 +16,9 @@
 #include "PluginDictionary.h"
 #include "RestFrameworkSharedFunctions.h"
 #include "StructuredBuffer.h"
+#include "Socket.h"
+#include "SocketServer.h"
+#include "ThreadManager.h"
 #include "DigitalContract.h"
 #include "UserAccount.h"
 
@@ -25,6 +28,26 @@
 #include <iostream>
 #include <map>
 #include <vector>
+
+/********************************************************************************************/
+
+typedef enum rights
+{
+    eAdmin = 1,
+    eAuditor = 2,
+    eOrganizationUser = 3,
+    eDigitalContractAdmin = 4,
+    eDatasetAdmin = 5
+}
+AccessRights;
+
+typedef enum stage
+{
+    eApplication = 1,
+    eApproval = 2,
+    eActive = 3
+}
+ContractStage;
 
 /********************************************************************************************/
 
@@ -43,9 +66,6 @@ class DigitalContractDatabase : public Object
         const char * __thiscall GetUuid(void) const throw();
         Qword __thiscall GetVersion(void) const throw();
         std::vector<Byte> __thiscall GetDictionarySerializedBuffer(void) const throw();
-
-        // Initialize User Accounts
-        void __thiscall InitializeUserAccounts(void);
 
         // Method used to initializes data members including the plugin's dictionary
         void __thiscall InitializePlugin(void);
@@ -66,19 +86,59 @@ class DigitalContractDatabase : public Object
             _in unsigned int unSerializedResponseBufferSizeInBytes
             );
 
+        // Start the Ipc server
+        void __thiscall RunIpcServer(
+            _in SocketServer * poIpcServer,
+            _in ThreadManager * poThreadManager
+        );
+
+        // Handle an incoming Ipc request and call the relevant function based on the identifier
+        void __thiscall HandleIpcRequest(
+            _in Socket * poSocket
+            );
+
     private:
 
-        // Fetch list of all digital contracts whose organization is the same as the requesting user's organization
-        std::vector<Byte> __thiscall GetListOfMyDigitalContracts(
+        // Given an EOSB, return a StructuredBuffer containing user metadata
+        std::vector<Byte> __thiscall GetUserInfo(
             _in const StructuredBuffer & c_oRequest
             );
-        // Fetch list of all digital contracts that are in flux
-        std::vector<Byte> __thiscall GetListOfWaitingDigitalContracts(
+
+        // Fetch digital signature blob for the given content
+        std::vector<Byte> __thiscall GetDigitalSignature(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Serialize a digital contract structured buffer
+        void __thiscall SerializeDigitalContract(
+            _in const StructuredBuffer & c_oDc,
+            _in std::vector<Byte> & stlDigitalContractBlob
+            );
+        // Deserialize a digital contract blob
+        StructuredBuffer __thiscall DeserializeDigitalContract(
+            _in const std::vector<Byte> c_stlDcBlob
+            );
+
+        // Fetch list of all digital contracts associated with the user's organization
+        std::vector<Byte> __thiscall ListDigitalContracts(
+            _in const StructuredBuffer & c_oRequest
+            );
+        // Fetch the digital contract information
+        std::vector<Byte> __thiscall PullDigitalContract(
             _in const StructuredBuffer & c_oRequest
             );
 
         // Register digital contract
         std::vector<Byte> __thiscall RegisterDigitalContract(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update the digital contract when a data owner accepts the digital contract
+        std::vector<Byte> __thiscall AcceptDigitalContract(
+            _in const StructuredBuffer & c_oRequest
+            );
+        // Update the digital contract when a researcher accepts the DC terms from the Data owner organization
+        std::vector<Byte> __thiscall ActivateDigitalContract(
             _in const StructuredBuffer & c_oRequest
             );
 
@@ -89,6 +149,7 @@ class DigitalContractDatabase : public Object
         PluginDictionary m_oDictionary;
         std::vector<DigitalContract *> m_stlDigitalContracts;
         std::vector<UserAccount *> m_stlUserAccounts;
+        bool m_fTerminationSignalEncountered;
 };
 
 /********************************************************************************************/

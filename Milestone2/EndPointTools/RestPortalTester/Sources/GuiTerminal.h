@@ -41,7 +41,7 @@ extern void __stdcall ShowErrorMessage(
   ) throw();
 
 extern void __stdcall ShowSuccessMessage(
-  _in std::string strErrorMessage
+  _in std::string strSuccessMessage
   ) throw();
 
 extern void __stdcall ShowLoginMenu(void) throw();

@@ -828,3 +828,98 @@ bool __thiscall CryptographicEngine::VerifySignature(
 
     return fSignatureVerifyStatus;
 }
+
+/********************************************************************************************
+ *
+ * @class CryptographicEngine
+ * @function GenerateDigitalSignature
+ * @brief Generate the digital signature of the message digest. 
+ * @param[in] poKey Signature key
+ * @param[in] c_stlMessageDigest Message digest to sign
+ * @return Signed Message
+ * @throw BaseException on failure
+ * @note
+ *      This function uses EVP_DigestSignInit instead of EVP_PKEY_sign. EVP_PKEY_sign does not
+ *      hash data to be signed and EVP_DigestSignInit is used to sign arbitrary messages.
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall CryptographicEngine::GenerateDigitalSignature(
+    _in const Guid & c_oGuidOfkey,
+    _in const std::vector<Byte> & c_stlMessageDigest
+) const
+{
+    __DebugFunction();
+
+    std::vector<Byte> stlSignature;
+
+    CryptographicKey oKey(c_oGuidOfkey);
+    if (nullptr != oKey.GetPrivateKey())
+    {
+        EVP_MD_CTX * poEvpMdCtx = ::EVP_MD_CTX_create();
+        _ThrowIfNull(poEvpMdCtx, "Fail to Initialize Key Context", nullptr);
+
+        int nStatus = ::EVP_DigestSignInit(poEvpMdCtx, NULL, EVP_sha256(), NULL, oKey.GetPrivateKey());
+        _ThrowBaseExceptionIf((1 != nStatus), "Signature Init failed.", nullptr);
+
+        size_t nSignatureLength;
+        std::string strMessage = std::string(c_stlMessageDigest.begin(), c_stlMessageDigest.end());
+        nStatus = ::EVP_DigestSignUpdate(poEvpMdCtx, c_stlMessageDigest.data(), c_stlMessageDigest.size());
+        _ThrowBaseExceptionIf((1 != nStatus), "Updating with message failed.", nullptr);
+
+        nStatus = ::EVP_DigestSignFinal(poEvpMdCtx, NULL, &nSignatureLength);
+        _ThrowBaseExceptionIf((1 != nStatus), "Getting signature length failed.", nullptr);
+
+        stlSignature.resize(nSignatureLength);
+        nStatus = ::EVP_DigestSignFinal(poEvpMdCtx, stlSignature.data(), &nSignatureLength);
+        _ThrowBaseExceptionIf((1 != nStatus), "Digest Signing failed.", nullptr);
+
+        ::EVP_MD_CTX_destroy(poEvpMdCtx);
+    }
+
+    return stlSignature;
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicEngine
+ * @function GetKeySpecification
+ * @brief Get KeySpec associated with the key guid
+ * @param[in] c_oKeyGuid Signature key
+ * @return KeySpec used
+ *
+ ********************************************************************************************/
+
+KeySpec __thiscall CryptographicEngine::GetKeySpecification(
+    _in const Guid & c_oKeyGuid
+    )
+{
+    __DebugFunction();
+
+    CryptographicKey oKey(c_oKeyGuid);
+    KeySpec eKeySpec = oKey.GetKeySpec();
+
+    return eKeySpec;
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicEngine
+ * @function GetPublicKeyPEM
+ * @brief Get x509 public key certificate (PEM) of the public key used to verify this signature
+ * @param[in] c_oKeyGuid Signature key
+ * @return string representing the PEM used
+ *
+ ********************************************************************************************/
+
+std::string __thiscall CryptographicEngine::GetPublicKeyPEM(
+    _in const Guid & c_oKeyGuid
+    )
+{
+    __DebugFunction();
+
+    CryptographicKey oKey(c_oKeyGuid);
+    std::string strPemPublicKey = oKey.GetPublicKeyPEM();
+
+    return strPemPublicKey;
+}

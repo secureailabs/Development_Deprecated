@@ -15,7 +15,7 @@ int main()
 {
     std::cout << "----------REST API PORTAL----------" << std::endl;
     Word wPort = 6200;
-    RestFramework oRestFramework(wPort, "../WebService/SharedLibraries/RestApiPortal");
+    RestFramework oRestFramework(wPort, "./SharedLibraries/RestApiPortal");
     oRestFramework.RunServer();
     return 0;
 }

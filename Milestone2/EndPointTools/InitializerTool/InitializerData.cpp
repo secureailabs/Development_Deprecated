@@ -212,7 +212,7 @@ std::string __thiscall InitializerData::SendSaasRequest(
                                        "Content-Length: " + std::to_string(c_strBody.length()) + "\r\n\r\n";
 
     std::string strRestRequest = strRestRequestHeader + c_strBody + "\r\n\r\n";
-    std::unique_ptr<TlsNode> poTlsNode(::TlsConnectToNetworkSocket("127.0.0.1", 6200));
+    std::unique_ptr<TlsNode> poTlsNode(::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT));
     poTlsNode->Write((const Byte *)strRestRequest.c_str(), strRestRequest.length());
 
     std::vector<Byte> oResponseByte = poTlsNode->Read(1, 5000);
@@ -303,7 +303,6 @@ unsigned int __thiscall InitializerData::CreateVirtualMachines(void)
     oFilesToPut.PutBuffer("DataDomainProcess", ::FileToBytes("DataDomainProcess"));
     oFilesToPut.PutBuffer("ComputationalDomainProcess", ::FileToBytes("ComputationalDomainProcess"));
     oFilesToPut.PutBuffer("/usr/local/lib/python3.8/dist-packages/_DataConnector.so", ::FileToBytes("../VirtualMachine/DataConnectorPythonModule/libDataConnector.so"));
-    // oFilesToPut.PutBuffer("", ::FileToBytes(""));
 
     oPayloadToVm.PutStructuredBuffer("ExecutableFiles", oFilesToPut);
 
@@ -318,8 +317,7 @@ unsigned int __thiscall InitializerData::CreateVirtualMachines(void)
         std::string strVirtualMachinePublicIp;
         try
         {
-            // strVmName = m_poAzure->ProvisionVirtualMachine();
-            strVmName = m_poAzure->ProvisionVirtualMachine(gc_strImageName);
+            strVmName = m_poAzure->ProvisionVirtualMachine(gc_strImageName, gc_strVirtualMachineSize, "");
             std::cout << "|  " << strVmName << "  |";
             ::fflush(stdout);
             strVirtualMachinePublicIp = m_poAzure->GetVmIp(strVmName);

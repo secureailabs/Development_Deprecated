@@ -40,7 +40,9 @@ class Azure : public Object
 
         bool __thiscall Authenticate(void);
         std::string __thiscall ProvisionVirtualMachine(
-            _in const std::string c_strBaseImageName
+            _in const std::string c_strBaseImageName,
+            _in const std::string c_strVirtualMachineSize,
+            _in const std::string c_strDnsLabel
             );
         std::string __thiscall GetVmProvisioningState(
             _in std::string & c_strVirtualMachineName

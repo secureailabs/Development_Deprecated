@@ -9,7 +9,7 @@ else
 endif
 
 # The Root directory containing all the code
-ROOTDIR=../../../../
+ROOTDIR=../../../..
 ABSROOTDIR=$(shell realpath $(ROOTDIR))
 OBJDIR=$(ABSROOTDIR)/Binary/Objects
 
@@ -35,17 +35,22 @@ SOURCES += $(shell realpath ../../../../WebService/Plugins/RestApiPortal/Cryptog
 SOURCES += $(shell realpath ../../../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement/CryptographyHelperFunctions.cpp)
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
-OUTPUT=plugin
+LOCAL_BIN=$(ABSROOTDIR)/WebService/SharedLibraries/DatabasePortal/lib$(notdir $(shell pwd)).so
+OUTPUT=$(ABSROOTDIR)/Binary/SharedLibraries/DatabasePortal/lib$(notdir $(shell pwd)).so
 
 all: $(OUTPUT)
+
+$(OUTPUT): $(LOCAL_BIN)
+	@mkdir -p $(@D)
+	@cp $^ $@
 
 $(OBJDIR)%.o: $(ABSROOTDIR)%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $^ -o $@
 
-$(OUTPUT): $(OBJS)
+$(LOCAL_BIN): $(OBJS)
 	@mkdir -p $(@D)
-	$(CXX) -shared $(CXXFLAGS) $(INCLUDE) $^ -o ../../../SharedLibraries/DatabasePortal/libDatabaseManager.so $(LDFLAGS)
+	$(CXX) -shared $(CXXFLAGS) $(INCLUDE) $^ -o $@ $(LDFLAGS)
 
 clean:
-	rm -rf $(OUTPUT) $(OBJS)
+	rm -rf $(OBJS) $(OUTPUT) $(LOCAL_BIN)

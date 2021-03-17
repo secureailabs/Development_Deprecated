@@ -1,3 +1,8 @@
 {
+    "properties": {
+        "dnsSettings": {
+          "domainNameLabel": "{{DnsLabel}}"
+        }
+      },
     "location": "{{Location}}"
 }

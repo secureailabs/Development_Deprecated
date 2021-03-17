@@ -7,7 +7,7 @@
   },
   "properties": {
     "hardwareProfile": {
-      "vmSize": "Standard_B1ls"
+      "vmSize": "{{VmSize}}"
     },
     "storageProfile": {
       "imageReference": {

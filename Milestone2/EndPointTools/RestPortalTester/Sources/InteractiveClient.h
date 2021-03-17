@@ -29,8 +29,10 @@
 #include <sstream>
 #include <vector>
 
-#define SERVER_PORT 6200
-#define SERVER_IP_ADDRESS "127.0.0.1"
+#ifndef SERVER_IP_ADDRESS
+    #define SERVER_PORT 6200
+    #define SERVER_IP_ADDRESS "127.0.0.1"
+#endif
 
 /********************************************************************************************/
 

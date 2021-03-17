@@ -115,9 +115,37 @@ void __cdecl InitVirtualMachine(
                     {
                         poTlsNode->Release();
                     }
-                    // Execute the Entrypoint application provided
-                    ::execl(oVmInitializationInstructions.GetString("Entrypoint").c_str(), oVmInitializationInstructions.GetString("Entrypoint").c_str(), nullptr);
-                    ::exit(0);
+
+                    if ("WebService" == strVmType)
+                    {
+                        // We need two child process in Web Service, one for the "DatabaseGateway"
+                        // while other for the RestApiPortal
+                        pid_t nWebServiceFork = ::fork();
+                        _ThrowBaseExceptionIf((-1 == nProcessIdentifier), "WebService has failed with errno = %d", errno);
+
+                        if (0 == nWebServiceFork)
+                        {
+                            // Execute the DatabaseGateway application provided
+                            ::execl("./DatabaseGateway", "./DatabaseGateway", nullptr);
+                            ::exit(0);
+                        }
+                        else
+                        {
+                            // Run the rest API portal
+                            ::execl("./RestApiPortal", "./RestApiPortal", nullptr);
+                            ::exit(0);
+                        }
+                    }
+                    else if ("Computation" == strVmType)
+                    {
+                        // Execute the Entrypoint application provided
+                        ::execl(oVmInitializationInstructions.GetString("Entrypoint").c_str(), oVmInitializationInstructions.GetString("Entrypoint").c_str(), nullptr);
+                        ::exit(0);
+                    }
+                    else
+                    {
+                        _ThrowBaseException("Invalid VM type", nullptr);
+                    }
                 }
                 // We just want to establish one connection with the Initializer client and then shut down
                 // Either the Virtual Machine receives all the files and relevant startup data on the first

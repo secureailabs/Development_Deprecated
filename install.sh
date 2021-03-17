@@ -9,7 +9,7 @@ sudo rm -f mongo-c-driver-1.17.3.tar.gz
 # Update the package index files
 sudo apt-get update
 # Run Upgrade
-sudo apt-get upgrade
+sudo apt-get -y upgrade
 
 # Install required packages
 sudo apt-get install -y build-essential

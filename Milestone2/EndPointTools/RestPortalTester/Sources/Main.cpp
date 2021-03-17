@@ -1,0 +1,286 @@
+/*********************************************************************************************
+ *
+ * @file Main.cpp
+ * @author Shabana Akhtar Baig
+ * @date 15 March 2021
+ * @License Private and Confidential. Internal Use Only.
+ * @copyright Copyright (C) 2020 Secure AI Labs, Inc. All Rights Reserved.
+ * @brief
+ ********************************************************************************************/
+
+ #include "InteractiveClient.h"
+
+/********************************************************************************************/
+
+int main()
+{
+    __DebugFunction();
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    try
+    {
+        bool fTerminatedSignalEncountered = false;
+        while(false == fTerminatedSignalEncountered)
+        {
+            ::ShowLoginMenu();
+            std::string strUserInput = ::GetStringInput("Selection: ", 1, false, c_szValidInputCharacters);
+            switch (stoi(strUserInput))
+            {
+                case 1:
+                {
+                    ::ClearScreen();
+
+                    std::cout << "************************\n  SAIL LOGIN\n************************\n" << std::endl;
+                    std::string strEmail = ::GetStringInput("Enter email: ", 50, false, c_szValidInputCharacters);
+                    std::string strUserPassword = ::GetStringInput("Enter password: ", 50, true, c_szValidInputCharacters);
+
+                    // Login to the web services
+                    std::string strEncodedEosb = Login(strEmail, strUserPassword);
+
+                    _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
+                    // Get user and organization guid from eosb
+                    StructuredBuffer oUserInformation(::GetBasicUserInformation(strEncodedEosb));
+                    std::string strOrganizationGuid = oUserInformation.GetString("OrganizationGuid");
+                    std::string strUserGuid = oUserInformation.GetString("UserGuid");
+                    Qword qwAccessRights = oUserInformation.GetQword("AccessRights");
+
+                    bool fTerminatedSignalEncountered = false;
+
+                    while (false == fTerminatedSignalEncountered)
+                    {
+                        ::ShowTopMenu();
+
+                        std::string strUserInput = ::GetStringInput("Selection: ", 2, false, c_szValidInputCharacters);
+
+                        switch (stoi(strUserInput))
+                        {
+                            case 1:
+                            {
+                                if (1 == qwAccessRights) // Check if user is an admin
+                                {
+                                    bool fSuccess = ::RegisterUser(strEncodedEosb, strOrganizationGuid);
+                                    if (true == fSuccess)
+                                    {
+                                        ::ShowSuccessMessage("User added successfully!");
+                                    }
+                                }
+                                else 
+                                {
+                                    ::ShowErrorMessage("Transaction not authorized.");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 2:
+                            {
+                                if (1 == qwAccessRights) // Check if user is an admin
+                                {
+                                    bool fSuccess = ::ListOrganizations(strEncodedEosb);
+                                }
+                                else 
+                                {
+                                    ::ShowErrorMessage("Transaction not authorized.");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 3:
+                            {
+                                if (1 == qwAccessRights) // Check if user is an admin
+                                {
+                                    bool fSuccess = ::UpdateOrganizationInformation(strEncodedEosb);
+                                    if (true == fSuccess)
+                                    {
+                                        ::ShowSuccessMessage("Organization information updated successfully!");
+                                    }
+                                }
+                                else 
+                                {
+                                    ::ShowErrorMessage("Transaction not authorized.");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 4:
+                            {
+                                if (1 == qwAccessRights) // Check if user is an admin
+                                {
+                                    bool fSuccess = ::DeleteOrganization(strEncodedEosb);
+                                    if (true == fSuccess)
+                                    {
+                                        ::ShowSuccessMessage("Organization deleted!");
+                                    }
+                                }
+                                else 
+                                {
+                                    ::ShowErrorMessage("Transaction not authorized.");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 5:
+                            {
+                                if (1 == qwAccessRights) // Check if user is an admin
+                                {
+                                    bool fSuccess = ::DeleteUser(strEncodedEosb);
+                                    if (true == fSuccess)
+                                    {
+                                        ::ShowSuccessMessage("User deleted!");
+                                    }
+                                }
+                                else 
+                                {
+                                    ::ShowErrorMessage("Transaction not authorized.");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 6:
+                            {
+                                // Register a Vm
+                                std::string strVmGuid = Guid(eVirtualMachine).ToString(eHyphensAndCurlyBraces);
+                                std::string strDcGuid = "{33DB1751-66AE-4EB5-BF7B-614CBC09BC4C}";
+                                std::string strVmEventGuid = ::RegisterVirtualMachine(strEncodedEosb, strDcGuid, strVmGuid);
+                                // Register Leaf events
+                                ::RegisterLeafEvents(strEncodedEosb, strOrganizationGuid, strVmEventGuid);
+
+                                ::WaitForUserToContinue();
+                            break;
+                            }
+                            case 7:
+                            {
+                                std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
+                                // Get list of all events for the organization
+                                ::GetListOfEvents(strEncodedEosb, "{00000000-0000-0000-0000-000000000000}", strOrganizationGuid, 0);
+
+                                ::WaitForUserToContinue();
+                            break;
+                            }
+                            case 8:
+                            {
+                                std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
+                                std::string strParentGuid = ::GetStringInput("Enter hyphen and curly braces formatted parent guid: ", 38, true, c_szValidInputCharacters);
+                                if (0 < strParentGuid.size())
+                                {
+                                    // Get list of events for the given parent guid
+                                    ::GetListOfEvents(strEncodedEosb, strParentGuid, strOrganizationGuid, 0);
+                                }
+                                else 
+                                {
+                                    ::ShowErrorMessage("Error no parent guid specified, try again.");
+                                }
+
+                                ::WaitForUserToContinue();
+                            break;
+                            }
+                            case 9:
+                            {
+                                bool fSuccess = ::RegisterDigitalContract(strEncodedEosb);
+                                if (true == fSuccess)
+                                {
+                                    ::ShowSuccessMessage("Digital contract registered successfully!");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 10:
+                            {
+                                bool fSuccess = ::ListDigitalContracts(strEncodedEosb);
+                                WaitForUserToContinue();
+                            break; 
+                            }
+                            case 11:
+                            {
+                                if ((4 == qwAccessRights) || (5 == qwAccessRights)) // Check if user is a dataset admin or a digital contract
+                                {
+                                    bool fSuccess = ::PullDigitalContract(strEncodedEosb);
+                                }
+                                else 
+                                {
+                                    ::ShowErrorMessage("Transaction not authorized.");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 12:
+                            {
+                                if (5 == qwAccessRights) // Check if user is a dataset admin
+                                {
+                                    bool fSuccess = ::AcceptDigitalContract(strEncodedEosb);
+                                    if (true == fSuccess)
+                                    {
+                                        ::ShowSuccessMessage("Digital contract approved!");
+                                    }
+                                }
+                                else 
+                                {
+                                    ::ShowErrorMessage("Transaction not authorized.");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 13:
+                            {
+                                if (4 == qwAccessRights) // Check if user is a digital contract admin
+                                {
+                                    bool fSuccess = ::ActivateDigitalContract(strEncodedEosb);
+                                    if (true == fSuccess)
+                                    {
+                                        ::ShowSuccessMessage("Digital contract activated!");
+                                    }
+                                }
+                                else 
+                                {
+                                    ::ShowErrorMessage("Transaction not authorized.");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 0:
+                            {
+                                fTerminatedSignalEncountered = true;
+                            break;
+                            }
+                            default:
+                            {
+                                ::ShowErrorMessage("Invalid option. Usage: [0-13]");
+                            break;
+                            }
+                        }
+                    }
+    
+                break;
+                }
+                case 2:
+                {
+                    
+                    bool fSuccess = ::RegisterOrganizationAndSuperUser();
+                    if (true == fSuccess)
+                    {
+                        std::cout << "Registration successful!\nLog in to access your dashboard.\n";
+                    }
+                    ::WaitForUserToContinue();
+                break;
+                }
+                case 0:
+                {
+                    fTerminatedSignalEncountered = true;
+                break;
+                }
+                default:
+                {
+                    std::cout << "Invalid option. Usage: [0-2]" << std::endl;
+                break;
+                }
+            }
+
+        }
+    }
+    catch(BaseException oBaseException)
+    {
+        std::cout << oBaseException.GetExceptionMessage() << std::endl;
+    }
+
+    return 0;
+}

@@ -231,6 +231,10 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/Users");
     // Fetch a list of all users for an organizations
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/OrganizationUsers");
+    // Get a list of digital contracts associated with a user's organization
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/ListDigitalContracts");
+    // Get a digital contract's information
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/PullDigitalContract");
     // Add a non-leaf audit log event
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/NonLeafEvent");
     // Add a leaf audit log event
@@ -241,12 +245,16 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterUser");
     // Add metadata of a new virtual machine to the database
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterVirtualMachine");
+    // Takes in an EOSB and create a digital contract for a chosen dataset
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterDigitalContract");
     // Update user's access rights
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/UpdateUserRights");
     // Update organization information
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/UpdateOrganizationInformation");
     // Update user information, excluding access rights
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/UpdateUserInformation");
+    // Update the digital contract when a data owner accepts the digital contract or when a researcher accepts the DC terms from the Data owner organization
+    m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DatabaseManager/Update/DigitalContract");
     // Delete a user from the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/DeleteUser");
     // Delete an organization and its users from the database
@@ -313,6 +321,14 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             {
                 stlResponseBuffer = this->ListOrganizationUsers(c_oRequestStructuredBuffer);
             }
+            else if ("/SAIL/DatabaseManager/ListDigitalContracts" == strResource)
+            {
+                stlResponseBuffer = this->ListDigitalContracts(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/PullDigitalContract" == strResource)
+            {
+                stlResponseBuffer = this->PullDigitalContract(c_oRequestStructuredBuffer);
+            }
             else
             {
                 _ThrowBaseException("Invalid resource.", nullptr);
@@ -340,6 +356,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             {
                 stlResponseBuffer = this->RegisterVirtualMachine(c_oRequestStructuredBuffer);
             }
+            else if ("/SAIL/DatabaseManager/RegisterDigitalContract" == strResource)
+            {
+                stlResponseBuffer = this->RegisterDigitalContract(c_oRequestStructuredBuffer);
+            }
             else
             {
                 _ThrowBaseException("Invalid resource.", nullptr);
@@ -358,6 +378,17 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             else if ("/SAIL/DatabaseManager/UpdateUserInformation" == strResource)
             {
                 stlResponseBuffer = this->UpdateUserInformation(c_oRequestStructuredBuffer);
+            }
+            else
+            {
+                _ThrowBaseException("Invalid resource.", nullptr);
+            }
+        }
+        else if ("PATCH" == strVerb)
+        {
+            if ("/SAIL/DatabaseManager/Update/DigitalContract" == strResource)
+            {
+                stlResponseBuffer = this->UpdateDigitalContract(c_oRequestStructuredBuffer);
             }
             else
             {
@@ -738,7 +769,10 @@ std::vector<Byte> __thiscall DatabaseManager::GetListOfEvents(
                                                                                                             << "ParentGuid" << strParentGuid 
                                                                                                             << "OrganizationGuid" << strOrganizationGuid
                                                                                                             << finalize);
-        this->GetEventObjectBlob(oSailDatabase, oFilters, oAuditLogDocument->view(), &oListOfEvents);
+        if (bsoncxx::stdx::nullopt != oAuditLogDocument)
+        {
+            this->GetEventObjectBlob(oSailDatabase, oFilters, oAuditLogDocument->view(), &oListOfEvents);
+        }
     }
     else 
     {
@@ -936,7 +970,7 @@ uint32_t __thiscall DatabaseManager::GetNextSequenceNumber(
                                                                                                         << "EventGuid" << strEventGuid 
                                                                                                         << "OrganizationGuid" << strOrganizationGuid
                                                                                                         << finalize);
-    if (oAuditLogDocument)
+    if (bsoncxx::stdx::nullopt != oAuditLogDocument)
     {
         mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
         {
@@ -1756,13 +1790,13 @@ std::vector<Byte> __thiscall DatabaseManager::UpdateUserRights(
     bsoncxx::stdx::optional<bsoncxx::document::value> oUserConfidentialDocument = oSailDatabase["ConfidentialOrganizationOrUser"].find_one(document{} 
                                                                                                         << "OrganizationOrUserUuid" << strUserGuid 
                                                                                                         << finalize);
-    if (oUserConfidentialDocument)
+    if (bsoncxx::stdx::nullopt != oUserConfidentialDocument)
     {
         // Get basic user document
         bsoncxx::stdx::optional<bsoncxx::document::value> oBasicUserDocument = oSailDatabase["BasicUser"].find_one(document{} 
                                                                                                             << "UserUuid" << strUserGuid 
                                                                                                             << finalize);
-        if (oBasicUserDocument)
+        if (bsoncxx::stdx::nullopt != oBasicUserDocument)
         {
             bsoncxx::document::element o64BitHash = oBasicUserDocument->view()["64BitHash"];
             if (o64BitHash && o64BitHash.type() == type::k_double)
@@ -1846,7 +1880,7 @@ std::vector<Byte> __thiscall DatabaseManager::UpdateOrganizationInformation(
     bsoncxx::stdx::optional<bsoncxx::document::value> oConfidentialDocument = oSailDatabase["ConfidentialOrganizationOrUser"].find_one(document{} 
                                                                                                         << "OrganizationOrUserUuid" << strOrganizationGuid 
                                                                                                         << finalize);
-    if (oConfidentialDocument)
+    if (bsoncxx::stdx::nullopt != oConfidentialDocument)
     {
         mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
         {
@@ -1927,13 +1961,13 @@ std::vector<Byte> __thiscall DatabaseManager::UpdateUserInformation(
     bsoncxx::stdx::optional<bsoncxx::document::value> oUserConfidentialDocument = oSailDatabase["ConfidentialOrganizationOrUser"].find_one(document{} 
                                                                                                         << "OrganizationOrUserUuid" << strUserGuid 
                                                                                                         << finalize);
-    if (oUserConfidentialDocument)
+    if (bsoncxx::stdx::nullopt != oUserConfidentialDocument)
     {
         // Get basic user document
         bsoncxx::stdx::optional<bsoncxx::document::value> oBasicUserDocument = oSailDatabase["BasicUser"].find_one(document{} 
                                                                                                             << "UserUuid" << strUserGuid 
                                                                                                             << finalize);
-        if (oBasicUserDocument)
+        if (bsoncxx::stdx::nullopt != oBasicUserDocument)
         {
             bsoncxx::document::element o64BitHash = oBasicUserDocument->view()["64BitHash"];
             if (o64BitHash && o64BitHash.type() == type::k_double)
@@ -2103,7 +2137,7 @@ std::vector<Byte> __thiscall DatabaseManager::ListUsers(
                                                                                                                             << "AccountStatus" << open_document <<
                                                                                                                                 "$lte" << eActive
                                                                                                                             << close_document << finalize);
-                        if (oBasicUserDocument)
+                        if (bsoncxx::stdx::nullopt != oBasicUserDocument)
                         {
                             bsoncxx::document::element o64BitHash = oBasicUserDocument->view()["64BitHash"];
                             if (o64BitHash && o64BitHash.type() == type::k_double)
@@ -2360,3 +2394,358 @@ std::vector<Byte> __thiscall DatabaseManager::DeleteOrganization(
 
     return oResponse.GetSerializedBuffer();
 }
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
+ * @function ListDigitalContracts
+ * @brief Fetch list of all digital contracts associated with the user's organization
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns StructuredBuffer containing list of digital contracts associated with the user's organization
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::ListDigitalContracts(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    // Each client and transaction can only be used in a single thread
+    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+    // Access SailDatabase
+    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+    // Fetch all digital contract records associated with a researcher's or data owner's organization
+    mongocxx::cursor oDcRecords = oSailDatabase["DigitalContract"].find(document{} 
+                                                                        << "$or" << open_array << open_document
+                                                                        << "ResearcherOrganization" << c_oRequest.GetString("UserOrganization")
+                                                                        << close_document << open_document
+                                                                        << "DataOwnerOrganization" << c_oRequest.GetString("UserOrganization") 
+                                                                        << close_document << close_array
+                                                                        << finalize);
+    // Loop through returned documents and add information to the list
+    StructuredBuffer oListOfDigitalContracts;
+    try 
+    {
+        for (auto&& oDocumentView : oDcRecords)
+        {
+            bsoncxx::document::element oDcGuid = oDocumentView["DigitalContractGuid"];
+            if (oDcGuid && oDcGuid.type() == type::k_utf8)
+            {
+                std::string strDcGuid = oDcGuid.get_utf8().value.to_string();
+                bsoncxx::document::element oPlainTextObjectBlobGuid = oDocumentView["PlainTextObjectBlobGuid"];
+                if (oPlainTextObjectBlobGuid && oPlainTextObjectBlobGuid.type() == type::k_utf8)
+                {
+                    std::string strPlainTextObjectBlobGuid = oPlainTextObjectBlobGuid.get_utf8().value.to_string();
+                    bsoncxx::stdx::optional<bsoncxx::document::value> oPlainTextObjectBlobDocument = oSailDatabase["PlainTextObjectBlob"].find_one(document{} 
+                                                                                                                                                    << "PlainTextObjectBlobGuid" <<  strPlainTextObjectBlobGuid 
+                                                                                                                                                    << finalize);
+                    if (bsoncxx::stdx::nullopt != oPlainTextObjectBlobDocument)
+                    {
+                        bsoncxx::document::element oObjectGuid = oPlainTextObjectBlobDocument->view()["ObjectGuid"];
+                        if (oObjectGuid && oObjectGuid.type() == type::k_utf8)
+                        {
+                            std::string strObjectGuid = oObjectGuid.get_utf8().value.to_string();
+                            // Fetch digital contract from the Object collection associated with the digital contract guid
+                            bsoncxx::stdx::optional<bsoncxx::document::value> oObjectDocument = oSailDatabase["Object"].find_one(document{} << "ObjectGuid" << strObjectGuid << finalize);
+                            if (bsoncxx::stdx::nullopt != oObjectDocument)
+                            {
+                                bsoncxx::document::element oObjectBlob = oObjectDocument->view()["ObjectBlob"];
+                                if (oObjectBlob && oObjectBlob.type() == type::k_binary)
+                                {
+                                    StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size);
+                                    oListOfDigitalContracts.PutStructuredBuffer(strDcGuid.c_str(), oObject);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        dwStatus = 200;
+    }
+    catch(...)
+    {
+
+    }
+
+    oResponse.PutStructuredBuffer("DigitalContracts", oListOfDigitalContracts);
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
+ * @function PullDigitalContract
+ * @brief Fetch the digital contract information
+ * @param[in] c_oRequest contains the digital contract guid
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns StructuredBuffer containing the digital contract information
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::PullDigitalContract(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
+    Dword dwStatus = 404;
+    // Each client and transaction can only be used in a single thread
+    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+    // Access SailDatabase
+    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+    // Fetch the digital contract record
+    bsoncxx::stdx::optional<bsoncxx::document::value> oDcDocument = oSailDatabase["DigitalContract"].find_one(document{}
+                                                                                                                << "DigitalContractGuid" << strDcGuid
+                                                                                                                << finalize);
+    if (bsoncxx::stdx::nullopt != oDcDocument)
+    {                                                                                                           
+        bsoncxx::document::element oDcGuid = oDcDocument->view()["DigitalContractGuid"];
+        bsoncxx::document::element oDooGuid = oDcDocument->view()["ResearcherOrganization"];
+        bsoncxx::document::element oRoGuid = oDcDocument->view()["DataOwnerOrganization"];
+        if ((oDcGuid && oDcGuid.type() == type::k_utf8) && (oDooGuid && oDooGuid.type() == type::k_utf8) && (oRoGuid && oRoGuid.type() == type::k_utf8))
+        {
+            std::string strDcGuid = oDcGuid.get_utf8().value.to_string();
+            std::string strDooGuid = oDooGuid.get_utf8().value.to_string();
+            std::string strRoGuid = oRoGuid.get_utf8().value.to_string();
+            bsoncxx::document::element oPlainTextObjectBlobGuid = oDcDocument->view()["PlainTextObjectBlobGuid"];
+            if (oPlainTextObjectBlobGuid && oPlainTextObjectBlobGuid.type() == type::k_utf8)
+            {
+                std::string strPlainTextObjectBlobGuid = oPlainTextObjectBlobGuid.get_utf8().value.to_string();
+                bsoncxx::stdx::optional<bsoncxx::document::value> oPlainTextObjectBlobDocument = oSailDatabase["PlainTextObjectBlob"].find_one(document{} 
+                                                                                                                                                << "PlainTextObjectBlobGuid" <<  strPlainTextObjectBlobGuid
+                                                                                                                                                << finalize);
+                if (bsoncxx::stdx::nullopt != oPlainTextObjectBlobDocument)
+                {
+                    bsoncxx::document::element oObjectGuid = oPlainTextObjectBlobDocument->view()["ObjectGuid"];
+                    if (oObjectGuid && oObjectGuid.type() == type::k_utf8)
+                    {
+                        std::string strObjectGuid = oObjectGuid.get_utf8().value.to_string();
+                        // Fetch the digital contract from the Object collection associated with the digital contract guid
+                        bsoncxx::stdx::optional<bsoncxx::document::value> oObjectDocument = oSailDatabase["Object"].find_one(document{} << "ObjectGuid" << strObjectGuid << finalize);
+                        if (bsoncxx::stdx::nullopt != oObjectDocument)
+                        {
+                            bsoncxx::document::element oObjectBlob = oObjectDocument->view()["ObjectBlob"];
+                            if (oObjectBlob && oObjectBlob.type() == type::k_binary)
+                            {
+                                StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size);
+                                oResponse.PutStructuredBuffer("DigitalContract", oObject);
+                                oResponse.PutString("ResearcherOrganization", strRoGuid);
+                                oResponse.PutString("DataOwnerOrganization", strDooGuid);
+                            }
+                        }
+                    }
+                }
+            }
+            dwStatus = 200;
+        }
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
+ * @function RegisterDigitalContract
+ * @brief Take in full EOSB and register a digital contract
+ * @param[in] c_oRequest contains the digital contract information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns transaction status
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::RegisterDigitalContract(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    // Create guids for the documents
+    Guid oObjectGuid, oPlainTextObjectBlobGuid;
+    
+    // Create a digital contract document
+    bsoncxx::document::value oDcDocumentValue = bsoncxx::builder::stream::document{}
+      << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
+      << "DigitalContractGuid" << c_oRequest.GetString("DigitalContractGuid")
+      << "ResearcherOrganization" << c_oRequest.GetString("ResearcherOrganization")
+      << "DataOwnerOrganization" << c_oRequest.GetString("DataOwnerOrganization")
+      << finalize;
+
+    // Create an object document
+    StructuredBuffer oObject;
+    oObject.PutBuffer("DigitalContractBlob", c_oRequest.GetBuffer("DigitalContractBlob"));
+    bsoncxx::types::b_binary oObjectBlob
+    {
+        bsoncxx::binary_sub_type::k_binary,
+        uint32_t(oObject.GetSerializedBufferRawDataSizeInBytes()),
+        oObject.GetSerializedBufferRawDataPtr()
+    };
+    bsoncxx::document::value oObjectDocumentValue = bsoncxx::builder::stream::document{}
+      << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
+      << "ObjectBlob" << oObjectBlob
+      << finalize;
+
+    // Create a plain text object document
+    bsoncxx::document::value oPlainTextObjectDocumentValue = bsoncxx::builder::stream::document{}
+      << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
+      << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
+      << "ObjectType" << eDigitalContract
+      << finalize;
+
+    // Each client and transaction can only be used in a single thread
+    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+    // Access SailDatabase
+    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+    // Access DigitalContract collection
+    mongocxx::collection oDigitalContractCollection = oSailDatabase["DigitalContract"];
+    // Create a transaction callback
+    Dword dwStatus = 204;
+    mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
+    {
+        // Insert document in the DigitalContract collection
+        auto oResult = oDigitalContractCollection.insert_one(*poSession, oDcDocumentValue.view());
+        if (!oResult) {
+            std::cout << "Error while writing to the database." << std::endl;
+        }
+        else
+        {
+            // Access Object collection
+            mongocxx::collection oObjectCollection = oSailDatabase["Object"];
+            // Insert document in the Object collection
+            oResult = oObjectCollection.insert_one(*poSession, oObjectDocumentValue.view());
+            if (!oResult) {
+                std::cout << "Error while writing to the database." << std::endl;
+            }
+            else
+            {
+                // Access PlainTextObjectBlob collection
+                mongocxx::collection oPlainTextObjectCollection = oSailDatabase["PlainTextObjectBlob"];
+                // Insert document in the PlainTextObjectBlob collection
+                oResult = oPlainTextObjectCollection.insert_one(*poSession, oPlainTextObjectDocumentValue.view());
+                if (!oResult) {
+                    std::cout << "Error while writing to the database." << std::endl;
+                }
+                else
+                {
+                    dwStatus = 201;
+                }
+            }
+        }
+    };
+    // Create a session and start the transaction
+    mongocxx::client_session oSession = oClient->start_session();
+    try 
+    {
+        oSession.with_transaction(oCallback);
+    }
+    catch (mongocxx::exception& e) 
+    {
+        std::cout << "Collection transaction exception: " << e.what() << std::endl;
+    }
+
+    // Send back the status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
+ * @function UpdateDigitalContract
+ * @brief Update the digital contract when a data owner accepts the digital contract
+ * @param[in] c_oRequest contains the update digital contract blob
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns status of the transaction and instructions of what happens next
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::UpdateDigitalContract(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    StructuredBuffer oResponse;
+
+    std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
+    Dword dwStatus = 404;
+    // Each client and transaction can only be used in a single thread
+    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+    // Access SailDatabase
+    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+    // Fetch the digital contract record
+    bsoncxx::stdx::optional<bsoncxx::document::value> oDcDocument = oSailDatabase["DigitalContract"].find_one(document{}
+                                                                                                                << "DigitalContractGuid" << strDcGuid
+                                                                                                                << finalize);
+    if (bsoncxx::stdx::nullopt != oDcDocument)
+    {
+        bsoncxx::document::element oDcGuid = oDcDocument->view()["DigitalContractGuid"];
+        if (oDcGuid && oDcGuid.type() == type::k_utf8)
+        {
+            std::string strDcGuid = oDcGuid.get_utf8().value.to_string();
+            bsoncxx::document::element oPlainTextObjectBlobGuid = oDcDocument->view()["PlainTextObjectBlobGuid"];
+            if (oPlainTextObjectBlobGuid && oPlainTextObjectBlobGuid.type() == type::k_utf8)
+            {
+                std::string strPlainTextObjectBlobGuid = oPlainTextObjectBlobGuid.get_utf8().value.to_string();
+                bsoncxx::stdx::optional<bsoncxx::document::value> oPlainTextObjectBlobDocument = oSailDatabase["PlainTextObjectBlob"].find_one(document{} 
+                                                                                                                                                << "PlainTextObjectBlobGuid" <<  strPlainTextObjectBlobGuid 
+                                                                                                                                                << finalize);
+                if (bsoncxx::stdx::nullopt != oPlainTextObjectBlobDocument)
+                {
+                    bsoncxx::document::element oObjectGuid = oPlainTextObjectBlobDocument->view()["ObjectGuid"];
+                    if (oObjectGuid && oObjectGuid.type() == type::k_utf8)
+                    {
+                        std::string strObjectGuid = oObjectGuid.get_utf8().value.to_string();
+                        // Update the digital contract in the Object collection associated with the digital contract guid
+                        mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
+                        {
+                            // Create object blob
+                            StructuredBuffer oObject;
+                            oObject.PutBuffer("DigitalContractBlob", c_oRequest.GetBuffer("DigitalContractBlob"));
+                            bsoncxx::types::b_binary oUpdatedDcBlob
+                            {
+                                bsoncxx::binary_sub_type::k_binary,
+                                uint32_t(oObject.GetSerializedBufferRawDataSizeInBytes()),
+                                oObject.GetSerializedBufferRawDataPtr()
+                            };
+                            oSailDatabase["Object"].update_one(*poSession, document{} << "ObjectGuid" << strObjectGuid << finalize,
+                                                                document{} << "$set" << open_document <<
+                                                                "ObjectBlob" << oUpdatedDcBlob << close_document << finalize);
+                        };
+                        // Create a session and start the transaction
+                        mongocxx::client_session oSession = oClient->start_session();
+                        try 
+                        {
+                            oSession.with_transaction(oCallback);
+                            dwStatus = 200;
+                        }
+                        catch (mongocxx::exception& e) 
+                        {
+                            std::cout << "Collection transaction exception: " << e.what() << std::endl;
+                        }
+                    }
+                }
+            }
+            dwStatus = 200;
+        }
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+

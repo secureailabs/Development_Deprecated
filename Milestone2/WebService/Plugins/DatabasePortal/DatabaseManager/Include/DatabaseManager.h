@@ -92,27 +92,22 @@ class DatabaseManager : public Object
         std::vector<Byte> __thiscall GetBasicOrganizationRecord(
             _in const StructuredBuffer & c_oRequest
             );
-
         // Fetch basic user record from the database
         std::vector<Byte> __thiscall GetBasicUserRecord(
             _in const StructuredBuffer & c_oRequest
             );
-
         // Fetch confidential user record from the database
         std::vector<Byte> __thiscall GetConfidentialUserRecord(
             _in const StructuredBuffer & c_oRequest
             );
-
         // Given an organization guid fetch digital contract event guid, if exists
         std::vector<Byte> __thiscall DigitalContractBranchExists(
             _in const StructuredBuffer & c_oRequest
             );
-
         // Fetch audit log records from the database
         std::vector<Byte> __thiscall GetListOfEvents(
             _in const StructuredBuffer & c_oRequest
             );
-
         // Apply filters and add logs to the listofevents
         void __thiscall GetEventObjectBlob(
             _in const mongocxx::database & c_oSailDatabase,
@@ -120,7 +115,6 @@ class DatabaseManager : public Object
             _in const bsoncxx::document::view & oDocumentView,
             _out StructuredBuffer * poListOfEvents
             );
-
         // Fetch next sequence number from the parent event and update the parent event's next sequence number
         uint32_t __thiscall GetNextSequenceNumber(
             _in const StructuredBuffer & c_oRequest
@@ -130,27 +124,22 @@ class DatabaseManager : public Object
         std::vector<Byte> __thiscall AddNonLeafEvent(
             _in const StructuredBuffer & c_oRequest
         );
-
         // Store leaf event(s) in the database
         std::vector<Byte> __thiscall AddLeafEvent(
             _in const StructuredBuffer & c_oRequest
             );
-
         // Add a new organization to the database and call AddSuperUser() to add the organziation's super user
         std::vector<Byte> __thiscall RegisterOrganization(
             _in const StructuredBuffer & c_oRequest
             );
-
         // Add organziation's super user to the database
         std::vector<Byte> __thiscall AddSuperUser(
             _in const StructuredBuffer & c_oRequest
             );
-
         // Add a new user to the database
         std::vector<Byte> __thiscall RegisterUser(
             _in const StructuredBuffer & c_oRequest
             );
-
         // Add metadata of a new virtual machine to the database
         std::vector<Byte> __thiscall RegisterVirtualMachine(
             _in const StructuredBuffer & c_oRequest
@@ -160,12 +149,10 @@ class DatabaseManager : public Object
         std::vector<Byte> __thiscall UpdateUserRights(
             _in const StructuredBuffer & c_oRequest
             );
-
         // Update organization information
         std::vector<Byte> __thiscall UpdateOrganizationInformation(
             _in const StructuredBuffer & c_oRequest
             );
-
         // Update user information, excluding access rights
         std::vector<Byte> __thiscall UpdateUserInformation(
             _in const StructuredBuffer & c_oRequest
@@ -175,12 +162,10 @@ class DatabaseManager : public Object
         std::vector<Byte> __thiscall ListOrganizations(
             _in const StructuredBuffer & c_oRequest
             );
-
         // Return a list of all users
         std::vector<Byte> __thiscall ListUsers(
             _in const StructuredBuffer & c_oRequest
             );
-
         // Return a list of users for an organization
         std::vector<Byte> __thiscall ListOrganizationUsers(
             _in const StructuredBuffer & c_oRequest
@@ -190,9 +175,27 @@ class DatabaseManager : public Object
         std::vector<Byte> __thiscall DeleteUser(
             _in const StructuredBuffer & c_oRequest
             );
-
         // Delete an organization and its users from the database
         std::vector<Byte> __thiscall DeleteOrganization(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch list of all digital contracts associated with the user's organization
+        std::vector<Byte> __thiscall ListDigitalContracts(
+            _in const StructuredBuffer & c_oRequest
+            );
+        // Fetch the digital contract information
+        std::vector<Byte> __thiscall PullDigitalContract(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Register digital contract
+        std::vector<Byte> __thiscall RegisterDigitalContract(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update the digital contract when a data owner accepts the digital contract or when a researcher accepts the DC terms from the Data owner organization
+        std::vector<Byte> __thiscall UpdateDigitalContract(
             _in const StructuredBuffer & c_oRequest
             );
 

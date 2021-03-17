@@ -2,15 +2,184 @@
  *
  * @file DigitalContractDatabase.cpp
  * @author Shabana Akhtar Baig
- * @date 23 Nov 2020
+ * @date 03 March 2021
  * @License Private and Confidential. Internal Use Only.
  * @copyright Copyright (C) 2020 Secure AI Labs, Inc. All Rights Reserved.
  * @brief
  ********************************************************************************************/
 
 #include "DigitalContractDatabase.h"
+#include "DateAndTime.h"
+#include "IpcTransactionHelperFunctions.h"
+#include "SmartMemoryAllocator.h"
+#include "SocketClient.h"
+#include "ThreadManager.h"
+#include "TlsClient.h"
 
 static DigitalContractDatabase * gs_oDigitalContractDatabase = nullptr;
+
+static SmartMemoryAllocator gs_oMemoryAllocator;
+
+/********************************************************************************************
+ *
+ * @struct IpcServerParameters
+ * @brief Struct used to pass in parameters to StartServerThread()
+ *
+ ********************************************************************************************/
+
+typedef struct
+{
+    ThreadManager * poThreadManager;        /* Pointer to thread manager object */
+    SocketServer * poIpcServer;          /* Pointer to socket server instance */
+}
+IpcServerParameters;
+
+/********************************************************************************************
+ *
+ * @function StartIpcServerThread
+ * @brief Starts up ipc server thread
+ * @param[in] poVoidThreadParameter void pointer to IpcServerParameters instance
+ * @return A null pointer
+ *
+ ********************************************************************************************/
+
+static void * __stdcall StartIpcServerThread(
+    _in void * poVoidThreadParameter
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poVoidThreadParameter);
+
+    IpcServerParameters * poIpcServerParameters = (IpcServerParameters *) poVoidThreadParameter;
+    __DebugAssert(nullptr != poIpcServerParameters->poThreadManager);
+    __DebugAssert(nullptr != poIpcServerParameters->poIpcServer);
+
+    try
+    {
+        DigitalContractDatabase * poDigitalContractDatabase = ::GetDigitalContractDatabase();
+        poDigitalContractDatabase->RunIpcServer(poIpcServerParameters->poIpcServer, poIpcServerParameters->poThreadManager);
+    }
+    catch (BaseException oException)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
+                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    catch (...)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    poIpcServerParameters->poIpcServer->Release();
+    gs_oMemoryAllocator.Deallocate(poVoidThreadParameter);
+
+    return nullptr;
+}
+
+/********************************************************************************************
+ *
+ * @function StartIpcThread
+ * @brief Starts up a connection thread
+ * @param[in] poVoidThreadParameter void pointer to socket instance
+ * @return A null pointer
+ *
+ ********************************************************************************************/
+
+static void * __stdcall StartIpcThread(
+    _in void * poVoidThreadParameter
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poVoidThreadParameter);
+
+    Socket * poIpcSocket = (Socket *) poVoidThreadParameter;
+    __DebugAssert(nullptr != poIpcSocket);
+
+    try
+    {
+        DigitalContractDatabase * poDigitalContractDatabase = ::GetDigitalContractDatabase();
+        poDigitalContractDatabase->HandleIpcRequest(poIpcSocket);
+    }
+    catch (BaseException oException)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
+                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    catch (...)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    poIpcSocket->Release();
+
+    return nullptr;
+}
+
+/********************************************************************************************
+ *
+ * @function CreateRequestPacket
+ * @brief Create a Tls request packet to send to the database portal
+ * @param[in] c_oRequest StructuredBuffer containing the request parameters
+ * @return Serialized request packet
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __stdcall CreateRequestPacket(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    unsigned int unSerializedBufferSizeInBytes = sizeof(Dword) + sizeof(uint32_t) + c_oRequest.GetSerializedBufferRawDataSizeInBytes() + sizeof(Dword);
+
+    std::vector<Byte> stlSerializedBuffer(unSerializedBufferSizeInBytes);
+    Byte * pbSerializedBuffer = (Byte *) stlSerializedBuffer.data();
+
+    // The format of the request data is:
+    //
+    // +------------------------------------------------------------------------------------+
+    // | [Dword] 0x436f6e74                                                                 |
+    // +------------------------------------------------------------------------------------+
+    // | [uint32_t] SizeInBytesOfRestRequestStructuredBuffer                                |
+    // +------------------------------------------------------------------------------------+
+    // | [SizeInBytesOfRestRequestStructuredBuffer] RestRequestStructuredBuffer             |
+    // +------------------------------------------------------------------------------------+
+    // | [Dword] 0x656e6420                                                                 |
+    // +------------------------------------------------------------------------------------+
+
+    *((Dword *) pbSerializedBuffer) = 0x436f6e74;
+    pbSerializedBuffer += sizeof(Dword);
+    *((uint32_t *) pbSerializedBuffer) = (uint32_t) c_oRequest.GetSerializedBufferRawDataSizeInBytes();
+    pbSerializedBuffer += sizeof(uint32_t);
+    ::memcpy((void *) pbSerializedBuffer, (const void *) c_oRequest.GetSerializedBufferRawDataPtr(), c_oRequest.GetSerializedBufferRawDataSizeInBytes());
+    pbSerializedBuffer += c_oRequest.GetSerializedBufferRawDataSizeInBytes();
+    *((Dword *) pbSerializedBuffer) = 0x656e6420;
+
+    return stlSerializedBuffer;
+}
 
 /********************************************************************************************
  *
@@ -66,8 +235,6 @@ DigitalContractDatabase::DigitalContractDatabase(void)
 
     m_sMutex = PTHREAD_MUTEX_INITIALIZER;
     m_unNextAvailableIdentifier = 0;
-
-    this->InitializeUserAccounts();
 }
 
 /********************************************************************************************
@@ -184,28 +351,6 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetDictionarySerializedBuf
 /********************************************************************************************
  *
  * @class DigitalContractDatabase
- * @function InitializeUserAccounts
- * @brief Insert user data
- *
- ********************************************************************************************/
-
-void __thiscall DigitalContractDatabase::InitializeUserAccounts(void)
-{
-    __DebugFunction();
-
-    m_stlUserAccounts.push_back(new UserAccount("{FEB1CAE7-0F10-4185-A1F2-DE71B85DBD25}", "johnsnow", "John Snow", "jsnow@example.com", "HBO", "1234567890", 999, 0x7));
-    m_stlUserAccounts.push_back(new UserAccount("{C1F45EF0-AB47-4799-9407-CA8A40CAC159}", "aryastark", "Arya Stark", "astark@example.com", "HBO", "1234567890", 888, 0x2));
-    m_stlUserAccounts.push_back(new UserAccount("{0A83BCF5-2845-4437-AEBE-E02DFB349BAB}", "belle", "Belle", "belle@example.com", "Walt Disney", "1234567890", 777, 0x1));
-    m_stlUserAccounts.push_back(new UserAccount("{64E4FAC3-63C9-4844-BF82-1581F9C750CE}", "gaston", "Gaston", "gaston@example.com", "Walt Disney", "1234567890", 666, 0x6));
-    m_stlUserAccounts.push_back(new UserAccount("{F732CA9C-217E-4E3D-BF25-E2425B480556}", "hermoinegranger", "Hermoine Granger", "hgranger@example.com", "Universal Studios", "1234567890", 555, 0x5));
-    m_stlUserAccounts.push_back(new UserAccount("{F3FBE722-1A42-4052-8815-0ABDDB3F2841}", "harrypotter", "Harry Potter", "hpotter@example.com", "Universal Studios", "1234567890", 444, 0x4));
-    m_stlUserAccounts.push_back(new UserAccount("{2B9C3814-79D4-456B-B64A-ED79F69373D3}", "antman", "Ant man", "antman@example.com", "Marvel Cinematic Universe", "1234567890", 333, 0x7));
-    m_stlUserAccounts.push_back(new UserAccount("{B40E1F9C-C100-46B3-BD7F-C80EB1351794}", "spiderman", "Spider man", "spiderman@example.com", "Marvel Cinematic Universe", "1234567890", 222, 0x6));
-}
-
-/********************************************************************************************
- *
- * @class DigitalContractDatabase
  * @function InitializePlugin
  * @brief Initializer that initializes the plugin's dictionary
  *
@@ -215,14 +360,155 @@ void __thiscall DigitalContractDatabase::InitializePlugin(void)
 {
     __DebugFunction();
 
-    // Takes in an EOSB and sends back all digital contracts associated with the users organization
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DigitalContract/MyDigitalContracts");
+    // Add parameters for registering a digital contract
+    // Name, ElementType, and Range (if exists) are used by RestFrameworkRuntimeData::RunThread to vet request parameters.
+    // Required parameters are marked by setting IsRequired to true
+    // Otherwise the parameter is optional
+    StructuredBuffer oRegisterDc;
+    StructuredBuffer oEosb;
+    oEosb.PutByte("ElementType", BUFFER_VALUE_TYPE);
+    oEosb.PutBoolean("IsRequired", true);
+    oRegisterDc.PutStructuredBuffer("Eosb", oEosb);
+    StructuredBuffer oGuid;
+    oGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oGuid.PutBoolean("IsRequired", true);
+    oRegisterDc.PutStructuredBuffer("DataOwnerOrganization", oGuid);
+    StructuredBuffer oVersionNumber;
+    oVersionNumber.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oVersionNumber.PutBoolean("IsRequired", true);
+    oRegisterDc.PutStructuredBuffer("VersionNumber", oVersionNumber);
+    StructuredBuffer oSubscriptionDays;
+    oSubscriptionDays.PutByte("ElementType", UINT64_VALUE_TYPE);
+    oSubscriptionDays.PutBoolean("IsRequired", true);
+    oRegisterDc.PutStructuredBuffer("SubscriptionDays", oSubscriptionDays);
+    oRegisterDc.PutStructuredBuffer("DatasetGuid", oGuid);
+    StructuredBuffer oLegalAgreement;
+    oLegalAgreement.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oLegalAgreement.PutBoolean("IsRequired", true);
+    oRegisterDc.PutStructuredBuffer("LegalAgreement", oLegalAgreement);
+    StructuredBuffer oDatasetDRMMetadataSize;
+    oDatasetDRMMetadataSize.PutByte("ElementType", UINT32_VALUE_TYPE);
+    oDatasetDRMMetadataSize.PutBoolean("IsRequired", true);
+    oRegisterDc.PutStructuredBuffer("DatasetDRMMetadataSize", oDatasetDRMMetadataSize);
+    StructuredBuffer oDatasetDRMMetadata;
+    oDatasetDRMMetadata.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
+    oDatasetDRMMetadata.PutBoolean("IsRequired", true);
+    oRegisterDc.PutStructuredBuffer("DatasetDRMMetadata", oDatasetDRMMetadata);
 
-    // Sends back list of digital contracts in flux
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DigitalContract/WaitingDigitalContracts");
+    // Add parameters for digital contract acceptance
+    StructuredBuffer oDcAcceptance;
+    oDcAcceptance.PutStructuredBuffer("Eosb", oEosb);
+    StructuredBuffer oDcGuid;
+    oDcGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oDcGuid.PutBoolean("IsRequired", true);
+    oDcAcceptance.PutStructuredBuffer("DigitalContractGuid", oDcGuid);
+    StructuredBuffer oEula;
+    oEula.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oEula.PutBoolean("IsRequired", true);
+    oDcAcceptance.PutStructuredBuffer("EULA", oEula);
+    StructuredBuffer oRetentionTime;
+    oRetentionTime.PutByte("ElementType", UINT64_VALUE_TYPE);
+    oRetentionTime.PutBoolean("IsRequired", true);
+    oDcAcceptance.PutStructuredBuffer("RetentionTime", oRetentionTime);
+    oDcAcceptance.PutStructuredBuffer("LegalAgreement", oLegalAgreement);
 
-    // Adds a digital contract record in the database
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DigitalContract/RegisterDigitalContract");
+    // Add parameters for digital contract activation
+    StructuredBuffer oDcActivation;
+    oDcActivation.PutStructuredBuffer("Eosb", oEosb);
+    oDcActivation.PutStructuredBuffer("DigitalContractGuid", oDcGuid);
+    oDcActivation.PutStructuredBuffer("EULA", oEula);
+
+    // Add parameters for getting list of digital contracts
+    StructuredBuffer oListDc;
+    oListDc.PutStructuredBuffer("Eosb", oEosb);
+
+    // Add parameters for getting information of a digital contract
+    StructuredBuffer oPullDc;
+    oPullDc.PutStructuredBuffer("Eosb", oEosb);
+    oPullDc.PutStructuredBuffer("DigitalContractGuid", oDcGuid);
+
+    // Takes in an EOSB and create a digital contract for a chosen dataset
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DigitalContractManager/Applications", oRegisterDc);
+    // Update the digital contract when a data owner accepts the digital contract
+    m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DigitalContractManager/DataOwner/Accept", oDcAcceptance);
+    // Update the digital contract when a researcher accepts the DC terms from the Data owner organization
+    m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DigitalContractManager/Researcher/Activate", oDcActivation);
+    // Get a list of digital contracts associated with a researcher or a data owner
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DigitalContractManager/DigitalContracts", oListDc);
+    // Get a digital contract's information
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DigitalContractManager/PullDigitalContract", oPullDc);
+}
+
+/********************************************************************************************
+ *
+ * @class DigitalContractDatabase
+ * @function RunIpcServer
+ * @brief Run Ipc server for incoming Ipc requests
+ * @param[in] poIpcServer Pointer to Socket server
+ * @param[in] poThreadManager Pointer to the thread manager object
+ *
+ ********************************************************************************************/
+
+void __thiscall DigitalContractDatabase::RunIpcServer(
+    _in SocketServer * poIpcServer,
+    _in ThreadManager * poThreadManager
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poIpcServer);
+
+    while (false == m_fTerminationSignalEncountered)
+    {
+        // Wait for connection
+        if (true == poIpcServer->WaitForConnection(1000))
+        {
+            Socket * poSocket = poIpcServer->Accept();
+            if (nullptr != poSocket)
+            {
+                poThreadManager->CreateThread("DigitalContractPluginGroup", StartIpcThread, (void *) poSocket);
+            }
+        }
+    }
+
+    // Close Socket Server for the plugin
+    poIpcServer->Release();
+    // Wait for all threads in the group to terminate
+    poThreadManager->JoinThreadGroup("DigitalContractPluginGroup");
+}
+
+/********************************************************************************************
+ *
+ * @class DigitalContractDatabase
+ * @function HandleIpcRequest
+ * @brief Handles an incoming Ipc request and call the relevant function based on the identifier
+ * @param[in] poSocket Pointer to socket instance
+ *
+ ********************************************************************************************/
+void __thiscall DigitalContractDatabase::HandleIpcRequest(
+    _in Socket * poSocket
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poSocket);
+
+    std::vector<Byte> stlResponse;
+
+    StructuredBuffer oRequestParameters(::GetIpcTransaction(poSocket));
+
+    Dword dwTransactionType = oRequestParameters.GetDword("TransactionType");
+
+    switch (dwTransactionType)
+    {
+        default 
+        :
+            break;
+    }
+
+    // Send back the response
+    if ((0 < stlResponse.size())&&(false == ::PutIpcTransaction(poSocket, stlResponse)))
+    {
+        _ThrowBaseException("Error: Sending back Ipc response filed", nullptr);
+    }
 }
 
 /********************************************************************************************
@@ -255,21 +541,31 @@ uint64_t __thiscall DigitalContractDatabase::SubmitRequest(
     // Route to the requested resource
     if ("GET" == strVerb)
     {
-        if ("/SAIL/DigitalContract/MyDigitalContracts" == strResource)
+        if ("/SAIL/DigitalContractManager/DigitalContracts" == strResource)
         {
-            stlResponseBuffer = this->GetListOfMyDigitalContracts(c_oRequestStructuredBuffer);
+            stlResponseBuffer = this->ListDigitalContracts(c_oRequestStructuredBuffer);
         }
-
-        else if ("/SAIL/DigitalContract/WaitingDigitalContracts" == strResource)
+        else if ("/SAIL/DigitalContractManager/PullDigitalContract" == strResource)
         {
-            stlResponseBuffer = this->GetListOfWaitingDigitalContracts(c_oRequestStructuredBuffer);
+            stlResponseBuffer = this->PullDigitalContract(c_oRequestStructuredBuffer);
         }
     }
     else if ("POST" == strVerb)
     {
-        if ("/SAIL/DigitalContract/RegisterDigitalContract" == strResource)
+        if ("/SAIL/DigitalContractManager/Applications" == strResource)
         {
             stlResponseBuffer = this->RegisterDigitalContract(c_oRequestStructuredBuffer);
+        }
+    }
+    else if ("PATCH" == strVerb)
+    {
+        if ("/SAIL/DigitalContractManager/DataOwner/Accept" == strResource)
+        {
+            stlResponseBuffer = this->AcceptDigitalContract(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/DigitalContractManager/Researcher/Activate" == strResource)
+        {
+            stlResponseBuffer = this->ActivateDigitalContract(c_oRequestStructuredBuffer);
         }
     }
 
@@ -333,68 +629,46 @@ bool __thiscall DigitalContractDatabase::GetResponse(
 /********************************************************************************************
  *
  * @class DigitalContractDatabase
- * @function GetListOfMyDigitalContracts
- * @brief Send back a full list of all digital contracts associated with the users organization
+ * @function GetUserInfo
+ * @brief Take in a full EOSB and send back a StructuredBuffer containing user metadata
  * @param[in] c_oRequest contains the request body
  * @throw BaseException Error StructuredBuffer element not found
- * @returns StructuredBuffer containing list of digital contracts associated with the users organization
+ * @returns StructuredBuffer containing user metadata
  *
  ********************************************************************************************/
 
-std::vector<Byte> __thiscall DigitalContractDatabase::GetListOfMyDigitalContracts(
+std::vector<Byte> __thiscall DigitalContractDatabase::GetUserInfo(
     _in const StructuredBuffer & c_oRequest
     )
 {
     __DebugFunction();
-    // TODO: Fetch digital contract records from the database
-    // TODO: Replace call to abstract class UserAccount::GetOrganization() with call to AccountDatabase plugin
-    //       and get Organization associated with strUserUuid
 
     StructuredBuffer oResponse;
 
-    // Take in full EOSB of user
-    StructuredBuffer oEosb(c_oRequest.GetBuffer("Eosb"));
-    std::string strUserUuid = oEosb.GetString("UserUuid");
-    bool fIsImposter = oEosb.GetBoolean("IsImposter");
-    _ThrowBaseExceptionIf((true == fIsImposter), "Imposter EOSB cannot be used to get list of digital contracts.", nullptr);
+    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
 
-    // Find user
-    unsigned int unUserIndex = -1;
-    for (unsigned int unIndex = 0; ((-1 == unUserIndex) && (unIndex < m_stlUserAccounts.size())); ++unIndex)
+    StructuredBuffer oDecryptEosbRequest;
+    oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
+    oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
+
+    // Call CryptographicManager plugin to get the decrypted eosb
+    bool fSuccess = false;
+    Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+    StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+    if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
     {
-        if (strUserUuid == m_stlUserAccounts[unIndex]->GetUserUuid())
-        {
-            unUserIndex = unIndex;
-        }
+        StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
+        oResponse.PutDword("Status", 200);
+        oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
+        oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
+        oResponse.PutQword("AccessRights", oEosb.GetQword("AccessRights"));
+        fSuccess = true;
     }
-    _ThrowBaseExceptionIf((-1 == unUserIndex), "Error: User not found", nullptr);
-
-    // Generate a StructuredBuffer containing all digital contracts associated with the users organization
-    Dword wStatus = 404;
-    DigitalContract * oDigitalContract;
-    ::pthread_mutex_lock(&m_sMutex);
-    for (unsigned int unIndex = 0 ; unIndex < m_stlDigitalContracts.size(); ++unIndex)
+    // Add error code if transaction was unsuccessful
+    if (false == fSuccess)
     {
-        oDigitalContract = m_stlDigitalContracts[unIndex];
-        // Add all digital contracts whose organization is the same as the requesting user's organization to the StructuredBuffer
-        if ((oDigitalContract->GetDataOwnerOrganization() == m_stlUserAccounts[unUserIndex]->GetOrganization())||(oDigitalContract->GetResearcherOrganization() == m_stlUserAccounts[unUserIndex]->GetOrganization()))
-        {
-            StructuredBuffer oDigitalContractMetadata;
-            oDigitalContractMetadata.PutString("DataOwnerOrganization", oDigitalContract->GetDataOwnerOrganization());
-            oDigitalContractMetadata.PutString("ResearcherOrganization", oDigitalContract->GetResearcherOrganization());
-            oDigitalContractMetadata.PutString("InvolvedDatasets", oDigitalContract->GetInvolvedDatasets());
-            oDigitalContractMetadata.PutQword("CreationDate", oDigitalContract->GetCreationDate());
-            oDigitalContractMetadata.PutQword("ExpirationDate", oDigitalContract->GetExpirationDate());
-            // Add metadata of all digital contracts that associated with the users organization to response StructuredBuffer
-            oResponse.PutStructuredBuffer(oDigitalContract->GetDigitalContractUuid().c_str(), oDigitalContractMetadata);
-
-            wStatus = 200;
-        }
+        oResponse.PutDword("Status", 404);
     }
-    ::pthread_mutex_unlock(&m_sMutex);
-
-    // Add transaction status
-    oResponse.PutWord("Status", wStatus);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -402,68 +676,365 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetListOfMyDigitalContract
 /********************************************************************************************
  *
  * @class DigitalContractDatabase
- * @function GetListOfWaitingDigitalContracts
- * @brief Send back a list of all digital contracts that are in flux
+ * @function GetDigitalSignature
+ * @brief Fetch digital signature blob for the given content
  * @param[in] c_oRequest contains the request body
- * @returns StructuredBuffer containing list of all digital contracts that are in flux
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns StructuredBuffer containing the digital signature
  *
  ********************************************************************************************/
 
-std::vector<Byte> __thiscall DigitalContractDatabase::GetListOfWaitingDigitalContracts(
+std::vector<Byte> __thiscall DigitalContractDatabase::GetDigitalSignature(
     _in const StructuredBuffer & c_oRequest
     )
 {
     __DebugFunction();
-    // TODO: Fetch digital contract records from the database
 
     StructuredBuffer oResponse;
 
-    // Take in full EOSB of the caller
-    StructuredBuffer oEosb(c_oRequest.GetBuffer("Eosb"));
-    std::string strUserUuid = oEosb.GetString("UserUuid");
-    bool fIsImposter = oEosb.GetBoolean("IsImposter");
-    _ThrowBaseExceptionIf((true == fIsImposter), "Imposter EOSB cannot be used to list waiting digital contracts.", nullptr);
+    std::vector<Byte> stlContent = c_oRequest.GetBuffer("Content");
 
-    // Find user
-    unsigned int unUserIndex = -1;
-    for (unsigned int unIndex = 0; ((-1 == unUserIndex) && (unIndex < m_stlUserAccounts.size())); ++unIndex)
+    StructuredBuffer oDecryptEosbRequest;
+    oDecryptEosbRequest.PutDword("TransactionType", 0x00000004);
+    oDecryptEosbRequest.PutBuffer("MessageDigest", stlContent);
+
+    // Call CryptographicManager plugin to get the digital signature blob
+    Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+    StructuredBuffer oPluginResponse(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+    if ((0 < oPluginResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oPluginResponse.GetDword("Status")))
     {
-        if (strUserUuid == m_stlUserAccounts[unIndex]->GetUserUuid())
+        oResponse.PutStructuredBuffer("DSIG", oPluginResponse.GetStructuredBuffer("DSIG"));
+    }
+    else
+    {
+        _ThrowBaseException("Error getting digital signatures.", nullptr);
+    }
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DigitalContractDatabase
+ * @function SerializeDigitalContract
+ * @brief Serialize a digital contract structured buffer
+ * @param[in] c_oRequest contains the digital contract structured buffer
+ * @returns Serialized digital contract blob
+ *
+ ********************************************************************************************/
+ 
+ void __thiscall DigitalContractDatabase::SerializeDigitalContract(
+    _in const StructuredBuffer & c_oDc,
+    _in std::vector<Byte> & stlDigitalContractBlob
+    )
+{
+    __DebugFunction();
+
+    // The format of the digital contract blob is:
+    //
+    // +------------------------------------------------------------------------------------+
+    // | [Qword] 0xF62DE0021B48A123                                                                 |
+    // +------------------------------------------------------------------------------------+
+    // | [uint32_t] SizeInBytesOfDigitalContractStructuredBuffer                                    |
+    // +------------------------------------------------------------------------------------+
+    // | [SizeInBytesOfDigitalContractStructuredBuffer] DigitalContractStructuredBuffer             |
+    // +------------------------------------------------------------------------------------+
+    // | [Qword] 0xFFFFFFFFFFFFFFFF                                                                 |
+    // +------------------------------------------------------------------------------------+
+    // | [uint32_t] SizeInBytesOfDOORootKeyDSIG                                                     |
+    // +------------------------------------------------------------------------------------+
+    // | [uint32_t] SizeInBytesOfRORootKeyDSIG                                                      |
+    // +------------------------------------------------------------------------------------+
+    // | [SizeInBytesOfDOORootKeyDSIG] DOORootKeyDSIG                                               |
+    // +------------------------------------------------------------------------------------+
+    // | [SizeInBytesOfRORootKeyDSIG] RORootKeyDSIG                                                 |
+    // +------------------------------------------------------------------------------------+
+    // | [Qword] 0xFFFFFFFFFFFFFFFF                                                                 |
+    // +------------------------------------------------------------------------------------+
+    // | [uint32_t] SizeInBytesOfSailDSIG                                                           |
+    // +------------------------------------------------------------------------------------+
+    // | [SizeInBytesOfSailDSIG] SailDSIG                                                           |
+    // +------------------------------------------------------------------------------------+
+    // | [Qword] 0x321A84B1200ED26F                                                                 |
+    // +------------------------------------------------------------------------------------+
+
+    uint32_t unSizeInBytesOfDigitalContractStructuredBuffer = c_oDc.GetSerializedBufferRawDataSizeInBytes();
+    // Calculate size of the digital contract blob up to the first marker
+    const unsigned int unSizeOfDcBlobFirstPart = sizeof(Qword) + sizeof(uint32_t) + unSizeInBytesOfDigitalContractStructuredBuffer + sizeof(Qword);
+    stlDigitalContractBlob.resize(unSizeOfDcBlobFirstPart);
+    Byte * pbSerializedBuffer = (Byte *) stlDigitalContractBlob.data();
+    *((Qword *) pbSerializedBuffer) = 0xF62DE0021B48A123;
+    pbSerializedBuffer += sizeof(Qword);
+    *((uint32_t *) pbSerializedBuffer) =(uint32_t) unSizeInBytesOfDigitalContractStructuredBuffer;
+    pbSerializedBuffer += sizeof(uint32_t);
+    if (0 < unSizeInBytesOfDigitalContractStructuredBuffer)
+    {
+        ::memcpy((void *) pbSerializedBuffer, (const void *) c_oDc.GetSerializedBufferRawDataPtr(), unSizeInBytesOfDigitalContractStructuredBuffer);
+        pbSerializedBuffer += unSizeInBytesOfDigitalContractStructuredBuffer;
+    }
+    *((Qword *) pbSerializedBuffer) = 0xFFFFFFFFFFFFFFFF;
+    pbSerializedBuffer += sizeof(Qword);
+    // TODO: calculate digital signatures for the real root keys of DOO, RO, and Sail
+    StructuredBuffer oContent;
+    oContent.PutBuffer("Content", stlDigitalContractBlob);
+    // Get DOO root key digital signature
+    StructuredBuffer oDOORootKeyDsig = StructuredBuffer(this->GetDigitalSignature(oContent)).GetStructuredBuffer("DSIG");
+    StructuredBuffer oRORootKeyDsig = StructuredBuffer(this->GetDigitalSignature(oContent)).GetStructuredBuffer("DSIG");
+    // Calculate size of the digital contract blob up to the second marker
+    unsigned int unSizeInBytesOfDOORootKeyDSIG = oDOORootKeyDsig.GetSerializedBufferRawDataSizeInBytes();
+    unsigned int unSizeInBytesOfRORootKeyDSIG = oRORootKeyDsig.GetSerializedBufferRawDataSizeInBytes();
+    const unsigned int unSizeOfDcBlobSecondPart = sizeof(uint32_t) + sizeof(uint32_t) + unSizeInBytesOfDOORootKeyDSIG + unSizeInBytesOfRORootKeyDSIG + sizeof(Qword);
+    stlDigitalContractBlob.resize(unSizeOfDcBlobFirstPart + unSizeOfDcBlobSecondPart);
+    pbSerializedBuffer = (Byte *) (stlDigitalContractBlob.data() + unSizeOfDcBlobFirstPart);
+    *((uint32_t *) pbSerializedBuffer) =(uint32_t) unSizeInBytesOfDOORootKeyDSIG;
+    pbSerializedBuffer += sizeof(uint32_t);
+    *((uint32_t *) pbSerializedBuffer) =(uint32_t) unSizeInBytesOfRORootKeyDSIG;
+    pbSerializedBuffer += sizeof(uint32_t);
+    if (0 < unSizeInBytesOfDOORootKeyDSIG)
+    {
+        ::memcpy((void *) pbSerializedBuffer, (const void *) oDOORootKeyDsig.GetSerializedBufferRawDataPtr(), unSizeInBytesOfDOORootKeyDSIG);
+        pbSerializedBuffer += unSizeInBytesOfDOORootKeyDSIG;
+    }
+    if (0 < unSizeInBytesOfRORootKeyDSIG)
+    {
+        ::memcpy((void *) pbSerializedBuffer, (const void *) oRORootKeyDsig.GetSerializedBufferRawDataPtr(), unSizeInBytesOfRORootKeyDSIG);
+        pbSerializedBuffer += unSizeInBytesOfRORootKeyDSIG;
+    }
+    *((Qword *) pbSerializedBuffer) = 0xFFFFFFFFFFFFFFFF;
+    pbSerializedBuffer += sizeof(Qword);
+    // Get Sail digital signature
+    oContent.PutBuffer("Content", stlDigitalContractBlob);
+    StructuredBuffer oSailDsig = StructuredBuffer(this->GetDigitalSignature(oContent)).GetStructuredBuffer("DSIG");
+    // Calculate size of the digital contract blob up to the footer
+    unsigned int unSizeInBytesOfSailDSIG = oSailDsig.GetSerializedBufferRawDataSizeInBytes();
+    const unsigned int unSizeOfDcBlobThirdPart = sizeof(uint32_t) + unSizeInBytesOfSailDSIG + sizeof(Qword);
+    stlDigitalContractBlob.resize(unSizeOfDcBlobFirstPart + unSizeOfDcBlobSecondPart + unSizeOfDcBlobThirdPart);
+    pbSerializedBuffer = (Byte *) (stlDigitalContractBlob.data() + unSizeOfDcBlobFirstPart + unSizeOfDcBlobSecondPart);
+    *((uint32_t *) pbSerializedBuffer) =(uint32_t) unSizeInBytesOfSailDSIG;
+    pbSerializedBuffer += sizeof(uint32_t);
+    if (0 < unSizeInBytesOfSailDSIG)
+    {
+        ::memcpy((void *) pbSerializedBuffer, (const void *) oSailDsig.GetSerializedBufferRawDataPtr(), unSizeInBytesOfSailDSIG);
+        pbSerializedBuffer += unSizeInBytesOfSailDSIG;
+    }
+    *((Qword *) pbSerializedBuffer) = 0x321A84B1200ED26F;
+}
+
+/********************************************************************************************
+ *
+ * @class DigitalContractDatabase
+ * @function DeserializeDigitalContract
+ * @brief Deserialize a digital contract blob
+ * @param[in] c_oRequest contains the serialized digital contract 
+ * @returns Deserialized digital contract structured buffer
+ *
+ ********************************************************************************************/
+ 
+ StructuredBuffer __thiscall DigitalContractDatabase::DeserializeDigitalContract(
+    _in const std::vector<Byte> c_stlDcBlob
+    )
+{
+    __DebugFunction();
+
+    // The format of the digital contract blob is:
+    //
+    // +------------------------------------------------------------------------------------+
+    // | [Qword] 0xF62DE0021B48A123                                                                 |
+    // +------------------------------------------------------------------------------------+
+    // | [uint32_t] SizeInBytesOfDigitalContractStructuredBuffer                                    |
+    // +------------------------------------------------------------------------------------+
+    // | [SizeInBytesOfDigitalContractStructuredBuffer] DigitalContractStructuredBuffer             |
+    // +------------------------------------------------------------------------------------+
+    // | [Qword] 0xFFFFFFFFFFFFFFFF                                                                 |
+    // +------------------------------------------------------------------------------------+
+    // | [uint32_t] SizeInBytesOfDOORootKeyDSIG                                                     |
+    // +------------------------------------------------------------------------------------+
+    // | [uint32_t] SizeInBytesOfRORootKeyDSIG                                                      |
+    // +------------------------------------------------------------------------------------+
+    // | [SizeInBytesOfDOORootKeyDSIG] DOORootKeyDSIG                                               |
+    // +------------------------------------------------------------------------------------+
+    // | [SizeInBytesOfRORootKeyDSIG] RORootKeyDSIG                                                 |
+    // +------------------------------------------------------------------------------------+
+    // | [Qword] 0xFFFFFFFFFFFFFFFF                                                                 |
+    // +------------------------------------------------------------------------------------+
+    // | [uint32_t] SizeInBytesOfSailDSIG                                                           |
+    // +------------------------------------------------------------------------------------+
+    // | [SizeInBytesOfSailDSIG] SailDSIG                                                           |
+    // +------------------------------------------------------------------------------------+
+    // | [Qword] 0x321A84B1200ED26F                                                                 |
+    // +------------------------------------------------------------------------------------+
+    std::vector<Byte> stlSsb;
+    unsigned int unResizeSize = 0;
+    const Byte * pbCurrentByte = (Byte *) c_stlDcBlob.data();
+    _ThrowBaseExceptionIf((0xF62DE0021B48A123 != *((Qword *) pbCurrentByte)), "Invalid serialization format: EXPECTED [HEADER] = 0xF62DE0021B48A123 but got 0x%016X", *((Qword *) pbCurrentByte));
+    pbCurrentByte += sizeof(Qword);
+    unsigned int unSizeInBytesOfDigitalContractStructuredBuffer = *((uint32_t *) pbCurrentByte);
+    pbCurrentByte += sizeof(uint32_t);
+    unResizeSize = unSizeInBytesOfDigitalContractStructuredBuffer;
+    if (0 < unSizeInBytesOfDigitalContractStructuredBuffer)
+    {
+        stlSsb.resize(unResizeSize);
+        ::memcpy((void *) stlSsb.data(), (const void *) pbCurrentByte, unSizeInBytesOfDigitalContractStructuredBuffer);
+        pbCurrentByte += unSizeInBytesOfDigitalContractStructuredBuffer;
+    }
+    _ThrowBaseExceptionIf((0xFFFFFFFFFFFFFFFF != *((Qword *) pbCurrentByte)), "Invalid serialization format: EXPECTED [MARKER] = 0xFFFFFFFFFFFFFFFF but got 0x%016X", *((Qword *) pbCurrentByte));
+    pbCurrentByte += sizeof(Qword);
+    unsigned int unSizeInBytesOfDOORootKeyDSIG = *((uint32_t *) pbCurrentByte);
+    pbCurrentByte += sizeof(uint32_t);
+    unsigned int unSizeInBytesOfRORootKeyDSIG = *((uint32_t *) pbCurrentByte);
+    pbCurrentByte += sizeof(uint32_t);
+    if (0 < unSizeInBytesOfDOORootKeyDSIG)
+    {
+        stlSsb.resize(unResizeSize + unSizeInBytesOfDOORootKeyDSIG);
+        ::memcpy((void *) (stlSsb.data() + unResizeSize), (const void *) pbCurrentByte, unSizeInBytesOfDOORootKeyDSIG);
+        pbCurrentByte += unSizeInBytesOfDOORootKeyDSIG;
+    }
+    unResizeSize += unSizeInBytesOfDOORootKeyDSIG;
+    if (0 < unSizeInBytesOfRORootKeyDSIG)
+    {
+        stlSsb.resize(unResizeSize + unSizeInBytesOfRORootKeyDSIG);
+        ::memcpy((void *) (stlSsb.data() + unResizeSize), (const void *) pbCurrentByte, unSizeInBytesOfRORootKeyDSIG);
+        pbCurrentByte += unSizeInBytesOfRORootKeyDSIG;
+    }
+    unResizeSize += unSizeInBytesOfRORootKeyDSIG;
+    _ThrowBaseExceptionIf((0xFFFFFFFFFFFFFFFF != *((Qword *) pbCurrentByte)), "Invalid serialization format: EXPECTED [MARKER] = 0xFFFFFFFFFFFFFFFF but got 0x%016X", *((Qword *) pbCurrentByte));
+    pbCurrentByte += sizeof(Qword);
+    unsigned int unSizeInBytesOfSailDSIG = *((uint32_t *) pbCurrentByte);
+    pbCurrentByte += sizeof(uint32_t);
+    if (0 < unSizeInBytesOfSailDSIG)
+    {
+        stlSsb.resize(unResizeSize + unSizeInBytesOfSailDSIG);
+        ::memcpy((void *) (stlSsb.data() + unResizeSize), (const void *) pbCurrentByte, unSizeInBytesOfSailDSIG);
+        pbCurrentByte += unSizeInBytesOfSailDSIG;
+    }
+    _ThrowBaseExceptionIf((0x321A84B1200ED26F != *((Qword *) pbCurrentByte)), "Invalid serialization format: EXPECTED [FOOTER] = 0x321A84B1200ED26F but got 0x%016X", *((Qword *) pbCurrentByte));
+    
+    return StructuredBuffer(stlSsb);
+}
+
+/********************************************************************************************
+ *
+ * @class DigitalContractDatabase
+ * @function ListDigitalContracts
+ * @brief Fetch list of all digital contracts associated with the user's organization
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns StructuredBuffer containing list of digital contracts associated with the user's organization
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DigitalContractDatabase::ListDigitalContracts(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    // Get user information to check if the user is a digital contract admin or database admin
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
+    {
+        // Make a Tls connection with the database portal
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        // Create a request to list all the digital contracts for the user organization in the database
+        StructuredBuffer oRequest;
+        oRequest.PutString("PluginName", "DatabaseManager");
+        oRequest.PutString("Verb", "GET");
+        oRequest.PutString("Resource", "/SAIL/DatabaseManager/ListDigitalContracts");
+        oRequest.PutString("UserOrganization", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+        // Send request packet
+        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+        // Read header and body of the response
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+        StructuredBuffer oDatabaseResponse(stlResponse);
+        if (404 != oDatabaseResponse.GetDword("Status"))
         {
-            unUserIndex = unIndex;
+            StructuredBuffer oDigitalContracts = oDatabaseResponse.GetStructuredBuffer("DigitalContracts");
+            for (std::string strDcGuid : oDigitalContracts.GetNamesOfElements())
+            {
+                StructuredBuffer oDeserializedDc = this->DeserializeDigitalContract(oDigitalContracts.GetStructuredBuffer(strDcGuid.c_str()).GetBuffer("DigitalContractBlob"));
+                oDigitalContracts.PutStructuredBuffer(strDcGuid.c_str(), oDeserializedDc);
+            }
+            dwStatus = 200;
+            oResponse.PutStructuredBuffer("DigitalContracts", oDigitalContracts);
         }
     }
-    _ThrowBaseExceptionIf((-1 == unUserIndex), "Error: User not found", nullptr);
 
-    // Generate a StructuredBuffer containing metadata of all digital contracts that are in flux
-    Dword wStatus = 404;
-    DigitalContract * oDigitalContract;
-    ::pthread_mutex_lock(&m_sMutex);
-    for (unsigned int unIndex = 0 ; unIndex < m_stlDigitalContracts.size(); ++unIndex)
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DigitalContractDatabase
+ * @function PullDigitalContract
+ * @brief Fetch the digital contract information
+ * @param[in] c_oRequest contains the digital contract guid
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns StructuredBuffer containing the digital contract information
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DigitalContractDatabase::PullDigitalContract(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    // Get user information to check if the user is a digital contract admin or database admin
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
     {
-        oDigitalContract = m_stlDigitalContracts[unIndex];
-        // Add all digital contracts whose organization is the same as the requesting user's organization to the StructuredBuffer
-        if ((oDigitalContract->GetDataOwnerOrganization() == m_stlUserAccounts[unUserIndex]->GetOrganization())||(oDigitalContract->GetResearcherOrganization() == m_stlUserAccounts[unUserIndex]->GetOrganization()))
+        if ((eDigitalContractAdmin == oUserInfo.GetQword("AccessRights")) || (eDatasetAdmin == oUserInfo.GetQword("AccessRights")))
         {
-            if (false == oDigitalContract->IsDigitalContractApproved())
-            {
-                StructuredBuffer oDigitalContractMetadata;
-                oDigitalContractMetadata.PutString("DataOwnerOrganization", oDigitalContract->GetDataOwnerOrganization());
-                oDigitalContractMetadata.PutString("ResearcherOrganization", oDigitalContract->GetResearcherOrganization());
-                oDigitalContractMetadata.PutString("InvolvedDatasets", oDigitalContract->GetInvolvedDatasets());
-                oDigitalContractMetadata.PutQword("CreationDate", oDigitalContract->GetCreationDate());
-                oDigitalContractMetadata.PutQword("ExpirationDate", oDigitalContract->GetExpirationDate());
-                // Add metadata of all digital contracts that associated with the users organization to response StructuredBuffer
-                oResponse.PutStructuredBuffer(oDigitalContract->GetDigitalContractUuid().c_str(), oDigitalContractMetadata);
+            // Make a Tls connection with the database portal
+            TlsNode * poTlsNode = nullptr;
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to get the digital contract information
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "GET");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/PullDigitalContract");
+            oRequest.PutString("DigitalContractGuid", c_oRequest.GetString("DigitalContractGuid"));
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
 
-                wStatus = 200;
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (404 != oDatabaseResponse.GetDword("Status"))
+            {
+                std::vector<Byte> stlDcBlob = oDatabaseResponse.GetStructuredBuffer("DigitalContract").GetBuffer("DigitalContractBlob");
+                // Deserialize the Digital contract blob and get the DC information structured buffer
+                oResponse.PutStructuredBuffer("DigitalContract", this->DeserializeDigitalContract(stlDcBlob));
+                dwStatus = 200;
             }
         }
     }
-    ::pthread_mutex_unlock(&m_sMutex);
 
-    // Add transaction status
-    oResponse.PutWord("Status", wStatus);
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -472,10 +1043,10 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetListOfWaitingDigitalCon
  *
  * @class DigitalContractDatabase
  * @function RegisterDigitalContract
- * @brief Take in full EOSB of a dataset admin or researcher and register the digital contract
- * @param[in] c_oRequest contains EOSB of the data owner and the digital contract information
+ * @brief Take in full EOSB and register a digital contract
+ * @param[in] c_oRequest contains the digital contract information
  * @throw BaseException Error StructuredBuffer element not found
- * @returns Request status
+ * @returns transaction status
  *
  ********************************************************************************************/
 
@@ -484,59 +1055,236 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
     )
 {
     __DebugFunction();
-    // TODO: save digital contract record in the database
-    // TODO: Replace call to abstract class UserAccount function calls with call to AccountDatabase plugin
-    //       and get UserAccount associated with strUserUuid
+
+    // TODO: Get data owner organization associated with the dataset guid from DatasetManager plugin 
 
     StructuredBuffer oResponse;
 
-    // Take in full EOSB of data owner
-    StructuredBuffer oEosb(c_oRequest.GetBuffer("Eosb"));
-    std::string strUserUuid = oEosb.GetString("UserUuid");
-    bool fIsImposter = oEosb.GetBoolean("IsImposter");
-    _ThrowBaseExceptionIf((true == fIsImposter), "Imposter EOSB cannot be used to register a digital contract.", nullptr);
-
-    // Verify that the user's TypeOfAccount is "Dataset Admin" or "Researcher"
-    bool fFound = false;
-    for (unsigned int unIndex = 0; ((false == fFound) && (unIndex < m_stlUserAccounts.size())); ++unIndex)
+    Dword dwStatus = 204;
+    // Get User guid
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
     {
-        if (strUserUuid == m_stlUserAccounts[unIndex]->GetUserUuid())
+        // Create digital contract guid
+        std::string strDcGuid = Guid(eDigitalContract).ToString(eHyphensAndCurlyBraces);
+        // Create Ssb containing Dc information
+        StructuredBuffer oSsb;
+        oSsb.PutString("VersionNumber", c_oRequest.GetString("VersionNumber"));
+        oSsb.PutString("DigitalContractGuid", strDcGuid);
+        oSsb.PutDword("ContractStage", eApplication);
+        oSsb.PutUnsignedInt64("SubscriptionDays", c_oRequest.GetUnsignedInt64("SubscriptionDays"));
+        oSsb.PutString("DatasetGuid", c_oRequest.GetString("DatasetGuid"));
+        oSsb.PutString("ROAuthorizedUser", oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces));
+        oSsb.PutString("LegalAgreement", c_oRequest.GetString("LegalAgreement"));
+        oSsb.PutUnsignedInt32("DatasetDRMMetadataSize", c_oRequest.GetUnsignedInt32("DatasetDRMMetadataSize"));
+        oSsb.PutStructuredBuffer("DatasetDRMMetadata", c_oRequest.GetStructuredBuffer("DatasetDRMMetadata"));
+        // Get digital contract blob
+        std::vector<Byte> stlDigitalContractBlob;
+        this->SerializeDigitalContract(oSsb, stlDigitalContractBlob);
+
+        // Make a Tls connection with the database portal
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        // Create a request to add a digital contract to the database
+        StructuredBuffer oRequest;
+        oRequest.PutString("PluginName", "DatabaseManager");
+        oRequest.PutString("Verb", "POST");
+        oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterDigitalContract");
+        oRequest.PutString("DigitalContractGuid", strDcGuid);
+        oRequest.PutString("ResearcherOrganization", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+        oRequest.PutString("DataOwnerOrganization", c_oRequest.GetString("DataOwnerOrganization"));
+        oRequest.PutBuffer("DigitalContractBlob", stlDigitalContractBlob);
+        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+        // Send request packet
+        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+        // Read header and body of the response
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+        // Check if DatabaseManager registered the user or not
+        StructuredBuffer oDatabaseResponse(stlResponse);
+        if (204 != oDatabaseResponse.GetDword("Status"))
         {
-            if ((true == m_stlUserAccounts[unIndex]->IsDatasetAdmin())||(true == m_stlUserAccounts[unIndex]->IsResearcher()))
+            dwStatus = 201;
+        }
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DigitalContractDatabase
+ * @function AcceptDigitalContract
+ * @brief Update the digital contract when a data owner accepts the digital contract
+ * @param[in] c_oRequest contains user Eosb, EULA accepted by the data owner, retention time, and legal agreement
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns status of the transaction and instructions of what happens next
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DigitalContractDatabase::AcceptDigitalContract(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 204;
+    // Get user information to check if the user has admin access rights
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
+    {
+        if (eDatasetAdmin == oUserInfo.GetQword("AccessRights"))
+        {
+            // Step 1: Get the digital contract blob and update the structure
+            StructuredBuffer oDcBlob(this->PullDigitalContract(c_oRequest));
+            if (200 == oDcBlob.GetDword("Status"))
             {
-                fFound = true;
-            }
-            else
-            {
-                _ThrowBaseException("Error: User is not authorized for this transaction", nullptr);
+                if (oDcBlob.GetString("DataOwnerOrganization") == oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces))
+                {
+                    StructuredBuffer oSsb(oDcBlob.GetStructuredBuffer("DigitalContract"));
+                    oSsb.PutDword("ContractStage", eApproval);
+                    oSsb.PutUnsignedInt64("RetentionTime", c_oRequest.GetUnsignedInt64("RetentionTime"));
+                    oSsb.PutString("DOOAuthorizedUser", oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces));
+                    oSsb.PutString("EulaAcceptedByDOOAuthorizedUser", c_oRequest.GetString("EULA"));
+                    oSsb.PutString("LegalAgreement", c_oRequest.GetString("LegalAgreement"));
+                    // Serialize the update digital contract blob
+                    std::vector<Byte> stlUpdatedSsb;
+                    this->SerializeDigitalContract(oSsb, stlUpdatedSsb);
+                    // Step 2: Call the database manager resource with the updated blob and update the database
+                    // Make a Tls connection with the database portal
+                    TlsNode * poTlsNode = nullptr;
+                    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                    // Create a request to update a digital contract to the database
+                    StructuredBuffer oRequest;
+                    oRequest.PutString("PluginName", "DatabaseManager");
+                    oRequest.PutString("Verb", "PATCH");
+                    oRequest.PutString("Resource", "/SAIL/DatabaseManager/Update/DigitalContract");
+                    oRequest.PutString("DigitalContractGuid", c_oRequest.GetString("DigitalContractGuid"));
+                    oRequest.PutBuffer("DigitalContractBlob", stlUpdatedSsb);
+                    std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                    // Send request packet
+                    poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                    // Read header and body of the response
+                    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                    std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+                    // Check if DatabaseManager updated the digital contract or not
+                    StructuredBuffer oDatabaseResponse(stlResponse);
+                    if (204 != oDatabaseResponse.GetDword("Status"))
+                    {
+                        dwStatus = 200;
+                        oResponse.PutString("Instructions", "Wait for activation.");
+                    }
+                }
             }
         }
     }
 
-    _ThrowBaseExceptionIf((false == fFound), "Error: User not found", nullptr);
-
-    // Get the new digital contract information
-    std::string strDataOwnerOrganization = c_oRequest.GetString("DataOwnerOrganization");
-    std::string strResearcherOrganization = c_oRequest.GetString("ResearcherOrganization");
-    std::string strInvolvedDatasets = c_oRequest.GetString("InvolvedDatasets");
-    Qword qwCreationDate = c_oRequest.GetQword("CreationDate");
-    Qword qwExpirationDate = c_oRequest.GetQword("ExpirationDate");
-
-    // Generate a UUID for the new digital contract
-    Guid oDigitalContractGuid;
-    std::string strDigitalContractUuid = oDigitalContractGuid.ToString(eHyphensAndCurlyBraces);
-
-    // Create a new digital contract record
-    DigitalContract * oDigitalContract = new DigitalContract(strDigitalContractUuid, strDataOwnerOrganization, strResearcherOrganization, strInvolvedDatasets, qwCreationDate, qwExpirationDate);
-
-    // Add new digital contract record to the vector container
-    ::pthread_mutex_lock(&m_sMutex);
-    m_stlDigitalContracts.push_back(oDigitalContract);
-    ::pthread_mutex_unlock(&m_sMutex);
-
-    // Send back status and digital contract uuid
-    oResponse.PutWord("Status", 200);
-    oResponse.PutString("DigitalContractUuid", strDigitalContractUuid);
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }
+
+/********************************************************************************************
+ *
+ * @class DigitalContractDatabase
+ * @function ActivateDigitalContract
+ * @brief Update the digital contract when a researcher accepts the DC terms from the Data owner organization
+ * @param[in] c_oRequest contains user Eosb, EULA accepted by the data owner
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns status of the transaction and instructions of what happens next
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DigitalContractDatabase::ActivateDigitalContract(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 204;
+    // Get user information to check if the user has admin access rights
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
+    {
+        if (eDigitalContractAdmin == oUserInfo.GetQword("AccessRights"))
+        {
+            // Step 1: Get the digital contract blob and update the structure
+            StructuredBuffer oDcBlob(this->PullDigitalContract(c_oRequest));
+            if (oDcBlob.GetString("ResearcherOrganization") == oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces))
+            {
+                if (200 == oDcBlob.GetDword("Status"))
+                {
+                    StructuredBuffer oSsb(oDcBlob.GetStructuredBuffer("DigitalContract"));
+                    if (eApproval == oSsb.GetDword("ContractStage"))
+                    {
+                        uint64_t unActivationTime = ::GetEpochTimeInSeconds();
+                        oSsb.PutUnsignedInt64("ActivationTime", unActivationTime);
+                        // Calculate expiration time
+                        uint64_t unSubscriptionDays = oSsb.GetUnsignedInt64("SubscriptionDays");
+                        uint64_t unExpirationTime = unActivationTime + (unSubscriptionDays * 24 * 60 * 60);
+                        oSsb.PutUnsignedInt64("ExpirationTime", unExpirationTime);
+                        oSsb.PutDword("ContractStage", eActive);
+                        oSsb.PutString("ROAuthorizedUser", oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces));
+                        oSsb.PutString("EulaAcceptedByROAuthorizedUser", c_oRequest.GetString("EULA"));
+                        // Serialize the update digital contract blob
+                        std::vector<Byte> stlUpdatedSsb;
+                        this->SerializeDigitalContract(oSsb, stlUpdatedSsb);
+                        // Step 2: Call the database manager resource with the updated blob and update the database
+                        // Make a Tls connection with the database portal
+                        TlsNode * poTlsNode = nullptr;
+                        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                        // Create a request to update digital contract in the database
+                        StructuredBuffer oRequest;
+                        oRequest.PutString("PluginName", "DatabaseManager");
+                        oRequest.PutString("Verb", "PATCH");
+                        oRequest.PutString("Resource", "/SAIL/DatabaseManager/Update/DigitalContract");
+                        oRequest.PutString("DigitalContractGuid", c_oRequest.GetString("DigitalContractGuid"));
+                        oRequest.PutBuffer("DigitalContractBlob", stlUpdatedSsb);
+                        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                        // Send request packet
+                        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                        // Read header and body of the response
+                        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+                        // Check if DatabaseManager updated the digital contract or not
+                        StructuredBuffer oDatabaseResponse(stlResponse);
+                        if (204 != oDatabaseResponse.GetDword("Status"))
+                        {
+                            dwStatus = 200;
+                            oResponse.PutString("Instructions", "Wait for VM activation.");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+

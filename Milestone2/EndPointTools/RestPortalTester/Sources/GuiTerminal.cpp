@@ -31,6 +31,11 @@ std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strCyan + "6- Register a virtual machine and its leaf events\n" +
             oFontColor.strCyan + "7- Get list of all events of the organization\n" +
             oFontColor.strCyan + "8- Get list of events for a specified parent\n" +
+            oFontColor.strBlue + "9- Register a digital contract\n" +
+            oFontColor.strBlue + "10- Get list of all digital contracts of your organization\n" +
+            oFontColor.strBlue + "11- Pull a digital contract - Dataset Admin or Digital Contract Admin privileges required\n" +
+            oFontColor.strBlue + "12- Approve a digital contract - Dataset Admin privileges required\n" +
+            oFontColor.strBlue + "13- Activate a digital contract - Digital Contract Admin privileges required\n" +
             oFontColor.strYellow + "0- Logout\n";
 
 /********************************************************************************************/
@@ -56,12 +61,12 @@ void __stdcall ShowErrorMessage(
 /********************************************************************************************/
 
 void __stdcall ShowSuccessMessage(
-  _in std::string strErrorMessage
+  _in std::string strSuccessMessage
   ) throw()
 {
     __DebugFunction();
 
-    std::cout << oFontColor.strGreen << strErrorMessage << std::endl;
+    std::cout << oFontColor.strGreen << strSuccessMessage << std::endl;
 }
 
 /********************************************************************************************/

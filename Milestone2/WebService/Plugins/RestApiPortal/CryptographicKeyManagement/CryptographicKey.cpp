@@ -529,3 +529,53 @@ void __thiscall CryptographicKey::StoreKey()
     oKeyFile.write((const char *)oStructuredBufferKey.GetSerializedBufferRawDataPtr(), oStructuredBufferKey.GetSerializedBufferRawDataSizeInBytes());
     oKeyFile.close();
 }
+
+/********************************************************************************************
+ *
+ * @class CryptographicKey
+ * @function GetPublicKeyPEM
+ * @brief Get x509 public key certificate (PEM) of the public key used to verify this signature
+ * @param[in] c_oKeyGuid Signature key
+ * @return string representing the PEM used
+ *
+ ********************************************************************************************/
+
+std::string __thiscall CryptographicKey::GetPublicKeyPEM(void)
+{
+    __DebugFunction();
+
+    std::string strPemPublicKey;
+
+    std::ifstream oKeyFile(m_oKeyGuid.ToString(eRaw)+".key", std::ios::binary | std::ios::ate);
+    std::streamsize size = oKeyFile.tellg();
+    _ThrowBaseExceptionIf((0 >= size), "No stored key found", nullptr);
+    oKeyFile.seekg(0, std::ios::beg);
+
+    std::vector<char> stlFileData(size);
+
+    if (oKeyFile.read(stlFileData.data(), size))
+    {
+        StructuredBuffer oStructuredBufferKey((unsigned char *)stlFileData.data(), size);
+        std::string strKeySpec = oStructuredBufferKey.GetString("KeySpec");
+        KeySpec eKeySpec = ::GetKeySpecFromString(strKeySpec);
+
+        if ((eKeySpec == KeySpec::eAES128) || (eKeySpec == KeySpec::eAES256) || (eKeySpec == KeySpec::ePDKDF2))
+        {
+            _ThrowBaseException("Invalid key spec used.", nullptr);
+        }
+        else if ((eKeySpec == KeySpec::eRSA2048) || (eKeySpec == KeySpec::eRSA3076) || (eKeySpec == KeySpec::eRSA4096) || (eKeySpec == KeySpec::eECC384))
+        {
+            strPemPublicKey = oStructuredBufferKey.GetString("PublicKey");
+        }
+        else
+        {
+            _ThrowBaseException("Invalid KeySpec in key file", nullptr);
+        }
+    }
+    else
+    {
+        _ThrowBaseException("No stored key found.", nullptr);
+    }
+
+    return strPemPublicKey;
+}

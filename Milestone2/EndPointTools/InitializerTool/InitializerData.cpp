@@ -73,6 +73,7 @@ InitializerData::~InitializerData(void)
 /********************************************************************************************/
 
 bool __thiscall InitializerData::Login(
+    _in const std::string c_strWebServiceIp,
     _in const std::string strUserEmail,
     _in const std::string strPassword
     )
@@ -83,7 +84,7 @@ bool __thiscall InitializerData::Login(
 
     try
     {
-        const std::string strLoginResponse = this->SendSaasRequest("POST", "AuthenticationManager/User/Login?Email="+ strUserEmail + "&Password="+ strPassword, "");
+        const std::string strLoginResponse = this->SendSaasRequest(c_strWebServiceIp, "POST", "AuthenticationManager/User/Login?Email="+ strUserEmail + "&Password="+ strPassword, "");
         StructuredBuffer oRestResponse = JsonValue::ParseDataToStructuredBuffer(strLoginResponse.substr(strLoginResponse.find_last_of("\r\n\r\n")).c_str());
         m_stlEncryptedOpaqueSessionBlob = oRestResponse.GetString("Eosb");
         fSuccess = true;
@@ -199,6 +200,7 @@ bool __thiscall InitializerData::InitializeNode(
 /********************************************************************************************/
 
 std::string __thiscall InitializerData::SendSaasRequest(
+    _in const std::string & c_strWebserviceIp,
     _in const std::string c_strVerb,
     _in const std::string c_strResource,
     _in const std::string & c_strBody
@@ -208,11 +210,11 @@ std::string __thiscall InitializerData::SendSaasRequest(
 
     std::string strResponseString;
     std::string strRestRequestHeader = c_strVerb + " /SAIL/" + c_strResource + " HTTP/1.1\r\n"
-                                       "Host: 127.0.0.1:6200" + "\r\n"
+                                       "Host: " + c_strWebserviceIp + ":6200" + "\r\n"
                                        "Content-Length: " + std::to_string(c_strBody.length()) + "\r\n\r\n";
 
     std::string strRestRequest = strRestRequestHeader + c_strBody + "\r\n\r\n";
-    std::unique_ptr<TlsNode> poTlsNode(::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT));
+    std::unique_ptr<TlsNode> poTlsNode(::TlsConnectToNetworkSocket(c_strWebserviceIp.c_str(), SERVER_PORT));
     poTlsNode->Write((const Byte *)strRestRequest.c_str(), strRestRequest.length());
 
     std::vector<Byte> oResponseByte = poTlsNode->Read(1, 5000);

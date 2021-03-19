@@ -45,6 +45,7 @@ class InitializerData : public Object
         virtual ~InitializerData(void);
        
         bool __thiscall Login(
+            _in const std::string c_strWebServiceIp,
             _in const std::string strUsername,
             _in const std::string strPassword
             );
@@ -82,6 +83,7 @@ class InitializerData : public Object
         // Private methods
         bool __thiscall GetImposterEncryptedOpaqueSessionBlob(void);
         std::string __thiscall SendSaasRequest(
+            _in const std::string & c_strWebservice,
             _in const std::string c_strVerb,
             _in const std::string c_strResource,
             _in const std::string & c_strBody

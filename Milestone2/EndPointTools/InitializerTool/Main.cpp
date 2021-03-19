@@ -32,6 +32,7 @@
 
 static const char * gsc_szPrintableCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`~!@#$%^&*()_-+={[}]|\\:;\"'<,>.?/";
 static const char * gsc_szNumericCharacters = "0123456789";
+static const char * gsc_szIpAddressCharacters = "0123456789.";
 static const char * gsc_szAddRemoveNodeInputCharacters = "aArRdD";
 static const char * gsc_szYesNoInputCharacters = "yYnN";
 
@@ -79,7 +80,8 @@ static void __stdcall PrintHeader(
 /********************************************************************************************/
 
 static void __stdcall PromptForCredentials(
-    _inout InitializerData & oInitializerData
+    _inout InitializerData & oInitializerData,
+    _in const std::string & c_strWebServiceIpAddress
     )
 {
     __DebugFunction();
@@ -102,7 +104,7 @@ static void __stdcall PromptForCredentials(
             // Fetch user credentials
             std::string strUserEmail = ::GetStringInput("Email : ", 64, false, gsc_szPrintableCharacters);
             std::string strPassword = ::GetStringInput("Password : ", 64, true, gsc_szPrintableCharacters);
-            fSuccess = oInitializerData.Login(strUserEmail, strPassword);
+            fSuccess = oInitializerData.Login(c_strWebServiceIpAddress, strUserEmail, strPassword);
             if (false == fSuccess)
             {
                 std::cout << "\r\033[1;31mInvalid credentials. Try again.\033[0m" << std::endl;
@@ -278,14 +280,20 @@ int __cdecl main(
 {
     __DebugFunction();
 
+
+
     try
     {
+
+        // Get the IP address of the webserices REST API server to login
+        std::string strWebServiceIpAddress = ::GetStringInput("Enter WebServices Public Ip Address: ", 64, false, gsc_szIpAddressCharacters);
+
         InitializerData oInitializerData;
 
         // The first step is to fetch and verify the login credentials. This first step
         // will ensure that the oInitializerData object is initialized with all the
         // required credentials to continue processing
-        ::PromptForCredentials(oInitializerData);
+        ::PromptForCredentials(oInitializerData, strWebServiceIpAddress);
         // Now we fetch all of the SaaS data required to fill in the oInitializerData object. This
         // will download things like the list of digital contracts, digital certificates, the
         // imposter encrypted opaque session blob, etc...

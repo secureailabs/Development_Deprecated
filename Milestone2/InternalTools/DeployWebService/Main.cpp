@@ -60,7 +60,7 @@ std::vector<Byte> FileToBytes(
     }
     else
     {
-        _ThrowBaseException("Invalid File Path", nullptr);
+        _ThrowBaseException("Invalid File Path %s\n", c_strFileName.c_str(), nullptr);
     }
     return stlFileData;
 }
@@ -99,6 +99,9 @@ static void __stdcall CreateVirtualMachine(void)
             // Prepare the payload to send to the VM
             StructuredBuffer oPayloadToVm;
 
+            std::cout << "---------------------------------------------------------------------------------\n";
+            std::cout << "Attempting to run WebService on Virtual Machine\n";
+            std::cout << "---------------------------------------------------------------------------------\n";
             // The instruction to execute after all the files are uploaded on the VM
             oPayloadToVm.PutString("Entrypoint", "./RestApiPortal");
 
@@ -111,10 +114,10 @@ static void __stdcall CreateVirtualMachine(void)
             oFilesToPut.PutBuffer("RestApiPortal", ::FileToBytes("RestApiPortal"));
             oFilesToPut.PutBuffer("SharedLibraries/DatabasePortal/libDatabaseManager.so", ::FileToBytes("SharedLibraries/DatabasePortal/libDatabaseManager.so"));
             oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libAccountDatabase.so", ::FileToBytes("SharedLibraries/RestApiPortal/libAccountDatabase.so"));
-            oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libCryptoManagement.so", ::FileToBytes("SharedLibraries/RestApiPortal/libCryptoManagement.so"));
+            oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libCryptographicKeyManagement.so", ::FileToBytes("SharedLibraries/RestApiPortal/libCryptographicKeyManagement.so"));
             oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libDigitalContractDatabase.so", ::FileToBytes("SharedLibraries/RestApiPortal/libDigitalContractDatabase.so"));
-            oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libVmManager.so", ::FileToBytes("SharedLibraries/RestApiPortal/libVmManager.so"));
-            oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libAudiLogManager.so", ::FileToBytes("SharedLibraries/RestApiPortal/libAudiLogManager.so"));
+            // oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libVmManager.so", ::FileToBytes("SharedLibraries/RestApiPortal/libVmManager.so"));
+            oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libAuditLogManager.so", ::FileToBytes("SharedLibraries/RestApiPortal/libAuditLogManager.so"));
             oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libDatasetDatabase.so", ::FileToBytes("SharedLibraries/RestApiPortal/libDatasetDatabase.so"));
             oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libSailAuthentication.so", ::FileToBytes("SharedLibraries/RestApiPortal/libSailAuthentication.so"));
 
@@ -128,7 +131,8 @@ static void __stdcall CreateVirtualMachine(void)
 
             std::string strVmName = oAzure.ProvisionVirtualMachine(gc_strImageName, gc_strVirtualMachineSize, "WebService");
             std::string strVirtualMachinePublicIp = oAzure.GetVmIp(strVmName);
-
+            std::cout << "Virtual Machine Provisioning status: Success\n";
+            std::cout << "Virtual Machine Public IP Address: " << strVirtualMachinePublicIp << std::endl;
             // It makes sense to sleep for some time so that the VMs init process process can initialize
             // RootOfTrust process further communication.
             // TODO: This is a blocking call, make this non-blocking
@@ -140,6 +144,8 @@ static void __stdcall CreateVirtualMachine(void)
             TlsNode * oTlsNode = ::TlsConnectToNetworkSocketWithTimeout(strVirtualMachinePublicIp.c_str(), 9090, 60*1000, 2*1000);
             _ThrowIfNull(oTlsNode, "Tls connection timed out", nullptr);
 
+            std::cout << "Establishing connection with the Virtual Machine...\n";
+            fflush(stdout);
             // Send the Structured Buffer and wait 2 minutes for the initialization status
             StructuredBuffer oVmInitStatus(::PutTlsTransactionAndGetResponse(oTlsNode, oPayloadToVm.GetSerializedBuffer(), 2*60*1000));
             if ("Success" == oVmInitStatus.GetString("Status"))

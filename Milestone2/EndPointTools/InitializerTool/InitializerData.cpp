@@ -191,6 +191,8 @@ bool __thiscall InitializerData::InitializeNode(
 
     // We try to establish connection every 2 second until it is successful.
     TlsNode * poTlsNode = ::TlsConnectToNetworkSocketWithTimeout(c_strNodeAddress.c_str(), 6800, 60*1000, 2*1000);
+    _ThrowIfNull(poTlsNode, "Couldn't establish connection with root of trust process.", nullptr);
+
     ::PutTlsTransaction(poTlsNode, oInitializationParameters);
     poTlsNode->Release();
 
@@ -319,54 +321,87 @@ unsigned int __thiscall InitializerData::CreateVirtualMachines(void)
         std::string strVirtualMachinePublicIp;
         try
         {
-            strVmName = m_poAzure->ProvisionVirtualMachine(gc_strImageName, gc_strVirtualMachineSize, "");
-            std::cout << "|  " << strVmName << "  |";
-            ::fflush(stdout);
-            strVirtualMachinePublicIp = m_poAzure->GetVmIp(strVmName);
-            std::cout << "    " << strVirtualMachinePublicIp << "    |";
-            ::fflush(stdout);
-            std::cout << "     " << m_poAzure->GetVmProvisioningState(strVmName) << "     |";
-            ::fflush(stdout);
+            try
+            {
+                strVmName = m_poAzure->ProvisionVirtualMachine(gc_strImageName, gc_strVirtualMachineSize, "");
+                std::cout << "|  " << strVmName << "  |";
+                ::fflush(stdout);
+                strVirtualMachinePublicIp = m_poAzure->GetVmIp(strVmName);
+                std::cout << "    " << strVirtualMachinePublicIp << "    |";
+                ::fflush(stdout);
+                std::cout << "     " << m_poAzure->GetVmProvisioningState(strVmName) << "     |";
+                ::fflush(stdout);
+            }
+            catch(BaseException & oBaseException)
+            {
+                unVmCreationCounter--;
+                // Cleanup any residue
+                if (0 != strVmName.length())
+                {
+                    m_poAzure->DeleteVirtualMachine(strVmName);
+                }
+                _ThrowBaseException("to provision Virtual Machine. Error: %s. Retrying.", oBaseException.GetExceptionMessage(), nullptr);
+            }
 
             // It makes sense to sleep for some time so that the VMs init process process can initialize
             // RootOfTrust process further communication.
             // TODO: This is a blocking call, make this non-blocking
             m_poAzure->WaitToRun(strVmName);
 
-            // Establish a connection with a cron process running on the newly created VM
-            // We are using a Connect call with a timeout so that in case the VM stub has not yet
-            // initialized and opened a port for connection, we can try again every 2 second.
-            TlsNode * oTlsNode = ::TlsConnectToNetworkSocketWithTimeout(strVirtualMachinePublicIp.c_str(), 9090, 60*1000, 2*1000);
-            _ThrowIfNull(oTlsNode, "Tls connection timed out", nullptr);
+            try
+            {
+                // Establish a connection with a cron process running on the newly created VM
+                // We are using a Connect call with a timeout so that in case the VM stub has not yet
+                // initialized and opened a port for connection, we can try again every 2 second.
+                TlsNode * oTlsNode = ::TlsConnectToNetworkSocketWithTimeout(strVirtualMachinePublicIp.c_str(), 9090, 60*1000, 2*1000);
+                _ThrowIfNull(oTlsNode, "Tls connection timed out", nullptr);
 
-            // Send the Structured Buffer and wait 2 minutes for the initialization status
-            StructuredBuffer oVmInitStatus(::PutTlsTransactionAndGetResponse(oTlsNode, oPayloadToVm.GetSerializedBuffer(), 2*60*1000));
-            if ("Success" == oVmInitStatus.GetString("Status"))
-            {
-                std::cout << "     " << "Success" << "     |" << std::endl;
-            }
-            else
-            {
-                // In case the Platform Initialization fails on the VM, delete the VM.
-                std::cout << "     " << "Failure" << "     |" << std::endl;
-                m_poAzure->DeleteVirtualMachine(strVmName);
+                // Send the Structured Buffer and wait 2 minutes for the initialization status
+                StructuredBuffer oVmInitStatus(::PutTlsTransactionAndGetResponse(oTlsNode, oPayloadToVm.GetSerializedBuffer(), 2*60*1000));
+                if ("Success" == oVmInitStatus.GetString("Status"))
+                {
+                    std::cout << "      " << "Success" << "      |" << std::endl;
+                }
+                else
+                {
+                    // In case the Platform Initialization fails on the VM, delete the VM.
+                    std::cout << "     " << "Failure" << "     |" << std::endl;
+                    m_poAzure->DeleteVirtualMachine(strVmName);
+                    oTlsNode->Release();
+                    _ThrowBaseException("Platform initialization on VM failed with the error: %s. Deleting the VM..", oVmInitStatus.GetString("Error") ,nullptr);
+                }
                 oTlsNode->Release();
-                _ThrowBaseException("Platform initialization on VM failed with the error: %s. Deleting the VM..", oVmInitStatus.GetString("Error") ,nullptr);
+                ::fflush(stdout);
             }
-            ::fflush(stdout);
-            // Once the VM is up and installed it is naked and waits for the initialization data
-            // for the root of trust to configure the Virtual Machine
-            // It makes sense to sleep for some time so that the RootOfTrust process can initialize
-            // open socket for further communication.
-            this->InitializeNode(strVirtualMachinePublicIp);
+            catch(const BaseException & oBaseException)
+            {
+                unVmCreationCounter--;
+                // Cleanup any residue
+                m_poAzure->DeleteVirtualMachine(strVmName);
+                _ThrowBaseException("to upload files to the Virtual Machine. Error %s. Retrying.", oBaseException.GetExceptionMessage());
+            }
+
+            try
+            {
+                // Once the VM is up and installed it is naked and waits for the initialization data
+                // for the root of trust to configure the Virtual Machine
+                // It makes sense to sleep for some time so that the RootOfTrust process can initialize
+                // open socket for further communication.
+                this->InitializeNode(strVirtualMachinePublicIp);
+            }
+            catch(const BaseException & oBaseException)
+            {
+                unVmCreationCounter--;
+                // Cleanup any residue
+                m_poAzure->DeleteVirtualMachine(strVmName);
+                _ThrowBaseException("to send initialization data to Root Of Trust. Error %s. Retrying.", oBaseException.GetExceptionMessage());
+            }
 
             unNumberOfVmCreated++;
-
-            oTlsNode->Release();
         }
         catch(BaseException & oBaseException)
         {
-            std::cout << "VM Initialization failed. Error: " << oBaseException.GetExceptionMessage() << std::endl;
+            std::cout << "Failed " << oBaseException.GetExceptionMessage() << std::endl;
         }
         catch (std::exception & oException)
         {

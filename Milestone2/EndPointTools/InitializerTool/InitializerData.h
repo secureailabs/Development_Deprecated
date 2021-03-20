@@ -33,7 +33,7 @@ const std::string gc_strResourceGroup = "ComputationVmTemplate0.3_group";
 const std::string gc_strImageName = "ComputationVmTemplate0.3Image";
 const std::string gc_strVirtualNetwork = "ComputationVmTemplate0.3_group-vnet";
 const std::string gc_strNetworkSecurityGroup = "ComputationVmTemplate0.3-nsg";
-const std::string gc_strVirtualMachineSize = "Standard_B1ls";
+const std::string gc_strVirtualMachineSize = "Standard_B1ms";
 
 /********************************************************************************************/
 

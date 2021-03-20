@@ -17,6 +17,7 @@
 #include "Chronometer.h"
 
 #include <unistd.h>
+#include <iostream>
 
 /********************************************************************************************/
 
@@ -71,6 +72,7 @@ TlsNode * __stdcall TlsConnectToNetworkSocketWithTimeout(
             ::sleep(unMillesecondStepTime/1000);
         }
     }
+    _ThrowIfNull(poSocket, "Connection request timed out", nullptr);
 
     return new TlsNode(poSocket, eSSLModeClient);
 }

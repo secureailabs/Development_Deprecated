@@ -287,28 +287,12 @@ unsigned int __thiscall InitializerData::CreateVirtualMachines(void)
 
     unsigned int unNumberOfVmCreated = 0;
 
+    std::vector<Byte> stlBinariesPayload = ::FileToBytes("SecureComputationalVirtualMachine.binaries");
+    _ThrowBaseExceptionIf((0 == stlBinariesPayload.size()), "Unable to read SecureComputationalVirtualMachine.binaries file", nullptr);
+
     std::cout << "+------------------------------------+---------------------+-------------------+-------------------+" << std::endl
               << "|        Virtual Machine Name        |  Public IP Address  |   Provisioning    |  Initialization   |" << std::endl
               << "+------------------------------------+---------------------+-------------------+-------------------+" << std::endl;
-
-    // Prepare the payload to send to the VM
-    StructuredBuffer oPayloadToVm;
-    // The instruction to execute after all the files are uploaded on the VM
-    oPayloadToVm.PutString("Entrypoint", "./RootOfTrustProcess");
-
-    // Set the type of VM, either it runs Computation or WebService
-    oPayloadToVm.PutString("VirtualMachineType", "Computation");
-
-    // A nested Structured Buffer containing all the executable files
-    StructuredBuffer oFilesToPut;
-    oFilesToPut.PutBuffer("RootOfTrustProcess", ::FileToBytes("RootOfTrustProcess"));
-    oFilesToPut.PutBuffer("InitializerProcess", ::FileToBytes("InitializerProcess"));
-    oFilesToPut.PutBuffer("SignalTerminationProcess", ::FileToBytes("SignalTerminationProcess"));
-    oFilesToPut.PutBuffer("DataDomainProcess", ::FileToBytes("DataDomainProcess"));
-    oFilesToPut.PutBuffer("ComputationalDomainProcess", ::FileToBytes("ComputationalDomainProcess"));
-    oFilesToPut.PutBuffer("/usr/local/lib/python3.8/dist-packages/_DataConnector.so", ::FileToBytes("../VirtualMachine/DataConnectorPythonModule/libDataConnector.so"));
-
-    oPayloadToVm.PutStructuredBuffer("ExecutableFiles", oFilesToPut);
 
     unsigned int unVmCreationCounter = 0;
     m_poAzure->SetResourceGroup(gc_strResourceGroup);
@@ -357,7 +341,7 @@ unsigned int __thiscall InitializerData::CreateVirtualMachines(void)
                 _ThrowIfNull(oTlsNode, "Tls connection timed out", nullptr);
 
                 // Send the Structured Buffer and wait 2 minutes for the initialization status
-                StructuredBuffer oVmInitStatus(::PutTlsTransactionAndGetResponse(oTlsNode, oPayloadToVm.GetSerializedBuffer(), 2*60*1000));
+                StructuredBuffer oVmInitStatus(::PutTlsTransactionAndGetResponse(oTlsNode, stlBinariesPayload, 2*60*1000));
                 if ("Success" == oVmInitStatus.GetString("Status"))
                 {
                     std::cout << "      " << "Success" << "      |" << std::endl;

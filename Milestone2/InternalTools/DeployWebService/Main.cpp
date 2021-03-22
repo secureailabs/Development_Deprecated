@@ -96,34 +96,12 @@ static void __stdcall CreateVirtualMachine(void)
         {
             fDone = true;
 
-            // Prepare the payload to send to the VM
-            StructuredBuffer oPayloadToVm;
+            std::vector<Byte> stlBinariesPayload = ::FileToBytes("WebServicesPortal.binaries");
+            _ThrowBaseExceptionIf((0 == stlBinariesPayload.size()), "Unable to read WebServicesPortal.binaries file", nullptr);
 
             std::cout << "---------------------------------------------------------------------------------\n";
             std::cout << "Attempting to run WebService on Virtual Machine\n";
             std::cout << "---------------------------------------------------------------------------------\n";
-            // The instruction to execute after all the files are uploaded on the VM
-            oPayloadToVm.PutString("Entrypoint", "./RestApiPortal");
-
-            // Set the type of VM, either it runs Computation or WebService
-            oPayloadToVm.PutString("VirtualMachineType", "WebService");
-
-            // A nested Structured Buffer containing all the executable files
-            StructuredBuffer oFilesToPut;
-            oFilesToPut.PutBuffer("DatabaseGateway", ::FileToBytes("DatabaseGateway"));
-            oFilesToPut.PutBuffer("RestApiPortal", ::FileToBytes("RestApiPortal"));
-            oFilesToPut.PutBuffer("SharedLibraries/DatabasePortal/libDatabaseManager.so", ::FileToBytes("SharedLibraries/DatabasePortal/libDatabaseManager.so"));
-            oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libAccountDatabase.so", ::FileToBytes("SharedLibraries/RestApiPortal/libAccountDatabase.so"));
-            oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libCryptographicKeyManagement.so", ::FileToBytes("SharedLibraries/RestApiPortal/libCryptographicKeyManagement.so"));
-            oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libDigitalContractDatabase.so", ::FileToBytes("SharedLibraries/RestApiPortal/libDigitalContractDatabase.so"));
-            // oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libVmManager.so", ::FileToBytes("SharedLibraries/RestApiPortal/libVmManager.so"));
-            oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libAuditLogManager.so", ::FileToBytes("SharedLibraries/RestApiPortal/libAuditLogManager.so"));
-            oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libDatasetDatabase.so", ::FileToBytes("SharedLibraries/RestApiPortal/libDatasetDatabase.so"));
-            oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libSailAuthentication.so", ::FileToBytes("SharedLibraries/RestApiPortal/libSailAuthentication.so"));
-
-            // oFilesToPut.PutBuffer("", ::FileToBytes(""));
-
-            oPayloadToVm.PutStructuredBuffer("ExecutableFiles", oFilesToPut);
 
             unsigned int unVmCreationCounter = 0;
             oAzure.SetResourceGroup(gc_strResourceGroup);
@@ -147,7 +125,7 @@ static void __stdcall CreateVirtualMachine(void)
             std::cout << "Establishing connection with the Virtual Machine...\n";
             fflush(stdout);
             // Send the Structured Buffer and wait 2 minutes for the initialization status
-            StructuredBuffer oVmInitStatus(::PutTlsTransactionAndGetResponse(oTlsNode, oPayloadToVm.GetSerializedBuffer(), 2*60*1000));
+            StructuredBuffer oVmInitStatus(::PutTlsTransactionAndGetResponse(oTlsNode, stlBinariesPayload, 2*60*1000));
             if ("Success" == oVmInitStatus.GetString("Status"))
             {
                 std::cout << "Success" << std::endl;

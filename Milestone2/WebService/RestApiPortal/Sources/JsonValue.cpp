@@ -769,35 +769,35 @@ JsonValue * __thiscall JsonValue::ToJson(
     StructuredBuffer oJsonValueStructuredBuffer;
 
     std::vector<std::string> stlJsonKeys = poJsonValue->GetObjectKeys();
-	std::vector<std::string>::iterator itrJsonKeys = stlJsonKeys.begin();
-	while (itrJsonKeys != stlJsonKeys.end())
-	{
-		// Get the key's value.
-		JsonValue * poJsonChildValue = poJsonValue->GetObjectElementValue((*itrJsonKeys).c_str());
-		if (poJsonChildValue)
-		{
-			JsonType oType = poJsonChildValue->GetValueType();
+    std::vector<std::string>::iterator itrJsonKeys = stlJsonKeys.begin();
+    while (itrJsonKeys != stlJsonKeys.end())
+    {
+        // Get the key's value.
+        JsonValue * poJsonChildValue = poJsonValue->GetObjectElementValue((*itrJsonKeys).c_str());
+        if (poJsonChildValue)
+        {
+            JsonType oType = poJsonChildValue->GetValueType();
 
             switch(oType)
             {
-            	case eNullType
-            	:
-            		oJsonValueStructuredBuffer.PutNull((*itrJsonKeys).c_str());
-            		break;
+                case eNullType
+                :
+                    oJsonValueStructuredBuffer.PutNull((*itrJsonKeys).c_str());
+                    break;
                 case eNumberType
-            	:
+                :
                     oJsonValueStructuredBuffer.PutFloat64((*itrJsonKeys).c_str(), poJsonChildValue->GetNumberValue());
-            		break;
-            	case eBooleanType
-            	:
+                    break;
+                case eBooleanType
+                :
                     oJsonValueStructuredBuffer.PutBoolean((*itrJsonKeys).c_str(), poJsonChildValue->GetBooleanValue());
-            		break;
-            	case eStringType
-            	:
+                    break;
+                case eStringType
+                :
                     oJsonValueStructuredBuffer.PutString((*itrJsonKeys).c_str(), poJsonChildValue->GetStringValue());
-            		break;
-            	case eJsonArrayType
-            	:
+                    break;
+                case eJsonArrayType
+                :
                 {
                     // TODO: add parsing for eJsonArrayType
                     JsonArray oJsonArray = poJsonChildValue->GetJsonArrayValue();
@@ -807,46 +807,46 @@ JsonValue * __thiscall JsonValue::ToJson(
                         JsonType oArrayMemberType = oJsonArray[unIndex]->GetValueType();
                         std::string strElementName = *itrJsonKeys + std::to_string(unIndex);
                         switch(oArrayMemberType)
-            			{
-            				case eNullType
-            				:
-            					oArrayValue.PutNull(strElementName.c_str());
-            					break;
+                        {
+                            case eNullType
+                            :
+                                oArrayValue.PutNull(strElementName.c_str());
+                                break;
                             case eNumberType
-            				:
+                            :
                                 oArrayValue.PutFloat64(strElementName.c_str(), oJsonArray[unIndex]->GetNumberValue());
-            					break;
-            				case eBooleanType
-            				:
+                                break;
+                            case eBooleanType
+                            :
                                 oArrayValue.PutBoolean(strElementName.c_str(), oJsonArray[unIndex]->GetBooleanValue());
-            					break;
-            				case eStringType
-            				:
+                                break;
+                            case eStringType
+                            :
                             {
                                 oArrayValue.PutString(strElementName.c_str(), oJsonArray[unIndex]->GetStringValue());
-            					break;
+                                break;
                             }
                             case eJsonObjectType
-            				:
+                            :
                             {
                                 StructuredBuffer oObject(JsonToStructuredBuffer(oJsonArray[unIndex]));
                                 oArrayValue.PutStructuredBuffer(strElementName.c_str(), oObject);
-            					break;
+                                break;
                             }
                         }
                     }
-            		oJsonValueStructuredBuffer.PutStructuredBuffer((*itrJsonKeys).c_str(), oArrayValue);
-            		break;
+                    oJsonValueStructuredBuffer.PutStructuredBuffer((*itrJsonKeys).c_str(), oArrayValue);
+                    break;
                 }
-            	case eJsonObjectType
-            	:
+                case eJsonObjectType
+                :
                     StructuredBuffer oObjectValue(JsonToStructuredBuffer(poJsonChildValue));
                     oJsonValueStructuredBuffer.PutStructuredBuffer((*itrJsonKeys).c_str(), oObjectValue);
-            		break;
+                    break;
             }
-		}
-		itrJsonKeys++;
-	}
+        }
+        itrJsonKeys++;
+    }
 
     return oJsonValueStructuredBuffer.GetSerializedBuffer();
 }
@@ -871,9 +871,9 @@ JsonObject __stdcall JsonValue::StructuredBufferToJson(
     JsonValue * poJsonValue = nullptr;
     // Get name and type of all elements in c_oStructuredBufferObject
     std::vector<std::string> stlStructuredBufferElements = c_oStructuredBufferObject.GetDescriptionOfElements();
-	std::vector<std::string>::iterator itrStructuredBufferElements = stlStructuredBufferElements.begin();
-	while (itrStructuredBufferElements != stlStructuredBufferElements.end())
-	{
+    std::vector<std::string>::iterator itrStructuredBufferElements = stlStructuredBufferElements.begin();
+    while (itrStructuredBufferElements != stlStructuredBufferElements.end())
+    {
         // Get name and type of the element
         unsigned int unPositionOfName = (*itrStructuredBufferElements).find("Name[") + 5;
         unsigned int unPositionOfEndOfName = (*itrStructuredBufferElements).find("],Type[");
@@ -971,8 +971,8 @@ JsonObject __stdcall JsonValue::StructuredBufferToJson(
         }
         // Add the JsonValue to the JsonObject
         oJsonObject[strNameOfElement] = poJsonValue;
-		itrStructuredBufferElements++;
-	}
+        itrStructuredBufferElements++;
+    }
 
     return oJsonObject;
 }

@@ -56,6 +56,10 @@ extern std::vector<Byte> GetBasicUserInformation(
     _in const std::string & c_strEosb
     );
 
+extern std::string GetIEosb(
+    _in const std::string & c_strEosb
+    );
+
 extern std::string RegisterRootEvent(
     _in const std::string & c_strEncodedEosb,
     _in const std::string & c_strOrganizationGuid
@@ -74,7 +78,16 @@ extern bool RegisterLeafEvents(
 
 extern std::string RegisterVirtualMachine(
     _in const std::string & c_strEncodedEosb,
-    _in const std::string & c_strDcGuid,
+    _in const std::string & c_strVmGuid
+    );
+
+extern std::string RegisterVmAfterDataUpload(
+    _in const std::string & c_strEncodedEosb,
+    _in const std::string & c_strVmGuid
+    );
+
+extern std::string RegisterVmForComputation(
+    _in const std::string & c_strEncodedEosb,
     _in const std::string & c_strVmGuid
     );
 

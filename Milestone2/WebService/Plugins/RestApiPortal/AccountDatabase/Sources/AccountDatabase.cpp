@@ -870,7 +870,8 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserInfo(
         oResponse.PutDword("Status", 200);
         oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
         oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
-        oResponse.PutQword("AccessRights", oEosb.GetQword("AccessRights"));
+        // TODO: get user access rights from the confidential record, for now it can't be decrypted
+        oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
         fSuccess = true;
     }
     // Add error code if transaction was unsuccessful
@@ -946,7 +947,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
         StructuredBuffer oStatus(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oRootEvent));
         if ((0 < oStatus.GetSerializedBufferRawDataSizeInBytes())&&(201 == oStatus.GetDword("Status")))
         {
-            oResponse.PutDword("RootEventStatus", 200);
+            oResponse.PutDword("RootEventStatus", 201);
         }
         else
         {

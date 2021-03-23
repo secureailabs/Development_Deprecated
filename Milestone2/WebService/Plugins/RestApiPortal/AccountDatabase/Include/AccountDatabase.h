@@ -11,6 +11,7 @@
 #pragma once
 
 #include "DebugLibrary.h"
+#include "EntityTypes.h"
 #include "Exceptions.h"
 #include "Object.h"
 #include "PluginDictionary.h"
@@ -27,29 +28,6 @@
 #include <iostream>
 #include <map>
 #include <vector>
-
-/********************************************************************************************/
-
-typedef enum status
-{
-    eNew = 0,
-    eActive = 1,
-    eSuspended = 2,
-    eClosed = 3
-}
-AccountStatus;
-
-/********************************************************************************************/
-
-typedef enum rights
-{
-    eAdmin = 1,
-    eAuditor = 2,
-    eOrganizationUser = 3,
-    eDigitalContractAdmin = 4,
-    eDatasetAdmin = 5
-}
-AccessRights;
 
 /********************************************************************************************/
 

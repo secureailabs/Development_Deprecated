@@ -11,6 +11,7 @@
 #pragma once
 
 #include "DebugLibrary.h"
+#include "EntityTypes.h"
 #include "Exceptions.h"
 #include "Object.h"
 #include "PluginDictionary.h"
@@ -25,29 +26,6 @@
 #include <iostream>
 #include <map>
 #include <vector>
-
-/********************************************************************************************/
-
-typedef enum status
-{
-    eNew = 0,
-    eActive = 1,
-    eSuspended = 2,
-    eClosed = 3
-}
-AccountStatus;
-
-/********************************************************************************************/
-
-typedef enum rights
-{
-    eAdmin = 1,
-    eAuditor = 2,
-    eOrganizationUser = 3,
-    eDigitalContractAdmin = 4,
-    eDatasetAdmin = 5
-}
-AccessRights;
 
 /********************************************************************************************/
 
@@ -117,6 +95,11 @@ class DatabaseManager : public Object
             );
         // Fetch next sequence number from the parent event and update the parent event's next sequence number
         uint32_t __thiscall GetNextSequenceNumber(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch the virtual machine information
+        std::vector<Byte> __thiscall PullVirtualMachine(
             _in const StructuredBuffer & c_oRequest
             );
 

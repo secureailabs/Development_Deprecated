@@ -379,6 +379,12 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     // Verify the signature with the userkey and message digest
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/VerifySignature", oVerifySignature);
 
+    // TODO: Remove this resource in the future or figure out how the Initializer is going to get the IEosb
+    StructuredBuffer oGetIEosb;
+    oGetIEosb.PutStructuredBuffer("Eosb", oEosb);
+    // Get the IEosb 
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/GetIEosb", oGetIEosb);
+
     // Generate the ephemeral Keys and keep rotating them every 20 minutes and at a time keep only the
     // latest key active and it's predecessor for the grace period.
     m_unKeyRotationThreadID = poThreadManager->CreateThread(nullptr, ::ManageEphemeralKeys, nullptr);
@@ -460,6 +466,14 @@ void __thiscall CryptographicKeyManagementPlugin::HandleIpcRequest(
         :
             stlResponse = this->CreateDigitalSignature(oRequestParameters);
             break;
+        case 0x00000005 // ModifyEosbAccessRights
+        :
+            stlResponse = this->ModifyEosbAccessRights(oRequestParameters);
+            break;
+        case 0x00000006 // CheckEosbAccessRights
+        :
+            stlResponse = this->CheckEosbAccessRights(oRequestParameters);
+            break;
     }
 
     // Send back the response
@@ -511,6 +525,15 @@ uint64_t __thiscall CryptographicKeyManagementPlugin::SubmitRequest(
         else if ("/SAIL/CryptographicManager/User/VerifySignature" == strResource)
         {
             stlResponseBuffer = this->VerifySignature(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/CryptographicManager/User/GetIEosb" == strResource)
+        {
+            // TODO: Remove this else clause in the future or figure out how the Initializer is going to get the IEosb
+            StructuredBuffer oIEosbRequest;
+            oIEosbRequest.PutBuffer("Eosb", c_oRequestStructuredBuffer.GetBuffer("Eosb"));
+            // TODO: Add common types to a common shared folder
+            oIEosbRequest.PutQword("AccessRights", 2);  // 2 is for IEosb access rights
+            stlResponseBuffer = this->ModifyEosbAccessRights(oIEosbRequest);
         }
     }
 
@@ -695,7 +718,10 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     oStructuredBufferEosb.PutGuid("OrganizationGuid", oStructuredBufferBasicUserRecord.GetGuid("OrganizationGuid"));
     oStructuredBufferEosb.PutGuid("SessionId", Guid());
     oStructuredBufferEosb.PutBuffer("AccountKey", stlAccountKey);
-    oStructuredBufferEosb.PutQword("AccessRights", oPlainTextConfidentialUserRecord.GetQword("AccessRights"));
+    // TODO: Do not add user access rights in the Eosb
+    // It is added in the Eosb for now because there is no way decrypting the confidential record anywhere else
+    oStructuredBufferEosb.PutQword("AccessRights", 1);  // 1 is for eEosb access right
+    oStructuredBufferEosb.PutQword("UserAccessRights", oPlainTextConfidentialUserRecord.GetQword("AccessRights"));
     oStructuredBufferEosb.PutUnsignedInt64("Timestamp", oPlainTextConfidentialUserRecord.GetUnsignedInt64("TimeOfAccountCreation"));
     oStructuredBufferEosb.PutGuid("UserRootKeyId", oPlainTextConfidentialUserRecord.GetGuid("UserRootKeyGuid"));
 
@@ -998,6 +1024,77 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::UnregisterEosb(
     }
 
     return oResponseEosb.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function ModifyEosbAccessRights
+ * @brief Decrypt the Eosb, update the access rights, and return the encrypted Eosb
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException on failure
+ * @returns Serialized buffer containing the modified Eosb
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::ModifyEosbAccessRights(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    std::vector<Byte> stlEncryptedEsob = c_oRequest.GetBuffer("Eosb");
+    // Get plain text Eosb
+    StructuredBuffer oPlainTextEosb(this->GetPlainTextSsbFromEosb(stlEncryptedEsob));
+    // Update the access rights
+    oPlainTextEosb.PutQword("AccessRights", c_oRequest.GetQword("AccessRights"));
+    // Encrypt the updated Eosb
+    std::vector<Byte> stlUpdatedEosb = this->CreateEosbFromPlainSsb(oPlainTextEosb.GetSerializedBuffer());
+
+    // Add Updated Eosb and status to the response
+    oResponse.PutBuffer("UpdatedEosb", stlUpdatedEosb);
+    oResponse.PutDword("Status", 200);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function CheckEosbAccessRights
+ * @brief Decrypt the Eosb, check if the Eosb access rights are the same as the request access rights
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException on failure
+ * @returns true if access rights are the same
+ * @return false otherwise
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::CheckEosbAccessRights(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    std::vector<Byte> stlEncryptedEsob = c_oRequest.GetBuffer("Eosb");
+    // Get plain text Eosb
+    StructuredBuffer oPlainTextEosb(this->GetPlainTextSsbFromEosb(stlEncryptedEsob));
+    // Compare the Eosb access rights with the request access rights bitmap
+    bool fEqual = false;
+    if (c_oRequest.GetQword("AccessRights") == oPlainTextEosb.GetQword("AccessRight"))
+    {
+        fEqual = true;
+    }
+    
+    // Add the bool and status to the response
+    oResponse.PutBoolean("IsEqual", fEqual);
+    oResponse.PutDword("Status", 200);
+
+    return oResponse.GetSerializedBuffer();
 }
 
 /********************************************************************************************

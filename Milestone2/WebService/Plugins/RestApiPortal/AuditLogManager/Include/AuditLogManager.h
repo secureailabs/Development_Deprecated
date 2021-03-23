@@ -11,6 +11,7 @@
 #pragma once
 
 #include "DebugLibrary.h"
+#include "EntityTypes.h"
 #include "Exceptions.h"
 #include "Object.h"
 #include "PluginDictionary.h"

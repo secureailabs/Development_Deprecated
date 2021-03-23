@@ -12,11 +12,52 @@
 #include "DateAndTime.h"
 #include "IpcTransactionHelperFunctions.h"
 #include "SmartMemoryAllocator.h"
-#include "SocketServer.h"
-#include "ThreadManager.h"
 #include "SocketClient.h"
+#include "ThreadManager.h"
+#include "TlsClient.h"
 
 static VirtualMachineManager * gs_oVirtualMachineManager = nullptr;
+
+/********************************************************************************************
+ *
+ * @function CreateRequestPacket
+ * @brief Create a Tls request packet to send to the database portal
+ * @param[in] c_oRequest StructuredBuffer containing the request parameters
+ * @return Serialized request packet
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __stdcall CreateRequestPacket(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    unsigned int unSerializedBufferSizeInBytes = sizeof(Dword) + sizeof(uint32_t) + c_oRequest.GetSerializedBufferRawDataSizeInBytes() + sizeof(Dword);
+
+    std::vector<Byte> stlSerializedBuffer(unSerializedBufferSizeInBytes);
+    Byte * pbSerializedBuffer = (Byte *) stlSerializedBuffer.data();
+
+    // The format of the request data is:
+    //
+    // +------------------------------------------------------------------------------------+
+    // | [Dword] 0x436f6e74                                                                 |
+    // +------------------------------------------------------------------------------------+
+    // | [uint32_t] SizeInBytesOfRestRequestStructuredBuffer                                |
+    // +------------------------------------------------------------------------------------+
+    // | [SizeInBytesOfRestRequestStructuredBuffer] RestRequestStructuredBuffer             |
+    // +------------------------------------------------------------------------------------+
+    // | [Dword] 0x656e6420                                                                 |
+    // +------------------------------------------------------------------------------------+
+
+    *((Dword *) pbSerializedBuffer) = 0x436f6e74;
+    pbSerializedBuffer += sizeof(Dword);
+    *((uint32_t *) pbSerializedBuffer) = (uint32_t) c_oRequest.GetSerializedBufferRawDataSizeInBytes();
+    pbSerializedBuffer += sizeof(uint32_t);
+    ::memcpy((void *) pbSerializedBuffer, (const void *) c_oRequest.GetSerializedBufferRawDataPtr(), c_oRequest.GetSerializedBufferRawDataSizeInBytes());
+    pbSerializedBuffer += c_oRequest.GetSerializedBufferRawDataSizeInBytes();
+    *((Dword *) pbSerializedBuffer) = 0x656e6420;
+
+    return stlSerializedBuffer;
+}
 
 /********************************************************************************************
  *
@@ -229,15 +270,28 @@ void __thiscall VirtualMachineManager::InitializePlugin(void)
     StructuredBuffer oEosb;
     oEosb.PutByte("ElementType", BUFFER_VALUE_TYPE);
     oEosb.PutBoolean("IsRequired", true);
-    oRegisterVmParameters.PutStructuredBuffer("Eosb", oEosb);
+    oRegisterVmParameters.PutStructuredBuffer("IEosb", oEosb);
     StructuredBuffer oDcGuid;
     oDcGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oDcGuid.PutBoolean("IsRequired", true);
-    oRegisterVmParameters.PutStructuredBuffer("DCGuid", oDcGuid);
+    oRegisterVmParameters.PutStructuredBuffer("DigitalContractGuid", oDcGuid);
     StructuredBuffer oVmGuid;
-    oDcGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
-    oDcGuid.PutBoolean("IsRequired", true);
-    oRegisterVmParameters.PutStructuredBuffer("VMGuid", oDcGuid);
+    oVmGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oVmGuid.PutBoolean("IsRequired", true);
+    oRegisterVmParameters.PutStructuredBuffer("VirtualMachineGuid", oVmGuid);
+    StructuredBuffer oHeartBeatTime;
+    oHeartBeatTime.PutByte("ElementType", UINT64_VALUE_TYPE);
+    oHeartBeatTime.PutBoolean("IsRequired", true);
+    oRegisterVmParameters.PutStructuredBuffer("HeartbeatBroadcastTime", oHeartBeatTime);
+    StructuredBuffer oIpAddress;
+    oIpAddress.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oIpAddress.PutBoolean("IsRequired", true);
+    oRegisterVmParameters.PutStructuredBuffer("IPAddress", oIpAddress);
+
+    // Add Parameters for registering audit event for DOO/RO
+    StructuredBuffer oRegisterEvent;
+    oRegisterEvent.PutStructuredBuffer("Eosb", oEosb);
+    oRegisterEvent.PutStructuredBuffer("VirtualMachineGuid", oVmGuid);
 
     // Takes in an EOSB and sends back list of all running VMs information associated with the smart contract
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/GetRunningVMs");
@@ -245,8 +299,14 @@ void __thiscall VirtualMachineManager::InitializePlugin(void)
     // Sends back report of VM's status
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/GetVMHeartBeat");
 
-    // Register a Virtual Machine 
+    // Register a Virtual Machine
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/RegisterVM", oRegisterVmParameters);
+
+    // Register a Virtual Machine event for DOO 
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/DataOwner/RegisterVM", oRegisterEvent);
+
+    // Register a Virtual Machine event for RO 
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/Researcher/RegisterVM", oRegisterEvent);
 
 }
 
@@ -295,6 +355,14 @@ uint64_t __thiscall VirtualMachineManager::SubmitRequest(
         if ("/SAIL/VirtualMachineManager/RegisterVM" == strResource)
         {
             stlResponseBuffer = this->RegisterVmInstance(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/VirtualMachineManager/DataOwner/RegisterVM" == strResource)
+        {
+            stlResponseBuffer = this->RegisterVmAfterDataUpload(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/VirtualMachineManager/Researcher/RegisterVM" == strResource)
+        {
+            stlResponseBuffer = this->RegisterVmForComputation(c_oRequestStructuredBuffer);
         }
     }
 
@@ -495,49 +563,76 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetVmHeartBeat(
 /********************************************************************************************
  *
  * @class VirtualMachineManager
- * @function RegisterVmInstance
- * @brief Take in IEOSB of a dataset admin and add the vm record to the database
- * @param[in] c_oRequest contains IEOSB of the dataset admin and the VM information
+ * @function GetUserInfo
+ * @brief Take in a full IEOSB and send back a StructuredBuffer containing user metadata
+ * @param[in] c_oRequest contains the request body
  * @throw BaseException Error StructuredBuffer element not found
- * @returns Request status
+ * @returns StructuredBuffer containing user metadata
  *
  ********************************************************************************************/
 
-std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
+std::vector<Byte> __thiscall VirtualMachineManager::GetUserInfo(
     _in const StructuredBuffer & c_oRequest
     )
 {
     __DebugFunction();
-    
+
     StructuredBuffer oResponse;
 
-    // Take in EOSB, DCGuid, and VMGuid
     std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
-    StructuredBuffer oVm(c_oRequest.GetStructuredBuffer("VirtualMachineInformation"));
-    std::string strDcGuid = oVm.GetString("DCGuid");
-    std::string strVmGuid = oVm.GetString("VMGuid");
 
-    // Call CryptographicManager plugin to get the organization guid
     StructuredBuffer oDecryptEosbRequest;
     oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
     oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
+
+    // Call CryptographicManager plugin to get the decrypted eosb
+    Dword dwStatus = 404;
     Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
     StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
-    // Throw base exception if transaction was unsuccessful
-    _ThrowBaseExceptionIf(((0 == oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 != oDecryptedEosb.GetDword("Status"))), "Error decrypting Eosb", nullptr);
-    // Get the organization guid
-    std::string strOrganizationGuid = oDecryptedEosb.GetStructuredBuffer("Eosb").GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
-    // Register the Virtual Machine 
+    if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
+    {
+        StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
+        oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
+        oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
+        oResponse.PutQword("AccessRights", oEosb.GetQword("AccessRights"));
+        dwStatus = 200;
+    }
+    
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function GetVmInformation
+ * @brief Fetch the virtual machine information
+ * @param[in] c_oRequest contains the virtual machine guid
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns StructuredBuffer containing the virtual machine information
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall VirtualMachineManager::GetVmInformation(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    
     // Make a Tls connection with the database portal
     TlsNode * poTlsNode = nullptr;
     poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-    // Create a request to store a non leaf event in the database
+    // Create a request to get the digital contract information
     StructuredBuffer oRequest;
     oRequest.PutString("PluginName", "DatabaseManager");
-    oRequest.PutString("Verb", "POST");
-    oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterVirtualMachine");
-    oRequest.PutStructuredBuffer("VirtualMachineInformation", oVm);
-    oRequest.PutString("OrganizationGuid", strOrganizationGuid);
+    oRequest.PutString("Verb", "GET");
+    oRequest.PutString("Resource", "/SAIL/DatabaseManager/PullVirtualMachine");
+    oRequest.PutString("VirtualMachineGuid", c_oRequest.GetString("VirtualMachineGuid"));
     std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
     // Send request packet
     poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -549,53 +644,355 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
     std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
     _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
 
-    Dword dwStatus = 204;
-    // Check if DatabaseManager registered the virtual machine or not
     StructuredBuffer oDatabaseResponse(stlResponse);
     if (404 != oDatabaseResponse.GetDword("Status"))
-    {    
-        // Check whether DC branch event log exists for DCGuid in the database or not
-        // If not then create a DC branch event log
-        StructuredBuffer oGetDcBranchEventRequest;
-        oGetDcBranchEventRequest.PutDword("TransactionType", 0x00000003);
-        oGetDcBranchEventRequest.PutString("OrganizationGuid", strOrganizationGuid);
-        StructuredBuffer oFilters;
-        oFilters.PutString("DCGuid", strDcGuid);
-        oGetDcBranchEventRequest.PutStructuredBuffer("Filters", oFilters);
-        // Call AuditLogManager plugin to get the guid of DC event log
-        std::string strDcEventGuid;
-        Socket * poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
-        StructuredBuffer oDCEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oGetDcBranchEventRequest));
-        _ThrowBaseExceptionIf((0 > oDCEventLog.GetSerializedBufferRawDataSizeInBytes()), "Error checking for DC event", nullptr);
-        if (200 == oDCEventLog.GetDword("Status"))
+    {
+        oResponse.PutStructuredBuffer("VirtualMachine", oDatabaseResponse.GetStructuredBuffer("VirtualMachine"));
+        dwStatus = 200;
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function VerifyDigitalContract
+ * @brief Check if IEosb is of the data owner of the digital contract associated with the strDcGuid
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns StructuredBuffer containing the comparison status
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall VirtualMachineManager::VerifyDigitalContract(
+    _in const StructuredBuffer & c_oRequest,
+    _in bool fIsResearcher
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    std::string strOrganizationGuid = c_oRequest.GetString("OrganizationGuid");
+
+    // Call DigitalContractDatabase plugin to get the digital contract associated with the digital contract guid
+    Dword dwStatus = 404;
+    StructuredBuffer oDigitalContractRequest;
+    oDigitalContractRequest.PutDword("TransactionType", 0x00000001);
+    oDigitalContractRequest.PutString("DigitalContractGuid", c_oRequest.GetString("DigitalContractGuid"));
+    oDigitalContractRequest.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
+    Socket * poIpcDigitalContractManager =  ConnectToUnixDomainSocket("/tmp/{786EC10E-45CA-4BD8-9F01-2AFC66578116}");
+    StructuredBuffer oDigitalContractResponse(::PutIpcTransactionAndGetResponse(poIpcDigitalContractManager, oDigitalContractRequest));
+    if ((0 < oDigitalContractResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oDigitalContractResponse.GetDword("Status")))
+    {   
+        if (true == fIsResearcher)
         {
-            strDcEventGuid = oDCEventLog.GetString("DCEventGuid");
+           // Check if Eosb is of user within RO of the digital contract associated with the strDcGuid
+            if (strOrganizationGuid == oDigitalContractResponse.GetString("ResearcherOrganization"))
+            {
+                oResponse.PutBoolean("IsEqual", true);
+            } 
         }
         else 
         {
-            // Create a DC branch event for DCGuid
-            std::string strRootEventGuid = oDCEventLog.GetString("RootEventGuid");
-            StructuredBuffer oDcBranchEvent;
-            oDcBranchEvent.PutDword("TransactionType", 0x00000001);
-            oDcBranchEvent.PutBuffer("Eosb", stlEosb);
-            StructuredBuffer oDcMetadata;
-            strDcEventGuid = Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces);
-            oDcMetadata.PutString("EventGuid", strDcEventGuid);
-            oDcMetadata.PutString("ParentGuid", strRootEventGuid);
-            oDcMetadata.PutString("OrganizationGuid", strOrganizationGuid);
-            oDcMetadata.PutQword("EventType", 2); // where 2 is for non root event type
-            oDcMetadata.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
-            StructuredBuffer oPlainTextMetadata;
-            oPlainTextMetadata.PutDword("BranchType", 1); // where 1 is for for DC branch type
-            oPlainTextMetadata.PutString("GuidOfDcOrVm", strDcGuid);
-            oDcMetadata.PutStructuredBuffer("PlainTextEventData", oPlainTextMetadata);
-            oDcBranchEvent.PutStructuredBuffer("NonLeafEvent", oDcMetadata);
-            // Call AuditLogManager plugin to create a DC event log
-            poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
-            StructuredBuffer oDcEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oDcBranchEvent));
-            _ThrowBaseExceptionIf(((0 > oDcEventLog.GetSerializedBufferRawDataSizeInBytes())&&(201 != oDcEventLog.GetDword("Status"))), "Error creating DC branch event.", nullptr);
+            // Check if Eosb is of the data owner of the digital contract associated with the strDcGuid
+            if (strOrganizationGuid == oDigitalContractResponse.GetString("DataOwnerOrganization"))
+            {
+                oResponse.PutBoolean("IsEqual", true);
+            }
         }
+        dwStatus = 200;
+    }
+    
+    oResponse.PutDword("Status", dwStatus);
 
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function RegisterVmInstance
+ * @brief Take in IEOSB of the Initializer and add the vm record to the database
+ * @param[in] c_oRequest contains IEOSB of the Initializer and the VM information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Request status
+ * @note
+ *      This is step 1 of the register virtual machine feature. Once a data owner accepts a digital
+ *      contract, a virtual machine is initialized and it registers itself with the webservices.
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    // TODO: Implement the two steps described in the spec document.
+    // The step involves registration of a VM and proof of remote attestation.
+    // VMEosb should be returned after the remote attestation
+    
+    StructuredBuffer oResponse;
+
+    // Take in IEOSB, DigitalContractGuid, VMGuid, and VM information
+    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("IEosb");
+    std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
+    std::string strVmGuid = c_oRequest.GetString("VirtualMachineGuid");
+
+    // Get user information 
+    StructuredBuffer oEosbRequest;
+    oEosbRequest.PutBuffer("Eosb", stlEosb);
+    StructuredBuffer oUserInfo(this->GetUserInfo(oEosbRequest));
+    // Check if the Eosb is an imposter Eosb
+    // Register Vm if it is an imposter Eosb
+    Dword dwStatus = 204;
+    if (eIEosb == oUserInfo.GetQword("AccessRights"))
+    {
+        // Register the Virtual Machine 
+        // Make a Tls connection with the database portal
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        // Create a request to register the virtual machine information in the database
+        StructuredBuffer oRequest;
+        oRequest.PutString("PluginName", "DatabaseManager");
+        oRequest.PutString("Verb", "POST");
+        oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterVirtualMachine");
+        oRequest.PutString("VirtualMachineGuid", strVmGuid);
+        oRequest.PutString("DigitalContractGuid", strDcGuid);
+        oRequest.PutUnsignedInt64("RegistrationTime", ::GetEpochTimeInSeconds());
+        oRequest.PutUnsignedInt64("HeartbeatBroadcastTime", c_oRequest.GetUnsignedInt64("HeartbeatBroadcastTime"));
+        oRequest.PutString("IPAddress", c_oRequest.GetString("IPAddress"));
+        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+        // Send request packet
+        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+        // Read header and body of the response
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+        // Check if DatabaseManager registered the virtual machine or not
+        StructuredBuffer oDatabaseResponse(stlResponse);
+        if (404 != oDatabaseResponse.GetDword("Status"))
+        {    
+            // Call CryptographicManager plugin to get the VMEOSB
+            StructuredBuffer oUpdateEosbRequest;
+            oUpdateEosbRequest.PutDword("TransactionType", 0x00000005);
+            oUpdateEosbRequest.PutBuffer("Eosb", stlEosb);
+            oUpdateEosbRequest.PutQword("AccessRights", eVmEosb); 
+            Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+            StructuredBuffer oUpdatedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oUpdateEosbRequest));
+            // Throw base exception if transaction was unsuccessful
+            _ThrowBaseExceptionIf(((0 == oUpdatedEosb.GetSerializedBufferRawDataSizeInBytes())&&(200 != oUpdatedEosb.GetDword("Status"))), "Error updating the Eosb", nullptr);
+            oResponse.PutBuffer("VmEosb", oUpdatedEosb.GetBuffer("UpdatedEosb"));
+            dwStatus = 201;
+        }
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function RegisterVmAfterDataUpload
+ * @brief Take in a VmEosb of a dataset admin and add a Vm branch event under DOO's root event
+ * @param[in] c_oRequest contains EOSB of the dataset admin and the VM information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Request status
+ * @note
+ *      This is step 2 of the register virtual machine feature. Once a data owner accepts a digital
+ *      contract and a virtual machine is initialized, they upload the requested dataset to the 
+ *      virtual machine and an audit event gets added to DOO's audit log tree.
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmAfterDataUpload(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    // Take in EOSB, DigitalContractGuid, VMGuid, and VM information
+    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+    std::string strVmGuid = c_oRequest.GetString("VirtualMachineGuid");
+
+    // Get Digital contract guid
+    std::string strDcGuid = StructuredBuffer(this->GetVmInformation(c_oRequest)).GetStructuredBuffer("VirtualMachine").GetString("DigitalContractGuid");
+
+    // Get user information 
+    StructuredBuffer oEosbRequest;
+    oEosbRequest.PutBuffer("Eosb", stlEosb);
+    StructuredBuffer oUserInfo(this->GetUserInfo(oEosbRequest));
+    // Check if the Eosb is a Vm Eosb
+    // Register Vm event if it is a Vm Eosb
+    // Check if the user is a dataset admin
+    Dword dwStatus = 204;
+    // if ((eVmEosb == oUserInfo.GetQword("AccessRights"))&&(eDatasetAdmin == oUserInfo.GetQword("UserAccessRights")))
+    if (eVmEosb == oUserInfo.GetQword("AccessRights"))
+    {
+        // Get the organization guid
+        std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
+        // Check if Eosb is of the data owner of the digital contract associated with the strDcGuid
+        StructuredBuffer oVerifyDcRequest;
+        oVerifyDcRequest.PutString("DigitalContractGuid", strDcGuid);
+        oVerifyDcRequest.PutString("OrganizationGuid", strOrganizationGuid);
+        oVerifyDcRequest.PutBuffer("Eosb", stlEosb);
+        StructuredBuffer oVerificationStatus(this->VerifyDigitalContract(oVerifyDcRequest, false));
+        if (200 == oVerificationStatus.GetDword("Status"))
+        {
+            if (true == oVerificationStatus.GetBoolean("IsEqual"))
+            {
+                // Check whether DC branch event log exists for DCGuid in the database or not
+                // If it does then, create a Vm branch event log
+                StructuredBuffer oEventInformation;
+                oEventInformation.PutBuffer("Eosb", stlEosb);
+                oEventInformation.PutString("DigitalContractGuid", strDcGuid);
+                oEventInformation.PutString("VirtualMachineGuid", strVmGuid);
+                oEventInformation.PutString("OrganizationGuid", strOrganizationGuid);
+                // Get VmEventGuid
+                StructuredBuffer oVm(this->RegisterVmAuditEvent(oEventInformation));
+                dwStatus = oVm.GetDword("Status");
+                if (201 == dwStatus)
+                {
+                    oResponse.PutString("VmEventGuid", oVm.GetGuid("VmEventGuid").ToString(eHyphensAndCurlyBraces));
+                }
+            }
+        }
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function RegisterVmForComputation
+ * @brief Take in a VmEosb of a researcher and add a Vm branch event under RO's root event
+ * @param[in] c_oRequest contains EOSB of a researcher and the VM information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Request status
+ * @note
+ *      This is step 3 of the register virtual machine feature. Once a data owner uploads the 
+ *      requested dataset to the virtual machine, the researcher can start the computation process.
+ *      An audit event gets added to RO's audit log tree.
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmForComputation(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    // Take in EOSB, DigitalContractGuid, VMGuid, and VM information
+    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+    std::string strVmGuid = c_oRequest.GetString("VirtualMachineGuid");
+
+    // Get Digital contract guid
+    std::string strDcGuid = StructuredBuffer(this->GetVmInformation(c_oRequest)).GetStructuredBuffer("VirtualMachine").GetString("DigitalContractGuid");
+
+    // Get user information 
+    StructuredBuffer oEosbRequest;
+    oEosbRequest.PutBuffer("Eosb", stlEosb);
+    StructuredBuffer oUserInfo(this->GetUserInfo(oEosbRequest));
+
+    // TODO: Who can call this api? Add a check accordingly
+    // Check if the Eosb is a Vm Eosb
+    // Register Vm if it is a Vm Eosb
+    Dword dwStatus = 204;
+    if (eVmEosb == oUserInfo.GetQword("AccessRights"))
+    {
+        // Get the organization guid
+        std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
+        // Check if Eosb is a user within the RO of the digital contract associated with the strDcGuid
+        StructuredBuffer oVerifyDcRequest;
+        oVerifyDcRequest.PutString("DigitalContractGuid", strDcGuid);
+        oVerifyDcRequest.PutString("OrganizationGuid", strOrganizationGuid);
+        oVerifyDcRequest.PutBuffer("Eosb", stlEosb);
+        StructuredBuffer oVerificationStatus(this->VerifyDigitalContract(oVerifyDcRequest, true));
+        if (200 == oVerificationStatus.GetDword("Status"))
+        {
+            if (true == oVerificationStatus.GetBoolean("IsEqual"))
+            {
+                // Check whether DC branch event log exists for DCGuid in the database or not
+                // If it does then, create a Vm branch event log
+                StructuredBuffer oEventInformation;
+                oEventInformation.PutBuffer("Eosb", stlEosb);
+                oEventInformation.PutString("DigitalContractGuid", strDcGuid);
+                oEventInformation.PutString("VirtualMachineGuid", strVmGuid);
+                oEventInformation.PutString("OrganizationGuid", strOrganizationGuid);
+                // Get VmEventGuid
+                StructuredBuffer oVm(this->RegisterVmAuditEvent(oEventInformation));
+                dwStatus = oVm.GetDword("Status");
+                if (201 == dwStatus)
+                {
+                    oResponse.PutString("VmEventGuid", oVm.GetGuid("VmEventGuid").ToString(eHyphensAndCurlyBraces));
+                }
+            }
+        }
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function RegisterVmAuditEvent
+ * @brief Add VM branch event to the database
+ * @param[in] c_oRequest contains the VM information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Transaction status
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmAuditEvent(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    // Take in EOSB, DigitalContractGuid, VMGuid, and VM information
+    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+    std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
+    std::string strVmGuid = c_oRequest.GetString("VirtualMachineGuid");
+    std::string strOrganizationGuid = c_oRequest.GetString("OrganizationGuid");
+
+    // Check whether DC branch event log exists for DCGuid in the database or not
+    StructuredBuffer oGetDcBranchEventRequest;
+    oGetDcBranchEventRequest.PutDword("TransactionType", 0x00000003);
+    oGetDcBranchEventRequest.PutString("OrganizationGuid", strOrganizationGuid);
+    StructuredBuffer oFilters;
+    oFilters.PutString("DCGuid", strDcGuid);
+    oGetDcBranchEventRequest.PutStructuredBuffer("Filters", oFilters);
+
+    // Call AuditLogManager plugin to get the guid of DC event log
+    std::string strDcEventGuid;
+    Socket * poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
+    StructuredBuffer oDCEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oGetDcBranchEventRequest));
+    _ThrowBaseExceptionIf((0 > oDCEventLog.GetSerializedBufferRawDataSizeInBytes()), "Error checking for DC event", nullptr);
+    Dword dwStatus = 204;
+    if (200 == oDCEventLog.GetDword("Status"))
+    {
+        strDcEventGuid = oDCEventLog.GetString("DCEventGuid");
         // Create a Vm branch event log
         StructuredBuffer oVmBranchEvent;
         oVmBranchEvent.PutDword("TransactionType", 0x00000001);

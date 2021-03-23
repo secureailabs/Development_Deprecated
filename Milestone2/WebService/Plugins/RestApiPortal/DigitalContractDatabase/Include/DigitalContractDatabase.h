@@ -11,6 +11,7 @@
 #pragma once
 
 #include "DebugLibrary.h"
+#include "EntityTypes.h"
 #include "Exceptions.h"
 #include "Object.h"
 #include "PluginDictionary.h"
@@ -28,26 +29,6 @@
 #include <iostream>
 #include <map>
 #include <vector>
-
-/********************************************************************************************/
-
-typedef enum rights
-{
-    eAdmin = 1,
-    eAuditor = 2,
-    eOrganizationUser = 3,
-    eDigitalContractAdmin = 4,
-    eDatasetAdmin = 5
-}
-AccessRights;
-
-typedef enum stage
-{
-    eApplication = 1,
-    eApproval = 2,
-    eActive = 3
-}
-ContractStage;
 
 /********************************************************************************************/
 
@@ -139,6 +120,11 @@ class DigitalContractDatabase : public Object
             );
         // Update the digital contract when a researcher accepts the DC terms from the Data owner organization
         std::vector<Byte> __thiscall ActivateDigitalContract(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Add DC branch event to the database
+        std::vector<Byte> __thiscall RegisterDcAuditEvent(
             _in const StructuredBuffer & c_oRequest
             );
 

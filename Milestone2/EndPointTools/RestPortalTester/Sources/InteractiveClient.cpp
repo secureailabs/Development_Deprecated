@@ -256,6 +256,73 @@ std::vector<Byte> GetBasicUserInformation(
 
 /********************************************************************************************/
 
+std::string GetIEosb(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+   std::string strIEosb;
+
+    try
+    {
+        bool fSuccess = false;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+
+        std::string strRequest = "GET /SAIL/CryptographicManager/User/GetIEosb?Eosb="+ c_strEosb +" HTTP/1.1\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: 0\r\n"
+                                        "\r\n";
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strRequest.data(), (strRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
+            {
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
+                {
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
+                }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        _ThrowBaseExceptionIf((0 == stlSerializedResponse.size()), "Dead Packet.", nullptr);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error gettign imposter eosb.", nullptr);
+        strIEosb = oResponse.GetString("UpdatedEosb");
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+
+    return strIEosb;
+}
+
+/********************************************************************************************/
+
 std::string RegisterRootEvent(
     _in const std::string & c_strEncodedEosb,
     _in const std::string & c_strOrganizationGuid
@@ -451,6 +518,7 @@ bool RegisterLeafEvents(
     _in const std::string & c_strParentGuid
     )
 {
+    std::cout << "parent guid: " << c_strParentGuid << std::endl;
     __DebugFunction();
     __DebugAssert(0 < c_strEncodedEosb.size());
     __DebugAssert(0 < c_strParentGuid.size());
@@ -545,17 +613,23 @@ bool RegisterLeafEvents(
 /********************************************************************************************/
 
 std::string RegisterVirtualMachine(
-    _in const std::string & c_strEncodedEosb,
-    _in const std::string & c_strDcGuid,
+    _in const std::string & c_strEncodedIEosb,
     _in const std::string & c_strVmGuid
     )
 {
     __DebugFunction();
-    __DebugAssert(0 < c_strEncodedEosb.size());
-    __DebugAssert(0 < c_strDcGuid.size());
+    __DebugAssert(0 < c_strEncodedIEosb.size());
     __DebugAssert(0 < c_strVmGuid.size());
 
-    std::string strVmEventGuid;
+    std::string strVmEosb;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get digital contract information
+    std::cout << "************************\n Register Virtual Machine \n************************\n" << std::endl;
+    std::string strDcGuid = ::GetStringInput("Enter hyphen and curly braces formatted digital contract guid: ", 38, true, c_szValidInputCharacters);
+
+    __DebugAssert(38 == strDcGuid.size());
 
     try
     {
@@ -564,9 +638,11 @@ std::string RegisterVirtualMachine(
         poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"DCGuid\": \""+ c_strDcGuid +"\","
-                                "\n    \"VMGuid\": \""+ c_strVmGuid +"\""
+        std::string strContent = "{\n    \"IEosb\": \""+ c_strEncodedIEosb +"\","
+                                "\n    \"DigitalContractGuid\": \""+ strDcGuid +"\","
+                                "\n    \"VirtualMachineGuid\": \""+ c_strVmGuid +"\","
+                                "\n    \"HeartbeatBroadcastTime\": "+ std::to_string(::GetEpochTimeInSeconds()) +","
+                                "\n    \"IPAddress\": \"127.0.0.1\""
                                 "\n}";
         std::string strHttpRegisterRequest = "POST /SAIL/VirtualMachineManager/RegisterVM HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
@@ -609,9 +685,172 @@ std::string RegisterVirtualMachine(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
+        strVmEosb = oResponse.GetString("VmEosb");
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+    catch(...)
+    {
+        ::ShowErrorMessage("Error registering virtual machine.");
+    }
+
+    return strVmEosb;
+}
+
+/********************************************************************************************/
+
+std::string RegisterVmAfterDataUpload(
+    _in const std::string & c_strEncodedVmEosb,
+    _in const std::string & c_strVmGuid
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEncodedVmEosb.size());
+    __DebugAssert(0 < c_strVmGuid.size());
+
+    std::string strVmEventGuid;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    std::cout << "************************\n Register Virtual Machine Event For DOO\n************************\n" << std::endl;
+
+    try
+    {
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+
+        // Create rest request
+        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedVmEosb +"\","
+                                "\n    \"VirtualMachineGuid\": \""+ c_strVmGuid +"\""
+                                "\n}";
+        std::string strHttpRegisterRequest = "POST /SAIL/VirtualMachineManager/DataOwner/RegisterVM HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRegisterRequest.data(), (strHttpRegisterRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
+            {
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
+                {
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
+                }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
         strVmEventGuid = oResponse.GetString("VmEventGuid");
-        std::cout << "Vm registered successfully!" << std::endl;
-        std::cout << "Vm event guid: " << strVmEventGuid << std::endl;
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+    catch(...)
+    {
+        ::ShowErrorMessage("Error registering virtual machine.");
+    }
+
+    return strVmEventGuid;
+}
+
+/********************************************************************************************/
+
+std::string RegisterVmForComputation(
+    _in const std::string & c_strEncodedVmEosb,
+    _in const std::string & c_strVmGuid
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEncodedVmEosb.size());
+    __DebugAssert(0 < c_strVmGuid.size());
+
+    std::string strVmEventGuid;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    std::cout << "************************\n Register Virtual Machine \n************************\n" << std::endl;
+
+    try
+    {
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+
+        // Create rest request
+        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedVmEosb +"\","
+                                "\n    \"VirtualMachineGuid\": \""+ c_strVmGuid +"\""
+                                "\n}";
+        std::string strHttpRegisterRequest = "POST /SAIL/VirtualMachineManager/Researcher/RegisterVM HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRegisterRequest.data(), (strHttpRegisterRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
+            {
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
+                {
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
+                }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
+        strVmEventGuid = oResponse.GetString("VmEventGuid");
+        std::cout << "event guid: " << strVmEventGuid << std::endl;
     }
     catch(BaseException oBaseException)
     {
@@ -866,7 +1105,7 @@ bool RegisterOrganizationAndSuperUser(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error registering new organization and super user.", nullptr);
-        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("RootEventStatus")), "Error registering root event for the organization.", nullptr);
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("RootEventStatus")), "Error registering root event for the organization.", nullptr);
         fSuccess = true;
     }
     catch(BaseException oBaseException)

@@ -28,14 +28,16 @@ std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strMagenta + "3- Update organization information - Admin privileges required!\n" +
             oFontColor.strMagenta + "4- Delete an organization - Admin privileges required!\n" +
             oFontColor.strMagenta + "5- Delete a user - Admin privileges required!\n" +
-            oFontColor.strCyan + "6- Register a virtual machine and its leaf events\n" +
-            oFontColor.strCyan + "7- Get list of all events of the organization\n" +
-            oFontColor.strCyan + "8- Get list of events for a specified parent\n" +
-            oFontColor.strBlue + "9- Register a digital contract\n" +
-            oFontColor.strBlue + "10- Get list of all digital contracts of your organization\n" +
-            oFontColor.strBlue + "11- Pull a digital contract - Dataset Admin or Digital Contract Admin privileges required\n" +
-            oFontColor.strBlue + "12- Approve a digital contract - Dataset Admin privileges required\n" +
-            oFontColor.strBlue + "13- Activate a digital contract - Digital Contract Admin privileges required\n" +
+            oFontColor.strCyan + "6- Register a virtual machine\n" +
+            oFontColor.strCyan + "7- Register a virtual machine event for DOO and its leaf events\n" +
+            oFontColor.strCyan + "8- Register a virtual machine event for RO and its leaf events\n" +
+            oFontColor.strCyan + "9- Get list of all events of the organization\n" +
+            oFontColor.strCyan + "10- Get list of events for a specified parent\n" +
+            oFontColor.strBlue + "11- Register a digital contract\n" +
+            oFontColor.strBlue + "12- Get list of all digital contracts of your organization\n" +
+            oFontColor.strBlue + "13- Pull a digital contract - Dataset Admin or Digital Contract Admin privileges required\n" +
+            oFontColor.strBlue + "14- Approve a digital contract - Dataset Admin privileges required\n" +
+            oFontColor.strBlue + "15- Activate a digital contract - Digital Contract Admin privileges required\n" +
             oFontColor.strYellow + "0- Logout\n";
 
 /********************************************************************************************/

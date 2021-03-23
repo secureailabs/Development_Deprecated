@@ -44,6 +44,9 @@ int main()
                     std::string strOrganizationGuid = oUserInformation.GetString("OrganizationGuid");
                     std::string strUserGuid = oUserInformation.GetString("UserGuid");
                     Qword qwAccessRights = oUserInformation.GetQword("AccessRights");
+                    // Create a Virtual Machine Guid
+                    std::string strVmGuid = Guid(eVirtualMachine).ToString(eHyphensAndCurlyBraces);
+                    std::string strVmEosb;
 
                     bool fTerminatedSignalEncountered = false;
 
@@ -139,16 +142,52 @@ int main()
                             case 6:
                             {
                                 // Register a Vm
-                                std::string strVmGuid = Guid(eVirtualMachine).ToString(eHyphensAndCurlyBraces);
-                                std::string strDcGuid = "{33DB1751-66AE-4EB5-BF7B-614CBC09BC4C}";
-                                std::string strVmEventGuid = ::RegisterVirtualMachine(strEncodedEosb, strDcGuid, strVmGuid);
-                                // Register Leaf events
-                                ::RegisterLeafEvents(strEncodedEosb, strOrganizationGuid, strVmEventGuid);
+                                std::string strIEosb = ::GetIEosb(strEncodedEosb);
+                                strVmEosb = ::RegisterVirtualMachine(strIEosb, strVmGuid);
+                            break;
+                            }
+                            case 7:
+                            {
+                                if (0 == strVmEosb.size())
+                                {
+                                    ::ShowErrorMessage("Get VmEosb first.");
+                                }
+                                else 
+                                {
+                                    // if (5 == qwAccessRights) // Check if user is a dataset admin
+                                    // {
+                                        // Register Vm branch event for a DOO
+                                        std::string strVmEventGuid = ::RegisterVmAfterDataUpload(strVmEosb, strVmGuid);
+                                        // Register Leaf events
+                                        ::RegisterLeafEvents(strEncodedEosb, strOrganizationGuid, strVmEventGuid);
+                                    // }
+                                    // else 
+                                    // {
+                                    //     ::ShowErrorMessage("Transaction not authorized.");
+                                    // }
+                                }
 
                                 ::WaitForUserToContinue();
                             break;
                             }
-                            case 7:
+                            case 8:
+                            {
+                                if (0 == strVmEosb.size())
+                                {
+                                    ::ShowErrorMessage("Get VmEosb first.");
+                                }
+                                else
+                                {
+                                    // Register Vm branch event for RO
+                                    std::string strVmEventGuid = ::RegisterVmForComputation(strVmEosb, strVmGuid);
+                                    std::cout << "strVmEventGuid: " << strVmEventGuid << std::endl;
+                                    // Register Leaf events
+                                    ::RegisterLeafEvents(strEncodedEosb, strOrganizationGuid, strVmEventGuid);
+                                }
+                                ::WaitForUserToContinue();
+                            break;
+                            }
+                            case 9:
                             {
                                 std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
                                 // Get list of all events for the organization
@@ -157,7 +196,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break;
                             }
-                            case 8:
+                            case 10:
                             {
                                 std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
                                 std::string strParentGuid = ::GetStringInput("Enter hyphen and curly braces formatted parent guid: ", 38, true, c_szValidInputCharacters);
@@ -174,7 +213,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break;
                             }
-                            case 9:
+                            case 11:
                             {
                                 bool fSuccess = ::RegisterDigitalContract(strEncodedEosb);
                                 if (true == fSuccess)
@@ -184,13 +223,13 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 10:
+                            case 12:
                             {
                                 bool fSuccess = ::ListDigitalContracts(strEncodedEosb);
                                 WaitForUserToContinue();
                             break; 
                             }
-                            case 11:
+                            case 13:
                             {
                                 if ((4 == qwAccessRights) || (5 == qwAccessRights)) // Check if user is a dataset admin or a digital contract
                                 {
@@ -203,7 +242,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 12:
+                            case 14:
                             {
                                 if (5 == qwAccessRights) // Check if user is a dataset admin
                                 {
@@ -220,7 +259,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 13:
+                            case 15:
                             {
                                 if (4 == qwAccessRights) // Check if user is a digital contract admin
                                 {
@@ -244,7 +283,7 @@ int main()
                             }
                             default:
                             {
-                                ::ShowErrorMessage("Invalid option. Usage: [0-13]");
+                                ::ShowErrorMessage("Invalid option. Usage: [0-15]");
                             break;
                             }
                         }

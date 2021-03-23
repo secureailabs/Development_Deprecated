@@ -235,6 +235,8 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/ListDigitalContracts");
     // Get a digital contract's information
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/PullDigitalContract");
+    // Get a virtual machine's information
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/PullVirtualMachine");
     // Add a non-leaf audit log event
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/NonLeafEvent");
     // Add a leaf audit log event
@@ -328,6 +330,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             else if ("/SAIL/DatabaseManager/PullDigitalContract" == strResource)
             {
                 stlResponseBuffer = this->PullDigitalContract(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/PullVirtualMachine" == strResource)
+            {
+                stlResponseBuffer = this->PullVirtualMachine(c_oRequestStructuredBuffer);
             }
             else
             {
@@ -714,17 +720,12 @@ std::vector<Byte> __thiscall DatabaseManager::GetConfidentialUserRecord(
     oGetDCRequest.PutStructuredBuffer("Filters", c_oRequest.GetStructuredBuffer("Filters"));
     StructuredBuffer oBranchEvent(this->GetListOfEvents(oGetDCRequest));
     StructuredBuffer oListOfEvents(oBranchEvent.GetStructuredBuffer("ListOfEvents"));
-
     Dword dwStatus = 404;
     if (0 < oListOfEvents.GetNamesOfElements().size())
     {
         StructuredBuffer oEvent(oListOfEvents.GetStructuredBuffer(oListOfEvents.GetNamesOfElements()[0].c_str()));
         oResponse.PutString("DCEventGuid", oEvent.GetGuid("EventGuid").ToString(eHyphensAndCurlyBraces));
         dwStatus = 200;
-    }
-    else 
-    {
-        oResponse.PutString("RootEventGuid", strRootEventGuid);
     }
     
     // Add transaction status
@@ -996,6 +997,78 @@ uint32_t __thiscall DatabaseManager::GetNextSequenceNumber(
     }
 
     return unSequenceNumber;
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
+ * @function PullVirtualMachine
+ * @brief Fetch the virtual machine information
+ * @param[in] c_oRequest contains the virtual machine guid
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns StructuredBuffer containing the virtual machine information
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::PullVirtualMachine(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    std::string strDcGuid = c_oRequest.GetString("VirtualMachineGuid");
+    Dword dwStatus = 404;
+    // Each client and transaction can only be used in a single thread
+    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+    // Access SailDatabase
+    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+    // Fetch the virtual machine record
+    bsoncxx::stdx::optional<bsoncxx::document::value> oVmDocument = oSailDatabase["VirtualMachine"].find_one(document{}
+                                                                                                                << "VirtualMachineGuid" << strDcGuid
+                                                                                                                << finalize);
+    if (bsoncxx::stdx::nullopt != oVmDocument)
+    {                                                                                                           
+        bsoncxx::document::element oDcGuid = oVmDocument->view()["DigitalContractGuid"];
+        if (oDcGuid && oDcGuid.type() == type::k_utf8)
+        {
+            std::string strDcGuid = oDcGuid.get_utf8().value.to_string();
+            bsoncxx::document::element oPlainTextObjectBlobGuid = oVmDocument->view()["PlainTextObjectBlobGuid"];
+            if (oPlainTextObjectBlobGuid && oPlainTextObjectBlobGuid.type() == type::k_utf8)
+            {
+                std::string strPlainTextObjectBlobGuid = oPlainTextObjectBlobGuid.get_utf8().value.to_string();
+                bsoncxx::stdx::optional<bsoncxx::document::value> oPlainTextObjectBlobDocument = oSailDatabase["PlainTextObjectBlob"].find_one(document{} 
+                                                                                                                                                << "PlainTextObjectBlobGuid" <<  strPlainTextObjectBlobGuid
+                                                                                                                                                << finalize);
+                if (bsoncxx::stdx::nullopt != oPlainTextObjectBlobDocument)
+                {
+                    bsoncxx::document::element oObjectGuid = oPlainTextObjectBlobDocument->view()["ObjectGuid"];
+                    if (oObjectGuid && oObjectGuid.type() == type::k_utf8)
+                    {
+                        std::string strObjectGuid = oObjectGuid.get_utf8().value.to_string();
+                        // Fetch the virtual machine from the Object collection associated with the virtual machine guid
+                        bsoncxx::stdx::optional<bsoncxx::document::value> oObjectDocument = oSailDatabase["Object"].find_one(document{} << "ObjectGuid" << strObjectGuid << finalize);
+                        if (bsoncxx::stdx::nullopt != oObjectDocument)
+                        {
+                            bsoncxx::document::element oObjectBlob = oObjectDocument->view()["ObjectBlob"];
+                            if (oObjectBlob && oObjectBlob.type() == type::k_binary)
+                            {
+                                StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size);
+                                oResponse.PutStructuredBuffer("VirtualMachine", oObject);
+                                oResponse.PutString("DigitalContractGuid", strDcGuid);
+                            }
+                        }
+                    }
+                }
+            }
+            dwStatus = 200;
+        }
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
 }
 
 /********************************************************************************************
@@ -1664,23 +1737,21 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterVirtualMachine(
 
     // Create guids for the documents
     Guid oObjectGuid, oPlainTextObjectBlobGuid;
-    StructuredBuffer oVm(c_oRequest.GetStructuredBuffer("VirtualMachineInformation"));
 
     // Create an virtual machine document
     bsoncxx::document::value oVmDocumentValue = bsoncxx::builder::stream::document{}
       << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
-      << "OrganizationGuid" << c_oRequest.GetString("OrganizationGuid")
-      << "DCGuid" << oVm.GetString("DCGuid")
-      << "VMGuid" << oVm.GetString("VMGuid")
+      << "DigitalContractGuid" << c_oRequest.GetString("DigitalContractGuid")
+      << "VirtualMachineGuid" << c_oRequest.GetString("VirtualMachineGuid")
       << finalize;
     
     // Create a virtual machine object structured buffer
     StructuredBuffer oObject;
-    oObject.PutString("DCGuid", oVm.GetString("DCGuid"));
-    oObject.PutString("VMGuid", oVm.GetString("VMGuid"));
-    oObject.PutUnsignedInt64("RegistrationTime", oVm.GetUnsignedInt64("RegistrationTime"));
-    oObject.PutUnsignedInt64("HeartbeatBroadcastTime", oVm.GetUnsignedInt64("HeartbeatBroadcastTime"));
-    oObject.PutString("IPAddress", oVm.GetString("IPAddress"));
+    oObject.PutString("DigitalContractGuid", c_oRequest.GetString("DigitalContractGuid"));
+    oObject.PutString("VirtualMachineGuid", c_oRequest.GetString("VirtualMachineGuid"));
+    oObject.PutUnsignedInt64("RegistrationTime", c_oRequest.GetUnsignedInt64("RegistrationTime"));
+    oObject.PutUnsignedInt64("HeartbeatBroadcastTime", c_oRequest.GetUnsignedInt64("HeartbeatBroadcastTime"));
+    oObject.PutString("IPAddress", c_oRequest.GetString("IPAddress"));
     bsoncxx::types::b_binary oObjectBlob
     {
         bsoncxx::binary_sub_type::k_binary,
@@ -1690,8 +1761,6 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterVirtualMachine(
     // Create an object document
     bsoncxx::document::value oObjectDocumentValue = bsoncxx::builder::stream::document{}
       << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
-      << "ObjectType" << eVirtualMachine
-      << "IsEncrypted" << false
       << "ObjectBlob" << oObjectBlob
       << finalize;
 

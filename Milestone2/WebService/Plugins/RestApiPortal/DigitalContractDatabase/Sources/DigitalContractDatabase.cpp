@@ -235,6 +235,7 @@ DigitalContractDatabase::DigitalContractDatabase(void)
 
     m_sMutex = PTHREAD_MUTEX_INITIALIZER;
     m_unNextAvailableIdentifier = 0;
+    m_fTerminationSignalEncountered = false;
 }
 
 /********************************************************************************************
@@ -441,7 +442,7 @@ void __thiscall DigitalContractDatabase::InitializePlugin(void)
     // Start the Ipc server
     // Start listening for Ipc connections
     ThreadManager * poThreadManager = ThreadManager::GetInstance();
-    SocketServer * poIpcServer = new SocketServer("/tmp/{786EC10E-45CA-4BD8-9F01-2AFC66578116}");
+    SocketServer * poIpcServer = new SocketServer("/tmp/{BC5AEAAF-E37E-4605-B074-F9DF2E82CD34}");
     IpcServerParameters * poIpcServerParameters = (IpcServerParameters *) gs_oMemoryAllocator.Allocate(sizeof(IpcServerParameters), true);
     _ThrowOutOfMemoryExceptionIfNull(poIpcServer);
 

@@ -518,7 +518,6 @@ bool RegisterLeafEvents(
     _in const std::string & c_strParentGuid
     )
 {
-    std::cout << "parent guid: " << c_strParentGuid << std::endl;
     __DebugFunction();
     __DebugAssert(0 < c_strEncodedEosb.size());
     __DebugAssert(0 < c_strParentGuid.size());
@@ -796,7 +795,7 @@ std::string RegisterVmForComputation(
 
     const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
 
-    std::cout << "************************\n Register Virtual Machine \n************************\n" << std::endl;
+    std::cout << "************************\n Register Virtual Machine For RO \n************************\n" << std::endl;
 
     try
     {
@@ -850,7 +849,6 @@ std::string RegisterVmForComputation(
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
         strVmEventGuid = oResponse.GetString("VmEventGuid");
-        std::cout << "event guid: " << strVmEventGuid << std::endl;
     }
     catch(BaseException oBaseException)
     {

@@ -685,7 +685,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::VerifyDigitalContract(
     oDigitalContractRequest.PutDword("TransactionType", 0x00000001);
     oDigitalContractRequest.PutString("DigitalContractGuid", c_oRequest.GetString("DigitalContractGuid"));
     oDigitalContractRequest.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
-    Socket * poIpcDigitalContractManager =  ConnectToUnixDomainSocket("/tmp/{786EC10E-45CA-4BD8-9F01-2AFC66578116}");
+    Socket * poIpcDigitalContractManager =  ConnectToUnixDomainSocket("/tmp/{BC5AEAAF-E37E-4605-B074-F9DF2E82CD34}");
     StructuredBuffer oDigitalContractResponse(::PutIpcTransactionAndGetResponse(poIpcDigitalContractManager, oDigitalContractRequest));
     if ((0 < oDigitalContractResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oDigitalContractResponse.GetDword("Status")))
     {   

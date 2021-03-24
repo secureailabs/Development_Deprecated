@@ -40,10 +40,15 @@ const std::string gc_strVirtualMachineSize = "Standard_B1ms";
 class InitializerData : public Object
 {
     public:
-    
-        InitializerData(void);
+
         virtual ~InitializerData(void);
-       
+        InitializerData(
+            _in const InitializerData & c_oInitializerData
+            ) = delete;
+        // The static function for the class that can get the reference to the
+        // InitializerData singleton object
+        static InitializerData & Get(void);
+
         bool __thiscall Login(
             _in const std::string c_strWebServiceIp,
             _in const std::string strUsername,
@@ -76,11 +81,14 @@ class InitializerData : public Object
             _in const unsigned int c_unNumberOfVirtualMachines
             );
         unsigned int __thiscall GetNumberOfVirtualMachines(void) const;
-        unsigned int __thiscall CreateVirtualMachines(void);
+        unsigned int __thiscall CreateAndInitializeVirtualMachine(void);
 
     private:
 
         // Private methods
+        InitializerData(void);
+        static InitializerData m_oInitializerData;
+
         bool __thiscall GetImposterEncryptedOpaqueSessionBlob(void);
         std::string __thiscall SendSaasRequest(
             _in const std::string & c_strWebservice,
@@ -91,6 +99,7 @@ class InitializerData : public Object
 
         // Private data members
         Azure * m_poAzure = nullptr;
+        pthread_mutex_t m_sMutex;
         unsigned int m_unNumberOfVirtualMachines;
         std::string m_stlEncryptedOpaqueSessionBlob;
         std::string m_stlImposterEncryptedOpaqueSessionBlob;

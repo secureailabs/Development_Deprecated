@@ -15,18 +15,18 @@
 #include "InitializerData.h"
 #include "TlsClient.h"
 #include "TlsTransactionHelperFunctions.h"
+#include "ThreadManager.h"
 
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
 #include <iostream>
-
-#include <netdb.h>
 #include <memory>
-#include <arpa/inet.h>
 #include <fstream>
-#include <unistd.h>
 #include <sstream>
 #include <iterator>
 
@@ -273,6 +273,21 @@ static bool __stdcall VerifyParametersAndProceed(
 
 /********************************************************************************************/
 
+void * __thiscall CreateVirtualMachines(
+    _in void * poParameter
+    )
+{
+    __DebugFunction();
+
+    InitializerData & oInitializerData = InitializerData::Get();
+
+    oInitializerData.CreateAndInitializeVirtualMachine();
+
+    return 0;
+}
+
+/********************************************************************************************/
+
 int __cdecl main(
     int nNumberOfArguments,
     char ** pszCommandLineArguments
@@ -280,15 +295,14 @@ int __cdecl main(
 {
     __DebugFunction();
 
-
-
     try
     {
 
         // Get the IP address of the webserices REST API server to login
         std::string strWebServiceIpAddress = ::GetStringInput("Enter WebServices Public Ip Address: ", 64, false, gsc_szIpAddressCharacters);
 
-        InitializerData oInitializerData;
+        // Using a singleton class for initializerData
+        InitializerData & oInitializerData = InitializerData::Get();
 
         // The first step is to fetch and verify the login credentials. This first step
         // will ensure that the oInitializerData object is initialized with all the
@@ -312,7 +326,20 @@ int __cdecl main(
         }
         while (false == ::VerifyParametersAndProceed(oInitializerData));
 
-        std::cout << oInitializerData.CreateVirtualMachines() << " nodes out of " << oInitializerData.GetNumberOfVirtualMachines() << " initialized." << std::endl;
+        ThreadManager * poThreadManager = ThreadManager::GetInstance();
+
+        std::cout << "+------------------------------------+---------------------+-------------------+-------------------+" << std::endl
+                  << "|        Virtual Machine Name        |  Public IP Address  |   Provisioning    |  Initialization   |" << std::endl
+                  << "+------------------------------------+---------------------+-------------------+-------------------+" << std::endl;
+
+        for (unsigned int unVirtualMachineLoopCounter = 0; unVirtualMachineLoopCounter < oInitializerData.GetNumberOfVirtualMachines(); unVirtualMachineLoopCounter++)
+        {
+            poThreadManager->CreateThread("VirtualMachineCreation", CreateVirtualMachines, (void *)nullptr);
+        }
+
+        // Wait for all of the threads to gracefull exit
+        poThreadManager->JoinThreadGroup("VirtualMachineCreation");
+
         std::cout << "************************************************************************" << std::endl;
         std::cout << "!! Kindly delete the Virtual Machines after use from the Azure Portal !!" << std::endl;
         std::cout << "************************************************************************" << std::endl;

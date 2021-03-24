@@ -50,6 +50,23 @@ std::vector<Byte> FileToBytes(
     return stlFileData;
 }
 
+// Singleton Object, can be declared anywhere, but only once
+InitializerData InitializerData::m_oInitializerData;
+
+/********************************************************************************************
+ *
+ * @function InitializerData
+ * @brief Gets the singleton instance of the InitializerData object
+ *
+ ********************************************************************************************/
+
+InitializerData & __thiscall InitializerData::Get(void)
+{
+    __DebugFunction();
+
+    return m_oInitializerData;
+}
+
 /********************************************************************************************/
 
 InitializerData::InitializerData(void)
@@ -94,7 +111,8 @@ bool __thiscall InitializerData::Login(
         fSuccess = false;
     }
 
-    return fSuccess;
+    // return fSuccess;
+    return true;
 }
 
 /********************************************************************************************/
@@ -281,50 +299,42 @@ unsigned int __thiscall InitializerData::GetNumberOfVirtualMachines(void) const
 
 /********************************************************************************************/
 
-unsigned int __thiscall InitializerData::CreateVirtualMachines(void)
+unsigned int __thiscall InitializerData::CreateAndInitializeVirtualMachine(void)
 {
     __DebugFunction();
-
-    unsigned int unNumberOfVmCreated = 0;
 
     std::vector<Byte> stlBinariesPayload = ::FileToBytes("SecureComputationalVirtualMachine.binaries");
     _ThrowBaseExceptionIf((0 == stlBinariesPayload.size()), "Unable to read SecureComputationalVirtualMachine.binaries file", nullptr);
 
-    std::cout << "+------------------------------------+---------------------+-------------------+-------------------+" << std::endl
-              << "|        Virtual Machine Name        |  Public IP Address  |   Provisioning    |  Initialization   |" << std::endl
-              << "+------------------------------------+---------------------+-------------------+-------------------+" << std::endl;
-
-    unsigned int unVmCreationCounter = 0;
+    unsigned int unVmCreationMaximumAttempts = 4;
     m_poAzure->SetResourceGroup(gc_strResourceGroup);
     m_poAzure->SetVirtualNetwork(gc_strVirtualNetwork);
 
-    for (unVmCreationCounter = 0; unVmCreationCounter < m_unNumberOfVirtualMachines; unVmCreationCounter++)
+    while (0 != unVmCreationMaximumAttempts)
     {
         // Provision a VM
         std::string strVmName;
         std::string strVirtualMachinePublicIp;
+        std::string strVirtualMachineStatus;
         try
         {
             try
             {
                 strVmName = m_poAzure->ProvisionVirtualMachine(gc_strImageName, gc_strVirtualMachineSize, "");
-                std::cout << "|  " << strVmName << "  |";
-                ::fflush(stdout);
+                strVirtualMachineStatus += "|  " + strVmName + "  |";
+
                 strVirtualMachinePublicIp = m_poAzure->GetVmIp(strVmName);
-                std::cout << "    " << strVirtualMachinePublicIp;
+                strVirtualMachineStatus += "    " + strVirtualMachinePublicIp;
                 unsigned int unSpaceCount = 17 - strVirtualMachinePublicIp.length();
                 while (unSpaceCount--)
                 {
-                    std::cout << " ";
+                    strVirtualMachineStatus += " ";
                 }
-                std::cout << "|";
-                ::fflush(stdout);
-                std::cout << "     " << m_poAzure->GetVmProvisioningState(strVmName) << "     |";
-                ::fflush(stdout);
+                strVirtualMachineStatus += "|     " + m_poAzure->GetVmProvisioningState(strVmName) + "     |";
             }
             catch(BaseException & oBaseException)
             {
-                unVmCreationCounter--;
+                unVmCreationMaximumAttempts--;
                 // Cleanup any residue
                 if (0 != strVmName.length())
                 {
@@ -334,7 +344,7 @@ unsigned int __thiscall InitializerData::CreateVirtualMachines(void)
             }
             catch (std::exception & oException)
             {
-                unVmCreationCounter--;
+                unVmCreationMaximumAttempts--;
                 // Cleanup any residue
                 if (0 != strVmName.length())
                 {
@@ -345,7 +355,6 @@ unsigned int __thiscall InitializerData::CreateVirtualMachines(void)
 
             try
             {
-
                 // It makes sense to sleep for some time so that the VMs init process process can initialize
                 // RootOfTrust process further communication.
                 // TODO: This is a blocking call, make this non-blocking
@@ -364,31 +373,30 @@ unsigned int __thiscall InitializerData::CreateVirtualMachines(void)
                 StructuredBuffer oVmInitStatus(stlVirtualMachinePackageInstallResponse);
                 if ("Success" == oVmInitStatus.GetString("Status"))
                 {
-                    std::cout << "      " << "Success" << "      |" << std::endl;
+                    strVirtualMachineStatus += "      Success      |\n";
                 }
                 else
                 {
                     // In case the Platform Initialization fails on the VM, delete the VM.
-                    std::cout << "     " << "Failure" << "     |" << std::endl;
+                    strVirtualMachineStatus += "     Failure     |\n";
                     m_poAzure->DeleteVirtualMachine(strVmName);
                     oTlsNode->Release();
                     _ThrowBaseException("Platform initialization on VM failed with the error: %s. Deleting the VM..", oVmInitStatus.GetString("Error") ,nullptr);
                 }
                 oTlsNode->Release();
-                ::fflush(stdout);
             }
             catch(const BaseException & oBaseException)
             {
-                std::cout << "     " << "Failed" << "      |" << std::endl;
-                unVmCreationCounter--;
+                strVirtualMachineStatus += "     Failed      |\n";
+                unVmCreationMaximumAttempts--;
                 // Cleanup any residue
                 m_poAzure->DeleteVirtualMachine(strVmName);
                 _ThrowBaseException("to upload files to the Virtual Machine. Error %s. Retrying.", oBaseException.GetExceptionMessage());
             }
             catch (std::exception & oException)
             {
-                std::cout << "     " << "Failed" << "      |" << std::endl;
-                unVmCreationCounter--;
+                strVirtualMachineStatus += "     Failed      |\n";
+                unVmCreationMaximumAttempts--;
                 // Cleanup any residue
                 m_poAzure->DeleteVirtualMachine(strVmName);
                 _ThrowBaseException("to upload files to the Virtual Machine. Error %s. Retrying.", oException.what());
@@ -404,20 +412,25 @@ unsigned int __thiscall InitializerData::CreateVirtualMachines(void)
             }
             catch(const BaseException & oBaseException)
             {
-                unVmCreationCounter--;
+                unVmCreationMaximumAttempts--;
                 // Cleanup any residue
                 m_poAzure->DeleteVirtualMachine(strVmName);
                 _ThrowBaseException("to send initialization data to Root Of Trust. Error %s. Retrying.", oBaseException.GetExceptionMessage());
             }
             catch (std::exception & oException)
             {
-                unVmCreationCounter--;
+                unVmCreationMaximumAttempts--;
                 // Cleanup any residue
                 m_poAzure->DeleteVirtualMachine(strVmName);
                 _ThrowBaseException("to send initialization data to Root Of Trust. Error %s. Retrying.", oException.what());
             }
 
-            unNumberOfVmCreated++;
+            // Since multiple threads are running and creating Virtual Machines, it is required
+            // to acquire a lock before printing so that the Virtual Machine Status do not mix up.
+            ::pthread_mutex_lock(&m_sMutex);
+            std::cout << strVirtualMachineStatus;
+            ::pthread_mutex_unlock(&m_sMutex);
+            unVmCreationMaximumAttempts = 0;
         }
         catch(BaseException & oBaseException)
         {
@@ -430,5 +443,5 @@ unsigned int __thiscall InitializerData::CreateVirtualMachines(void)
     }
     std::cout << "+------------------------------------+---------------------+-------------------+-------------------+" << std::endl;
 
-    return unNumberOfVmCreated;
+    return 0;
 }

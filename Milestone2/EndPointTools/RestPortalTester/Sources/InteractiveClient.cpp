@@ -10,6 +10,22 @@
 
 #include "InteractiveClient.h"
 
+const char * SERVER_IP_ADDRESS;
+unsigned int SERVER_PORT;
+
+/********************************************************************************************/
+
+void AddWebPortalConfigurations(
+    _in const char * c_szIpAddress, 
+    _in unsigned int unPortNumber
+    )
+{
+    __DebugFunction();
+
+    SERVER_IP_ADDRESS = c_szIpAddress;  // define the global variables
+    SERVER_PORT = unPortNumber;
+}
+
 /********************************************************************************************/
 
 static std::string __stdcall _GetEpochTimeInMilliseconds(void)

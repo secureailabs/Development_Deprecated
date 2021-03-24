@@ -117,7 +117,9 @@ class DatabaseManager : public Object
             );
         // Add organziation's super user to the database
         std::vector<Byte> __thiscall AddSuperUser(
-            _in const StructuredBuffer & c_oRequest
+            _in const StructuredBuffer & c_oRequest,
+            _in mongocxx::pool::entry & oClient,
+            _in mongocxx::v_noabi::client_session ** poSession
             );
         // Add a new user to the database
         std::vector<Byte> __thiscall RegisterUser(

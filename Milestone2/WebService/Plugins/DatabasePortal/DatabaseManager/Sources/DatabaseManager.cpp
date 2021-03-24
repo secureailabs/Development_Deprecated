@@ -213,7 +213,7 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     __DebugFunction();
 
     mongocxx::instance oMongoInstance{}; // Create only one instance
-    mongocxx::uri oUri{"mongodb://localhost:27017"};
+    mongocxx::uri oUri{"mongodb://localhost:27017/?replicaSet=rs0"};
 
     m_poMongoPool = std::unique_ptr<mongocxx::pool>(new mongocxx::pool(oUri));
 
@@ -1414,6 +1414,8 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterOrganization(
         mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
         // Access BasicOrganization collection
         mongocxx::collection oBasicOrganziationCollection = oSailDatabase["BasicOrganization"];
+        // Access ConfidentialOrganizationOrUser collection
+        mongocxx::collection oConfidentialOrganizationCollection = oSailDatabase["ConfidentialOrganizationOrUser"];
         // Create a transaction callback
         mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
         {
@@ -1424,8 +1426,6 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterOrganization(
             }
             else
             {
-                // Access Object collection
-                mongocxx::collection oConfidentialOrganizationCollection = oSailDatabase["ConfidentialOrganizationOrUser"];
                 // Insert document in the ConfidentialOrganizationOrUser collection
                 oResult = oConfidentialOrganizationCollection.insert_one(*poSession, oConfidentialOrganziationDocumentValue.view());
                 if (!oResult) {
@@ -1437,7 +1437,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterOrganization(
                     oRequest.PutString("UserUuid", strUserGuid);
                     oRequest.PutQword("AccessRights", eAdmin);
                     // Add new user as the super user of the organization
-                    dwStatus = StructuredBuffer(this->AddSuperUser(oRequest)).GetDword("Status");
+                    dwStatus = StructuredBuffer(this->AddSuperUser(oRequest, oClient, &poSession)).GetDword("Status");
                     _ThrowBaseExceptionIf((201 != dwStatus), "Error creating super user", nullptr);
                     // Send back organization guid to register a root event
                     oResponse.PutString("OrganizationGuid", strOrganizationGuid);
@@ -1476,7 +1476,9 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterOrganization(
  ********************************************************************************************/
 
 std::vector<Byte> __thiscall DatabaseManager::AddSuperUser(
-    _in const StructuredBuffer & c_oRequest
+    _in const StructuredBuffer & c_oRequest,
+    _in mongocxx::pool::entry & oClient,
+    _in mongocxx::v_noabi::client_session ** poSession
     )
 {
     __DebugFunction();
@@ -1538,27 +1540,25 @@ std::vector<Byte> __thiscall DatabaseManager::AddSuperUser(
       << "EncryptedSsb" << oEncryptedSsb
       << finalize;
 
-    // Each client and transaction can only be used in a single thread
-    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
     // Access SailDatabase
     mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
     // Access BasicUser collection
     mongocxx::collection oBasicUserCollection = oSailDatabase["BasicUser"];
+    // Access ConfidentialOrganizationOrUser collection
+    mongocxx::collection oConfidentialUserCollection = oSailDatabase["ConfidentialOrganizationOrUser"];
     // Create a transaction callback
     Dword dwStatus = 204;
-    mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
-    {
+    // mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
+    // {
         // Insert document in the BasicUser collection
-        auto oResult = oBasicUserCollection.insert_one(*poSession, oBasicUserDocumentValue.view());
+        auto oResult = oBasicUserCollection.insert_one(**poSession, oBasicUserDocumentValue.view());
         if (!oResult) {
             std::cout << "Error while writing to the database." << std::endl;
         }
         else
         {
-            // Access Object collection
-            mongocxx::collection oConfidentialUserCollection = oSailDatabase["ConfidentialOrganizationOrUser"];
             // Insert document in the ConfidentialOrganizationOrUser collection
-            oResult = oConfidentialUserCollection.insert_one(*poSession, oConfidentialUserDocumentValue.view());
+            oResult = oConfidentialUserCollection.insert_one(**poSession, oConfidentialUserDocumentValue.view());
             if (!oResult) {
                 std::cout << "Error while writing to the database." << std::endl;
             }
@@ -1567,17 +1567,17 @@ std::vector<Byte> __thiscall DatabaseManager::AddSuperUser(
                  dwStatus = 201;
             }
         }
-    };
-    // Create a session and start the transaction
-    mongocxx::client_session oSession = oClient->start_session();
-    try 
-    {
-        oSession.with_transaction(oCallback);
-    }
-    catch (mongocxx::exception& e) 
-    {
-        std::cout << "Collection transaction exception: " << e.what() << std::endl;
-    }
+    // };
+    // // Create a session and start the transaction
+    // mongocxx::client_session oSession = oClient->start_session();
+    // try 
+    // {
+    //     oSession.with_transaction(oCallback);
+    // }
+    // catch (mongocxx::exception& e) 
+    // {
+    //     std::cout << "Collection transaction exception: " << e.what() << std::endl;
+    // }
 
     // Send back the status of the transaction
     oResponse.PutDword("Status", dwStatus);

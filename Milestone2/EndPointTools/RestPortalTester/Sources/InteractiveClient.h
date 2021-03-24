@@ -29,12 +29,15 @@
 #include <sstream>
 #include <vector>
 
-#ifndef SERVER_IP_ADDRESS
-    #define SERVER_PORT 6200
-    #define SERVER_IP_ADDRESS "127.0.0.1"
-#endif
+extern const char * SERVER_IP_ADDRESS;
+extern unsigned int SERVER_PORT;
 
 /********************************************************************************************/
+
+extern void AddWebPortalConfigurations(
+    _in const char * c_szIpAddress, 
+    _in unsigned int unPortNumber
+    );
 
 static std::string __stdcall _GetEpochTimeInMilliseconds(void);
 

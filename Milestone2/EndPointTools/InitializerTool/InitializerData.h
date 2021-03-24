@@ -56,18 +56,23 @@ class InitializerData : public Object
             );
 
         std::vector<std::string> __thiscall GetListOfDigitalContracts(void) const;
-        std::string __thiscall GetEffectiveDigitalContractName(void) const throw();
-        void __thiscall SetEffectiveDigitalContract(
+        std::string __thiscall GetEffectiveDigitalContractName(
+            _in const unsigned int unDigitalContractIndex
+            ) const throw();
+        void __thiscall AddEffectiveDigitalContract(
             _in const std::string & c_strEffectiveDigitalContract
             );
 
-        std::string __thiscall GetDatasetFilename(void) const throw();
-        bool __thiscall SetDatasetFilename(
+        std::string __thiscall GetDatasetFilename(
+            _in const unsigned int unFilenameIndex
+        ) const throw();
+        bool __thiscall AddDatasetFilename(
             _in const std::string & c_strDatasetFilename
             );
 
         bool __thiscall InitializeNode(
-            _in const std::string & c_strNodeAddress
+            _in const std::string & c_strNodeAddress,
+            _in unsigned int unDatasetIndex
             ) const;
         bool __thiscall AzureLogin(
             _in const std::string & c_strAppId,
@@ -81,7 +86,10 @@ class InitializerData : public Object
             _in const unsigned int c_unNumberOfVirtualMachines
             );
         unsigned int __thiscall GetNumberOfVirtualMachines(void) const;
-        unsigned int __thiscall CreateAndInitializeVirtualMachine(void);
+        unsigned int __thiscall GetNumberOfDatasets(void) const;
+        unsigned int __thiscall CreateAndInitializeVirtualMachine(
+                _in unsigned int unDatasetIndex
+            );
 
     private:
 
@@ -95,7 +103,7 @@ class InitializerData : public Object
             _in const std::string c_strVerb,
             _in const std::string c_strResource,
             _in const std::string & c_strBody
-            );
+            ) const;
 
         // Private data members
         Azure * m_poAzure = nullptr;
@@ -107,8 +115,8 @@ class InitializerData : public Object
         Guid m_oDataDomainIdentifier;
         Guid m_oComputationalDomainIdentifier;
         Guid m_oRootOfTrustDomainIdentifier;
-        std::string m_strDatasetFilename;
-        std::string m_strEffectiveDigitalContractName;
+        std::vector<std::string> m_stlDatasetFilename;
+        std::vector<std::string> m_stlEffectiveDigitalContractName;
         std::vector<Byte> m_stlEffectiveDigitalContract;
         std::map<Qword, std::string> m_stlClusterNodes;
         std::vector<Byte> m_stlDataset;

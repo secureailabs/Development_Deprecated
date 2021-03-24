@@ -135,36 +135,42 @@ std::vector<std::string> __thiscall InitializerData::GetListOfDigitalContracts(v
 
 /********************************************************************************************/
 
-std::string __thiscall InitializerData::GetEffectiveDigitalContractName(void) const throw()
+std::string __thiscall InitializerData::GetEffectiveDigitalContractName(
+    _in const unsigned int unDigitalContractIndex
+) const throw()
 {
     __DebugFunction();
+    __DebugAssert(unDigitalContractIndex < this->GetNumberOfDatasets());
 
-    return m_strEffectiveDigitalContractName;
+    return m_stlEffectiveDigitalContractName.at(unDigitalContractIndex);
 }
 
 /********************************************************************************************/
 
-void __thiscall InitializerData::SetEffectiveDigitalContract(
+void __thiscall InitializerData::AddEffectiveDigitalContract(
     _in const std::string & c_strEffectiveDigitalContractName
     )
 {
     __DebugFunction();
 
-    m_strEffectiveDigitalContractName = c_strEffectiveDigitalContractName;
+    m_stlEffectiveDigitalContractName.push_back(c_strEffectiveDigitalContractName);
 }
 
 /********************************************************************************************/
 
-std::string __thiscall InitializerData::GetDatasetFilename(void) const throw()
+std::string __thiscall InitializerData::GetDatasetFilename(
+    _in const unsigned int unFilenameIndex
+) const throw()
 {
     __DebugFunction();
+    __DebugAssert(unFilenameIndex < this->GetNumberOfDatasets());
 
-    return m_strDatasetFilename;
+    return m_stlDatasetFilename.at(unFilenameIndex);
 }
 
 /********************************************************************************************/
 
-bool __thiscall InitializerData::SetDatasetFilename(
+bool __thiscall InitializerData::AddDatasetFilename(
     _in const std::string & c_strDatasetFilename
     )
 {
@@ -174,12 +180,7 @@ bool __thiscall InitializerData::SetDatasetFilename(
     std::ifstream stlFile(c_strDatasetFilename.c_str(), (std::ios::in | std::ios::binary | std::ios::ate));
     if (true == stlFile.good())
     {
-        unsigned int unFileSizeInBytes = (unsigned int) stlFile.tellg();
-        m_stlDataset.resize(unFileSizeInBytes);
-        stlFile.seekg(0, std::ios::beg);
-        stlFile.read((char *) m_stlDataset.data(), unFileSizeInBytes);
-        stlFile.close();
-        m_strDatasetFilename = c_strDatasetFilename;
+        m_stlDatasetFilename.push_back(c_strDatasetFilename);
         fSuccess = true;
     }
 
@@ -189,13 +190,26 @@ bool __thiscall InitializerData::SetDatasetFilename(
 /********************************************************************************************/
 
 bool __thiscall InitializerData::InitializeNode(
-    _in const std::string & c_strNodeAddress
+    _in const std::string & c_strNodeAddress,
+    _in unsigned int unDatasetIndex
     ) const
 {
     __DebugFunction();
 
+    std::vector<Byte> stlDataset;
+    std::ifstream stlFile(m_stlDatasetFilename.at(unDatasetIndex).c_str(), (std::ios::in | std::ios::binary | std::ios::ate));
+    if (true == stlFile.good())
+    {
+        unsigned int unFileSizeInBytes = (unsigned int) stlFile.tellg();
+        stlDataset.resize(unFileSizeInBytes);
+        stlFile.seekg(0, std::ios::beg);
+        stlFile.read((char *) stlDataset.data(), unFileSizeInBytes);
+        stlFile.close();
+    }
+
     bool fSuccess;
     StructuredBuffer oInitializationParameters;
+    // TODO: this is an empty buffer, we need to fill it in future
     oInitializationParameters.PutBuffer("DigitalContract", m_stlEffectiveDigitalContract);
     oInitializationParameters.PutBuffer("GlobalRootKeyCertificate", gc_abRootPublicKeyCertificate, gc_unRootPublicKeyCertificateSizeInBytes);
     oInitializationParameters.PutBuffer("ComputationalDomainRootKeyCertificate", gc_abResearcherPublicKeyCertificate, gc_unResearcherPublicKeyCertificateSizeInBytes);
@@ -205,7 +219,7 @@ bool __thiscall InitializerData::InitializeNode(
     oInitializationParameters.PutGuid("RootOfTrustDomainUuid", m_oRootOfTrustDomainIdentifier);
     oInitializationParameters.PutGuid("ComputationalDomainUuid", m_oComputationalDomainIdentifier);
     oInitializationParameters.PutGuid("DataDomainUuid", m_oDataDomainIdentifier);
-    oInitializationParameters.PutBuffer("Dataset", m_stlDataset);
+    oInitializationParameters.PutBuffer("Dataset", stlDataset);
 
     // We try to establish connection every 2 second until it is successful.
     TlsNode * poTlsNode = ::TlsConnectToNetworkSocketWithTimeout(c_strNodeAddress.c_str(), 6800, 60*1000, 2*1000);
@@ -224,7 +238,7 @@ std::string __thiscall InitializerData::SendSaasRequest(
     _in const std::string c_strVerb,
     _in const std::string c_strResource,
     _in const std::string & c_strBody
-    )
+    ) const
 {
     __DebugFunction();
 
@@ -299,13 +313,26 @@ unsigned int __thiscall InitializerData::GetNumberOfVirtualMachines(void) const
 
 /********************************************************************************************/
 
-unsigned int __thiscall InitializerData::CreateAndInitializeVirtualMachine(void)
+unsigned int __thiscall InitializerData::GetNumberOfDatasets(void) const
+{
+    __DebugFunction();
+
+    return m_stlDatasetFilename.size();
+}
+
+/********************************************************************************************/
+
+unsigned int __thiscall InitializerData::CreateAndInitializeVirtualMachine(
+    _in unsigned int unDatasetIndex
+)
 {
     __DebugFunction();
 
     std::vector<Byte> stlBinariesPayload = ::FileToBytes("SecureComputationalVirtualMachine.binaries");
     _ThrowBaseExceptionIf((0 == stlBinariesPayload.size()), "Unable to read SecureComputationalVirtualMachine.binaries file", nullptr);
 
+    // In case of a failure to provision a Virtual Machine we will try for unVmCreationMaximumAttempts times
+    // before we actually give up.
     unsigned int unVmCreationMaximumAttempts = 4;
     m_poAzure->SetResourceGroup(gc_strResourceGroup);
     m_poAzure->SetVirtualNetwork(gc_strVirtualNetwork);
@@ -373,12 +400,12 @@ unsigned int __thiscall InitializerData::CreateAndInitializeVirtualMachine(void)
                 StructuredBuffer oVmInitStatus(stlVirtualMachinePackageInstallResponse);
                 if ("Success" == oVmInitStatus.GetString("Status"))
                 {
-                    strVirtualMachineStatus += "      Success      |\n";
+                    strVirtualMachineStatus += "      Success      |";
                 }
                 else
                 {
                     // In case the Platform Initialization fails on the VM, delete the VM.
-                    strVirtualMachineStatus += "     Failure     |\n";
+                    strVirtualMachineStatus += "     Failure     |";
                     m_poAzure->DeleteVirtualMachine(strVmName);
                     oTlsNode->Release();
                     _ThrowBaseException("Platform initialization on VM failed with the error: %s. Deleting the VM..", oVmInitStatus.GetString("Error") ,nullptr);
@@ -387,7 +414,7 @@ unsigned int __thiscall InitializerData::CreateAndInitializeVirtualMachine(void)
             }
             catch(const BaseException & oBaseException)
             {
-                strVirtualMachineStatus += "     Failed      |\n";
+                strVirtualMachineStatus += "     Failed      |";
                 unVmCreationMaximumAttempts--;
                 // Cleanup any residue
                 m_poAzure->DeleteVirtualMachine(strVmName);
@@ -395,7 +422,7 @@ unsigned int __thiscall InitializerData::CreateAndInitializeVirtualMachine(void)
             }
             catch (std::exception & oException)
             {
-                strVirtualMachineStatus += "     Failed      |\n";
+                strVirtualMachineStatus += "     Failed      |";
                 unVmCreationMaximumAttempts--;
                 // Cleanup any residue
                 m_poAzure->DeleteVirtualMachine(strVmName);
@@ -408,7 +435,7 @@ unsigned int __thiscall InitializerData::CreateAndInitializeVirtualMachine(void)
                 // for the root of trust to configure the Virtual Machine
                 // It makes sense to sleep for some time so that the RootOfTrust process can initialize
                 // open socket for further communication.
-                this->InitializeNode(strVirtualMachinePublicIp);
+                this->InitializeNode(strVirtualMachinePublicIp, unDatasetIndex);
             }
             catch(const BaseException & oBaseException)
             {
@@ -429,6 +456,16 @@ unsigned int __thiscall InitializerData::CreateAndInitializeVirtualMachine(void)
             // to acquire a lock before printing so that the Virtual Machine Status do not mix up.
             ::pthread_mutex_lock(&m_sMutex);
             std::cout << strVirtualMachineStatus;
+            std::string strDatasetfile = this->GetDatasetFilename(unDatasetIndex);
+            std::cout << "  " << strDatasetfile;
+            unsigned int unSpacesToAdd = 29 - strDatasetfile.length();
+            while(unSpacesToAdd--)
+            {
+                std::cout << " ";
+            }
+            std::cout << "|" << std::endl;
+
+
             ::pthread_mutex_unlock(&m_sMutex);
             unVmCreationMaximumAttempts = 0;
         }
@@ -441,7 +478,7 @@ unsigned int __thiscall InitializerData::CreateAndInitializeVirtualMachine(void)
             std::cout << "Unexpected exception " << oException.what() << std::endl;
         }
     }
-    std::cout << "+------------------------------------+---------------------+-------------------+-------------------+" << std::endl;
+    std::cout << "+------------------------------------+---------------------+-------------------+-------------------+-------------------------------+" << std::endl;
 
     return 0;
 }

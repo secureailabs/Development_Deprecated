@@ -311,7 +311,13 @@ unsigned int __thiscall InitializerData::CreateVirtualMachines(void)
                 std::cout << "|  " << strVmName << "  |";
                 ::fflush(stdout);
                 strVirtualMachinePublicIp = m_poAzure->GetVmIp(strVmName);
-                std::cout << "    " << strVirtualMachinePublicIp << "    |";
+                std::cout << "    " << strVirtualMachinePublicIp;
+                unsigned int unSpaceCount = 17 - strVirtualMachinePublicIp.length();
+                while (unSpaceCount--)
+                {
+                    std::cout << " ";
+                }
+                std::cout << "|";
                 ::fflush(stdout);
                 std::cout << "     " << m_poAzure->GetVmProvisioningState(strVmName) << "     |";
                 ::fflush(stdout);
@@ -326,22 +332,36 @@ unsigned int __thiscall InitializerData::CreateVirtualMachines(void)
                 }
                 _ThrowBaseException("to provision Virtual Machine. Error: %s. Retrying.", oBaseException.GetExceptionMessage(), nullptr);
             }
-
-            // It makes sense to sleep for some time so that the VMs init process process can initialize
-            // RootOfTrust process further communication.
-            // TODO: This is a blocking call, make this non-blocking
-            m_poAzure->WaitToRun(strVmName);
+            catch (std::exception & oException)
+            {
+                unVmCreationCounter--;
+                // Cleanup any residue
+                if (0 != strVmName.length())
+                {
+                    m_poAzure->DeleteVirtualMachine(strVmName);
+                }
+                _ThrowBaseException("to provision Virtual Machine. Error: %s. Retrying.", oException.what(), nullptr);
+            }
 
             try
             {
+
+                // It makes sense to sleep for some time so that the VMs init process process can initialize
+                // RootOfTrust process further communication.
+                // TODO: This is a blocking call, make this non-blocking
+                m_poAzure->WaitToRun(strVmName);
+
                 // Establish a connection with a cron process running on the newly created VM
                 // We are using a Connect call with a timeout so that in case the VM stub has not yet
                 // initialized and opened a port for connection, we can try again every 2 second.
                 TlsNode * oTlsNode = ::TlsConnectToNetworkSocketWithTimeout(strVirtualMachinePublicIp.c_str(), 9090, 60*1000, 2*1000);
-                _ThrowIfNull(oTlsNode, "Tls connection timed out", nullptr);
+                _ThrowIfNull(oTlsNode, "Tls connection for package upload timed out", nullptr);
 
                 // Send the Structured Buffer and wait 2 minutes for the initialization status
-                StructuredBuffer oVmInitStatus(::PutTlsTransactionAndGetResponse(oTlsNode, stlBinariesPayload, 2*60*1000));
+                std::vector<Byte> stlVirtualMachinePackageInstallResponse = ::PutTlsTransactionAndGetResponse(oTlsNode, stlBinariesPayload, 5*60*1000);
+                _ThrowBaseExceptionIf((0 == stlVirtualMachinePackageInstallResponse.size()), "No respose from Virtual Machine about it's state", nullptr);
+
+                StructuredBuffer oVmInitStatus(stlVirtualMachinePackageInstallResponse);
                 if ("Success" == oVmInitStatus.GetString("Status"))
                 {
                     std::cout << "      " << "Success" << "      |" << std::endl;
@@ -359,10 +379,19 @@ unsigned int __thiscall InitializerData::CreateVirtualMachines(void)
             }
             catch(const BaseException & oBaseException)
             {
+                std::cout << "     " << "Failed" << "      |" << std::endl;
                 unVmCreationCounter--;
                 // Cleanup any residue
                 m_poAzure->DeleteVirtualMachine(strVmName);
                 _ThrowBaseException("to upload files to the Virtual Machine. Error %s. Retrying.", oBaseException.GetExceptionMessage());
+            }
+            catch (std::exception & oException)
+            {
+                std::cout << "     " << "Failed" << "      |" << std::endl;
+                unVmCreationCounter--;
+                // Cleanup any residue
+                m_poAzure->DeleteVirtualMachine(strVmName);
+                _ThrowBaseException("to upload files to the Virtual Machine. Error %s. Retrying.", oException.what());
             }
 
             try
@@ -380,12 +409,19 @@ unsigned int __thiscall InitializerData::CreateVirtualMachines(void)
                 m_poAzure->DeleteVirtualMachine(strVmName);
                 _ThrowBaseException("to send initialization data to Root Of Trust. Error %s. Retrying.", oBaseException.GetExceptionMessage());
             }
+            catch (std::exception & oException)
+            {
+                unVmCreationCounter--;
+                // Cleanup any residue
+                m_poAzure->DeleteVirtualMachine(strVmName);
+                _ThrowBaseException("to send initialization data to Root Of Trust. Error %s. Retrying.", oException.what());
+            }
 
             unNumberOfVmCreated++;
         }
         catch(BaseException & oBaseException)
         {
-            std::cout << "Failed " << oBaseException.GetExceptionMessage() << std::endl;
+            std::cout << "\nFailed " << oBaseException.GetExceptionMessage() << std::endl;
         }
         catch (std::exception & oException)
         {

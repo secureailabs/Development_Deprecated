@@ -29,10 +29,10 @@
 
 const std::string gc_strSubscriptionId = "20c11edd-abb4-4bc0-a6d5-c44d6d2524be";
 const std::string gc_strLocation = "eastus2";
-const std::string gc_strResourceGroup = "ComputationVmTemplate0.3_group";
-const std::string gc_strImageName = "ComputationVmTemplate0.3Image";
-const std::string gc_strVirtualNetwork = "ComputationVmTemplate0.3_group-vnet";
-const std::string gc_strNetworkSecurityGroup = "ComputationVmTemplate0.3-nsg";
+const std::string gc_strResourceGroup = "ComputationVmTemplate0.4_group";
+const std::string gc_strImageName = "ComputationVmTemplate0.4Image";
+const std::string gc_strVirtualNetwork = "ComputationVmTemplate0.4_group-vnet";
+const std::string gc_strNetworkSecurityGroup = "ComputationVmTemplate0.4-nsg";
 const std::string gc_strVirtualMachineSize = "Standard_B1ms";
 
 /********************************************************************************************/

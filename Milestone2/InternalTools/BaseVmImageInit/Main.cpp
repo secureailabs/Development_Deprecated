@@ -44,7 +44,6 @@ void BytesToFile(
     stlFileToWrite.close();
 }
 
-
 /********************************************************************************************
  *
  * @function InitVirtualMachine
@@ -62,24 +61,27 @@ void __cdecl InitVirtualMachine(
     TlsNode * poTlsNode;
 
     StructuredBuffer oResponseStructuredBuffer;
-    oResponseStructuredBuffer.PutString("Status", "Success");
+    oResponseStructuredBuffer.PutString("Status", "Fail");
 
-    unsigned int unSpinner = 0;
-    try
+    bool fSuccess = false;
+    while(false == fSuccess)
     {
-        while(0 == unSpinner)
+        // We will first try to download all the incoming package data that needs to be installed
+        // on the VM and if this fails we try again.
+        try
         {
             if (true == oTlsServer.WaitForConnection(1000))
             {
                 std::cout << "New Connection: " << std::endl;
                 poTlsNode = oTlsServer.Accept();
                 _ThrowIfNull(poTlsNode, "Cannot establish connection.", nullptr);
+
                 // Fetch the serialized Structure Buffer from the remote Initializer Tool
                 std::vector<Byte> stlPayload = ::GetTlsTransaction(poTlsNode, 60*1000);
                 _ThrowBaseExceptionIf((0 == stlPayload.size()), "Bad Initialization data", nullptr);
+
                 // deserialize the buffer
                 StructuredBuffer oVmInitializationInstructions(stlPayload);
-
                 std::string strVmType = oVmInitializationInstructions.GetString("VirtualMachineType");
                 if ("WebService" == strVmType)
                 {
@@ -147,25 +149,44 @@ void __cdecl InitVirtualMachine(
                         _ThrowBaseException("Invalid VM type", nullptr);
                     }
                 }
+
+                oResponseStructuredBuffer.PutString("Status", "Success");
+
                 // We just want to establish one connection with the Initializer client and then shut down
                 // Either the Virtual Machine receives all the files and relevant startup data on the first
                 // transaction or it just fails to initialize and Error is sent to the Initialization Tool.
-                unSpinner = 1;
+                fSuccess = true;
             }
         }
-    }
-    catch(const BaseException & oBaseException)
-    {
-        oResponseStructuredBuffer.PutString("Status", "Fail");
-        oResponseStructuredBuffer.PutString("Error", oBaseException.GetExceptionMessage());
-    }
+        catch(const BaseException & oBaseException)
+        {
+            oResponseStructuredBuffer.PutString("Status", "Fail");
+            oResponseStructuredBuffer.PutString("Error", oBaseException.GetExceptionMessage());
+        }
+        catch(std::exception & oException)
+        {
+            oResponseStructuredBuffer.PutString("Status", "Fail");
+            oResponseStructuredBuffer.PutString("Error", oException.what());
+        }
 
-    // Send the resposnse to the Remote Initializer Tool
-    bool fResponseStatus = ::PutTlsTransaction(poTlsNode, oResponseStructuredBuffer.GetSerializedBuffer());
-
-    if (nullptr != poTlsNode)
-    {
-        poTlsNode->Release();
+        // We again try to send the Status response to the initializer tool so that it could know if the
+        // package was installed correctly without any error. But we don't want to risk a failure of this process
+        // while that happens and some exception occurs.
+        try
+        {
+            // Send the resposnse to the Remote Initializer Tool
+            // There is a chance that this transaction may fail but in that case, we will continue to the run the
+            // virtual machine and exit the init process and leave it on the discretion of the initialization tool
+            if (nullptr != poTlsNode)
+            {
+                bool fResponseStatus = ::PutTlsTransaction(poTlsNode, oResponseStructuredBuffer.GetSerializedBuffer());
+                poTlsNode->Release();
+            }
+        }
+        catch(...)
+        {
+            std::cout << "Unexpected Error while sending init response.";
+        }
     }
 }
 

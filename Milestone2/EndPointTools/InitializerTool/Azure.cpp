@@ -396,10 +396,20 @@ std::string __thiscall Azure::GetVmIp(
 {
     __DebugFunction();
 
-    std::string strVmIpRestResponse = this->MakeRestCall("GET", "Microsoft.Network/publicIPAddresses/" + c_strVirtualMachineName + "-ip", "management.azure.com", "", "2020-07-01");
+    std::string strPublicIpAddress;
+    try
+    {
+        std::string strVmIpRestResponse = this->MakeRestCall("GET", "Microsoft.Network/publicIPAddresses/" + c_strVirtualMachineName + "-ip", "management.azure.com", "", "2020-07-01");
+        strPublicIpAddress = ::GetJsonValue(strVmIpRestResponse, "\"ipAddress\"");
+        _ThrowBaseExceptionIf((0 == strPublicIpAddress.length()), "Ip address length zero", nullptr);
+    }
+    catch(...)
+    {
+        _ThrowBaseException("Get Public Ip Address of Virtual Machine failed.", nullptr);
+    }
 
     // TODO: Dont use this eventually
-    return ::GetJsonValue(strVmIpRestResponse, "\"ipAddress\"");
+    return strPublicIpAddress;
 
     // StructuredBuffer oResponseJson = ::GetHttpBodyJson(strVmIpRestResponse);
     // return oResponseJson.GetStructuredBuffer("properties").GetString("ipAddress");

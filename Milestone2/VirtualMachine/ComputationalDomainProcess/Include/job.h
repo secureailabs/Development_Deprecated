@@ -37,38 +37,37 @@ enum JobStatus
 class Job
 {
     public:
-        Job
-        (
-        	_in std::string& strFunctionNode,
-            _in std::string& strJobID,
-            _in std::vector<std::string>& stlInputNode,
-            _in std::vector<std::string>& stlOutputNode
-		);
+    Job
+    (
+        _in std::string& strFunctionNode,
+        _in std::string& strJobID,
+        _in std::vector<std::string>& stlInputNode,
+        _in std::vector<std::string>& stlOutputNode,
+        _in std::vector<std::string>& stlConfidentialInputNode,
+        _in std::vector<std::string>& stlConfidentialOutputNode
+	);
 
-	    JobStatus& __thiscall GetStatus(void);
-        //const std::string& __thiscall GetJobName(void) const { return m_strJobName; }
-        const std::string& __thiscall GetOutputFile(void) const { return m_strOutputFile; }
-        std::string __thiscall GetJobID(void) const;
+	JobStatus& __thiscall GetStatus(void);
+	void __thiscall SetStatus(JobStatus);
 
-        const std::string __thiscall GetOutput(void);
-        void __thiscall SetOutputAndErrFile(void);
+    const std::string& __thiscall GetOutputFile(void) const { return m_strOutputFile; }
+    std::string __thiscall GetJobID(void) const;
 
-        // virtual void __thiscall JobRunString(void) {}
-        // virtual void __thiscall JobRunScript(void) {}
-        virtual void __thiscall JobRunFunctionNode(void) {}
+    const std::string __thiscall GetOutput(void);
+    void __thiscall SetOutputAndErrFile(void);
+
+    virtual void __thiscall JobRunFunctionNode(void) {}
 
     protected:
-        //const std::string m_oFunctionNode;
-        //const std::string m_c_strJobScript;
-	    JobStatus m_oStatus;
-        //const std::string m_strJobName;
-        const std::string m_strFunctionNodeNumber;
-        const std::string m_strJobID;
-        const std::vector<std::string> m_stlInput;
-        const std::vector<std::string> m_stlOutput;
-        std::string m_strOutputFile;
-        std::string m_strErrFile;
-	    //std::thread::id m_stlJobId;
+	JobStatus m_oStatus;
+    const std::string m_strFunctionNodeNumber;
+    const std::string m_strJobID;
+    const std::vector<std::string> m_stlInput;
+    const std::vector<std::string> m_stlOutput;
+    const std::vector<std::string> m_stlConfidentialInput;
+    const std::vector<std::string> m_stlConfidentialOutput;
+    std::string m_strOutputFile;
+    std::string m_strErrFile;
 };
 
 /********************************************************************************************/
@@ -76,15 +75,15 @@ class Job
 class PythonJob : public Job
 {
     public:
-        PythonJob
-        (
-       	    _in std::string& strFunctionNode,
-            _in std::string& strJobID,
-            _in std::vector<std::string>& stlInputNode,
-            _in std::vector<std::string>& stlOutputNode
-		): Job(strFunctionNode, strJobID, stlInputNode, stlOutputNode) {}
+    PythonJob
+    (
+       	_in std::string& strFunctionNode,
+        _in std::string& strJobID,
+        _in std::vector<std::string>& stlInputNode,
+        _in std::vector<std::string>& stlOutputNode,
+        _in std::vector<std::string>& stlConfidentialInputNode,
+        _in std::vector<std::string>& stlConfidentialOutputNode
+	): Job(strFunctionNode, strJobID, stlInputNode, stlOutputNode, stlConfidentialInputNode, stlConfidentialOutputNode) {}
 
-        // virtual void __thiscall JobRunString(void);
-        // virtual void __thiscall JobRunScript(void);
-        virtual void __thiscall JobRunFunctionNode(void);
+    virtual void __thiscall JobRunFunctionNode(void);
 };

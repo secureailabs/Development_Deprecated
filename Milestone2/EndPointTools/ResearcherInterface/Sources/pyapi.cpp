@@ -24,16 +24,20 @@ static PyObject* createguid(PyObject* self, PyObject* args)
 static PyObject* vmconnect(PyObject* self, PyObject* args)
 {
     char* serverIP;
+    char* email;
+    char* password;
     unsigned int port;
     std::string strVMID;
 
-    if(!PyArg_ParseTuple(args, "sI", &serverIP, &port))
+    if(!PyArg_ParseTuple(args, "sIss", &serverIP, &port, &email, &password))
     {
         return NULL;
     }
 
     std::string strIP(serverIP);
-    getFrontend().SetFrontend(strIP, port, strVMID);
+    std::string strEmail(email);
+    std::string strPassword(password);
+    getFrontend().SetFrontend(strIP, port, strVMID, strEmail, strPassword);
 
     return Py_BuildValue("s", strVMID.c_str());
 }
@@ -57,23 +61,41 @@ static PyObject* pulldata(PyObject* self, PyObject* args)
     
     std::vector<std::string> stlVarIDs;
     std::vector<std::vector<Byte>> stlVars;
+    
+    std::vector<std::string> stlConfidentialOutputIDs;
 
     getFrontend().GetOutputVec(strFNID, stlVarIDs);
+    getFrontend().GetConfidentialOutputVec(strFNID, stlConfidentialOutputIDs);
 
     getFrontend().HandlePullData(strVMID, strJobID, stlVarIDs, stlVars);
 
-    size_t number = stlVarIDs.size();
-    PyObject* result = PyList_New(number);
-    for(size_t i =0; i<number; i++)
+    PyObject* pullable = PyList_New(stlVarIDs.size());
+    PyObject* confidential = PyList_New(stlConfidentialOutputIDs.size());
+    
+    for(size_t i=0; i<stlVarIDs.size(); i++)
     {
         std::ofstream stlVarFile;
+        
+        //std::ofstream stlOutputLog;
+        //stlOutputLog.open(strHome+"/"+strJobID+stlVarIDs[i]+".log" ,std::ios::out);
+        
         stlVarFile.open(strHome+"/"+strJobID+stlVarIDs[i], std::ios::out | std::ios::binary);
-        stlVarFile.write((char*)&stlVars[i][0], stlVars[i].size());
+        //stlVarFile.write((char*)&stlVars[i][0], stlVars[i].size());
+        //stlOutputLog<<stlVars[i].size();
+        //stlOutputLog.close();
+        stlVarFile.write((char*)stlVars[i].data(), stlVars[i].size());
         stlVarFile.close();
 
-        PyList_SetItem(result, i, Py_BuildValue("s", stlVarIDs[i].c_str()));
+        PyList_SetItem(pullable, i, Py_BuildValue("s", stlVarIDs[i].c_str()));
     }
-
+    
+    for(size_t i =0; i<stlConfidentialOutputIDs.size(); i++)
+    {
+        PyList_SetItem(confidential, i, Py_BuildValue("s", std::string(strJobID+stlConfidentialOutputIDs[i]).c_str()));
+    }
+    
+    PyObject* result=Py_BuildValue("[OO]", pullable, confidential);
+    
     return result;
 }
 
@@ -83,8 +105,9 @@ static PyObject* pushdata(PyObject* self, PyObject* args)
     char* jobID;
     char* fnID;
     char* home;
+    PyObject* confidentialInputList;
 
-    if(!PyArg_ParseTuple(args, "ssss", &vmID, &jobID, &fnID, &home))
+    if(!PyArg_ParseTuple(args, "sssOs", &vmID, &jobID, &fnID, &confidentialInputList, &home))
     {
         return NULL;
     }
@@ -94,11 +117,12 @@ static PyObject* pushdata(PyObject* self, PyObject* args)
     std::string strFNID(fnID);
     std::string strHome(home);
     
-    std::vector<std::string> stlVarIDs;
-    std::vector<std::vector<Byte>> stlVars;
+    std::vector<std::string> stlInputIDs;
+    std::vector<std::vector<Byte>> stlInputVars;
 
-    getFrontend().GetInputVec(strFNID, stlVarIDs);
-    int number = stlVarIDs.size();
+    getFrontend().GetInputVec(strFNID, stlInputIDs);
+    
+    int number = stlInputIDs.size();
 
     for(int i =0; i<number; i++)
     {
@@ -114,12 +138,28 @@ static PyObject* pushdata(PyObject* self, PyObject* args)
         stlVec.reserve(length);
 
         stlVec.insert(stlVec.begin(),std::istream_iterator<Byte>(stlVarFile), std::istream_iterator<Byte>());
-        stlVars.push_back(stlVec);
+        stlInputVars.push_back(stlVec);
         
         stlVarFile.close();
     }
+    
 
-    getFrontend().HandlePushData(strVMID, strJobID, stlVarIDs, stlVars);
+    PyObject *iter = PyObject_GetIter(confidentialInputList);
+    std::vector<std::string> stlConfidentialInputIDs;
+    
+    while (true) 
+    {
+        PyObject *next = PyIter_Next(iter);
+        if (!next) {
+            break;
+        }
+
+        std::string strID(PyUnicode_AsUTF8(next));
+        stlConfidentialInputIDs.push_back(strID);
+   }
+    
+
+    getFrontend().HandlePushData(strVMID, strFNID, strJobID, stlInputIDs, stlInputVars, stlConfidentialInputIDs);
 
     return Py_BuildValue("");
 }
@@ -211,8 +251,10 @@ static PyObject* registerfn(PyObject* self, PyObject* args)
     char* file;
     int inputNumber;
     int outputNumber;
+    int confidentialInputNumber;
+    int confidentialOutputNumber;
 
-    if(!PyArg_ParseTuple(args, "sii", &file, &inputNumber, &outputNumber))
+    if(!PyArg_ParseTuple(args, "siiii", &file, &inputNumber, &outputNumber, &confidentialInputNumber, &confidentialOutputNumber))
     {
         return NULL;
     }
@@ -220,17 +262,23 @@ static PyObject* registerfn(PyObject* self, PyObject* args)
     std::string strFNID;
     std::string strFile(file);
 
-    getFrontend().RegisterFN(strFile, inputNumber, outputNumber, strFNID);
+    getFrontend().RegisterFN(strFile, inputNumber, outputNumber, confidentialInputNumber, confidentialOutputNumber, strFNID);
     
     std::vector<std::string> stlInputVec;
     std::vector<std::string> stlOutputVec;
+    std::vector<std::string> stlConfidentialInputVec;
+    std::vector<std::string> stlConfidentialOutputVec;
 
     getFrontend().GetInputVec(strFNID, stlInputVec);
     getFrontend().GetOutputVec(strFNID, stlOutputVec);
+    getFrontend().GetConfidentialInputVec(strFNID, stlConfidentialInputVec);
+    getFrontend().GetConfidentialOutputVec(strFNID, stlConfidentialOutputVec);
 
-    PyObject* result = PyList_New(3);
+    PyObject* result = PyList_New(5);
     PyObject* inputList = PyList_New(stlInputVec.size());
     PyObject* outputList = PyList_New(stlOutputVec.size());
+    PyObject* confidentialInputList = PyList_New(stlConfidentialInputVec.size());
+    PyObject* confidentialOutputList = PyList_New(stlConfidentialOutputVec.size());
     
     for(size_t i=0; i<stlInputVec.size(); i++)
     {
@@ -240,10 +288,20 @@ static PyObject* registerfn(PyObject* self, PyObject* args)
     {
         PyList_SetItem(outputList, i, Py_BuildValue("s", stlOutputVec[i].c_str()));
     }
+    for(size_t i=0; i<stlConfidentialInputVec.size(); i++)
+    {
+        PyList_SetItem(confidentialInputList, i, Py_BuildValue("s", stlConfidentialInputVec[i].c_str()));
+    }
+    for(size_t i=0; i<stlConfidentialOutputVec.size(); i++)
+    {
+        PyList_SetItem(confidentialOutputList, i, Py_BuildValue("s", stlConfidentialOutputVec[i].c_str()));
+    }
     
     PyList_SetItem(result, 0, Py_BuildValue("s", strFNID.c_str()));
     PyList_SetItem(result, 1, inputList);
     PyList_SetItem(result, 2, outputList);
+    PyList_SetItem(result, 3, confidentialInputList);
+    PyList_SetItem(result, 4, confidentialOutputList);
 
     return result;
 }

@@ -36,7 +36,9 @@ class Frontend{
         (
             _in std::string& strServerIP, 
             _in Word wPort,
-            _in std::string& strVMID
+            _in std::string& strVMID,
+            _in std::string& strEmail,
+            _in std::string& strPassword
         );
         void __thiscall HandleExecJob
         (
@@ -65,9 +67,11 @@ class Frontend{
         void __thiscall HandlePushData
         (
             _in std::string& strVMID,
+            _in std::string& strFNID,
             _in std::string& strJobID,
             _in std::vector<std::string>& stlvarID,
-            _in std::vector<std::vector<Byte>>& stlVars   
+            _in std::vector<std::vector<Byte>>& stlVars,
+            _in std::vector<std::string>& stlPassID   
         );
         void __thiscall HandlePullData
         (
@@ -91,6 +95,8 @@ class Frontend{
             _in std::string strFilePath,
             _in int nInputNumber,
             _in int nOutputNumber,
+            _in int nConfidentialInputNumber,
+            _in int nConfidentialOutputNumber,
             _inout std::string& strFNID
         );
         void __thiscall GetInputVec
@@ -99,6 +105,16 @@ class Frontend{
             _inout std::vector<std::string>& stlVarIDs
         );
         void __thiscall GetOutputVec
+        (
+            _in std::string& strFNID,
+            _inout std::vector<std::string>& stlVarIDs
+        );
+        void __thiscall GetConfidentialInputVec
+        (
+            _in std::string& strFNID,
+            _inout std::vector<std::string>& stlVarIDs
+        );
+        void __thiscall GetConfidentialOutputVec
         (
             _in std::string& strFNID,
             _inout std::vector<std::string>& stlVarIDs

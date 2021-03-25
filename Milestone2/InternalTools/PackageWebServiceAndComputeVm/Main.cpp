@@ -138,25 +138,8 @@ int __cdecl main(
 
     try
     {
-
-        // Get the IP address of the webserices REST API server to login
-        std::cout << "Select what to package:" << std::endl;
-        std::cout << "1. WebService" << std::endl;
-        std::cout << "2. Compute Virtual Machine" << std::endl;
-        std::string strWhatToPackage = ::GetStringInput("(1/2:)", 1, false, gsc_szIpAddressCharacters);
-
-        if ("1" == strWhatToPackage)
-        {
-            ::PackageWebService();
-        }
-        else if("2" == strWhatToPackage)
-        {
-            ::PackageComputeServices();
-        }
-        else
-        {
-            _ThrowBaseException("Invalid option. Try Again!!", nullptr);
-        }
+        ::PackageWebService();
+        ::PackageComputeServices();
     }
 
     catch (BaseException oException)

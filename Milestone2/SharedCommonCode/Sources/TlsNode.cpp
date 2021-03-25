@@ -84,7 +84,7 @@ TlsNode::TlsNode(
     }
 
     ::SSL_set_bio(m_poSSL, m_poReadBIO, m_poWriteBIO);
-
+  
     //Perform the TLS Handhshake with a default timeout of 15 second
     this->SSLHandshake(15000);
 }

@@ -18,7 +18,7 @@ int main()
 
     try
     {
-        const char * c_szIpAddress = "127.0.0.1";
+        const char * c_szIpAddress = "52.167.231.29";
         unsigned int unPort = 6200;
         DatabaseTools oDatabaseTools(c_szIpAddress, unPort);
         // Add organizations and their super admins

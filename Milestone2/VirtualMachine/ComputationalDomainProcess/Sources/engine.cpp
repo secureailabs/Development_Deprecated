@@ -11,10 +11,12 @@
 
 #include "CoreTypes.h"
 #include "engine.h"
+#include "job.h"
 #include "DebugLibrary.h"
 #include "StatusMonitor.h"
 
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <vector>
 #include <iostream>
@@ -107,10 +109,21 @@ void __thiscall JobEngine::ProcessOneJob(void)
             }
 
             //the main process will create a thread to wait for the job to finish
-            //else{
-            //	int nStatus;
-            //	waitpid(nPid, &nStatus, 0);
-            //}
+            else{
+            	int nStatus;
+            	waitpid(nPid, &nStatus, 0);
+            	std::cout<<"job done"<<std::endl;
+            	if(nStatus==0)
+            	{
+            	    m_stlJobMap[strJob]->SetStatus(eCompleted);
+            	    std::cout<<"job success"<<std::endl;
+            	}
+            	else
+            	{
+            	    //m_stlJobMap[strJob]->SetStatus(eFail);
+            	    std::cout<<"job fail"<<std::endl;
+            	}
+            }
         }
     }
 }
@@ -229,10 +242,10 @@ std::string __thiscall JobEngine::RetrieveJobs(void)
 	{
         stlStream<<it->get()->GetJobID()<<"         "<<"WAITING"<<std::endl;
 	}	
-	for(auto it = m_stlJobMap.begin(); it != m_stlJobMap.end(); ++it)
-	{
-        stlStream<<it->first<<"         "<<TranslateStatus(it->second->GetStatus())<<std::endl;
-	}
+//	for(auto it = m_stlJobMap.begin(); it != m_stlJobMap.end(); ++it)
+//	{
+//        stlStream<<it->first<<"         "<<PeekStatus(it->get()->GetJobID())<<std::endl;
+//	}
 	return stlStream.str();
 }
 
@@ -244,14 +257,7 @@ std::string __thiscall JobEngine::RetrieveJobs(void)
  *
  ********************************************************************************************/
 
-std::string __thiscall JobEngine::TranslateStatus(JobStatus& oStatus)
+JobStatus& __thiscall JobEngine::PeekStatus(std::string& strJobID)
 {
-	switch(oStatus)
-	{
-        case eRunning: return "RUNNING";
-		case eCompleted: return "COMPLETED";
-		case eFail: return "FAILED";
-		case eIdle: return "WAITING";
-		default: return "UNKNOWN";
-	}
+    return m_stlJobMap[strJobID]->GetStatus();    
 }

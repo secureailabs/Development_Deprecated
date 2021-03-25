@@ -113,7 +113,7 @@ std::vector<std::string> __thiscall InitializerData::GetUninitializedNodeAddress
     __DebugFunction();
     
     std::vector<std::string> strListOfUninitializedNodeAddresses;
-    std::string strAddressOne = "127.0.0.1";
+    std::string strAddressOne = "172.17.0.1";
 
     strListOfUninitializedNodeAddresses.push_back(strAddressOne);
     
@@ -266,7 +266,7 @@ std::string __thiscall InitializerData::SendSaasRequest(
                                        "Content-Length: " + std::to_string(c_strBody.length()) + "\r\n\r\n";
 
     std::string strRestRequest = strRestRequestHeader + c_strBody + "\r\n\r\n";
-    std::unique_ptr<TlsNode> poTlsNode(::TlsConnectToNetworkSocket("127.0.0.1", 6200));
+    std::unique_ptr<TlsNode> poTlsNode(::TlsConnectToNetworkSocket("172.17.0.1", 6200));
     poTlsNode->Write((const Byte *)strRestRequest.c_str(), strRestRequest.length());
 
     std::vector<Byte> oResponseByte = poTlsNode->Read(1, 5000);

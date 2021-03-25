@@ -115,6 +115,12 @@ class ComputationVM{
             _in std::vector<std::string>& stlVarIDs,
             _in std::vector<std::vector<Byte>>& stlVars
         );
+        void __thiscall LinkPassID
+        (
+            _in std::string& strJobID,
+            _in std::string& strFNID,
+            _in std::vector<std::string>& stlPassIDs
+        );
         std::string __thiscall RetrieveDatasets
         (
             void

@@ -177,13 +177,15 @@ void __thiscall Frontend::SetFrontend
 (
     _in std::string& strServerIP, 
     _in Word wPort,
-    _in std::string& strVMID
+    _in std::string& strVMID,
+    _in std::string& strEmail,
+    _in std::string& strPassword
 )
 {
     Socket* poSocket = ConnectToNetworkSocket(strServerIP, wPort);
     std::shared_ptr<Socket>stlSocket=std::shared_ptr<Socket>(poSocket);
 
-    std::string strEOSB = Login("abc@mail.com","sailpassword");
+    std::string strEOSB = Login(strEmail, strPassword);
 
     StructuredBuffer oBuffer;
     oBuffer.PutInt8("Type", eCONNECT);
@@ -296,22 +298,29 @@ void __thiscall Frontend::HandleQuit
 void __thiscall Frontend::HandlePushData
 (
     _in std::string& strVMID,
+    _in std::string& strFNID,
     _in std::string& strJobID,
-    _in std::vector<std::string>& stlvarID,
-    _in std::vector<std::vector<Byte>>& stlVars   
+    _in std::vector<std::string>& stlInputID,
+    _in std::vector<std::vector<Byte>>& stlInputVars,
+    _in std::vector<std::string>& stlConfidentialInputIDs
 )
 {
     StructuredBuffer oBuffer;
     
     oBuffer.PutInt8("Type", ePUSHDATA);
     oBuffer.PutString("JobID", strJobID);
+    oBuffer.PutString("FNID", strFNID);
     
-    StructuredBuffer oVarIDs;
-    StructuredBuffer oVars;
-    VecToBuf<std::vector<std::string>>(stlvarID, oVarIDs);
-    VecToBuf<std::vector<std::vector<Byte>>>(stlVars, oVars);
-    oBuffer.PutStructuredBuffer("VarIDs", oVarIDs);
-    oBuffer.PutStructuredBuffer("Vars", oVars);
+    StructuredBuffer oInputIDs;
+    StructuredBuffer oInputVars;
+    VecToBuf<std::vector<std::string>>(stlInputID, oInputIDs);
+    VecToBuf<std::vector<std::vector<Byte>>>(stlInputVars, oInputVars);
+    oBuffer.PutStructuredBuffer("VarIDs", oInputIDs);
+    oBuffer.PutStructuredBuffer("Vars", oInputVars);
+    
+    StructuredBuffer oConfidentialInputIDs;
+    VecToBuf<std::vector<std::string>>(stlConfidentialInputIDs, oConfidentialInputIDs);
+    oBuffer.PutStructuredBuffer("ConfidentialInputIDs", oConfidentialInputIDs);
     
     PutIpcTransactionAndGetResponse(m_stlConnectionMap[strVMID].get(),oBuffer);
     //StructuredBuffer oResponse(stlResponse);
@@ -335,6 +344,24 @@ void __thiscall Frontend::GetOutputVec
     stlVarIDs = m_stlFNTable[strFNID]->GetOutput();
 }
 
+void __thiscall Frontend::GetConfidentialInputVec
+(
+    _in std::string& strFNID,
+    _inout std::vector<std::string>& stlVarIDs
+)
+{
+    stlVarIDs = m_stlFNTable[strFNID]->GetConfidentialInput();
+}
+
+void __thiscall Frontend::GetConfidentialOutputVec
+(
+    _in std::string& strFNID,
+    _inout std::vector<std::string>& stlVarIDs
+)
+{
+    stlVarIDs = m_stlFNTable[strFNID]->GetConfidentialOutput();
+}
+
 void __thiscall Frontend::HandlePullData
 (
     _in std::string& strVMID,
@@ -349,6 +376,7 @@ void __thiscall Frontend::HandlePullData
     oBuffer.PutString("JobID", strJobID);
     
     StructuredBuffer oVarIDs;
+    StructuredBuffer oPassIDs;
     VecToBuf<std::vector<std::string>>(stlvarIDs, oVarIDs);
     oBuffer.PutStructuredBuffer("VarIDs", oVarIDs);
     
@@ -356,6 +384,10 @@ void __thiscall Frontend::HandlePullData
     StructuredBuffer oResponse(stlResponse);
     StructuredBuffer oVars = oResponse.GetStructuredBuffer("Vars");
     BufToVec<std::vector<std::vector<Byte>>>(oVars, stlVars);
+    //std::ofstream logfile;
+    //logfile.open("/home/jjj/playground/pulldataoutput.log" ,std::ios::out);
+    //logfile<<stlResponse.size();
+    //logfile.close();
 }
 
 void __thiscall Frontend::HandleDeleteData
@@ -393,14 +425,23 @@ void __thiscall Frontend::HandlePushFN
     
     std::vector<std::string> stlInputIDs = m_stlFNTable[strFNID]->GetInput(); 
     std::vector<std::string> stlOutputIDs = m_stlFNTable[strFNID]->GetOutput(); 
+    std::vector<std::string> stlConfidentialInputIDs = m_stlFNTable[strFNID]->GetConfidentialInput();
+    std::vector<std::string> stlConfidentialOutputIDs = m_stlFNTable[strFNID]->GetConfidentialOutput();
+
     StructuredBuffer oInputBuffer;
     StructuredBuffer oOutputBuffer;
+    StructuredBuffer oConfidentialInputBuffer;
+    StructuredBuffer oConfidentialOutputBuffer;
 
     VecToBuf<std::vector<std::string>>(stlInputIDs, oInputBuffer);
     VecToBuf<std::vector<std::string>>(stlOutputIDs, oOutputBuffer);
+    VecToBuf<std::vector<std::string>>(stlConfidentialInputIDs, oConfidentialInputBuffer);
+    VecToBuf<std::vector<std::string>>(stlConfidentialOutputIDs, oConfidentialOutputBuffer);
     
     oBuffer.PutStructuredBuffer("Input", oInputBuffer);
     oBuffer.PutStructuredBuffer("Output", oOutputBuffer);
+    oBuffer.PutStructuredBuffer("ConfidentialInput", oConfidentialInputBuffer);
+    oBuffer.PutStructuredBuffer("ConfidentialOutput", oConfidentialOutputBuffer);
 
     PutIpcTransactionAndGetResponse(m_stlConnectionMap[strVMID].get(),oBuffer);
 }
@@ -410,10 +451,12 @@ void __thiscall Frontend::RegisterFN
     _in std::string strFilePath,
     _in int nInputNumber,
     _in int nOutputNumber,
+    _in int nConfidentialInputNumber,
+    _in int nConfidentialOutputNumber,
     _inout std::string& strFNID
 )
 {
-    std::unique_ptr stlFNPointer = std::make_unique<FunctionNode>(nInputNumber, nOutputNumber, strFilePath);
+    std::unique_ptr stlFNPointer = std::make_unique<FunctionNode>(nInputNumber, nOutputNumber, nConfidentialInputNumber, nConfidentialOutputNumber, strFilePath);
     strFNID = stlFNPointer->GetFNID();
     m_stlFNTable.emplace(strFNID, std::move(stlFNPointer));
 }

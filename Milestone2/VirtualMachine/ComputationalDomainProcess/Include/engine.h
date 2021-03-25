@@ -68,9 +68,9 @@ class JobEngine
             std::string& strID
         );
 
-        std::string __thiscall TranslateStatus
+        JobStatus& __thiscall PeekStatus
         (
-            JobStatus& oStatus
+            std::string& strJobID
         );
 
         std::string __thiscall RetrieveJobs(void);

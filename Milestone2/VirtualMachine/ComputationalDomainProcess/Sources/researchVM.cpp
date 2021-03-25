@@ -28,6 +28,9 @@
 #include <filesystem>
 #include <regex>
 #include <cstdio>
+#include <cerrno>
+#include <unistd.h>
+#include <stdio.h>
 
 //Audit:
 //1000: ExecJob
@@ -208,16 +211,18 @@ void __thiscall ComputationVM::HandleRun
     std::string strJobID = oContent.GetString("JobID");
     std::vector<std::string> stlInput = m_stlFNMap[strFunctionNode]->GetInput();
     std::vector<std::string> stlOutput = m_stlFNMap[strFunctionNode]->GetOutput();
+    std::vector<std::string> stlConfidentialInput = m_stlFNMap[strFunctionNode]->GetConfidentialInput();
+    std::vector<std::string> stlConfidentialOutput = m_stlFNMap[strFunctionNode]->GetConfidentialOutput();
 
-    StructuredBuffer oAudit;
-    oAudit.PutString("Event", "Run");
-    oAudit.PutString("FNID", strFunctionNode);
-    oAudit.PutString("JobID", strJobID);
-    oAudit.PutString("ClientEOSB", m_strEOSB);
+    //StructuredBuffer oAudit;
+    //oAudit.PutString("Event", "Run");
+    //oAudit.PutString("FNID", strFunctionNode);
+    //oAudit.PutString("JobID", strJobID);
+    //oAudit.PutString("ClientEOSB", m_strEOSB);
 
-    m_oRootOfTrustNode.RecordAuditEvent(m_strEOSB,1000,oAudit);
+    //m_oRootOfTrustNode.RecordAuditEvent(m_strEOSB,1000,oAudit);
 
-    std::unique_ptr<Job> stlNewJob = std::make_unique<PythonJob>(strFunctionNode, strJobID, stlInput, stlOutput);
+    std::unique_ptr<Job> stlNewJob = std::make_unique<PythonJob>(strFunctionNode, strJobID, stlInput, stlOutput, stlConfidentialInput, stlConfidentialOutput);
     m_oEngine.AddOneJob(std::move(stlNewJob));
     
     oResponse.PutBoolean("Status", true);
@@ -335,21 +340,32 @@ void __thiscall ComputationVM::HandlePushData
 
     std::vector<std::string> stlVarIDs;
     std::vector<std::vector<Byte>> stlVars;
+    std::vector<std::string> stlConfidentialInputIDs;
     std::string strJobID = oContent.GetString("JobID");
+    std::string strFNID = oContent.GetString("FNID");
     StructuredBuffer oVarIDs = oContent.GetStructuredBuffer("VarIDs");
     StructuredBuffer oVars = oContent.GetStructuredBuffer("Vars");
+    StructuredBuffer oConfidentialInputIDs = oContent.GetStructuredBuffer("ConfidentialInputIDs");
 
-    StructuredBuffer oAudit;
-    oAudit.PutString("Event", "PushData");
-    oAudit.PutString("JobID", strJobID);
-    oAudit.PutString("ClientEOSB", m_strEOSB);
+    std::cout<<"pushing data"<<std::endl;
+
+    //StructuredBuffer oAudit;
+    //oAudit.PutString("Event", "PushData");
+    //oAudit.PutString("JobID", strJobID);
+    //oAudit.PutString("ClientEOSB", m_strEOSB);
     
-    m_oRootOfTrustNode.RecordAuditEvent(m_strEOSB,2000, oAudit);
+    //m_oRootOfTrustNode.RecordAuditEvent(m_strEOSB,2000, oAudit);
 
     BufToVec<std::vector<std::vector<Byte>>>(oVars, stlVars);
     BufToVec<std::vector<std::string>>(oVarIDs, stlVarIDs);
+    BufToVec<std::vector<std::string>>(oConfidentialInputIDs, stlConfidentialInputIDs);
+
+    std::cout<<"convert to vectors"<<std::endl;
 
     SaveBuffer(strJobID, stlVarIDs, stlVars);
+    std::cout<<"saving data to buffer"<<std::endl;
+    LinkPassID(strJobID, strFNID, stlConfidentialInputIDs);
+    std::cout<<"linking data"<<std::endl;
     
     oResponse.PutBoolean("Status", true);
 }
@@ -371,6 +387,26 @@ void __thiscall ComputationVM::SaveBuffer
     }
 }
 
+void __thiscall ComputationVM::LinkPassID
+(
+    _in std::string& strJobID,
+    _in std::string& strFNID,
+    _in std::vector<std::string>& stlPassIDs
+)
+{
+    size_t nNumber = stlPassIDs.size();
+    std::vector<std::string> stlConfidentialInputIDs =  m_stlFNMap[strFNID]->GetConfidentialInput();
+    for(size_t i =0;i<nNumber;i++)
+    {
+        std::ofstream stlVarFile;
+        std::string strTarget = std::string("/tmp/"+stlPassIDs[i]);
+        std::string strLinkpath = std::string("/tmp/"+strJobID+stlConfidentialInputIDs[i]);
+        const char* target = strTarget.c_str();
+        const char* linkpath = strLinkpath.c_str();
+        int res = symlink(target, linkpath);
+    }
+}
+
 void __thiscall ComputationVM::HandlePullData
 (
     _in StructuredBuffer& oContent, 
@@ -378,7 +414,7 @@ void __thiscall ComputationVM::HandlePullData
 )
 {
     std::string strJobID = oContent.GetString("JobID");
-    StructuredBuffer oOutputIDs = oContent.GetStructuredBuffer("VarIDs");
+    StructuredBuffer oVarIDs = oContent.GetStructuredBuffer("VarIDs");
 
     //StructuredBuffer oAudit;
     //oAudit.PutString("Event", "PullData");
@@ -387,18 +423,18 @@ void __thiscall ComputationVM::HandlePullData
 
     //m_oRootOfTrustNode.RecordAuditEvent(m_strEOSB,3000, oAudit);
 
-    std::vector<std::string> stlOutputIDs;
+    std::vector<std::string> stlVarIDs;
+
+    BufToVec<std::vector<std::string>>(oVarIDs, stlVarIDs);
     std::vector<std::vector<Byte>> stlOutputs;
 
-    BufToVec<std::vector<std::string>>(oOutputIDs, stlOutputIDs);
+    LoadDataToBuffer(strJobID, stlVarIDs, stlOutputs);
 
-    LoadDataToBuffer(strJobID, stlOutputIDs, stlOutputs);
-
-    StructuredBuffer oBuffer;
-    VecToBuf<std::vector<std::vector<Byte>>>(stlOutputs, oBuffer);
+    StructuredBuffer oVarBuffer;
+    VecToBuf<std::vector<std::vector<Byte>>>(stlOutputs, oVarBuffer);
     
-    std::cout<<oBuffer.GetInt16("size")<<std::endl;
-    oResponse.PutStructuredBuffer("Vars", oBuffer);
+    //std::cout<<oVarBuffer.GetInt16("size")<<std::endl;
+    oResponse.PutStructuredBuffer("Vars", oVarBuffer);
 }
 
 
@@ -412,27 +448,24 @@ void __thiscall ComputationVM::LoadDataToBuffer
     size_t nNumber = stlVarIDs.size();
     for(size_t i=0; i<nNumber; i++)
     {
-        //while(!std::filesystem::exists(std::filesystem::path("/tmp/"+strJobID+stlVarIDs[i])));
-
+        while(access(std::string("/tmp/"+strJobID+stlVarIDs[i]).c_str(), F_OK)!=0||m_oEngine.PeekStatus(strJobID)!=eCompleted)   
+        {
+            //std::cout<<"filename:"<<"/tmp/"+strJobID+stlVarIDs[i]<<" waiting for file"<<std::endl;
+        }
+        
         std::ifstream stlVarFile;
         stlVarFile.open(std::string("/tmp/"+strJobID+stlVarIDs[i]).c_str(), std::ios::out | std::ios::binary);
-
         stlVarFile.unsetf(std::ios::skipws);
-
-        stlVarFile.seekg (0, stlVarFile.end);
-        int length = stlVarFile.tellg();
-        std::cout<<length<<std::endl;
-        stlVarFile.seekg (0, stlVarFile.beg);
-
+        
         std::vector<Byte> stlVec;
-
         stlVec.insert(stlVec.begin(),std::istream_iterator<Byte>(stlVarFile), std::istream_iterator<Byte>());
         stlVars.push_back(stlVec);
+        
+        std::cout<<"vector length: "<<stlVec.size()<<std::endl;
         
         stlVarFile.close();
     }
 }
-
 
 void __thiscall ComputationVM::HandleDeleteData
 (
@@ -463,25 +496,32 @@ void __thiscall ComputationVM::HandlePushFN
     std::string strFNID = oContent.GetString("FNID");
     std::string strFNScript = oContent.GetString("FNScript");
 
-    StructuredBuffer oAudit;
-    std::string strType("PushFN");
-    oAudit.PutString("Event", strType);
-    oAudit.PutString("FNID", strFNID);
-    oAudit.PutString("ClientEOSB", m_strEOSB);
+    //StructuredBuffer oAudit;
+    //std::string strType("PushFN");
+    //oAudit.PutString("Event", strType);
+    //oAudit.PutString("FNID", strFNID);
+    //oAudit.PutString("ClientEOSB", m_strEOSB);
     
-    m_oRootOfTrustNode.RecordAuditEvent(m_strEOSB, 4000, oAudit);
+    //m_oRootOfTrustNode.RecordAuditEvent(m_strEOSB, 4000, oAudit);
 
     SaveFN(strFNID, strFNScript);
 
     StructuredBuffer oInput = oContent.GetStructuredBuffer("Input");
     StructuredBuffer oOutput = oContent.GetStructuredBuffer("Output");
+    StructuredBuffer oConfidentialInput = oContent.GetStructuredBuffer("ConfidentialInput");
+    StructuredBuffer oConfidentialOutput = oContent.GetStructuredBuffer("ConfidentialOutput");
+
     std::vector<std::string> stlOutputIDs;
     std::vector<std::string> stlInputIDs;
+    std::vector<std::string> stlConfidentialInputIDs;
+    std::vector<std::string> stlConfidentialOutputIDs;
  
     BufToVec(oInput, stlInputIDs);
     BufToVec(oOutput, stlOutputIDs);
+    BufToVec(oConfidentialInput, stlConfidentialInputIDs);
+    BufToVec(oConfidentialOutput, stlConfidentialOutputIDs);
 
-    std::unique_ptr<FunctionNode> stlFN = std::make_unique<FunctionNode>(stlInputIDs, stlOutputIDs, strFNID);
+    std::unique_ptr<FunctionNode> stlFN = std::make_unique<FunctionNode>(stlInputIDs, stlOutputIDs, stlConfidentialInputIDs, stlConfidentialOutputIDs, strFNID);
     m_stlFNMap.insert({strFNID,std::move(stlFN)});
     
     oResponse.PutBoolean("Status", true);

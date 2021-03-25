@@ -34,16 +34,20 @@
 
 Job::Job
     (
-       	_in std::string& strFunctionNode,
+        _in std::string& strFunctionNode,
         _in std::string& strJobID,
         _in std::vector<std::string>& stlInput,
-        _in std::vector<std::string>& stlOutput
+        _in std::vector<std::string>& stlOutput,
+        _in std::vector<std::string>& stlConfidentialInput,
+        _in std::vector<std::string>& stlConfidentialOutput
     )
     : m_oStatus(eIdle),
       m_strFunctionNodeNumber(strFunctionNode),  
       m_strJobID(strJobID),
       m_stlInput(stlInput),
-      m_stlOutput(stlOutput)
+      m_stlOutput(stlOutput),
+      m_stlConfidentialInput(stlConfidentialInput),
+      m_stlConfidentialOutput(stlConfidentialOutput)
 
 {
     
@@ -97,36 +101,12 @@ const std::string __thiscall Job::GetOutput(void)
 
 JobStatus& __thiscall Job::GetStatus(void)
 {
-    if(std::filesystem::exists(m_strOutputFile)&&std::filesystem::exists(m_strErrFile))
-    {
-        std::fstream stlOut(m_strOutputFile);
-        std::fstream stlErr(m_strErrFile);
-        stlOut.seekg(0, stlOut.end);
-        stlErr.seekg(0, stlErr.end);
-        int nOutLen = stlOut.tellg();
-        int nErrLen = stlErr.tellg();
-        if(nOutLen==0&&nErrLen==0)
-        {
-            m_oStatus = eRunning;
-        }
-        else if(nOutLen==0)
-        {
-            m_oStatus = eFail;
-        }
-        else if(nErrLen==0)
-        {
-            m_oStatus = eCompleted;
-        }
-        else
-        {
-            m_oStatus = eCompleted;    
-        }
-    }
-    else
-    {
-        m_oStatus = eUnknown;
-    }
     return m_oStatus;
+}
+
+void __thiscall Job::SetStatus(JobStatus oNewStatus)
+{
+     m_oStatus = oNewStatus;
 }
 
 /********************************************************************************************
@@ -240,8 +220,11 @@ void __thiscall PythonJob::JobRunFunctionNode(void)
 {
     size_t nInArgCount = m_stlInput.size();
     size_t nOutArgCount = m_stlOutput.size();
-    const char* pArgv[nInArgCount+nOutArgCount];
-    wchar_t* wszArgv[nInArgCount+nOutArgCount];
+    size_t nConfidentialInputCount = m_stlConfidentialInput.size();
+    size_t nConfidentialOutputCount = m_stlConfidentialOutput.size();
+    size_t nArgLen = nInArgCount+nOutArgCount+nConfidentialInputCount +nConfidentialOutputCount;
+    const char* pArgv[nArgLen];
+    wchar_t* wszArgv[nArgLen];
     FILE* pFile;
 
     size_t i;
@@ -253,9 +236,23 @@ void __thiscall PythonJob::JobRunFunctionNode(void)
         wszArgv[j] = Py_DecodeLocale(pArgv[j], NULL);
         j++;
     }
+    for(i=0;i<nConfidentialInputCount;i++)
+    {
+    	std::string strTmp("/tmp/"+m_strJobID+m_stlConfidentialInput[i]);
+        pArgv[j]= strTmp.c_str();
+        wszArgv[j]= Py_DecodeLocale(pArgv[j], NULL);
+        j++;
+    }
     for(i=0;i<nOutArgCount;i++)
     {
     	std::string strTmp("/tmp/"+m_strJobID+m_stlOutput[i]);
+        pArgv[j]= strTmp.c_str();
+        wszArgv[j]= Py_DecodeLocale(pArgv[j], NULL);
+        j++;
+    }
+    for(i=0;i<nConfidentialOutputCount;i++)
+    {
+    	std::string strTmp("/tmp/"+m_strJobID+m_stlConfidentialOutput[i]);
         pArgv[j]= strTmp.c_str();
         wszArgv[j]= Py_DecodeLocale(pArgv[j], NULL);
         j++;
@@ -277,7 +274,7 @@ void __thiscall PythonJob::JobRunFunctionNode(void)
     rewind(pPyOutFile);
     rewind(pPyErrFile);
 
-    PySys_SetArgv(nInArgCount+nOutArgCount, wszArgv);
+    PySys_SetArgv(nArgLen, wszArgv);
     pFile = fopen(pCodeFileName.c_str(),"r+");
 
     PyRun_SimpleFile(pFile, pCodeFileName.c_str());

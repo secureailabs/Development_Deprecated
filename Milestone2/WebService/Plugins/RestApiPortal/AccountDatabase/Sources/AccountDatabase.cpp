@@ -791,10 +791,10 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserRecords(
     poTlsNode->Write(stlBasicRecordRequest.data(), (stlBasicRecordRequest.size()));
 
     // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
     _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
     unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    std::vector<Byte> stlBasicUser = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+    std::vector<Byte> stlBasicUser = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
     _ThrowBaseExceptionIf((0 == stlBasicUser.size()), "Dead Packet.", nullptr);
 
     Dword dwStatus = 404;
@@ -814,10 +814,10 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserRecords(
         poTlsNode->Write(stlConfidentialRecordRequest.data(), (stlConfidentialRecordRequest.size()));
 
         // Read header and body of the response
-        stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+        stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
         _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
         unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-        std::vector<Byte> stlConfidentialUser = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+        std::vector<Byte> stlConfidentialUser = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
         _ThrowBaseExceptionIf((0 == stlConfidentialUser.size()), "Dead Packet.", nullptr);
 
         StructuredBuffer oConfidentialRecord(stlConfidentialUser);
@@ -918,10 +918,10 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
     poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
 
     // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
     _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
     unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+    std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
     _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
 
     Dword dwStatus = 204;
@@ -1004,10 +1004,10 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterUser(
             poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
 
             // Read header and body of the response
-            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
             _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
             unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
             _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
 
             // Check if DatabaseManager registered the user or not

@@ -109,7 +109,7 @@ std::vector<Byte> GetResponseBody(
         if (0 < unContentLength)
         {
             // Read request content
-            std::vector<Byte> stlBodyData = poTlsNode->Read(unContentLength, 100);
+            std::vector<Byte> stlBodyData = poTlsNode->Read(unContentLength, 2000);
             _ThrowBaseExceptionIf((0 == stlBodyData.size()), "Dead Packet.", nullptr);
             std::string strRequestBody = std::string(stlBodyData.begin(), stlBodyData.end());
 
@@ -167,7 +167,7 @@ std::string Login(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 20000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -233,7 +233,7 @@ std::vector<Byte> GetBasicUserInformation(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -302,7 +302,7 @@ std::string GetIEosb(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -388,7 +388,7 @@ std::string RegisterRootEvent(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -485,7 +485,7 @@ bool RegisterBranchEvent(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -586,7 +586,7 @@ bool RegisterLeafEvents(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -676,7 +676,7 @@ std::string RegisterVirtualMachine(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -758,7 +758,7 @@ std::string RegisterVmAfterDataUpload(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -840,7 +840,7 @@ std::string RegisterVmForComputation(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -926,7 +926,7 @@ bool GetListOfEvents(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -1095,7 +1095,7 @@ bool RegisterOrganizationAndSuperUser(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -1226,7 +1226,7 @@ bool RegisterUser(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -1342,7 +1342,7 @@ bool UpdateOrganizationInformation(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -1416,7 +1416,7 @@ bool ListOrganizations(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -1518,7 +1518,7 @@ bool DeleteUser(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -1602,7 +1602,7 @@ bool DeleteOrganization(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -1723,7 +1723,7 @@ bool RegisterDigitalContract(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -1817,7 +1817,7 @@ bool AcceptDigitalContract(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -1909,7 +1909,7 @@ bool ActivateDigitalContract(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -1984,7 +1984,7 @@ bool ListDigitalContracts(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -2080,7 +2080,7 @@ bool PullDigitalContract(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 500);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {

@@ -1768,7 +1768,6 @@ bool AcceptDigitalContract(
     )
 {
     __DebugFunction();
-
     __DebugAssert(0 < c_strEncodedEosb.size());
 
     bool fSuccess = false;
@@ -1787,6 +1786,29 @@ bool AcceptDigitalContract(
     __DebugAssert(0 < strEula.size());
     __DebugAssert(0 < strLegalAgreement.size());
 
+    StructuredBuffer oDcInformation;
+    oDcInformation.PutString("DigitalContractGuid", strDcGuid);
+    oDcInformation.PutUnsignedInt64("RetentionTime", unRetentionTime);
+    oDcInformation.PutString("EULA", strEula);
+    oDcInformation.PutString("LegalAgreement", strLegalAgreement);
+
+    fSuccess = ::AcceptDigitalContract(c_strEncodedEosb, oDcInformation);
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool AcceptDigitalContract(
+    _in const std::string & c_strEncodedEosb,
+    _in const StructuredBuffer & c_oDcInformation
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEncodedEosb.size());
+
+    bool fSuccess = false;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
@@ -1795,10 +1817,10 @@ bool AcceptDigitalContract(
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"DigitalContractGuid\": \""+ strDcGuid +"\","
-                                "\n    \"RetentionTime\": "+ std::to_string(unRetentionTime) +","
-                                "\n    \"EULA\": \""+ strEula +"\","
-                                "\n    \"LegalAgreement\": \""+ strLegalAgreement +"\""
+                                "\n    \"DigitalContractGuid\": \""+ c_oDcInformation.GetString("DigitalContractGuid") +"\","
+                                "\n    \"RetentionTime\": "+ std::to_string(c_oDcInformation.GetUnsignedInt64("RetentionTime")) +","
+                                "\n    \"EULA\": \""+ c_oDcInformation.GetString("EULA") +"\","
+                                "\n    \"LegalAgreement\": \""+ c_oDcInformation.GetString("LegalAgreement") +"\""
                                 "\n}";
         std::string strHttpRequest = "PATCH /SAIL/DigitalContractManager/DataOwner/Accept HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
@@ -1863,7 +1885,6 @@ bool ActivateDigitalContract(
     )
 {
     __DebugFunction();
-
     __DebugAssert(0 < c_strEncodedEosb.size());
 
     bool fSuccess = false;
@@ -1880,6 +1901,28 @@ bool ActivateDigitalContract(
     __DebugAssert(0 < strEula.size());
     __DebugAssert(0 < strLegalAgreement.size());
 
+    StructuredBuffer oDcInformation;
+    oDcInformation.PutString("DigitalContractGuid", strDcGuid);
+    oDcInformation.PutString("EULA", strEula);
+    oDcInformation.PutString("LegalAgreement", strLegalAgreement);
+
+    fSuccess = ::ActivateDigitalContract(c_strEncodedEosb, oDcInformation);
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool ActivateDigitalContract(
+    _in const std::string & c_strEncodedEosb,
+    _in const StructuredBuffer & c_oDcInformation
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEncodedEosb.size());
+
+    bool fSuccess = false;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
@@ -1888,9 +1931,9 @@ bool ActivateDigitalContract(
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"DigitalContractGuid\": \""+ strDcGuid +"\","
-                                "\n    \"EULA\": \""+ strEula +"\","
-                                "\n    \"LegalAgreement\": \""+ strLegalAgreement +"\""
+                                "\n    \"DigitalContractGuid\": \""+ c_oDcInformation.GetString("DigitalContractGuid") +"\","
+                                "\n    \"EULA\": \""+ c_oDcInformation.GetString("EULA") +"\","
+                                "\n    \"LegalAgreement\": \""+ c_oDcInformation.GetString("LegalAgreement") +"\""
                                 "\n}";
         std::string strHttpRequest = "PATCH /SAIL/DigitalContractManager/Researcher/Activate HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
@@ -1950,13 +1993,13 @@ bool ActivateDigitalContract(
 
 /********************************************************************************************/
 
-bool ListDigitalContracts(
+std::vector<Byte> ListDigitalContracts(
     _in const std::string & c_strEosb
     )
 {
     __DebugFunction();
 
-    bool fSuccess = false;
+    std::vector<Byte> stlDigitalContracts;
 
     try 
     {
@@ -2008,20 +2051,7 @@ bool ListDigitalContracts(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting list of digital contracts.", nullptr);
-        fSuccess = true;
-        std::cout << "************************\n List of Digital Contracts \n************************\n" << std::endl;
-        StructuredBuffer oDigitalContracts(oResponse.GetStructuredBuffer("DigitalContracts"));
-        for (std::string strElement : oDigitalContracts.GetNamesOfElements())
-        {
-            StructuredBuffer oElement(oDigitalContracts.GetStructuredBuffer(strElement.c_str()));
-            std::cout << "Digital contract guid: " << strElement << std::endl;
-            std::cout << "Version number: " << oElement.GetString("VersionNumber") << std::endl;
-            std::cout << "Contract stage: " << (Dword) oElement.GetFloat64("ContractStage") << std::endl;
-            std::cout << "Subscription days: " << (uint64_t) oElement.GetFloat64("SubscriptionDays") << std::endl;
-            std::cout << "Dataset guid: " << oElement.GetString("DatasetGuid") << std::endl;
-            std::cout << "Legal agreement: " << oElement.GetString("LegalAgreement") << std::endl;
-            std::cout << "------------------------------------------------------" << std::endl;
-        }
+        stlDigitalContracts = oResponse.GetStructuredBuffer("DigitalContracts").GetSerializedBuffer();
     }
     catch(BaseException oBaseException)
     {
@@ -2032,7 +2062,34 @@ bool ListDigitalContracts(
         ::ShowErrorMessage("Error getting list of digital contracts.");
     }
 
-    return fSuccess;
+    return stlDigitalContracts;
+}
+
+/********************************************************************************************/
+
+void PrintDigitalContracts(
+    _in const StructuredBuffer & c_oDigitalContracts
+    )
+{
+    __DebugFunction();
+
+    // Print digital contract information
+    std::cout << "************************\n List of Digital Contracts \n************************\n" << std::endl;
+    for (std::string strElement : c_oDigitalContracts.GetNamesOfElements())
+    {
+        StructuredBuffer oElement(c_oDigitalContracts.GetStructuredBuffer(strElement.c_str()));
+        std::cout << "Digital contract guid: " << strElement << std::endl;
+        std::cout << "Version number: " << oElement.GetString("VersionNumber") << std::endl;
+        std::cout << "Contract stage: " << (Dword) oElement.GetFloat64("ContractStage") << std::endl;
+        std::cout << "Subscription days: " << (uint64_t) oElement.GetFloat64("SubscriptionDays") << std::endl;
+        std::cout << "Dataset guid: " << oElement.GetString("DatasetGuid") << std::endl;
+        std::cout << "Activation date: " << oElement.GetFloat64("ActivationTime") << std::endl;
+        std::cout << "Expiration date: " << oElement.GetFloat64("ExpirationTime") << std::endl;
+        std::cout << "Eula accepted by data owner organization: " << oElement.GetString("EulaAcceptedByDOOAuthorizedUser") << std::endl;
+        std::cout << "Eula accepted by researcher organization: " << oElement.GetString("EulaAcceptedByROAuthorizedUser") << std::endl;
+        std::cout << "Legal agreement: " << oElement.GetString("LegalAgreement") << std::endl;
+        std::cout << "------------------------------------------------------" << std::endl;
+    }
 }
 
 /********************************************************************************************/

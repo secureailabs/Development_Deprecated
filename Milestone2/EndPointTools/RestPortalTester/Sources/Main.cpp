@@ -230,7 +230,8 @@ int main()
                             }
                             case 12:
                             {
-                                bool fSuccess = ::ListDigitalContracts(strEncodedEosb);
+                                StructuredBuffer oDigitalContracts(::ListDigitalContracts(strEncodedEosb));
+                                ::PrintDigitalContracts(oDigitalContracts);
                                 WaitForUserToContinue();
                             break; 
                             }

@@ -165,31 +165,98 @@ void __thiscall DatabaseTools::AddDigitalContracts(void)
 {
     __DebugFunction();
 
-    // Register digital contracts for the organizations
-    for (unsigned int unIndex = 0; unIndex < m_stlOrganizations.size(); ++unIndex)
+    // First organization is the researcher organization and second organization is the data owner organization
+    unsigned int unRoIndex = 0, unDooIndex = 1;
+    // Login to the web services
+    std::string strEncodedEosb = Login(m_stlAdmins.at(unRoIndex).m_strEmail, m_strPassword);
+    _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
+    // Get organization guids for the organizations
+    std::string strRoGuid = m_stlOrganizations.at(unRoIndex).m_strOrganizationGuid;
+    // Add digital contract information
+    std::string strDooGuid = m_stlOrganizations.at(unDooIndex).m_strOrganizationGuid;
+    uint64_t unSubscriptionDays = 5;
+    std::string strLegalAgreement = "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties. "
+    "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";
+    StructuredBuffer oDcInformation;
+    oDcInformation.PutString("DOOGuid", strDooGuid);
+    oDcInformation.PutUnsignedInt64("SubscriptionDays", unSubscriptionDays);
+    oDcInformation.PutString("LegalAgreement", strLegalAgreement);
+    // Register five digital contracts for the organizations
+    for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
     {
-        // Set the next organization as the data owner organization, loop around for the last organization
-        unsigned int unDooIndex = (m_stlOrganizations.size() == (unIndex + 1)) ? 0 : unIndex + 1;
-        // Login to the web services
-        std::string strEncodedEosb = Login(m_stlAdmins.at(unIndex).m_strEmail, m_strPassword);
-        _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
-        // Get organization guid from the Eosb
-        StructuredBuffer oUserInformation(::GetBasicUserInformation(strEncodedEosb));
-        std::string strOrganizationGuid = oUserInformation.GetString("OrganizationGuid");
-        // Add digital contract information
-        std::string strDooGuid = m_stlOrganizations.at(unDooIndex).m_strOrganizationGuid;
-        uint64_t unSubscriptionDays = 5;
-        std::string strLegalAgreement = "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties. "
-        "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";
-        StructuredBuffer oDcInformation;
-        oDcInformation.PutString("DOOGuid", strDooGuid);
-        oDcInformation.PutUnsignedInt64("SubscriptionDays", unSubscriptionDays);
-        oDcInformation.PutString("LegalAgreement", strLegalAgreement);
         // Register digital contract
         ::RegisterDigitalContract(strEncodedEosb, oDcInformation);
     }
 
-    std::cout << "Digital contracts added successfully." << std::endl;;
+    std::cout << "Digital contracts added successfully." << std::endl;
+}
+
+/********************************************************************************************/
+
+void __thiscall DatabaseTools::AcceptDigitalContracts(void)
+{
+    __DebugFunction();
+
+    // Login to the web services as the data owner's dataset admin
+    // As the Rest API requires dataset admin privileges 
+    unsigned int unDatasetAdminIndex = 9;
+    std::string strEncodedEosb = Login(m_stlUsers.at(unDatasetAdminIndex).m_strEmail, m_strPassword);
+    _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
+    // Get list of all digital contracts for the data owner organization
+    std::vector<std::string> stlDigitalContracts = StructuredBuffer(::ListDigitalContracts(strEncodedEosb)).GetNamesOfElements();
+    uint64_t unRetentionTime = 5;
+    std::string strEula = "Eula accepted by DOO";
+    std::string strLegalAgreement = "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties. "
+    "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";
+    StructuredBuffer oDcInformation;
+    oDcInformation.PutUnsignedInt64("RetentionTime", unRetentionTime);
+    oDcInformation.PutString("EULA", strEula);
+    oDcInformation.PutString("LegalAgreement", strLegalAgreement);
+
+    // Accept all five digital contracts
+    for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
+    {
+        // Get digital contract guid
+        std::string strDcGuid = stlDigitalContracts.at(unIndex);
+        oDcInformation.PutString("DigitalContractGuid", strDcGuid);
+        // Accept digital contract
+        ::AcceptDigitalContract(strEncodedEosb, oDcInformation);
+    }
+
+    std::cout << "Digital contracts approved." << std::endl;;
+}
+
+/********************************************************************************************/
+
+void __thiscall DatabaseTools::ActivateDigitalContracts(void)
+{
+    __DebugFunction();
+
+    // Login to the web services as the researcher's digital contract admin
+    // As the Rest API requires digital contract admin privileges 
+    unsigned int unDcAdminIndex = 3;
+    std::string strEncodedEosb = Login(m_stlUsers.at(unDcAdminIndex).m_strEmail, m_strPassword);
+    _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
+    // Get list of all digital contracts for the data owner organization
+    std::vector<std::string> stlDigitalContracts = StructuredBuffer(::ListDigitalContracts(strEncodedEosb)).GetNamesOfElements();
+    std::string strEula = "Eula accepted by RO";
+    std::string strLegalAgreement = "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties. "
+    "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";
+    StructuredBuffer oDcInformation;
+    oDcInformation.PutString("EULA", strEula);
+    oDcInformation.PutString("LegalAgreement", strLegalAgreement);
+
+    // Activate all five digital contracts
+    for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
+    {
+        // Get digital contract guid
+        std::string strDcGuid = stlDigitalContracts.at(unIndex);
+        oDcInformation.PutString("DigitalContractGuid", strDcGuid);
+        // Activate digital contract
+        ::ActivateDigitalContract(strEncodedEosb, oDcInformation);
+    }
+
+    std::cout << "Digital contracts activated." << std::endl;;
 }
 
 

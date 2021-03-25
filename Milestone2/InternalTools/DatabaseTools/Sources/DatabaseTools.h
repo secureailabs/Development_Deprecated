@@ -130,12 +130,16 @@ class DatabaseTools : public Object
 
         // Register organizations and super admins
         void __thiscall AddOrganizationsAndSuperAdmins(void);
-
         // Register other users for each organization
         void __thiscall AddOtherUsers(void);
-
         // Register digital contracts
         void __thiscall AddDigitalContracts(void);
+
+        // Accept all digital contracts
+        void __thiscall AcceptDigitalContracts(void);
+
+        // Activate all digital contracts
+        void __thiscall ActivateDigitalContracts(void);
 
     private:
 

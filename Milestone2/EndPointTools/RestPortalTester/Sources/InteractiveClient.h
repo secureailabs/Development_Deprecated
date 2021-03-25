@@ -147,12 +147,26 @@ extern bool AcceptDigitalContract(
     _in const std::string & c_strEncodedEosb
     );
 
+extern bool AcceptDigitalContract(
+    _in const std::string & c_strEncodedEosb,
+    _in const StructuredBuffer & c_oDcInformation
+    );
+
 extern bool ActivateDigitalContract(
     _in const std::string & c_strEncodedEosb
     );
 
-extern bool ListDigitalContracts(
+extern bool ActivateDigitalContract(
+    _in const std::string & c_strEncodedEosb,
+    _in const StructuredBuffer & c_oDcInformation
+    );
+
+extern std::vector<Byte> ListDigitalContracts(
     _in const std::string & c_strEosb
+    );
+
+extern void PrintDigitalContracts(
+    _in const StructuredBuffer & c_oDigitalContracts
     );
 
 extern bool PullDigitalContract(

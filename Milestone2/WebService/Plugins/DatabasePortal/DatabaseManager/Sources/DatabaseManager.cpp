@@ -2572,8 +2572,8 @@ std::vector<Byte> __thiscall DatabaseManager::PullDigitalContract(
     if (bsoncxx::stdx::nullopt != oDcDocument)
     {                                                                                                           
         bsoncxx::document::element oDcGuid = oDcDocument->view()["DigitalContractGuid"];
-        bsoncxx::document::element oDooGuid = oDcDocument->view()["ResearcherOrganization"];
-        bsoncxx::document::element oRoGuid = oDcDocument->view()["DataOwnerOrganization"];
+        bsoncxx::document::element oRoGuid = oDcDocument->view()["ResearcherOrganization"];
+        bsoncxx::document::element oDooGuid = oDcDocument->view()["DataOwnerOrganization"];
         if ((oDcGuid && oDcGuid.type() == type::k_utf8) && (oDooGuid && oDooGuid.type() == type::k_utf8) && (oRoGuid && oRoGuid.type() == type::k_utf8))
         {
             std::string strDcGuid = oDcGuid.get_utf8().value.to_string();

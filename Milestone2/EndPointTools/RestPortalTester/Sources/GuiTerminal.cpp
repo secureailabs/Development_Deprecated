@@ -35,7 +35,7 @@ std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strCyan + "10- Get list of events for a specified parent\n" +
             oFontColor.strBlue + "11- Register a digital contract\n" +
             oFontColor.strBlue + "12- Get list of all digital contracts of your organization\n" +
-            oFontColor.strBlue + "13- Pull a digital contract - Dataset Admin or Digital Contract Admin privileges required\n" +
+            oFontColor.strBlue + "13- Pull a digital contract\n" +
             oFontColor.strBlue + "14- Approve a digital contract - Dataset Admin privileges required\n" +
             oFontColor.strBlue + "15- Activate a digital contract - Digital Contract Admin privileges required\n" +
             oFontColor.strYellow + "0- Logout\n";

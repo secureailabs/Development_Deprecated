@@ -122,6 +122,7 @@ class VirtualMachineManager : public Object
         PluginDictionary m_oDictionary;
         std::vector<VmInstance *> m_stlVmInstances;
         std::vector<UserAccount *> m_stlUserAccounts;
+        bool m_fTerminationSignalEncountered;
 };
 
 /********************************************************************************************/

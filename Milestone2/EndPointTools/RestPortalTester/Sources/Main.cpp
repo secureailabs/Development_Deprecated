@@ -20,6 +20,11 @@ int main()
 
     try
     {
+        // Add webservices configuration
+        const char * c_szIpAddress = "127.0.0.1";
+        unsigned int unPort = 6200;
+        ::AddWebPortalConfiguration(c_szIpAddress, unPort);
+
         bool fTerminatedSignalEncountered = false;
         while(false == fTerminatedSignalEncountered)
         {
@@ -231,14 +236,7 @@ int main()
                             }
                             case 13:
                             {
-                                if ((4 == qwAccessRights) || (5 == qwAccessRights)) // Check if user is a dataset admin or a digital contract
-                                {
-                                    bool fSuccess = ::PullDigitalContract(strEncodedEosb);
-                                }
-                                else 
-                                {
-                                    ::ShowErrorMessage("Transaction not authorized.");
-                                }
+                                bool fSuccess = ::PullDigitalContract(strEncodedEosb);
                                 ::WaitForUserToContinue();
                             break; 
                             }

@@ -1548,36 +1548,23 @@ std::vector<Byte> __thiscall DatabaseManager::AddSuperUser(
     mongocxx::collection oConfidentialUserCollection = oSailDatabase["ConfidentialOrganizationOrUser"];
     // Create a transaction callback
     Dword dwStatus = 204;
-    // mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
-    // {
-        // Insert document in the BasicUser collection
-        auto oResult = oBasicUserCollection.insert_one(**poSession, oBasicUserDocumentValue.view());
+    // Insert document in the BasicUser collection
+    auto oResult = oBasicUserCollection.insert_one(**poSession, oBasicUserDocumentValue.view());
+    if (!oResult) {
+        std::cout << "Error while writing to the database." << std::endl;
+    }
+    else
+    {
+        // Insert document in the ConfidentialOrganizationOrUser collection
+        oResult = oConfidentialUserCollection.insert_one(**poSession, oConfidentialUserDocumentValue.view());
         if (!oResult) {
             std::cout << "Error while writing to the database." << std::endl;
         }
         else
         {
-            // Insert document in the ConfidentialOrganizationOrUser collection
-            oResult = oConfidentialUserCollection.insert_one(**poSession, oConfidentialUserDocumentValue.view());
-            if (!oResult) {
-                std::cout << "Error while writing to the database." << std::endl;
-            }
-            else
-            {
-                 dwStatus = 201;
-            }
+                dwStatus = 201;
         }
-    // };
-    // // Create a session and start the transaction
-    // mongocxx::client_session oSession = oClient->start_session();
-    // try 
-    // {
-    //     oSession.with_transaction(oCallback);
-    // }
-    // catch (mongocxx::exception& e) 
-    // {
-    //     std::cout << "Collection transaction exception: " << e.what() << std::endl;
-    // }
+    }
 
     // Send back the status of the transaction
     oResponse.PutDword("Status", dwStatus);
@@ -2576,6 +2563,11 @@ std::vector<Byte> __thiscall DatabaseManager::PullDigitalContract(
     // Fetch the digital contract record
     bsoncxx::stdx::optional<bsoncxx::document::value> oDcDocument = oSailDatabase["DigitalContract"].find_one(document{}
                                                                                                                 << "DigitalContractGuid" << strDcGuid
+                                                                                                                << "$or" << open_array << open_document
+                                                                                                                << "ResearcherOrganization" << c_oRequest.GetString("UserOrganization")
+                                                                                                                << close_document << open_document
+                                                                                                                << "DataOwnerOrganization" << c_oRequest.GetString("UserOrganization") 
+                                                                                                                << close_document << close_array 
                                                                                                                 << finalize);
     if (bsoncxx::stdx::nullopt != oDcDocument)
     {                                                                                                           

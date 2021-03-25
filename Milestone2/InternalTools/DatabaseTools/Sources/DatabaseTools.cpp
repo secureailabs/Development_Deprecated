@@ -51,7 +51,7 @@ DatabaseTools::DatabaseTools(
     __DebugFunction();
 
     // initialize web portal ip address and port number
-    ::AddWebPortalConfigurations(c_szIpAddress, unPortNumber);
+    ::AddWebPortalConfiguration(c_szIpAddress, unPortNumber);
     // initialize accounts
     this->InitializeMembers();
 }
@@ -70,11 +70,11 @@ void __thiscall DatabaseTools::InitializeMembers(void)
     __DebugFunction();
 
     // Add Organizations informations
-    m_stlOrganizations.push_back({"Zerg", "Char", "Naruto", "Supply Generator", "overlord@zerg.com", "000-000-0000", "Saitama", "Network Engineer", "nydus@zerg.com", "000-000-0000"});
-    m_stlOrganizations.push_back({"Terran", "Earth", "Eren", "Security Expert", "marine@terran.com", "000-000-0000", "Gon", "Hardware Engineer", "scv@t1erran.com", "000-000-0000"});
+    m_stlOrganizations.push_back(OrganizationInformation{"Zerg", "Char", "Naruto", "Supply Generator", "overlord@zerg.com", "000-000-0000", "Saitama", "Network Engineer", "nydus@zerg.com", "000-000-0000"});
+    m_stlOrganizations.push_back(OrganizationInformation{"Terran", "Earth", "Eren", "Security Expert", "marine@terran.com", "000-000-0000", "Gon", "Hardware Engineer", "scv@t1erran.com", "000-000-0000"});
     // Add super admins information
-    m_stlAdmins.push_back({"queen@zerg.com", "Queen of Blades", "Hardware Engineer", "000-000-0000", eAdmin});
-    m_stlAdmins.push_back({"marine@terran.com", "Eren", "Security Expert", "000-000-0000", eAdmin});
+    m_stlAdmins.push_back(UserInformation{"queen@zerg.com", "Queen of Blades", "Hardware Engineer", "000-000-0000", eAdmin});
+    m_stlAdmins.push_back(UserInformation{"marine@terran.com", "Eren", "Security Expert", "000-000-0000", eAdmin});
     // Add other users information
     m_stlUsers.push_back({"larva@zerg.com", "Larva", "Security Expert", "000-000-0000", eOrganizationUser});
     m_stlUsers.push_back({"overlord@zerg.com", "Lord", "Supply Generator", "000-000-0000", eOrganizationUser});
@@ -84,9 +84,9 @@ void __thiscall DatabaseTools::InitializeMembers(void)
     m_stlUsers.push_back({"scv@terran.com", "Gon", "Hardware Engineer", "000-000-0000", eOrganizationUser});
     m_stlUsers.push_back({"marauder@terran.com", "Naruto", "Supply Generator", "000-000-0000", eOrganizationUser});
     m_stlUsers.push_back({"reaper@terran.com", "Saitama", "Network Engineer", "000-000-0000", eAuditor});
-    m_stlUsers.push_back({"ghost@terran.com", "Alex", "Field Engineer", "000-000-0000", eDigitalContractAdmin});
-    m_stlUsers.push_back({"banshee@terran.com", "Yagami", "Market Discovery Expert", "000-000-0000", eDatasetAdmin});
-    // Initialize number of other users to m_stlUsers size
+    m_stlUsers.push_back(UserInformation{"ghost@terran.com", "Alex", "Field Engineer", "000-000-0000", eDigitalContractAdmin});
+    m_stlUsers.push_back(UserInformation("banshee@terran.com", "Yagami", "Market Discovery Expert", "000-000-0000", eDatasetAdmin));
+    // Initialize to the number of other users that will be added for each organization
     m_unNumberOfOtherUsers = 5;
 }
 
@@ -138,7 +138,11 @@ void __thiscall DatabaseTools::AddOtherUsers(void)
         // Get organization guid from eosb
         StructuredBuffer oUserInformation(::GetBasicUserInformation(strEncodedEosb));
         std::string strOrganizationGuid = oUserInformation.GetString("OrganizationGuid");
-        unsigned int unUserIndex = unIndex * m_unNumberOfOtherUsers;     // calculate index based number of other users per organization
+        // Add organization guid to the organization structure
+        m_stlOrganizations.at(unIndex).m_strOrganizationGuid = strOrganizationGuid;
+        // Add m_unNumberOfOtherUsers for each organization
+        // Calculate index based on the number of other users per organization
+        unsigned int unUserIndex = unIndex * m_unNumberOfOtherUsers;  
         for (; unUserIndex < (unIndex * m_unNumberOfOtherUsers + m_unNumberOfOtherUsers); ++unUserIndex)
         {
             StructuredBuffer oUserInformation;
@@ -153,6 +157,39 @@ void __thiscall DatabaseTools::AddOtherUsers(void)
     }
 
     std::cout << "Users added successfully." << std::endl;;
+}
+
+/********************************************************************************************/
+
+void __thiscall DatabaseTools::AddDigitalContracts(void)
+{
+    __DebugFunction();
+
+    // Register digital contracts for the organizations
+    for (unsigned int unIndex = 0; unIndex < m_stlOrganizations.size(); ++unIndex)
+    {
+        // Set the next organization as the data owner organization, loop around for the last organization
+        unsigned int unDooIndex = (m_stlOrganizations.size() == (unIndex + 1)) ? 0 : unIndex + 1;
+        // Login to the web services
+        std::string strEncodedEosb = Login(m_stlAdmins.at(unIndex).m_strEmail, m_strPassword);
+        _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
+        // Get organization guid from the Eosb
+        StructuredBuffer oUserInformation(::GetBasicUserInformation(strEncodedEosb));
+        std::string strOrganizationGuid = oUserInformation.GetString("OrganizationGuid");
+        // Add digital contract information
+        std::string strDooGuid = m_stlOrganizations.at(unDooIndex).m_strOrganizationGuid;
+        uint64_t unSubscriptionDays = 5;
+        std::string strLegalAgreement = "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties. "
+        "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";
+        StructuredBuffer oDcInformation;
+        oDcInformation.PutString("DOOGuid", strDooGuid);
+        oDcInformation.PutUnsignedInt64("SubscriptionDays", unSubscriptionDays);
+        oDcInformation.PutString("LegalAgreement", strLegalAgreement);
+        // Register digital contract
+        ::RegisterDigitalContract(strEncodedEosb, oDcInformation);
+    }
+
+    std::cout << "Digital contracts added successfully." << std::endl;;
 }
 
 

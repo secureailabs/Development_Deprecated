@@ -25,6 +25,8 @@ int main()
         oDatabaseTools.AddOrganizationsAndSuperAdmins();
         // Add other users for the organizations
         oDatabaseTools.AddOtherUsers();
+        // Register digital contracts for the organizations
+        oDatabaseTools.AddDigitalContracts();
     }
     catch(BaseException & oBaseException)
     {

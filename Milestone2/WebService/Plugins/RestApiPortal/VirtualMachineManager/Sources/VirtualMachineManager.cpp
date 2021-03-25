@@ -113,6 +113,7 @@ VirtualMachineManager::VirtualMachineManager(void)
 
     m_sMutex = PTHREAD_MUTEX_INITIALIZER;
     m_unNextAvailableIdentifier = 0;
+    m_fTerminationSignalEncountered = false;
 
     this->InitializeUserAccounts();
 }

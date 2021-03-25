@@ -10,20 +10,20 @@
 
 #include "InteractiveClient.h"
 
-const char * SERVER_IP_ADDRESS;
-unsigned int SERVER_PORT;
+const char * g_szServerIpAddress;
+unsigned int g_unPortNumber;
 
 /********************************************************************************************/
 
-void AddWebPortalConfigurations(
+void AddWebPortalConfiguration(
     _in const char * c_szIpAddress, 
     _in unsigned int unPortNumber
     )
 {
     __DebugFunction();
 
-    SERVER_IP_ADDRESS = c_szIpAddress;  // define the global variables
-    SERVER_PORT = unPortNumber;
+    g_szServerIpAddress = c_szIpAddress;  // define the global variables
+    g_unPortNumber = unPortNumber;
 }
 
 /********************************************************************************************/
@@ -150,7 +150,7 @@ std::string Login(
     {
         bool fSuccess = false;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         std::string strHttpLoginRequest = "POST /SAIL/AuthenticationManager/User/Login?Email="+ c_strEmail +"&Password="+ c_strUserPassword +" HTTP/1.1\r\n"
                                         "Accept: */*\r\n"
@@ -216,7 +216,7 @@ std::vector<Byte> GetBasicUserInformation(
     {
         bool fSuccess = false;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         std::string strHttpLoginRequest = "GET /SAIL/AuthenticationManager/GetBasicUserInformation?Eosb="+ c_strEosb +" HTTP/1.1\r\n"
                                         "Accept: */*\r\n"
@@ -285,7 +285,7 @@ std::string GetIEosb(
     {
         bool fSuccess = false;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         std::string strRequest = "GET /SAIL/CryptographicManager/User/GetIEosb?Eosb="+ c_strEosb +" HTTP/1.1\r\n"
                                         "Accept: */*\r\n"
@@ -354,7 +354,7 @@ std::string RegisterRootEvent(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
@@ -450,7 +450,7 @@ bool RegisterBranchEvent(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
@@ -545,7 +545,7 @@ bool RegisterLeafEvents(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
@@ -650,7 +650,7 @@ std::string RegisterVirtualMachine(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"IEosb\": \""+ c_strEncodedIEosb +"\","
@@ -735,7 +735,7 @@ std::string RegisterVmAfterDataUpload(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedVmEosb +"\","
@@ -817,7 +817,7 @@ std::string RegisterVmForComputation(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedVmEosb +"\","
@@ -898,7 +898,7 @@ bool GetListOfEvents(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
@@ -1059,7 +1059,7 @@ bool RegisterOrganizationAndSuperUser(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Email\": \""+ c_oOrganizationInformation.GetString("Email") +"\","
@@ -1197,7 +1197,7 @@ bool RegisterUser(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
@@ -1306,7 +1306,7 @@ bool UpdateOrganizationInformation(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","
@@ -1394,7 +1394,7 @@ bool ListOrganizations(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\""
@@ -1494,7 +1494,7 @@ bool DeleteUser(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","
@@ -1578,7 +1578,7 @@ bool DeleteOrganization(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","
@@ -1647,7 +1647,6 @@ bool RegisterDigitalContract(
     )
 {
     __DebugFunction();
-
     __DebugAssert(0 < c_strEncodedEosb.size());
 
     bool fSuccess = false;
@@ -1666,19 +1665,44 @@ bool RegisterDigitalContract(
     __DebugAssert(0 < unSubscriptionDays);
     __DebugAssert(0 < strLegalAgreement.size());
 
+    StructuredBuffer oDcInformation;
+    oDcInformation.PutString("DOOGuid", strDooGuid);
+    oDcInformation.PutUnsignedInt64("SubscriptionDays", unSubscriptionDays);
+    oDcInformation.PutString("LegalAgreement", strLegalAgreement);
+
+    fSuccess = ::RegisterDigitalContract(c_strEncodedEosb, oDcInformation);
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool RegisterDigitalContract(
+    _in const std::string & c_strEncodedEosb,
+    _in const StructuredBuffer & c_oDcInformation
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEncodedEosb.size());
+
+    bool fSuccess = false;
+    // TODO: change hard coded values
+    std::string strVersionNumber = "0x0000000100000001";
+    std::string strDatasetGuid = Guid(eDataset).ToString(eHyphensAndCurlyBraces);
+
     try 
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"DataOwnerOrganization\": \""+ strDooGuid +"\","
+                                "\n    \"DataOwnerOrganization\": \""+ c_oDcInformation.GetString("DOOGuid") +"\","
                                 "\n    \"VersionNumber\": \""+ strVersionNumber +"\","
-                                "\n    \"SubscriptionDays\": "+ std::to_string(unSubscriptionDays) +","
+                                "\n    \"SubscriptionDays\": "+ std::to_string(c_oDcInformation.GetUnsignedInt64("SubscriptionDays")) +","
                                 "\n    \"DatasetGuid\": \""+ strDatasetGuid +"\","
-                                "\n    \"LegalAgreement\": \""+ strLegalAgreement +"\","
+                                "\n    \"LegalAgreement\": \""+ c_oDcInformation.GetString("LegalAgreement") +"\","
                                 "\n    \"DatasetDRMMetadataSize\": "+ std::to_string(0) +","
                                 "\n    \"DatasetDRMMetadata\":{}"
                                 "\n}";
@@ -1767,7 +1791,7 @@ bool AcceptDigitalContract(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
@@ -1860,7 +1884,7 @@ bool ActivateDigitalContract(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
@@ -1938,7 +1962,7 @@ bool ListDigitalContracts(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\""
@@ -2033,7 +2057,7 @@ bool PullDigitalContract(
     {
         std::vector<Byte> stlRestResponse;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","

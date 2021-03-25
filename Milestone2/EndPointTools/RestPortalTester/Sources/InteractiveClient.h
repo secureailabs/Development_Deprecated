@@ -29,12 +29,12 @@
 #include <sstream>
 #include <vector>
 
-extern const char * SERVER_IP_ADDRESS;
-extern unsigned int SERVER_PORT;
+extern const char * g_szServerIpAddress;
+extern unsigned int g_unPortNumber;
 
 /********************************************************************************************/
 
-extern void AddWebPortalConfigurations(
+extern void AddWebPortalConfiguration(
     _in const char * c_szIpAddress, 
     _in unsigned int unPortNumber
     );
@@ -136,6 +136,11 @@ extern bool DeleteOrganization(
 
 extern bool RegisterDigitalContract(
     _in const std::string & c_strEncodedEosb
+    );
+
+extern bool RegisterDigitalContract(
+    _in const std::string & c_strEncodedEosb,
+    _in const StructuredBuffer & c_oDcInformation
     );
 
 extern bool AcceptDigitalContract(

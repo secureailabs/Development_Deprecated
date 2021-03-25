@@ -1011,36 +1011,42 @@ std::vector<Byte> __thiscall DigitalContractDatabase::PullDigitalContract(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 404;
-    // TODO: Add a check if the api has to be restricted
-    // Make a Tls connection with the database portal
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-    // Create a request to get the digital contract information
-    StructuredBuffer oRequest;
-    oRequest.PutString("PluginName", "DatabaseManager");
-    oRequest.PutString("Verb", "GET");
-    oRequest.PutString("Resource", "/SAIL/DatabaseManager/PullDigitalContract");
-    oRequest.PutString("DigitalContractGuid", c_oRequest.GetString("DigitalContractGuid"));
-    std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-    // Send request packet
-    poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-
-    StructuredBuffer oDatabaseResponse(stlResponse);
-    if (404 != oDatabaseResponse.GetDword("Status"))
+    // Get user information to check if the user is a digital contract admin or database admin
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
     {
-        std::vector<Byte> stlDcBlob = oDatabaseResponse.GetStructuredBuffer("DigitalContract").GetBuffer("DigitalContractBlob");
-        // Deserialize the Digital contract blob and get the DC information structured buffer
-        oResponse.PutStructuredBuffer("DigitalContract", this->DeserializeDigitalContract(stlDcBlob));
-        oResponse.PutString("ResearcherOrganization", oDatabaseResponse.GetString("ResearcherOrganization"));
-        oResponse.PutString("DataOwnerOrganization", oDatabaseResponse.GetString("DataOwnerOrganization"));
-        dwStatus = 200;
+        // TODO: Add a check if the api has to be restricted
+        // Make a Tls connection with the database portal
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        // Create a request to get the digital contract information
+        StructuredBuffer oRequest;
+        oRequest.PutString("PluginName", "DatabaseManager");
+        oRequest.PutString("Verb", "GET");
+        oRequest.PutString("Resource", "/SAIL/DatabaseManager/PullDigitalContract");
+        oRequest.PutString("DigitalContractGuid", c_oRequest.GetString("DigitalContractGuid"));
+        oRequest.PutString("UserOrganization", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+        // Send request packet
+        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+        // Read header and body of the response
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+        StructuredBuffer oDatabaseResponse(stlResponse);
+        if (404 != oDatabaseResponse.GetDword("Status"))
+        {
+            std::vector<Byte> stlDcBlob = oDatabaseResponse.GetStructuredBuffer("DigitalContract").GetBuffer("DigitalContractBlob");
+            // Deserialize the Digital contract blob and get the DC information structured buffer
+            oResponse.PutStructuredBuffer("DigitalContract", this->DeserializeDigitalContract(stlDcBlob));
+            oResponse.PutString("ResearcherOrganization", oDatabaseResponse.GetString("ResearcherOrganization"));
+            oResponse.PutString("DataOwnerOrganization", oDatabaseResponse.GetString("DataOwnerOrganization"));
+            dwStatus = 200;
+        }
     }
 
     // Send back status of the transaction

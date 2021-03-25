@@ -45,17 +45,35 @@ using bsoncxx::builder::basic::kvp;
 
 /********************************************************************************************/
 
-typedef struct
+typedef struct UserInformation
 {
+    std::string m_strUserGuid;
     std::string m_strEmail;
     std::string m_strName;
     std::string m_strTitle;
     std::string m_strPhoneNumber;
     Qword m_qwAccessRights;
-} UserInformation;
 
-typedef struct
+    UserInformation(
+        _in const std::string & c_strEmail, 
+        _in const std::string & c_strName, 
+        _in const std::string c_strTitle, 
+        _in const std::string c_strPhoneNumber,
+        _in Qword qwAccessRights
+        )
+    {
+        m_strEmail = c_strEmail;
+        m_strName = c_strName;
+        m_strTitle = c_strTitle;
+        m_strPhoneNumber = c_strPhoneNumber;
+        m_qwAccessRights = qwAccessRights;
+    }
+} 
+UserInformation;
+
+typedef struct OrganizationInformation
 {
+    std::string m_strOrganizationGuid;
     std::string m_strOrganizationName;
     std::string m_strOrganizationAddress;
     std::string m_strPrimaryContactName;
@@ -66,7 +84,33 @@ typedef struct
     std::string m_strSecondaryContactTitle;
     std::string m_strSecondaryContactEmail;
     std::string m_strSecondaryContactPhoneNumber;
-} OrganizationInformation;
+
+    OrganizationInformation(
+        _in const std::string & c_strName, 
+        _in const std::string & c_strAddress, 
+        _in const std::string c_strPrimaryContactName, 
+        _in const std::string c_strPrimaryContactTitle,
+        _in const std::string c_strPrimaryContactEmail, 
+        _in const std::string c_strPrimaryContactPhoneNumber,
+        _in const std::string c_strSecondaryContactName, 
+        _in const std::string c_strSecondaryContactTitle,
+        _in const std::string c_strSecondaryContactEmail, 
+        _in const std::string c_strSecondaryContactPhoneNumber
+        )
+    {
+        m_strOrganizationName = c_strName;
+        m_strOrganizationAddress = c_strAddress;
+        m_strPrimaryContactName = c_strPrimaryContactName;
+        m_strPrimaryContactTitle = c_strPrimaryContactTitle;
+        m_strPrimaryContactEmail = c_strPrimaryContactEmail;
+        m_strPrimaryContactPhoneNumber = c_strPrimaryContactPhoneNumber;
+        m_strSecondaryContactName = c_strSecondaryContactName;
+        m_strSecondaryContactTitle = c_strSecondaryContactTitle;
+        m_strSecondaryContactEmail = c_strSecondaryContactEmail;
+        m_strSecondaryContactPhoneNumber = c_strSecondaryContactPhoneNumber;
+    }
+} 
+OrganizationInformation;
 
 /********************************************************************************************/
 
@@ -89,6 +133,9 @@ class DatabaseTools : public Object
 
         // Register other users for each organization
         void __thiscall AddOtherUsers(void);
+
+        // Register digital contracts
+        void __thiscall AddDigitalContracts(void);
 
     private:
 

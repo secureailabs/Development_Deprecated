@@ -18,12 +18,27 @@
 
 FontColor oFontColor;
 
+std::string strLoginMenu = oFontColor.strWhite + "1- Login \n" +
+            oFontColor.strWhite + "2- Sign up \n\n" +
+            oFontColor.strRed + "0- Exit\n";
+
 std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
-            oFontColor.strGreen + "1- Register a root event\n" +
-            oFontColor.strGreen + "2- Register a virtual machine and its leaf events\n" +
-            oFontColor.strCyan + "3- Get list of all events of the organization\n" +
-            oFontColor.strCyan + "4- Get list of events for a specified parent\n" +
-            oFontColor.strYellow + "0- Quit\n";
+            oFontColor.strMagenta + "1- Add a new user - Admin privileges required!\n" +
+            oFontColor.strMagenta + "2- Get list of organizations - Admin privileges required!\n" +
+            oFontColor.strMagenta + "3- Update organization information - Admin privileges required!\n" +
+            oFontColor.strMagenta + "4- Delete an organization - Admin privileges required!\n" +
+            oFontColor.strMagenta + "5- Delete a user - Admin privileges required!\n" +
+            oFontColor.strCyan + "6- Register a virtual machine\n" +
+            oFontColor.strCyan + "7- Register a virtual machine event for DOO and its leaf events\n" +
+            oFontColor.strCyan + "8- Register a virtual machine event for RO and its leaf events\n" +
+            oFontColor.strCyan + "9- Get list of all events of the organization\n" +
+            oFontColor.strCyan + "10- Get list of events for a specified parent\n" +
+            oFontColor.strBlue + "11- Register a digital contract\n" +
+            oFontColor.strBlue + "12- Get list of all digital contracts of your organization\n" +
+            oFontColor.strBlue + "13- Pull a digital contract - Dataset Admin or Digital Contract Admin privileges required\n" +
+            oFontColor.strBlue + "14- Approve a digital contract - Dataset Admin privileges required\n" +
+            oFontColor.strBlue + "15- Activate a digital contract - Digital Contract Admin privileges required\n" +
+            oFontColor.strYellow + "0- Logout\n";
 
 /********************************************************************************************/
 
@@ -43,6 +58,29 @@ void __stdcall ShowErrorMessage(
     __DebugFunction();
 
     std::cout << oFontColor.strRed << strErrorMessage << std::endl;
+}
+
+/********************************************************************************************/
+
+void __stdcall ShowSuccessMessage(
+  _in std::string strSuccessMessage
+  ) throw()
+{
+    __DebugFunction();
+
+    std::cout << oFontColor.strGreen << strSuccessMessage << std::endl;
+}
+
+/********************************************************************************************/
+
+void __stdcall ShowLoginMenu(void) throw()
+{
+    __DebugFunction();
+
+    ::ClearScreen();
+    std::cout << "************************\n  SAIL DEMO\n************************\n" << std::endl;
+    std::cout << strLoginMenu << std::endl;
+    std::cout << oFontColor.strWhite << std::endl;
 }
 
 /********************************************************************************************/

@@ -10,9 +10,10 @@
 
 #include "AccountDatabase.h"
 #include "64BitHashes.h"
+#include "DateAndTime.h"
 #include "IpcTransactionHelperFunctions.h"
 #include "SmartMemoryAllocator.h"
-#include "SocketServer.h"
+#include "SocketClient.h"
 #include "ThreadManager.h"
 #include "TlsClient.h"
 
@@ -356,11 +357,179 @@ void __thiscall AccountDatabase::InitializePlugin(void)
 {
     __DebugFunction();
 
-    // Takes in an EOSB and sends user metadata
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/Account/GetUserInfo");
+    // Add parameters to fetch a list of all organizations
+    // Name, ElementType, and Range (if exists) are used by RestFrameworkRuntimeData::RunThread to vet request parameters.
+    // Required parameters are marked by setting IsRequired to true
+    // Otherwise the parameter is optional
+    StructuredBuffer oListOrganizations;
+    StructuredBuffer oEosb;
+    oEosb.PutByte("ElementType", BUFFER_VALUE_TYPE);
+    oEosb.PutBoolean("IsRequired", true);
+    oListOrganizations.PutStructuredBuffer("Eosb", oEosb);
 
-    // Takes in a StructuredBuffer containing new user information and create a new user account
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AccountManager/Users");
+    // Add parameters to fetch a list of all users
+    StructuredBuffer oListUsers;
+    oListUsers.PutStructuredBuffer("Eosb", oEosb);
+
+    // Add parameters to fetch a list of users in an organization
+    StructuredBuffer oListOrganizationUsers;
+    oListOrganizationUsers.PutStructuredBuffer("Eosb", oEosb);
+    StructuredBuffer oOrganizationGuid;
+    oOrganizationGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oOrganizationGuid.PutBoolean("IsRequired", true);
+    oListOrganizationUsers.PutStructuredBuffer("OrganizationGuid", oOrganizationGuid);
+
+    // Add parameters for registering an organization and it's super user
+    StructuredBuffer oRegisterOrganizationAndUser;
+    StructuredBuffer oOrganizationName;
+    oOrganizationName.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oOrganizationName.PutBoolean("IsRequired", true);
+    oRegisterOrganizationAndUser.PutStructuredBuffer("OrganizationName", oOrganizationName);
+    StructuredBuffer oOrganizationAddress;
+    oOrganizationAddress.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oOrganizationAddress.PutBoolean("IsRequired", true);
+    oRegisterOrganizationAndUser.PutStructuredBuffer("OrganizationAddress", oOrganizationAddress);
+    StructuredBuffer oPrimaryContactName;
+    oPrimaryContactName.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oPrimaryContactName.PutBoolean("IsRequired", true);
+    oRegisterOrganizationAndUser.PutStructuredBuffer("PrimaryContactName", oPrimaryContactName);
+    StructuredBuffer oPrimaryContactTitle;
+    oPrimaryContactTitle.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oPrimaryContactTitle.PutBoolean("IsRequired", true);
+    oRegisterOrganizationAndUser.PutStructuredBuffer("PrimaryContactTitle", oPrimaryContactTitle);
+    StructuredBuffer oPrimaryContactEmail;
+    oPrimaryContactEmail.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oPrimaryContactEmail.PutBoolean("IsRequired", true);
+    oRegisterOrganizationAndUser.PutStructuredBuffer("PrimaryContactEmail", oPrimaryContactEmail);
+    StructuredBuffer oPrimaryContactPhoneNumber;
+    oPrimaryContactPhoneNumber.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oPrimaryContactPhoneNumber.PutBoolean("IsRequired", true);
+    oRegisterOrganizationAndUser.PutStructuredBuffer("PrimaryContactPhoneNumber", oPrimaryContactPhoneNumber);
+    StructuredBuffer oSecondaryContactName;
+    oSecondaryContactName.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oSecondaryContactName.PutBoolean("IsRequired", true);
+    oRegisterOrganizationAndUser.PutStructuredBuffer("SecondaryContactName", oSecondaryContactName);
+    StructuredBuffer oSecondaryContactTitle;
+    oSecondaryContactTitle.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oSecondaryContactTitle.PutBoolean("IsRequired", true);
+    oRegisterOrganizationAndUser.PutStructuredBuffer("SecondaryContactTitle", oSecondaryContactTitle);
+    StructuredBuffer oSecondaryContactEmail;
+    oSecondaryContactEmail.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oSecondaryContactEmail.PutBoolean("IsRequired", true);
+    oRegisterOrganizationAndUser.PutStructuredBuffer("SecondaryContactEmail", oSecondaryContactEmail);
+    StructuredBuffer oSecondaryContactPhoneNumber;
+    oSecondaryContactPhoneNumber.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oSecondaryContactPhoneNumber.PutBoolean("IsRequired", true);
+    oRegisterOrganizationAndUser.PutStructuredBuffer("SecondaryContactPhoneNumber", oSecondaryContactPhoneNumber);
+    StructuredBuffer oEmail;
+    oEmail.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oEmail.PutBoolean("IsRequired", true);
+    oRegisterOrganizationAndUser.PutStructuredBuffer("Email", oEmail);
+    StructuredBuffer oPassword;
+    oPassword.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oPassword.PutBoolean("IsRequired", true);
+    oRegisterOrganizationAndUser.PutStructuredBuffer("Password", oPassword);
+    StructuredBuffer oName;
+    oName.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oName.PutBoolean("IsRequired", true);
+    oRegisterOrganizationAndUser.PutStructuredBuffer("Name", oName);
+    StructuredBuffer oTitle;
+    oTitle.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oTitle.PutBoolean("IsRequired", true);
+    oRegisterOrganizationAndUser.PutStructuredBuffer("Title", oTitle);
+    StructuredBuffer oPhoneNumber;
+    oPhoneNumber.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oPhoneNumber.PutBoolean("IsRequired", true);
+    oRegisterOrganizationAndUser.PutStructuredBuffer("PhoneNumber", oPhoneNumber);
+
+    // Add parameters for registering a new user
+    StructuredBuffer oRegisterUser;
+    oRegisterUser.PutStructuredBuffer("Eosb", oEosb);
+    oRegisterUser.PutStructuredBuffer("Email", oEmail);
+    oRegisterUser.PutStructuredBuffer("Password", oPassword);
+    oRegisterUser.PutStructuredBuffer("Name", oName);
+    oRegisterUser.PutStructuredBuffer("Title", oTitle);
+    oRegisterUser.PutStructuredBuffer("PhoneNumber", oPhoneNumber);
+    StructuredBuffer oAccessRights;
+    oAccessRights.PutByte("ElementType", QWORD_VALUE_TYPE);
+    oAccessRights.PutBoolean("IsRequired", true);
+    oRegisterUser.PutStructuredBuffer("AccessRights", oAccessRights);
+    oRegisterUser.PutStructuredBuffer("OrganizationGuid", oOrganizationGuid);
+
+    // Add parameters for updating user's access rights
+    StructuredBuffer oUpdateAccessRight;
+    oUpdateAccessRight.PutStructuredBuffer("Eosb", oEosb);
+    oUpdateAccessRight.PutStructuredBuffer("AccessRights", oAccessRights);
+    StructuredBuffer oUserGuid;
+    oUserGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oUserGuid.PutBoolean("IsRequired", true);
+    oUpdateAccessRight.PutStructuredBuffer("UserGuid", oUserGuid);
+
+    // Add parameters for updating organization information
+    StructuredBuffer oUpdateOrganization;
+    oUpdateOrganization.PutStructuredBuffer("Eosb", oEosb);
+    oUpdateOrganization.PutStructuredBuffer("OrganizationGuid", oOrganizationGuid);
+    StructuredBuffer oOrganizationInformation;
+    oOrganizationInformation.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
+    oOrganizationInformation.PutBoolean("IsRequired", true);
+    oOrganizationInformation.PutStructuredBuffer("OrganizationName", oOrganizationName);
+    oOrganizationInformation.PutStructuredBuffer("OrganizationAddress", oOrganizationAddress);
+    oOrganizationInformation.PutStructuredBuffer("PrimaryContactName", oPrimaryContactName);
+    oOrganizationInformation.PutStructuredBuffer("PrimaryContactTitle", oPrimaryContactTitle);
+    oOrganizationInformation.PutStructuredBuffer("PrimaryContactEmail", oPrimaryContactEmail);
+    oOrganizationInformation.PutStructuredBuffer("PrimaryContactPhoneNumber", oPrimaryContactPhoneNumber);
+    oOrganizationInformation.PutStructuredBuffer("SecondaryContactName", oSecondaryContactName);
+    oOrganizationInformation.PutStructuredBuffer("SecondaryContactTitle", oSecondaryContactTitle);
+    oOrganizationInformation.PutStructuredBuffer("SecondaryContactEmail", oSecondaryContactEmail);
+    oOrganizationInformation.PutStructuredBuffer("SecondaryContactPhoneNumber", oSecondaryContactPhoneNumber);
+    oUpdateOrganization.PutStructuredBuffer("OrganizationInformation", oOrganizationInformation);
+
+    // Add parameters for updating user information
+    StructuredBuffer oUpdateUser;
+    oUpdateUser.PutStructuredBuffer("Eosb", oEosb);
+    oUpdateUser.PutStructuredBuffer("UserGuid", oUserGuid);
+    oUpdateUser.PutStructuredBuffer("Name", oName);
+    oUpdateUser.PutStructuredBuffer("Title", oTitle);
+    oUpdateUser.PutStructuredBuffer("Email", oEmail);
+    oUpdateUser.PutStructuredBuffer("PhoneNumber", oPhoneNumber);
+
+    // Add parameters for deleting a user
+    StructuredBuffer oDeleteUser;
+    oDeleteUser.PutStructuredBuffer("Eosb", oEosb);
+    oDeleteUser.PutStructuredBuffer("UserGuid", oUserGuid);
+    StructuredBuffer oIsHardDelete;
+    oIsHardDelete.PutByte("ElementType", BOOLEAN_VALUE_TYPE);
+    oIsHardDelete.PutBoolean("IsRequired", true);
+    oDeleteUser.PutStructuredBuffer("IsHardDelete", oIsHardDelete);
+
+    // Add parameters for deleting an organization
+    StructuredBuffer oDeleteOrganization;
+    oDeleteOrganization.PutStructuredBuffer("Eosb", oEosb);
+    oDeleteOrganization.PutStructuredBuffer("OrganizationGuid", oOrganizationGuid);
+    oDeleteOrganization.PutStructuredBuffer("IsHardDelete", oIsHardDelete);
+
+    // Takes in an EOSB and returns a list of all organization
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Organizations", oListOrganizations);
+    // Takes in an EOSB and returns a list of all users
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Users", oListUsers);
+    // Takes in an EOSB and returns a list of users associated with specified organization guid
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Organization/Users", oListOrganizationUsers);
+    // TODO: take in Sail Eosb
+    // Takes in user information and registers a user
+    // Register the organziation first and register the user as a super admin afterwards
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AccountManager/RegisterUser", oRegisterOrganizationAndUser);
+    // Accessed by an admin user to register a new user
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AccountManager/Admin/RegisterUser", oRegisterUser);
+    // Updates user's access rights
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/AccountManager/Update/AccessRight", oUpdateAccessRight);
+    // Updates organization information
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/AccountManager/Update/Organization", oUpdateOrganization);
+    // Updates user information, excluding access rights
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/AccountManager/Update/User", oUpdateUser);
+    // Delete a user from the database
+    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AccountManager/Remove/User", oDeleteUser);
+    // Delete an organization from the database
+    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AccountManager/Remove/Organization", oDeleteOrganization);
 
     // Start the Ipc server
     // Start listening for Ipc connections
@@ -478,16 +647,54 @@ uint64_t __thiscall AccountDatabase::SubmitRequest(
     // Route to the requested resource
     if ("GET" == strVerb)
     {
-        if ("/SAIL/Account/GetUserInfo" == strResource)
+        if ("/SAIL/AccountManager/Organizations" == strResource)
         {
-            stlResponseBuffer = this->GetUserInfo(c_oRequestStructuredBuffer);
+            stlResponseBuffer = this->ListOrganizations(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/AccountManager/Users" == strResource)
+        {
+            stlResponseBuffer = this->ListUsers(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/AccountManager/Organization/Users" == strResource)
+        {
+            stlResponseBuffer = this->ListOrganizationUsers(c_oRequestStructuredBuffer);
         }
     }
     else if ("POST" == strVerb)
     {
-        if ("/SAIL/AccountManager/Users" == strResource)
+        if ("/SAIL/AccountManager/RegisterUser" == strResource)
+        {
+            stlResponseBuffer = this->RegisterOrganizationAndSuperUser(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/AccountManager/Admin/RegisterUser" == strResource)
         {
             stlResponseBuffer = this->RegisterUser(c_oRequestStructuredBuffer);
+        }
+    }
+    else if ("PUT" == strVerb)
+    {
+        if ("/SAIL/AccountManager/Update/AccessRight" == strResource)
+        {
+            stlResponseBuffer = this->UpdateUserRights(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/AccountManager/Update/Organization" == strResource)
+        {
+            stlResponseBuffer = this->UpdateOrganizationInformation(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/AccountManager/Update/User" == strResource)
+        {
+            stlResponseBuffer = this->UpdateUserInformation(c_oRequestStructuredBuffer);
+        }
+    }
+    else if ("DELETE" == strVerb)
+    {
+        if ("/SAIL/AccountManager/Remove/User" == strResource)
+        {
+            stlResponseBuffer = this->DeleteUser(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/AccountManager/Remove/Organization" == strResource)
+        {
+            stlResponseBuffer = this->DeleteOrganization(c_oRequestStructuredBuffer);
         }
     }
 
@@ -644,40 +851,114 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserInfo(
     )
 {
     __DebugFunction();
-    // TODO: Fetch user account record from the database
 
-    StructuredBuffer oUserMetadata;
+    StructuredBuffer oResponse;
 
-    StructuredBuffer oEosb(c_oRequest.GetBuffer("Eosb"));
-    std::string strUserUuid = oEosb.GetString("UserUuid");
+    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
 
-    bool fFound = false;
-    UserAccount * oUserAccount;
+    StructuredBuffer oDecryptEosbRequest;
+    oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
+    oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
 
-    // Find the requested user account
-    ::pthread_mutex_lock(&m_sMutex);
-    for (unsigned int unIndex = 0 ; ((fFound == false ) && (unIndex < m_stlUserAccounts.size())); ++unIndex)
+    // Call CryptographicManager plugin to get the decrypted eosb
+    bool fSuccess = false;
+    Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+    StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+    if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
     {
-        if (strUserUuid == m_stlUserAccounts[unIndex]->GetUserUuid())
+        StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
+        oResponse.PutDword("Status", 200);
+        oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
+        oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
+        // TODO: get user access rights from the confidential record, for now it can't be decrypted
+        oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
+        fSuccess = true;
+    }
+    // Add error code if transaction was unsuccessful
+    if (false == fSuccess)
+    {
+        oResponse.PutDword("Status", 404);
+    }
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AccountDatabase
+ * @function RegisterOrganizationAndSuperUser
+ * @brief Register an organization and the new user as it's super user
+ * @param[in] c_oRequest contains the organization and user information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns status of the transaction
+ * @note
+ *  Register the organziation first and register the user as a super admin afterwards.
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    // Make a Tls connection with the database portal
+    TlsNode * poTlsNode = nullptr;
+    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+    // Create a request to add a user to the database
+    StructuredBuffer oRequest;
+    oRequest.PutString("PluginName", "DatabaseManager");
+    oRequest.PutString("Verb", "POST");
+    oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterOrganization");
+    oRequest.PutStructuredBuffer("Request", c_oRequest);
+    std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+    // Send request packet
+    poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+    // Read header and body of the response
+    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+    std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+    Dword dwStatus = 204;
+    // Check if DatabaseManager registered the user or not
+    StructuredBuffer oDatabaseResponse(stlResponse);
+    if (204 != oDatabaseResponse.GetDword("Status"))
+    {
+        dwStatus = 201;
+        // Create request to register a root node event for the organization
+        StructuredBuffer oRootEvent;
+        oRootEvent.PutDword("TransactionType", 0x00000001);
+        StructuredBuffer oMetadata;
+        oMetadata.PutString("EventGuid", Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces));
+        oMetadata.PutString("ParentGuid", "{00000000-0000-0000-0000-000000000000}");
+        oMetadata.PutString("OrganizationGuid", oDatabaseResponse.GetString("OrganizationGuid"));
+        oMetadata.PutQword("EventType", 1);    // 1 for Root event and 2 for Branch event type
+        oMetadata.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+        oMetadata.PutStructuredBuffer("PlainTextEventData", StructuredBuffer());
+        oRootEvent.PutStructuredBuffer("NonLeafEvent", oMetadata);
+        // Call AuditLog plugin to register root node event
+        bool fSuccess = false;
+        Socket * poIpcAuditLogManager =  ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
+        StructuredBuffer oStatus(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oRootEvent));
+        if ((0 < oStatus.GetSerializedBufferRawDataSizeInBytes())&&(201 == oStatus.GetDword("Status")))
         {
-            oUserAccount = m_stlUserAccounts[unIndex];
-            fFound = true;
+            oResponse.PutDword("RootEventStatus", 201);
+        }
+        else
+        {
+            oResponse.PutDword("RootEventStatus", 204);
         }
     }
-    ::pthread_mutex_unlock(&m_sMutex);
+    
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
 
-    _ThrowBaseExceptionIf((false == fFound), "Error: User not found", nullptr);
-
-    // Generate a StructuredBuffer containing requested user's metadata
-    oUserMetadata.PutString("Username", oUserAccount->GetUserName());
-    oUserMetadata.PutString("Fullname", oUserAccount->GetFullName());
-    oUserMetadata.PutString("Email", oUserAccount->GetEmail());
-    oUserMetadata.PutString("Organization", oUserAccount->GetOrganization());
-    oUserMetadata.PutString("ContactInformation", oUserAccount->GetContactInformation());
-    oUserMetadata.PutQword("LastLogonTime", oUserAccount->GetLastLogon());
-    oUserMetadata.PutWord("UserType", oUserAccount->GetTypeOfUser());
-
-    return oUserMetadata.GetSerializedBuffer();
+    return oResponse.GetSerializedBuffer();
 }
 
 /********************************************************************************************
@@ -687,7 +968,10 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserInfo(
  * @brief Add a user account to the database
  * @param[in] c_oRequest contains the user information
  * @throw BaseException Error StructuredBuffer element not found
- * @returns StructuredBuffer containing user uuid
+ * @returns status of the transaction
+ * @note
+ *  If user's organziation not found then, register the organziation first and register 
+ *  the user as a super admin afterwards.
  *
  ********************************************************************************************/
 
@@ -696,31 +980,546 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterUser(
     )
 {
     __DebugFunction();
-    // TODO: Insert record in the database
 
     StructuredBuffer oResponse;
 
-    std::string strUserName = c_oRequest.GetString("Username");
-    std::string strFullName = c_oRequest.GetString("Fullname");
-    std::string strEmail = c_oRequest.GetString("Email");
-    std::string strOrganization = c_oRequest.GetString("Organization");
-    std::string strContactInformation = c_oRequest.GetString("ContactInformation");
-    Qword qwLastLogon = c_oRequest.GetQword("LastLogonTime");
-    Word wTypeOfUser = c_oRequest.GetWord("UserType");
+    Dword dwStatus = 204;
+    // Get user information to check if the user has admin access rights
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
+    {
+        if (eAdmin == oUserInfo.GetQword("AccessRights"))
+        {
+            // Make a Tls connection with the database portal
+            TlsNode * poTlsNode = nullptr;
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to add a user to the database
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "POST");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterUser");
+            oRequest.PutStructuredBuffer("Request", c_oRequest);
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
 
-    // Generate a UUID for the new user
-    Guid oUserGuid;
-    std::string strUserUuid = oUserGuid.ToString(eHyphensAndCurlyBraces);
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
 
-    // Create a new user account
-    UserAccount * oUserAccount = new UserAccount(strUserUuid, strUserName, strFullName, strEmail, strOrganization, strContactInformation, qwLastLogon, wTypeOfUser);
+            // Check if DatabaseManager registered the user or not
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (204 != oDatabaseResponse.GetDword("Status"))
+            {
+                dwStatus = 201;
+            }
+        }
+    }
 
-    // Add user account to the m_stlUserAccounts
-    ::pthread_mutex_lock(&m_sMutex);
-    m_stlUserAccounts.push_back(oUserAccount);
-    ::pthread_mutex_unlock(&m_sMutex);
-
-    oResponse.PutString("UserUuid", strUserUuid);
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }
+
+/********************************************************************************************
+ *
+ * @class AccountDatabase
+ * @function UpdateUserRights
+ * @brief Update user's access rights
+ * @param[in] c_oRequest contains the admin's Eosb, user guid, and new rights bitmap
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns status of the transaction
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 204;
+    // Get user information to check if the user has admin access rights
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
+    {
+        if (eAdmin == oUserInfo.GetQword("AccessRights"))
+        {
+            // Make a Tls connection with the database portal
+            TlsNode * poTlsNode = nullptr;
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to add a user to the database
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "PUT");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateUserRights");
+            oRequest.PutString("UserGuid", c_oRequest.GetString("UserGuid"));
+            oRequest.PutQword("AccessRights", c_oRequest.GetQword("AccessRights"));
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+            // Check if DatabaseManager updated the user rights or not
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (204 != oDatabaseResponse.GetDword("Status"))
+            {
+                dwStatus = 200;
+            }
+        }
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AccountDatabase
+ * @function UpdateOrganizationInformation
+ * @brief Update organization information
+ * @param[in] c_oRequest contains the admin's Eosb, organization guid, and new information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns status of the transaction
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AccountDatabase::UpdateOrganizationInformation(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 204;
+    // Get user information to check if the user has admin access rights
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
+    {
+        if (eAdmin == oUserInfo.GetQword("AccessRights"))
+        {
+            // Make a Tls connection with the database portal
+            TlsNode * poTlsNode = nullptr;
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to add a user to the database
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "PUT");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateOrganizationInformation");
+            oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
+            oRequest.PutStructuredBuffer("OrganizationInformation", c_oRequest.GetStructuredBuffer("OrganizationInformation"));
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+            // Check if DatabaseManager updated the organization information or not
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (204 != oDatabaseResponse.GetDword("Status"))
+            {
+                dwStatus = 200;
+            }
+        }
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AccountDatabase
+ * @function UpdateUserInformation
+ * @brief Update user information, excluding access rights
+ * @param[in] c_oRequest contains the admin's Eosb or the user's eosb, user guid, and new user information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns status of the transaction
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 204;
+    // Get user information to check if the user has admin access rights or if the Eosb is associated with the userguid
+    std::string strUserGuid = c_oRequest.GetString("UserGuid");
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
+    {
+        // TODO: add an or in the if statement to check if user is eAdmin
+        // For now, an admin can't change a user's information
+        if (strUserGuid == oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces))
+        {
+            // Make a Tls connection with the database portal
+            TlsNode * poTlsNode = nullptr;
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to add a user to the database
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "PUT");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateUserInformation");
+            oRequest.PutString("UserGuid", c_oRequest.GetString("UserGuid"));
+            oRequest.PutStructuredBuffer("UserInformation", c_oRequest.GetStructuredBuffer("UserInformation"));
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+            // Check if DatabaseManager updated the user information, excluding the access rights, or not
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (204 != oDatabaseResponse.GetDword("Status"))
+            {
+                dwStatus = 200;
+            }
+        }
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AccountDatabase
+ * @function ListOrganizations
+ * @brief Return a list of organizations
+ * @param[in] c_oRequest contains the user's eosb
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns structuredbuffer containing list of organizations
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AccountDatabase::ListOrganizations(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    // TODO: Should be Sail admin
+    // For now: Get user information to check if the user has admin access rights
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
+    {
+        if (eAdmin == oUserInfo.GetQword("AccessRights"))
+        {
+            // Make a Tls connection with the database portal
+            TlsNode * poTlsNode = nullptr;
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to add a user to the database
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "GET");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/Organizations");
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (404 != oDatabaseResponse.GetDword("Status"))
+            {
+                dwStatus = 200;
+                oResponse.PutStructuredBuffer("Organizations", oDatabaseResponse.GetStructuredBuffer("Organizations"));
+            }
+        }
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AccountDatabase
+ * @function ListUsers
+ * @brief Return a list of all users
+ * @param[in] c_oRequest contains the user's eosb
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns structuredbuffer containing list of users
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AccountDatabase::ListUsers(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    // TODO: Should be Sail admin
+    // For now: Get user information to check if the user has admin access rights
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
+    {
+        if (eAdmin == oUserInfo.GetQword("AccessRights"))
+        {
+            // Make a Tls connection with the database portal
+            TlsNode * poTlsNode = nullptr;
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to add a user to the database
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "GET");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/Users");
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (404 != oDatabaseResponse.GetDword("Status"))
+            {
+                dwStatus = 200;
+                oResponse.PutStructuredBuffer("Users", oDatabaseResponse.GetStructuredBuffer("Users"));
+            }
+        }
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AccountDatabase
+ * @function ListOrganizationUsers
+ * @brief Return a list of users for an organization
+ * @param[in] c_oRequest contains the user's eosb and organization guid
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns structuredbuffer containing list of users for an organization
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AccountDatabase::ListOrganizationUsers(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    // Get user information to check if the user has admin access rights
+    // Todo: add an or statement and check if its a sail admin
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
+    {
+        if (eAdmin == oUserInfo.GetQword("AccessRights"))
+        {
+            // Make a Tls connection with the database portal
+            TlsNode * poTlsNode = nullptr;
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to add a user to the database
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "GET");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/OrganizationUsers");
+            oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (404 != oDatabaseResponse.GetDword("Status"))
+            {
+                dwStatus = 200;
+                oResponse.PutStructuredBuffer("OrganizationUsers", oDatabaseResponse.GetStructuredBuffer("OrganizationUsers"));
+            }
+        }
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AccountDatabase
+ * @function DeleteUser
+ * @brief Delete a user from the database
+ * @param[in] c_oRequest contains the user's eosb and user guid
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns status of the transaction
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AccountDatabase::DeleteUser(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    // Get user information to check if the user has admin access rights
+    // Todo: add an or statement and check if its a sail admin
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
+    {
+        if (eAdmin == oUserInfo.GetQword("AccessRights"))
+        {
+            // Make a Tls connection with the database portal
+            TlsNode * poTlsNode = nullptr;
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to add a user to the database
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "DELETE");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/DeleteUser");
+            oRequest.PutString("UserGuid", c_oRequest.GetString("UserGuid"));
+            oRequest.PutBoolean("IsHardDelete", c_oRequest.GetBoolean("IsHardDelete"));
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (404 != oDatabaseResponse.GetDword("Status"))
+            {
+                dwStatus = 200;
+            }
+        }
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AccountDatabase
+ * @function DeleteOrganization
+ * @brief Delete an organization and its users from the database
+ * @param[in] c_oRequest contains the user's eosb and organization guid
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns status of the transaction
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AccountDatabase::DeleteOrganization(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    // Get user information to check if the user has admin access rights
+    // Todo: add an or statement and check if its a sail admin
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
+    {
+        if (eAdmin == oUserInfo.GetQword("AccessRights"))
+        {
+            // Make a Tls connection with the database portal
+            TlsNode * poTlsNode = nullptr;
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to add a user to the database
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "DELETE");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/DeleteOrganization");
+            oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
+            oRequest.PutBoolean("IsHardDelete", c_oRequest.GetBoolean("IsHardDelete"));
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (404 != oDatabaseResponse.GetDword("Status"))
+            {
+                dwStatus = 200;
+            }
+        }
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+

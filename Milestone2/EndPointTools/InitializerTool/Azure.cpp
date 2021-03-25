@@ -14,13 +14,16 @@
 #include "DebugLibrary.h"
 #include "TlsClient.h"
 #include "Exceptions.h"
+#include "JsonValue.h"
 
 #include <netdb.h>
-#include <memory>
 #include <arpa/inet.h>
-#include <fstream>
 #include <unistd.h>
+
+#include <memory>
+#include <fstream>
 #include <sstream>
+#include <algorithm>
 
 /********************************************************************************************
  *
@@ -37,12 +40,19 @@ void __thiscall ReplaceAll(
     _in const std::string & c_strChangeThis,
     _in const std::string & c_strChangeTo)
 {
-    size_t start_pos = 0;
-    while((start_pos = strOriginalString.find(c_strChangeThis, start_pos)) != std::string::npos)
+    try
     {
-        strOriginalString.replace(start_pos, c_strChangeThis.length(), c_strChangeTo);
-        start_pos += c_strChangeTo.length();
-    };
+        size_t start_pos = 0;
+        while((start_pos = strOriginalString.find(c_strChangeThis, start_pos)) != std::string::npos)
+        {
+            strOriginalString.replace(start_pos, c_strChangeThis.length(), c_strChangeTo);
+            start_pos += c_strChangeTo.length();
+        };
+    }
+    catch(const std::exception & oException)
+    {
+        std::cout << "std Exception in RepaceAll " << oException.what() << '\n';
+    }
 }
 
 /********************************************************************************************
@@ -85,6 +95,38 @@ std::string __thiscall GetJsonValue(
 
 /********************************************************************************************
  *
+ * @function GetJsonValue
+ * @brief Function to get small json values which exist in the same line as the key
+ * @param[in] strFullJsonString Json string to read the value from
+ * @param[in] strKey Key for which the value is needed
+ * @return Value corresponding to that key
+ * @note This is not a perfect function to get a value form the Json object.
+ *      This function would just find the first line with the key value in the format:
+ *      "key" : "value"
+ *      and return the value. This is the most that was needed in the Azure class.
+ *      For other operation we would need a full-fledged Json Module.
+ *
+ ********************************************************************************************/
+
+StructuredBuffer __thiscall GetHttpBodyJson(
+    _in const std::string & strHttpResponse
+)
+{
+    __DebugFunction();
+
+    std::string strJsonString;
+    std::size_t unHeaderEndPosition = strHttpResponse.find("\r\n\r\n") + 4;
+    if (std::string::npos != unHeaderEndPosition)
+    {
+        strJsonString = strHttpResponse.substr(unHeaderEndPosition, (strHttpResponse.length() - unHeaderEndPosition));
+    }
+
+    StructuredBuffer oViewInstanceResponse(JsonValue::ParseDataToStructuredBuffer(strJsonString.c_str()));
+    return oViewInstanceResponse;
+}
+
+/********************************************************************************************
+ *
  * @class Azure
  * @function Azure
  * @brief Constructor to initialize and authenticate with Azure and get an auth-token
@@ -100,9 +142,10 @@ Azure::Azure(
     _in const std::string & c_strSecret,
     _in const std::string & c_strSubcriptionID,
     _in const std::string & c_strTenant,
+    _in const std::string & c_strNetworkSecurityGroup,
     _in const std::string & c_strLocation
     )
-    : m_strAppId(c_strAppId), m_strSecret(c_strSecret), m_strSubscriptionId(c_strSubcriptionID), m_strTenant(c_strTenant), m_strLocation(c_strLocation)
+    : m_strAppId(c_strAppId), m_strSecret(c_strSecret), m_strSubscriptionId(c_strSubcriptionID), m_strTenant(c_strTenant), m_strNetworkSecurityGroup(c_strNetworkSecurityGroup), m_strLocation(c_strLocation)
 {
     __DebugFunction();
 
@@ -208,7 +251,11 @@ void __thiscall Azure::SetResourceGroup(
  *
  ********************************************************************************************/
 
-std::string __thiscall Azure::ProvisionVirtualMachine(void)
+std::string __thiscall Azure::ProvisionVirtualMachine(
+    _in const std::string c_strBaseImageName,
+    _in const std::string c_strVirtualMachineSize,
+    _in const std::string c_strDnsLabel
+)
 {
     __DebugFunction();
 
@@ -217,19 +264,37 @@ std::string __thiscall Azure::ProvisionVirtualMachine(void)
 
     // Create an Public Ip Object
     std::string strPublicIpSpec = this->CompleteTemplate("PublicIpAddress.json");
-    this->MakeRestCall("PUT", "Microsoft.Network/publicIPAddresses/" + strVirtualMachineName + "-ip", "management.azure.com", strPublicIpSpec, "2020-07-01");
+    if ("" == c_strDnsLabel)
+    {
+        std::string strLowerCaseGuid = "sail"+strVirtualMachineName;
+        std::transform(strLowerCaseGuid.begin(), strLowerCaseGuid.end(), strLowerCaseGuid.begin(), ::tolower);
+        ::ReplaceAll(strPublicIpSpec, "{{DnsLabel}}", strLowerCaseGuid);
+    }
+    else
+    {
+        ::ReplaceAll(strPublicIpSpec, "{{DnsLabel}}", c_strDnsLabel);
+    }
+    std::string strRestResponse = this->MakeRestCall("PUT", "Microsoft.Network/publicIPAddresses/" + strVirtualMachineName + "-ip", "management.azure.com", strPublicIpSpec, "2020-07-01");
+    // std::cout << "Ip response \n\n" << strRestResponse << "\n\n";
+    _ThrowBaseExceptionIf((0 == strRestResponse.length()), "Request timed out", nullptr);
 
     // Create a network interface for the Virtual Machine
     std::string strNetworkInterfaceSpec = this->CompleteTemplate("NetworkInterface.json");
     ::ReplaceAll(strNetworkInterfaceSpec, "{{Name}}", strVirtualMachineName + "-nic");
     ::ReplaceAll(strNetworkInterfaceSpec, "{{IpAddressId}}", strVirtualMachineName + "-ip");
-    this->MakeRestCall("PUT", "Microsoft.Network/networkInterfaces/" + strVirtualMachineName + "-nic", "management.azure.com", strNetworkInterfaceSpec, "2020-07-01");
+    strRestResponse = this->MakeRestCall("PUT", "Microsoft.Network/networkInterfaces/" + strVirtualMachineName + "-nic", "management.azure.com", strNetworkInterfaceSpec, "2020-07-01");
+    // std::cout << "NIC response \n\n" << strRestResponse << "\n\n";
+    _ThrowBaseExceptionIf((0 == strRestResponse.length()), "Request timed out", nullptr);
 
     // Create the Virtual Machine on the cloud
-    std::string strVirtualMachineSpec = this->CompleteTemplate("VmConfig.json");
+    std::string strVirtualMachineSpec = this->CompleteTemplate("VmFromImage.json");
     ::ReplaceAll(strVirtualMachineSpec, "{{OsDiskName}}", strVirtualMachineName + "-disk");
     ::ReplaceAll(strVirtualMachineSpec, "{{NetworkInterface}}", strVirtualMachineName + "-nic");
-    this->MakeRestCall("PUT", "Microsoft.Compute/virtualMachines/" + strVirtualMachineName, "management.azure.com", strVirtualMachineSpec, "2020-12-01");
+    ::ReplaceAll(strVirtualMachineSpec, "{{ImageName}}", c_strBaseImageName);
+    ::ReplaceAll(strVirtualMachineSpec, "{{VmSize}}", c_strVirtualMachineSize);
+    strRestResponse = this->MakeRestCall("PUT", "Microsoft.Compute/virtualMachines/" + strVirtualMachineName, "management.azure.com", strVirtualMachineSpec, "2020-12-01");
+    // std::cout << "VM response \n\n" << strRestResponse << "\n\n";
+    _ThrowBaseExceptionIf((0 == strRestResponse.length()), "Request timed out", nullptr);
 
     // When the VM is created, the first provisioning status is "Creating" indicating that the
     // VM provisioning has started but at that time the final creation status is unknown
@@ -267,7 +332,9 @@ std::string __thiscall Azure::CreateVirtualNetwork(
     std::string strVirtualNetworkSpec = this->CompleteTemplate("VirtualNetwork.json");
     std::string strVirtualNetworkStatusJson = this->MakeRestCall("PUT", "Microsoft.Network/virtualNetworks/" + c_strVirtualNetworkName, "management.azure.com", strVirtualNetworkSpec, "2020-07-01");
 
-    return ::GetJsonValue(strVirtualNetworkStatusJson, "\"provisioningState\"");
+    StructuredBuffer oResponseJson = ::GetHttpBodyJson(strVirtualNetworkStatusJson);
+
+    return oResponseJson.GetStructuredBuffer("properties").GetString("provisioningState");
 }
 
 /********************************************************************************************
@@ -281,7 +348,7 @@ std::string __thiscall Azure::CreateVirtualNetwork(
  ********************************************************************************************/
 
 void __thiscall Azure::SetVirtualNetwork(
-    _in std::string & c_strVirtualNetworkName
+    _in const std::string c_strVirtualNetworkName
 )
 {
     __DebugFunction();
@@ -308,7 +375,8 @@ std::string __thiscall Azure::GetVmProvisioningState(
 
     std::string strVmProvisioningStatusJson = this->MakeRestCall("GET", "Microsoft.Compute/virtualMachines/" + c_strVirtualMachineName, "management.azure.com", "", "2020-12-01");
 
-    return ::GetJsonValue(strVmProvisioningStatusJson, "\"provisioningState\"");
+    StructuredBuffer oResponseJson = ::GetHttpBodyJson(strVmProvisioningStatusJson);
+    return oResponseJson.GetStructuredBuffer("properties").GetString("provisioningState");
 }
 
 /********************************************************************************************
@@ -328,9 +396,23 @@ std::string __thiscall Azure::GetVmIp(
 {
     __DebugFunction();
 
-    std::string strVmIpRestResponse = this->MakeRestCall("GET", "Microsoft.Network/publicIPAddresses/" + c_strVirtualMachineName + "-ip", "management.azure.com", "", "2020-07-01");
+    std::string strPublicIpAddress;
+    try
+    {
+        std::string strVmIpRestResponse = this->MakeRestCall("GET", "Microsoft.Network/publicIPAddresses/" + c_strVirtualMachineName + "-ip", "management.azure.com", "", "2020-07-01");
+        strPublicIpAddress = ::GetJsonValue(strVmIpRestResponse, "\"ipAddress\"");
+        _ThrowBaseExceptionIf((0 == strPublicIpAddress.length()), "Ip address length zero", nullptr);
+    }
+    catch(...)
+    {
+        _ThrowBaseException("Get Public Ip Address of Virtual Machine failed.", nullptr);
+    }
 
-    return ::GetJsonValue(strVmIpRestResponse, "\"ipAddress\"");
+    // TODO: Dont use this eventually
+    return strPublicIpAddress;
+
+    // StructuredBuffer oResponseJson = ::GetHttpBodyJson(strVmIpRestResponse);
+    // return oResponseJson.GetStructuredBuffer("properties").GetString("ipAddress");
 }
 
 /********************************************************************************************
@@ -454,8 +536,7 @@ std::string __thiscall Azure::MakeRestCall(
 
         std::unique_ptr<TlsNode> poTlsNode(::TlsConnectToNetworkSocket(inet_ntoa (*((struct in_addr *)oHostent->h_addr_list[0])), 443));
         poTlsNode->Write((const Byte *)strRestRequest.c_str(), strRestRequest.length());
-
-        std::vector<Byte> oResponseByte = poTlsNode->Read(1, 5000);
+        std::vector<Byte> oResponseByte = poTlsNode->Read(1, 60*1000);
         while(0 != oResponseByte.size())
         {
             strResponseString.push_back(oResponseByte.at(0));
@@ -465,6 +546,10 @@ std::string __thiscall Azure::MakeRestCall(
     catch(BaseException & oBaseException)
     {
         std::cout << "Exception caught: " << oBaseException.GetExceptionMessage() << '\n';
+    }
+    catch(...)
+    {
+        std::cout << "Bad exception :( !!!!\n";
     }
 
     return strResponseString;
@@ -496,7 +581,38 @@ std::string Azure::CompleteTemplate(
     ::ReplaceAll(strRestRequestBody, "{{ResourceGroup}}", m_strResourceGroup);
     ::ReplaceAll(strRestRequestBody, "{{Location}}", m_strLocation);
     ::ReplaceAll(strRestRequestBody, "{{VirtualNetwork}}", m_strVirtualNetwork);
+    ::ReplaceAll(strRestRequestBody, "{{NetworkSecurityGroup}}", m_strNetworkSecurityGroup);
 
     stlJsonFile.close();
     return strRestRequestBody;
+}
+
+/********************************************************************************************
+ *
+ * @class Azure
+ * @function CompleteTemplate
+ * @brief Wait for a VM to get into running state
+ * @return The completed string
+ *
+ ********************************************************************************************/
+
+void Azure::WaitToRun(
+    _in const std::string & strVmName
+    )
+{
+    __DebugFunction();
+    std::string strRunStatus = "";
+
+    while("VM running" != strRunStatus)
+    {
+        std::string strRunReponse = this->MakeRestCall("GET", "Microsoft.Compute/virtualMachines/" + strVmName + "/instanceView", "management.azure.com", "", "2020-12-01");
+
+        StructuredBuffer oViewInstanceResponse = ::GetHttpBodyJson(strRunReponse);
+        StructuredBuffer oStructuredBufferStatuses = oViewInstanceResponse.GetStructuredBuffer("statuses");
+        StructuredBuffer oStructuredBufferStatuses1 = oStructuredBufferStatuses.GetStructuredBuffer("statuses1");
+
+        strRunStatus = oStructuredBufferStatuses1.GetString("displayStatus");
+
+        ::sleep(2);
+    }
 }

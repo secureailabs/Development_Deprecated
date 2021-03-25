@@ -8,6 +8,7 @@
  * @brief Implementation of the Azure class to interact with Azure Web APIs
  *
  ********************************************************************************************/
+#pragma once
 
 #include "CoreTypes.h"
 #include "Object.h"
@@ -32,58 +33,61 @@ class Azure : public Object
             _in const std::string & c_strSecret,
             _in const std::string & c_strSubscriptionID,
             _in const std::string & c_strTenant,
+            _in const std::string & c_strNetworkSecurityGroup,
             _in const std::string & c_strLocation
         );
         ~Azure(void);
 
         bool __thiscall Authenticate(void);
-        std::string __thiscall ProvisionVirtualMachine(void);
+        std::string __thiscall ProvisionVirtualMachine(
+            _in const std::string c_strBaseImageName,
+            _in const std::string c_strVirtualMachineSize,
+            _in const std::string c_strDnsLabel
+            );
         std::string __thiscall GetVmProvisioningState(
             _in std::string & c_strVirtualMachineName
-        );
+            );
         std::string __thiscall GetVmIp(
             _in std::string & c_strVmId
-        );
+            );
         std::string __thiscall CompleteTemplate(
             _in std::string c_strFileName
-        );
+            );
         bool __thiscall DeleteVirtualMachine(
             _in const std::string & c_strVmName
-        );
+            );
         void __thiscall SetResourceGroup(
             _in const std::string c_strResourceGroupName
-        );
+            );
         bool __thiscall CreateResourceGroup(
             _in const std::string c_strResourceGroupName
-        );
+            );
         std::string __thiscall CreateVirtualNetwork(
             _in std::string c_strVirtualNetworkName
-        );
+            );
         void __thiscall SetVirtualNetwork(
-            _in std::string & c_strVirtualNetworkName
-        );
+            _in const std::string c_strVirtualNetworkName
+            );
+        void __thiscall WaitToRun(
+            _in const std::string & strVmName
+            );
+
         // TODO:
         bool __thiscall AssignImageAccess(
             _in const std::string c_strPrincipalId
-        );
+            );
         bool __thiscall RevokeImageAccess(
             _in const std::string c_strPrincipalId
-        );
-        bool __thiscall DeprovisionAndSaveVHD(
-            _in StructuredBuffer & c_oInitializeData
-        );
-        bool __thiscall UploadImage(
-            _in std::string & strImagePath
-        );
+            );
 
     private:
 
-        std::vector<StructuredBuffer> stlListofVm;
         std::string m_strAuthToken;
         const std::string m_strAppId;
         const std::string m_strSecret;
         const std::string m_strTenant;
         const std::string m_strSubscriptionId;
+        const std::string m_strNetworkSecurityGroup;
         std::string m_strResourceGroup;
         std::string m_strVirtualNetwork;
         const std::string m_strLocation;

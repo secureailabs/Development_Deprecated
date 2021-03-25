@@ -392,7 +392,7 @@ void __thiscall AuditLogManager::InitializePlugin(void)
     oPlainTextMetadata.PutStructuredBuffer("BranchType", oBranchType);
     StructuredBuffer oGuidOfDcOrVm;
     oGuidOfDcOrVm.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
-    oGuidOfDcOrVm.PutBoolean("IsRequired", false);
+    oGuidOfDcOrVm.PutBoolean("IsRequired", true);
     oPlainTextMetadata.PutStructuredBuffer("GuidOfDcOrVm", oGuidOfDcOrVm);
     oMetadata.PutStructuredBuffer("PlainTextEventData", oPlainTextMetadata);
     oRegisterNonLeafEvents.PutStructuredBuffer("NonLeafEvent", oMetadata);
@@ -463,7 +463,7 @@ void __thiscall AuditLogManager::InitializePlugin(void)
     // Initialize IpcServerParameters struct
     poIpcServerParameters->poThreadManager = poThreadManager;
     poIpcServerParameters->poIpcServer = poIpcServer;
-    poThreadManager->CreateThread("AccountManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
+    poThreadManager->CreateThread("AuditLogManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
 }
 
 /********************************************************************************************
@@ -492,7 +492,7 @@ void __thiscall AuditLogManager::RunIpcServer(
             Socket * poSocket = poIpcServer->Accept();
             if (nullptr != poSocket)
             {
-                poThreadManager->CreateThread("AccountManagerPluginGroup", StartIpcThread, (void *) poSocket);
+                poThreadManager->CreateThread("AuditLogManagerPluginGroup", StartIpcThread, (void *) poSocket);
             }
         }
     }
@@ -500,7 +500,7 @@ void __thiscall AuditLogManager::RunIpcServer(
     // Close Socket Server for the plugin
     poIpcServer->Release();
     // Wait for all threads in the group to terminate
-    poThreadManager->JoinThreadGroup("AccountManagerPluginGroup");
+    poThreadManager->JoinThreadGroup("AuditLogManagerPluginGroup");
 }
 
 /********************************************************************************************
@@ -857,10 +857,6 @@ std::vector<Byte> __thiscall AuditLogManager::DigitalContractBranchExists(
     {
         oAuditLog.PutString("DCEventGuid", oResponse.GetString("DCEventGuid"));
         dwStatus = 200;
-    }
-    else 
-    {
-        oAuditLog.PutString("RootEventGuid", oResponse.GetString("RootEventGuid"));
     }
 
     // Send back status of the transaction

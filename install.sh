@@ -2,10 +2,17 @@
 
 echo "Installing required packages"
 
+# Remove files if any
+sudo rm -rf mongo-c-driver-1.17.3
+sudo rm -f mongo-c-driver-1.17.3.tar.gz
+
 # Update the package index files
 sudo apt-get update
+# Run Upgrade
+sudo apt-get -y upgrade
 
 # Install required packages
+sudo apt-get install -y build-essential
 sudo apt-get install -y cmake
 sudo apt-get install -y libssl-dev
 sudo apt-get install -y zlib1g-dev
@@ -73,9 +80,16 @@ sudo sh -c "printf '/usr/local/lib' > /etc/ld.so.conf.d/shared-library-path.conf
 sudo ldconfig
 
 # Remove files
-sudo rm -rf mongo-c-driver-1.17.3*
+sudo rm -rf mongo-c-driver-1.17.3
+sudo rm -f mongo-c-driver-1.17.3.tar.gz
 
-# Enable mongod
-sudo systemctl enable mongod
+# Stop mongod
+sudo systemctl stop mongod
+
+# Deploy a replica set 
+sudo mkdir -p /srv/mongodb/db0
+sudo chown -R mongodb:mongodb /srv/mongodb/db0 
+sudo mongod --port 27017 --dbpath /srv/mongodb/db0 --replSet rs0 --bind_ip localhost --fork --logpath /var/log/mongod.log
+mongo --eval "rs.initiate()"
 
 echo "Installation complete!"

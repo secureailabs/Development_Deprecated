@@ -11,6 +11,7 @@
 #pragma once
 
 #include "DebugLibrary.h"
+#include "EntityTypes.h"
 #include "Exceptions.h"
 #include "Object.h"
 #include "PluginDictionary.h"
@@ -88,8 +89,53 @@ class AccountDatabase : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Register an organization and the new user as it's super user
+        std::vector<Byte> __thiscall RegisterOrganizationAndSuperUser(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Add a UserAccount record
         std::vector<Byte> __thiscall RegisterUser(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update user's access rights
+        std::vector<Byte> __thiscall UpdateUserRights(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update organization information
+        std::vector<Byte> __thiscall UpdateOrganizationInformation(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update user information, excluding access rights
+        std::vector<Byte> __thiscall UpdateUserInformation(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch a list of all organizations
+        std::vector<Byte> __thiscall ListOrganizations(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Return a list of all users
+        std::vector<Byte> __thiscall ListUsers(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Return a list of users for an organization
+        std::vector<Byte> __thiscall ListOrganizationUsers(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Delete a user from the database
+        std::vector<Byte> __thiscall DeleteUser(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Delete an organization and its users from the database
+        std::vector<Byte> __thiscall DeleteOrganization(
             _in const StructuredBuffer & c_oRequest
             );
 

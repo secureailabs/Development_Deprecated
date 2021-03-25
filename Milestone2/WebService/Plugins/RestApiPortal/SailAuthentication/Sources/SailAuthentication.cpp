@@ -490,9 +490,11 @@ std::vector<Byte> __thiscall SailAuthentication::GetBasicUserInformation(
     if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
     {
         StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
-        oResponse.PutDword("Status", 201);
+        oResponse.PutDword("Status", 200);
         oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
         oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
+        // TODO: get user access rights from the confidential record, for now it can't be decrypted
+        oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
         fSuccess = true;
     }
     // Add error code if transaction was unsuccessful

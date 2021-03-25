@@ -18,7 +18,8 @@
 /********************************************************************************************/
 
 std::vector<Byte> __stdcall GetTlsTransaction(
-    _in TlsNode * poTlsNode
+    _in TlsNode * poTlsNode,
+    _in unsigned int unMillisecondTimeout
     )
 {
     __DebugFunction();
@@ -30,11 +31,11 @@ std::vector<Byte> __stdcall GetTlsTransaction(
     {
         std::vector<Byte> stlTemporaryBuffer;
 
-        stlTemporaryBuffer = poTlsNode->Read(sizeof(Qword), 10000);
+        stlTemporaryBuffer = poTlsNode->Read(sizeof(Qword), unMillisecondTimeout);
         _ThrowBaseExceptionIf((sizeof(Qword) != stlTemporaryBuffer.size()), "Failed to read data from the Tls tunnel", nullptr);
         Qword qwHeadMarker = *((Qword *) stlTemporaryBuffer.data());
         _ThrowBaseExceptionIf((0xFFEEDDCCBBAA0099 != qwHeadMarker), "Invalid head marker encountered.", nullptr);
-        stlTemporaryBuffer = poTlsNode->Read(sizeof(unsigned int), 10000);
+        stlTemporaryBuffer = poTlsNode->Read(sizeof(unsigned int), unMillisecondTimeout);
         _ThrowBaseExceptionIf((sizeof(unsigned int) != stlTemporaryBuffer.size()), "Failed to read data from the Tls tunnel", nullptr);
         unsigned int unSizeInBytesOfSerializedTransactionBuffer = *((unsigned int *) stlTemporaryBuffer.data());
         _ThrowBaseExceptionIf((0 == unSizeInBytesOfSerializedTransactionBuffer), "There is no such thing as a zero(0) byte serialized structured buffer.", nullptr);
@@ -42,11 +43,11 @@ std::vector<Byte> __stdcall GetTlsTransaction(
         {
             // Don't worry about reading things in chunks and caching it since the TlsNode
             // object does it for us!!!
-            stlSerializedTransactionBuffer = poTlsNode->Read(unSizeInBytesOfSerializedTransactionBuffer, 10000);
+            stlSerializedTransactionBuffer = poTlsNode->Read(unSizeInBytesOfSerializedTransactionBuffer, unMillisecondTimeout);
             _ThrowBaseExceptionIf(((0 != stlSerializedTransactionBuffer.size())&&(unSizeInBytesOfSerializedTransactionBuffer != stlSerializedTransactionBuffer.size())), "Failed to read data from the Tls tunnel", nullptr);
         }
         while (unSizeInBytesOfSerializedTransactionBuffer != stlSerializedTransactionBuffer.size());
-        stlTemporaryBuffer = poTlsNode->Read(sizeof(Qword), 10000);
+        stlTemporaryBuffer = poTlsNode->Read(sizeof(Qword), unMillisecondTimeout);
         _ThrowBaseExceptionIf((0 == stlTemporaryBuffer.size()), "Failed to read data from the Tls tunnel", nullptr);
         Qword qwTailMarker = *((Qword *) stlTemporaryBuffer.data());
         _ThrowBaseExceptionIf((0x0123456789ABCDEF != qwTailMarker), "Invalid marker encountered.", nullptr);
@@ -157,12 +158,13 @@ bool __stdcall PutTlsTransaction(
 
 std::vector<Byte> __stdcall PutTlsTransactionAndGetResponse(
     _in TlsNode * poTlsNode,
-    _in const StructuredBuffer & c_oTransaction
+    _in const StructuredBuffer & c_oTransaction,
+    _in unsigned int unMillisecondTimeout
     )
 {
     __DebugFunction();
 
     _ThrowBaseExceptionIf((false == ::PutTlsTransaction(poTlsNode, c_oTransaction)), "Failed to send Tls transaction", nullptr);
 
-    return ::GetTlsTransaction(poTlsNode);
+    return ::GetTlsTransaction(poTlsNode, unMillisecondTimeout);
 }

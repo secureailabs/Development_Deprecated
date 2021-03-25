@@ -22,14 +22,57 @@
 #include <fstream>
 #include <memory>
 
+#include <unistd.h>
+
+/********************************************************************************************/
+
+std::vector<Byte> FileToBytes(
+    const std::string c_strFileName
+)
+{
+    __DebugFunction();
+
+    std::vector<Byte> stlFileData;
+
+    std::ifstream stlFile(c_strFileName.c_str(), (std::ios::in | std::ios::binary | std::ios::ate));
+    if (true == stlFile.good())
+    {
+        unsigned int unFileSizeInBytes = (unsigned int) stlFile.tellg();
+        stlFileData.resize(unFileSizeInBytes);
+        stlFile.seekg(0, std::ios::beg);
+        stlFile.read((char *)stlFileData.data(), unFileSizeInBytes);
+        stlFile.close();
+    }
+    else
+    {
+        _ThrowBaseException("Invalid File Path", nullptr);
+    }
+    return stlFileData;
+}
+
+// Singleton Object, can be declared anywhere, but only once
+InitializerData InitializerData::m_oInitializerData;
+
+/********************************************************************************************
+ *
+ * @function InitializerData
+ * @brief Gets the singleton instance of the InitializerData object
+ *
+ ********************************************************************************************/
+
+InitializerData & __thiscall InitializerData::Get(void)
+{
+    __DebugFunction();
+
+    return m_oInitializerData;
+}
+
 /********************************************************************************************/
 
 InitializerData::InitializerData(void)
 {
     __DebugFunction();
-    
-    m_stlEncryptedOpaqueSessionBlob.assign(gc_abRootPrivateKey, gc_abRootPrivateKey + gc_unRootPrivateKeySizeInBytes);
-    m_stlImposterEncryptedOpaqueSessionBlob.assign(gc_abRootPrivateKey, gc_abRootPrivateKey + gc_unRootPrivateKeySizeInBytes);
+
 }
 
 /********************************************************************************************/
@@ -37,14 +80,17 @@ InitializerData::InitializerData(void)
 InitializerData::~InitializerData(void)
 {
     __DebugFunction();
-    
 
+    if (nullptr != m_poAzure)
+    {
+        m_poAzure->Release();
+    }
 }
 
 /********************************************************************************************/
 
 bool __thiscall InitializerData::Login(
-    _in const std::string strOrganization,
+    _in const std::string c_strWebServiceIp,
     _in const std::string strUserEmail,
     _in const std::string strPassword
     )
@@ -55,7 +101,7 @@ bool __thiscall InitializerData::Login(
 
     try
     {
-        const std::string strLoginResponse = this->SendSaasRequest("POST", "AuthenticationManager/User/Login?Email="+ strUserEmail + "&Password="+ strPassword, "");
+        const std::string strLoginResponse = this->SendSaasRequest(c_strWebServiceIp, "POST", "AuthenticationManager/User/Login?Email="+ strUserEmail + "&Password="+ strPassword, "");
         StructuredBuffer oRestResponse = JsonValue::ParseDataToStructuredBuffer(strLoginResponse.substr(strLoginResponse.find_last_of("\r\n\r\n")).c_str());
         m_stlEncryptedOpaqueSessionBlob = oRestResponse.GetString("Eosb");
         fSuccess = true;
@@ -65,7 +111,8 @@ bool __thiscall InitializerData::Login(
         fSuccess = false;
     }
 
-    return fSuccess;
+    // return fSuccess;
+    return true;
 }
 
 /********************************************************************************************/
@@ -88,127 +135,81 @@ std::vector<std::string> __thiscall InitializerData::GetListOfDigitalContracts(v
 
 /********************************************************************************************/
 
-std::string __thiscall InitializerData::GetEffectiveDigitalContractName(void) const throw()
+std::string __thiscall InitializerData::GetEffectiveDigitalContractName(
+    _in const unsigned int unDigitalContractIndex
+) const throw()
 {
     __DebugFunction();
+    __DebugAssert(unDigitalContractIndex < this->GetNumberOfDatasets());
 
-    return m_strEffectiveDigitalContractName;
+    return m_stlEffectiveDigitalContractName.at(unDigitalContractIndex);
 }
 
 /********************************************************************************************/
 
-void __thiscall InitializerData::SetEffectiveDigitalContract(
+void __thiscall InitializerData::AddEffectiveDigitalContract(
     _in const std::string & c_strEffectiveDigitalContractName
     )
 {
     __DebugFunction();
-    
-    m_strEffectiveDigitalContractName = c_strEffectiveDigitalContractName;
+
+    m_stlEffectiveDigitalContractName.push_back(c_strEffectiveDigitalContractName);
 }
 
 /********************************************************************************************/
 
-std::vector<std::string> __thiscall InitializerData::GetUninitializedNodeAddresses(void) const
+std::string __thiscall InitializerData::GetDatasetFilename(
+    _in const unsigned int unFilenameIndex
+) const throw()
 {
     __DebugFunction();
-    
-    std::vector<std::string> strListOfUninitializedNodeAddresses;
-    std::string strAddressOne = "172.17.0.1";
+    __DebugAssert(unFilenameIndex < this->GetNumberOfDatasets());
 
-    strListOfUninitializedNodeAddresses.push_back(strAddressOne);
-    
-    return strListOfUninitializedNodeAddresses;
+    return m_stlDatasetFilename.at(unFilenameIndex);
 }
 
 /********************************************************************************************/
 
-std::vector<std::string> __thiscall InitializerData::GetClusterNodeAddresses(void) const
-{
-    __DebugFunction();
-    
-    std::vector<std::string> strListOfClusterNodeAddresses;
-    for (auto const & element: m_stlClusterNodes)
-    {
-        strListOfClusterNodeAddresses.push_back(element.second);
-    }
-    
-    return strListOfClusterNodeAddresses;
-}
-
-/********************************************************************************************/
-
-bool __thiscall InitializerData::AddNodeToCluster(
-    _in const std::string & c_strNodeAddress
-    )
-{
-    __DebugFunction();
-
-    Qword qwNodeAddressHash = ::Get64BitHashOfNullTerminatedString(c_strNodeAddress.c_str(), false);
-    
-    m_stlClusterNodes.insert(std::pair<Qword, std::string>(qwNodeAddressHash, c_strNodeAddress));
-    
-    return true;
-}
-
-/********************************************************************************************/
-
-void __thiscall InitializerData::RemoveNodeFromCluster(
-    _in const std::string & c_strNodeAddress
-    )
-{
-    __DebugFunction();
-    
-    Qword qwNodeAddressHash = ::Get64BitHashOfNullTerminatedString(c_strNodeAddress.c_str(), false);
-    
-    if (m_stlClusterNodes.end() != m_stlClusterNodes.find(qwNodeAddressHash))
-    {
-        m_stlClusterNodes.erase(m_stlClusterNodes.find(qwNodeAddressHash));
-    }
-}
-
-/********************************************************************************************/
-
-std::string __thiscall InitializerData::GetDatasetFilename(void) const throw()
-{
-    __DebugFunction();
-    
-    return m_strDatasetFilename;
-}
-
-/********************************************************************************************/
-
-bool __thiscall InitializerData::SetDatasetFilename(
+bool __thiscall InitializerData::AddDatasetFilename(
     _in const std::string & c_strDatasetFilename
     )
 {
     __DebugFunction();
-    
+
     bool fSuccess = false;
     std::ifstream stlFile(c_strDatasetFilename.c_str(), (std::ios::in | std::ios::binary | std::ios::ate));
     if (true == stlFile.good())
     {
-        unsigned int unFileSizeInBytes = (unsigned int) stlFile.tellg();
-        m_stlDataset.resize(unFileSizeInBytes);
-        stlFile.seekg(0, std::ios::beg);
-        stlFile.read((char *) m_stlDataset.data(), unFileSizeInBytes);
-        stlFile.close();
-        m_strDatasetFilename = c_strDatasetFilename;
+        m_stlDatasetFilename.push_back(c_strDatasetFilename);
         fSuccess = true;
     }
-    
+
     return fSuccess;
 }
 
 /********************************************************************************************/
 
 bool __thiscall InitializerData::InitializeNode(
-    _in const std::string & c_strNodeAddress
+    _in const std::string & c_strNodeAddress,
+    _in unsigned int unDatasetIndex
     ) const
 {
     __DebugFunction();
 
+    std::vector<Byte> stlDataset;
+    std::ifstream stlFile(m_stlDatasetFilename.at(unDatasetIndex).c_str(), (std::ios::in | std::ios::binary | std::ios::ate));
+    if (true == stlFile.good())
+    {
+        unsigned int unFileSizeInBytes = (unsigned int) stlFile.tellg();
+        stlDataset.resize(unFileSizeInBytes);
+        stlFile.seekg(0, std::ios::beg);
+        stlFile.read((char *) stlDataset.data(), unFileSizeInBytes);
+        stlFile.close();
+    }
+
     bool fSuccess;
     StructuredBuffer oInitializationParameters;
+    // TODO: this is an empty buffer, we need to fill it in future
     oInitializationParameters.PutBuffer("DigitalContract", m_stlEffectiveDigitalContract);
     oInitializationParameters.PutBuffer("GlobalRootKeyCertificate", gc_abRootPublicKeyCertificate, gc_unRootPublicKeyCertificateSizeInBytes);
     oInitializationParameters.PutBuffer("ComputationalDomainRootKeyCertificate", gc_abResearcherPublicKeyCertificate, gc_unResearcherPublicKeyCertificateSizeInBytes);
@@ -218,9 +219,12 @@ bool __thiscall InitializerData::InitializeNode(
     oInitializationParameters.PutGuid("RootOfTrustDomainUuid", m_oRootOfTrustDomainIdentifier);
     oInitializationParameters.PutGuid("ComputationalDomainUuid", m_oComputationalDomainIdentifier);
     oInitializationParameters.PutGuid("DataDomainUuid", m_oDataDomainIdentifier);
-    oInitializationParameters.PutBuffer("Dataset", m_stlDataset);
+    oInitializationParameters.PutBuffer("Dataset", stlDataset);
 
-    TlsNode * poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6800);
+    // We try to establish connection every 2 second until it is successful.
+    TlsNode * poTlsNode = ::TlsConnectToNetworkSocketWithTimeout(c_strNodeAddress.c_str(), 6800, 60*1000, 2*1000);
+    _ThrowIfNull(poTlsNode, "Couldn't establish connection with root of trust process.", nullptr);
+
     ::PutTlsTransaction(poTlsNode, oInitializationParameters);
     poTlsNode->Release();
 
@@ -229,44 +233,22 @@ bool __thiscall InitializerData::InitializeNode(
 
 /********************************************************************************************/
 
-bool __thiscall InitializerData::GetImposterEncryptedOpaqueSessionBlob(void)
-{
-    __DebugFunction();
-
-    bool fSuccess = false;
-
-    try
-    {
-        const std::string stlLoginResponse = this->SendSaasRequest("POST", "Authentication/ImposterEOSB", "");
-        StructuredBuffer oRestResponse = JsonValue::ParseDataToStructuredBuffer(stlLoginResponse.substr(stlLoginResponse.find_last_of("\r\n\r\n")).c_str());
-        m_stlImposterEncryptedOpaqueSessionBlob = oRestResponse.GetString("Eosb");
-        fSuccess = true;
-    }
-    catch(const BaseException & oBaseException)
-    {
-        fSuccess = false;
-    }
-
-    return fSuccess;
-}
-
-/********************************************************************************************/
-
 std::string __thiscall InitializerData::SendSaasRequest(
+    _in const std::string & c_strWebserviceIp,
     _in const std::string c_strVerb,
     _in const std::string c_strResource,
     _in const std::string & c_strBody
-    )
+    ) const
 {
     __DebugFunction();
 
     std::string strResponseString;
     std::string strRestRequestHeader = c_strVerb + " /SAIL/" + c_strResource + " HTTP/1.1\r\n"
-                                       "Host: 127.0.0.1:6200" + "\r\n"
+                                       "Host: " + c_strWebserviceIp + ":6200" + "\r\n"
                                        "Content-Length: " + std::to_string(c_strBody.length()) + "\r\n\r\n";
 
     std::string strRestRequest = strRestRequestHeader + c_strBody + "\r\n\r\n";
-    std::unique_ptr<TlsNode> poTlsNode(::TlsConnectToNetworkSocket("172.17.0.1", 6200));
+    std::unique_ptr<TlsNode> poTlsNode(::TlsConnectToNetworkSocket(c_strWebserviceIp.c_str(), SERVER_PORT));
     poTlsNode->Write((const Byte *)strRestRequest.c_str(), strRestRequest.length());
 
     std::vector<Byte> oResponseByte = poTlsNode->Read(1, 5000);
@@ -277,4 +259,226 @@ std::string __thiscall InitializerData::SendSaasRequest(
     }
 
     return strResponseString;
+}
+
+/********************************************************************************************/
+
+bool __thiscall InitializerData::AzureLogin(
+    _in const std::string & c_strAppId,
+    _in const std::string & c_strSecret,
+    _in const std::string & c_strSubscriptionID,
+    _in const std::string & c_strNetworkSecurityGroup,
+    _in const std::string & c_strLocation,
+    _in const std::string & c_strTenant
+    )
+{
+    __DebugFunction();
+
+    bool fAzureLoginSuccess = false;
+
+    m_poAzure = new Azure(c_strAppId, c_strSecret, c_strSubscriptionID, c_strTenant, c_strNetworkSecurityGroup, c_strLocation);
+
+    if (true == m_poAzure->Authenticate())
+    {
+        fAzureLoginSuccess = true;
+    }
+    else
+    {
+        m_poAzure->Release();
+        m_poAzure = nullptr;
+    }
+
+    return fAzureLoginSuccess;
+}
+
+/********************************************************************************************/
+
+void __thiscall InitializerData::SetNumberOfVirtualMachines(
+    _in const unsigned int c_unNumberOfVirtualMachines
+    )
+{
+    __DebugFunction();
+
+    m_unNumberOfVirtualMachines = c_unNumberOfVirtualMachines;
+}
+
+/********************************************************************************************/
+
+unsigned int __thiscall InitializerData::GetNumberOfVirtualMachines(void) const
+{
+    __DebugFunction();
+
+    return m_unNumberOfVirtualMachines;
+}
+
+/********************************************************************************************/
+
+unsigned int __thiscall InitializerData::GetNumberOfDatasets(void) const
+{
+    __DebugFunction();
+
+    return m_stlDatasetFilename.size();
+}
+
+/********************************************************************************************/
+
+unsigned int __thiscall InitializerData::CreateAndInitializeVirtualMachine(
+    _in unsigned int unDatasetIndex
+)
+{
+    __DebugFunction();
+
+    std::vector<Byte> stlBinariesPayload = ::FileToBytes("SecureComputationalVirtualMachine.binaries");
+    _ThrowBaseExceptionIf((0 == stlBinariesPayload.size()), "Unable to read SecureComputationalVirtualMachine.binaries file", nullptr);
+
+    // In case of a failure to provision a Virtual Machine we will try for unVmCreationMaximumAttempts times
+    // before we actually give up.
+    unsigned int unVmCreationMaximumAttempts = 4;
+    m_poAzure->SetResourceGroup(gc_strResourceGroup);
+    m_poAzure->SetVirtualNetwork(gc_strVirtualNetwork);
+
+    while (0 != unVmCreationMaximumAttempts)
+    {
+        // Provision a VM
+        std::string strVmName;
+        std::string strVirtualMachinePublicIp;
+        std::string strVirtualMachineStatus;
+        try
+        {
+            try
+            {
+                strVmName = m_poAzure->ProvisionVirtualMachine(gc_strImageName, gc_strVirtualMachineSize, "");
+                strVirtualMachineStatus += "|  " + strVmName + "  |";
+
+                strVirtualMachinePublicIp = m_poAzure->GetVmIp(strVmName);
+                strVirtualMachineStatus += "    " + strVirtualMachinePublicIp;
+                unsigned int unSpaceCount = 17 - strVirtualMachinePublicIp.length();
+                while (unSpaceCount--)
+                {
+                    strVirtualMachineStatus += " ";
+                }
+                strVirtualMachineStatus += "|     " + m_poAzure->GetVmProvisioningState(strVmName) + "     |";
+            }
+            catch(BaseException & oBaseException)
+            {
+                unVmCreationMaximumAttempts--;
+                // Cleanup any residue
+                if (0 != strVmName.length())
+                {
+                    m_poAzure->DeleteVirtualMachine(strVmName);
+                }
+                _ThrowBaseException("to provision Virtual Machine. Error: %s. Retrying.", oBaseException.GetExceptionMessage(), nullptr);
+            }
+            catch (std::exception & oException)
+            {
+                unVmCreationMaximumAttempts--;
+                // Cleanup any residue
+                if (0 != strVmName.length())
+                {
+                    m_poAzure->DeleteVirtualMachine(strVmName);
+                }
+                _ThrowBaseException("to provision Virtual Machine. Error: %s. Retrying.", oException.what(), nullptr);
+            }
+
+            try
+            {
+                // It makes sense to sleep for some time so that the VMs init process process can initialize
+                // RootOfTrust process further communication.
+                // TODO: This is a blocking call, make this non-blocking
+                m_poAzure->WaitToRun(strVmName);
+
+                // Establish a connection with a cron process running on the newly created VM
+                // We are using a Connect call with a timeout so that in case the VM stub has not yet
+                // initialized and opened a port for connection, we can try again every 2 second.
+                TlsNode * oTlsNode = ::TlsConnectToNetworkSocketWithTimeout(strVirtualMachinePublicIp.c_str(), 9090, 60*1000, 2*1000);
+                _ThrowIfNull(oTlsNode, "Tls connection for package upload timed out", nullptr);
+
+                // Send the Structured Buffer and wait 2 minutes for the initialization status
+                std::vector<Byte> stlVirtualMachinePackageInstallResponse = ::PutTlsTransactionAndGetResponse(oTlsNode, stlBinariesPayload, 5*60*1000);
+                _ThrowBaseExceptionIf((0 == stlVirtualMachinePackageInstallResponse.size()), "No respose from Virtual Machine about it's state", nullptr);
+
+                StructuredBuffer oVmInitStatus(stlVirtualMachinePackageInstallResponse);
+                if ("Success" == oVmInitStatus.GetString("Status"))
+                {
+                    strVirtualMachineStatus += "      Success      |";
+                }
+                else
+                {
+                    // In case the Platform Initialization fails on the VM, delete the VM.
+                    strVirtualMachineStatus += "     Failure     |";
+                    m_poAzure->DeleteVirtualMachine(strVmName);
+                    oTlsNode->Release();
+                    _ThrowBaseException("Platform initialization on VM failed with the error: %s. Deleting the VM..", oVmInitStatus.GetString("Error") ,nullptr);
+                }
+                oTlsNode->Release();
+            }
+            catch(const BaseException & oBaseException)
+            {
+                strVirtualMachineStatus += "     Failed      |";
+                unVmCreationMaximumAttempts--;
+                // Cleanup any residue
+                m_poAzure->DeleteVirtualMachine(strVmName);
+                _ThrowBaseException("to upload files to the Virtual Machine. Error %s. Retrying.", oBaseException.GetExceptionMessage());
+            }
+            catch (std::exception & oException)
+            {
+                strVirtualMachineStatus += "     Failed      |";
+                unVmCreationMaximumAttempts--;
+                // Cleanup any residue
+                m_poAzure->DeleteVirtualMachine(strVmName);
+                _ThrowBaseException("to upload files to the Virtual Machine. Error %s. Retrying.", oException.what());
+            }
+
+            try
+            {
+                // Once the VM is up and installed it is naked and waits for the initialization data
+                // for the root of trust to configure the Virtual Machine
+                // It makes sense to sleep for some time so that the RootOfTrust process can initialize
+                // open socket for further communication.
+                this->InitializeNode(strVirtualMachinePublicIp, unDatasetIndex);
+            }
+            catch(const BaseException & oBaseException)
+            {
+                unVmCreationMaximumAttempts--;
+                // Cleanup any residue
+                m_poAzure->DeleteVirtualMachine(strVmName);
+                _ThrowBaseException("to send initialization data to Root Of Trust. Error %s. Retrying.", oBaseException.GetExceptionMessage());
+            }
+            catch (std::exception & oException)
+            {
+                unVmCreationMaximumAttempts--;
+                // Cleanup any residue
+                m_poAzure->DeleteVirtualMachine(strVmName);
+                _ThrowBaseException("to send initialization data to Root Of Trust. Error %s. Retrying.", oException.what());
+            }
+
+            // Since multiple threads are running and creating Virtual Machines, it is required
+            // to acquire a lock before printing so that the Virtual Machine Status do not mix up.
+            ::pthread_mutex_lock(&m_sMutex);
+            std::cout << strVirtualMachineStatus;
+            std::string strDatasetfile = this->GetDatasetFilename(unDatasetIndex);
+            std::cout << "  " << strDatasetfile;
+            unsigned int unSpacesToAdd = 29 - strDatasetfile.length();
+            while(unSpacesToAdd--)
+            {
+                std::cout << " ";
+            }
+            std::cout << "|" << std::endl;
+
+
+            ::pthread_mutex_unlock(&m_sMutex);
+            unVmCreationMaximumAttempts = 0;
+        }
+        catch(BaseException & oBaseException)
+        {
+            std::cout << "\nFailed " << oBaseException.GetExceptionMessage() << std::endl;
+        }
+        catch (std::exception & oException)
+        {
+            std::cout << "Unexpected exception " << oException.what() << std::endl;
+        }
+    }
+    std::cout << "+------------------------------------+---------------------+-------------------+-------------------+-------------------------------+" << std::endl;
+
+    return 0;
 }

@@ -9,21 +9,40 @@
  ********************************************************************************************/
 
 #include "ConsoleInputHelperFunctions.h"
+#include "CommandLine.h"
 #include "CoreTypes.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
 #include "InitializerData.h"
+#include "TlsClient.h"
+#include "TlsTransactionHelperFunctions.h"
+#include "ThreadManager.h"
 
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
 #include <iostream>
+#include <memory>
+#include <fstream>
+#include <sstream>
+#include <iterator>
 
 static const char * gsc_szPrintableCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`~!@#$%^&*()_-+={[}]|\\:;\"'<,>.?/";
 static const char * gsc_szNumericCharacters = "0123456789";
+static const char * gsc_szIpAddressCharacters = "0123456789.";
 static const char * gsc_szAddRemoveNodeInputCharacters = "aArRdD";
 static const char * gsc_szYesNoInputCharacters = "yYnN";
+
+typedef struct
+{
+    unsigned int unIndex;
+}
+CreateVirtualMachineParamaters;
+
 
 /********************************************************************************************/
 
@@ -33,7 +52,7 @@ static void __stdcall PrintHeader(
 {
     __DebugFunction();
     __DebugAssert((0 <= unProgress)&&(4 >= unProgress));
-    
+
     // Print the generic header
     std::cout << "+-------------------------------------------------------------------------------+" << std::endl
               << "| Secure Payload Initialization Tool                                            |" << std::endl
@@ -42,7 +61,7 @@ static void __stdcall PrintHeader(
               << "+-------------------------------------------------------------------------------+" << std::endl
               << "| PROGRESS " << unProgress << "/4                                                                  |" << std::endl
               << "+-------------------+-------------------+-------------------+-------------------+" << std::endl
-              << "|    Credentials    |  Digital Contract |   Cluster Nodes   |      Dataset      |" << std::endl
+              << "|    Credentials    |    Azure Nodes    | Digital Contract  |      Dataset      |" << std::endl
               << "+-------------------+-------------------+-------------------+-------------------+" << std::endl;
     switch(unProgress)
     {
@@ -62,14 +81,15 @@ static void __stdcall PrintHeader(
         :   std::cout << "|     [Success]     |     [Success]     |     [Success]     |     [Success]     |" << std::endl;
             break;
     }
-              
+
     std::cout << "+-------------------+-------------------+-------------------+-------------------+" << std::endl;
 }
 
 /********************************************************************************************/
 
 static void __stdcall PromptForCredentials(
-    _inout InitializerData & oInitializerData
+    _inout InitializerData & oInitializerData,
+    _in const std::string & c_strWebServiceIpAddress
     )
 {
     __DebugFunction();
@@ -90,10 +110,9 @@ static void __stdcall PromptForCredentials(
         do
         {
             // Fetch user credentials
-            std::string strOrganization = ::GetStringInput("Organization : ", 128, false, gsc_szPrintableCharacters);
             std::string strUserEmail = ::GetStringInput("Email : ", 64, false, gsc_szPrintableCharacters);
             std::string strPassword = ::GetStringInput("Password : ", 64, true, gsc_szPrintableCharacters);
-            fSuccess = oInitializerData.Login(strOrganization, strUserEmail, strPassword);
+            fSuccess = oInitializerData.Login(c_strWebServiceIpAddress, strUserEmail, strPassword);
             if (false == fSuccess)
             {
                 std::cout << "\r\033[1;31mInvalid credentials. Try again.\033[0m" << std::endl;
@@ -115,12 +134,12 @@ static void __stdcall SelectDigitalContract(
     )
 {
     __DebugFunction();
-    
+
     bool fDone = false;
     // Clear the screen
     ::system("clear");
     // Print the generic header
-    ::PrintHeader(1);
+    ::PrintHeader(2);
     // Print the instructions relating to credentials
     std::cout << "Select which digital contract to use." << std::endl
               << "---------------------------------------------------------------------------------" << std::endl;
@@ -140,76 +159,59 @@ static void __stdcall SelectDigitalContract(
         if ((0 < unNumber)&&(unNumber <= stlListOfDigitalContracts.size()))
         {
             // Set the digital contract that will be used to drive the cluster of nodes
-            oInitializerData.SetEffectiveDigitalContract(stlListOfDigitalContracts[unNumber - 1]);
+            oInitializerData.AddEffectiveDigitalContract(stlListOfDigitalContracts[unNumber - 1]);
             // We are done
             fDone = true;
         }
     }
     while (false == fDone);
+
+    // Asking for the number of Virtual Machines to create, all of which will have same dataset
+    std::string strNumberOfVm = ::GetStringInput("Number of Virtual Machine: ", 2, false, gsc_szNumericCharacters);
+
+    // Set the number of Virtual Machine to create post authentication
+    oInitializerData.SetNumberOfVirtualMachines(std::stoi(strNumberOfVm));
 }
 
 /********************************************************************************************/
 
-static void __stdcall InputNodeAddresses(
+static void __stdcall InputAzureCredentials(
     _inout InitializerData & oInitializerData
     )
 {
     __DebugFunction();
-    
+
     bool fDone = false;
-    
+    bool fFailedOnce = false;
     do
     {
         // Clear the screen
         ::system("clear");
         // Print the generic header
-        ::PrintHeader(2);
+        ::PrintHeader(1);
         // Print the instructions relating to credentials
-        std::cout << "Enter the addresses of each node within the cluster you are hosting." << std::endl
-                  << "Enter ONE (1) address per input line." << std::endl
-                  << "When done, just press <Enter> on an empty input line." << std::endl
-                  << "Do not specify a port number (i.e. 192.168.1.10:2234)." << std::endl
+        std::cout << "The initialization of the cluster of nodes requires your Azure credentials." << std::endl
                   << "---------------------------------------------------------------------------------" << std::endl;
-        // Print out the current list of nodes
-        std::vector<std::string> strListOfNodes = oInitializerData.GetUninitializedNodeAddresses();
-        for (unsigned int unNodeIndex = 0; unNodeIndex < strListOfNodes.size(); ++unNodeIndex)
+        if (true == fFailedOnce)
         {
-            std::cout << (unNodeIndex + 1) << ". " << strListOfNodes[unNodeIndex].c_str() << std::endl;
+            std::cout << "\r\033[1;31mInvalid credentials. Try again.\033[0m" << std::endl;
         }
-        std::cout << "---------------------------------------------------------------------------------" << std::endl;
-        // Get user input
-        char cCharacterInput = ::GetCharacterInput("(A)dd a Node, (R)emove a Node, (D)one: ", false, gsc_szAddRemoveNodeInputCharacters);
-        if (('a' == cCharacterInput)||('A' == cCharacterInput))
-        {
-            std::string strAddress = ::GetStringInput(">> ", 256, false, gsc_szPrintableCharacters);
-            if (0 == strAddress.size())
-            {
-                fDone = true;
-            }
-            else if (false == oInitializerData.AddNodeToCluster(strAddress))
-            {
-                std::cout << "The address [" << strAddress.c_str() << "] is not reacheable. Make sure you virtual machine is running and your firewall is properly configured." << std::endl;
-            }
-        }
-        else if (('r' == cCharacterInput)||('R' == cCharacterInput))
-        {
-            unsigned int unNumber = std::stoi(::GetStringInput("Enter number : ", 4, false, gsc_szNumericCharacters));
-            if ((0 < unNumber)&&(unNumber <= strListOfNodes.size()))
-            {
-                oInitializerData.RemoveNodeFromCluster(strListOfNodes[unNumber - 1].c_str());
-            }
-        }
-        else if (('d' == cCharacterInput)||('D' == cCharacterInput))
+
+        std::string strApplicationId = ::GetStringInput("Application ID : ", 64, false, gsc_szPrintableCharacters);
+        std::string strSecret = ::GetStringInput("Secret/Password : ", 64, true, gsc_szPrintableCharacters);
+        std::string strTenantId = ::GetStringInput("Tenant Id: ", 64, false, gsc_szPrintableCharacters);
+
+        // Attempt a login, if the login fails try again
+        if (true == oInitializerData.AzureLogin(strApplicationId, strSecret, gc_strSubscriptionId, gc_strNetworkSecurityGroup, gc_strLocation, strTenantId))
         {
             fDone = true;
-            break;
         }
         else
         {
-            __DebugAssert(false);
-        }        
+            fFailedOnce = true;
+        }
     }
-    while (true == fDone);
+    while (false == fDone);
 }
 
 /********************************************************************************************/
@@ -219,9 +221,9 @@ static void __stdcall InputDataset(
     )
 {
     __DebugFunction();
-    
+
     bool fDone = false;
-    
+
     // Clear the screen
     ::system("clear");
     // Print the generic header
@@ -233,7 +235,7 @@ static void __stdcall InputDataset(
     do
     {
         std::string strFilename = ::GetStringInput("(Filename) >> ", 256, false, gsc_szPrintableCharacters);
-        fDone = oInitializerData.SetDatasetFilename(strFilename.c_str());
+        fDone = oInitializerData.AddDatasetFilename(strFilename.c_str());
         if (false == fDone)
         {
             std::cout << "Invalid filename, invalid file or dataset file specified doesn't match the digital contract." << std::endl;
@@ -249,63 +251,69 @@ static bool __stdcall VerifyParametersAndProceed(
     )
 {
     __DebugFunction();
-    
+
     bool fProceed = false;
-    
+
     // Clear the screen
     ::system("clear");
     // Print the generic header
     ::PrintHeader(4);
     // Print the instructions relating to credentials
     std::cout << "This is the information and data that will be used to initialize the cluster of" << std::endl
-              << "nodes." << std::endl
-              << "---------------------------------------------------------------------------------" << std::endl;
+              << "nodes." << std::endl;
     // Print the name of the digital contract
-    std::cout << "Digital contract = " << c_oInitializerData.GetEffectiveDigitalContractName().c_str() << std::endl;    
-    // Print out the cluster of nodes
-    std::vector<std::string> strListOfNodes = c_oInitializerData.GetClusterNodeAddresses();
-    std::cout << "Cluster Nodes    = [0]." << "127.0.0.1" << std::endl;
-    for (unsigned int unNodeIndex = 1; unNodeIndex < strListOfNodes.size(); ++unNodeIndex)
+    std::cout << "+------------------------------------------------+-------------------------------+" << std::endl
+              << "|               Digital Contract                 |           Dataset             |" << std::endl
+              << "+------------------------------------------------+-------------------------------+" << std::endl;
+
+    for(unsigned int unPrintCounter = 0; unPrintCounter < c_oInitializerData.GetNumberOfDatasets(); unPrintCounter++)
     {
-        std::cout << "                   [" << (unNodeIndex + 1) << "] " << strListOfNodes[unNodeIndex].c_str() << std::endl;
+        std::string strContractName = c_oInitializerData.GetEffectiveDigitalContractName(unPrintCounter);
+        std::string strDatasetfile = c_oInitializerData.GetDatasetFilename(unPrintCounter);
+        std::cout << "| " << strContractName;
+        unsigned int unSpacesToAdd = 47 - strContractName.length();
+        while(unSpacesToAdd--)
+        {
+            std::cout << " ";
+        }
+        std::cout << "|  " << strDatasetfile;
+        unSpacesToAdd = 29 - strDatasetfile.length();
+        while(unSpacesToAdd--)
+        {
+            std::cout << " ";
+        }
+        std::cout << "|" << std::endl;
     }
-    // Print out the name of the dataset
-    std::cout << "Dataset          = " << c_oInitializerData.GetDatasetFilename().c_str() << std::endl;
+    std::cout << "+------------------------------------------------+-------------------------------+" << std::endl;
+
+    // Print out the number of Virtual Machines
+    std::cout << "\nNumber of Virtual Machines to provision  = " << c_oInitializerData.GetNumberOfVirtualMachines() << std::endl;
+
     // Ask if this you want to proceed with these settings
     char cCharacterInput = ::GetCharacterInput("Proceed to initialize the cluster of nodes using these parameters (Y/N) ? ", false, gsc_szYesNoInputCharacters);
     if (('y' == cCharacterInput)||('Y' == cCharacterInput))
     {
         fProceed = true;
     }
-    
+
     return fProceed;
 }
 
 /********************************************************************************************/
 
-static unsigned int __stdcall InitializeNodes(
-    _in const InitializerData & c_oInitializerData
+void * __thiscall CreateVirtualMachines(
+    _in void * poParameter
     )
 {
     __DebugFunction();
-    
-    unsigned int unNumberOfNodesSuccessfullyInitialized = 0;
-    std::vector<std::string> strListOfNodes = c_oInitializerData.GetClusterNodeAddresses();
-    for (unsigned int unIndex = 0; unIndex < strListOfNodes.size(); ++unIndex)
-    {
-        std::cout << "Node " << strListOfNodes[unIndex].c_str() << " is initializing... ";
-        if (true == c_oInitializerData.InitializeNode(strListOfNodes[unIndex].c_str()))
-        {
-            unNumberOfNodesSuccessfullyInitialized++;
-            std::cout << "Node initialize." << std::endl;
-        }
-        else
-        {
-            std::cout << "Failed to initialize Node." << std::endl;
-        }
-    }
-    
-    return unNumberOfNodesSuccessfullyInitialized;
+
+    InitializerData & oInitializerData = InitializerData::Get();
+
+    CreateVirtualMachineParamaters * poCreateVirtualMachineParamaters = (CreateVirtualMachineParamaters *)poParameter;
+    unsigned int unIndex = poCreateVirtualMachineParamaters->unIndex;
+    oInitializerData.CreateAndInitializeVirtualMachine(unIndex);
+
+    return 0;
 }
 
 /********************************************************************************************/
@@ -316,36 +324,108 @@ int __cdecl main(
     )
 {
     __DebugFunction();
- 
+
     try
     {
-        InitializerData oInitializerData;
+
+        // Get the IP address of the webserices REST API server to login
+        std::string strWebServiceIpAddress = ::GetStringInput("Enter WebServices Public Ip Address: ", 64, false, gsc_szIpAddressCharacters);
+
+        // Using a singleton class for initializerData
+        InitializerData & oInitializerData = InitializerData::Get();
+
+        // Parse the command line
+        StructuredBuffer oCommandLineArguments = ::ParseCommandLineParameters((unsigned int) nNumberOfArguments, (const char **) pszCommandLineArguments);
+
+        // Know if we are using the config file for Contract and Dataset or we
+        // take them as an input during the initialization process
+        bool fUsingConfigFile = false;
+
+        // First we initialize the RootOfTrustNode. Without that, nothing else matters
+        if (oCommandLineArguments.IsElementPresent("configFile", ANSI_CHARACTER_STRING_VALUE_TYPE))
+        {
+            std::ifstream stlConfigFile(oCommandLineArguments.GetString("configFile"));
+            std::string strLine;
+            unsigned int unNumberOfVirtualMachines = 0;
+            while (std::getline(stlConfigFile, strLine))
+            {
+                if (0 == strLine.length())
+                {
+                    break;
+                }
+
+                std::istringstream stlPerVirtualMachineData(strLine);
+                std::string strDatasetFile;
+                std::string strGuidDataset;
+
+                if (!(stlPerVirtualMachineData >> strGuidDataset >> strDatasetFile))
+                {
+                    _ThrowBaseException("Invalid config format.", nullptr);
+                }
+                oInitializerData.AddDatasetFilename(strDatasetFile);
+                oInitializerData.AddEffectiveDigitalContract(strGuidDataset);
+                unNumberOfVirtualMachines++;
+            }
+            oInitializerData.SetNumberOfVirtualMachines(unNumberOfVirtualMachines);
+            fUsingConfigFile = true;
+        }
 
         // The first step is to fetch and verify the login credentials. This first step
         // will ensure that the oInitializerData object is initialized with all the
         // required credentials to continue processing
-        ::PromptForCredentials(oInitializerData);
+        ::PromptForCredentials(oInitializerData, strWebServiceIpAddress);
         // Now we fetch all of the SaaS data required to fill in the oInitializerData object. This
         // will download things like the list of digital contracts, digital certificates, the
         // imposter encrypted opaque session blob, etc...
+        ::InputAzureCredentials(oInitializerData);
+        // Now we need to enter the name of the dataset. This function will also ensure the file
+        // exists and is ready to be uploaded
 
         do
         {
-            // Allow the user to select which digital contract to use
-            ::SelectDigitalContract(oInitializerData);
-            // Allow the user to specific the composition of the cluster of nodes
-            ::InputNodeAddresses(oInitializerData);
-            // Now we need to enter the name of the dataset. This function will also ensure the file
-            // exists and is ready to be uploaded
-            ::InputDataset(oInitializerData);
-            // Okay, now that we have everything, we need to send the information to each and every nodes
-            // This includes the IEOSB, the digital contract and the dataset
+            // When using a confog file for data we skip the Select Digital Contract and
+            // dataset as they have already been provided in the config file
+            if (false == fUsingConfigFile)
+            {
+                // Allow the user to select which digital contract to use
+                ::SelectDigitalContract(oInitializerData);
+                // Allow the user to specific the composition of the cluster of nodes
+                ::InputDataset(oInitializerData);
+                // Okay, now that we have everything, we need to send the information to each and every nodes
+                // This includes the IEOSB, the digital contract and the dataset
+            }
         }
         while (false == ::VerifyParametersAndProceed(oInitializerData));
-        
-        std::cout << ::InitializeNodes(oInitializerData) << " nodes out of " << oInitializerData.GetClusterNodeAddresses().size() << " initialized." << std::endl;
+
+        ThreadManager * poThreadManager = ThreadManager::GetInstance();
+
+        std::cout << "+------------------------------------+---------------------+-------------------+-------------------+-------------------------------+" << std::endl
+                  << "|        Virtual Machine Name        |  Public IP Address  |   Provisioning    |  Initialization   |           Dataset             |" << std::endl
+                  << "+------------------------------------+---------------------+-------------------+-------------------+-------------------------------+" << std::endl;
+
+        unsigned int unDatasetIndex = 0;
+        for (unsigned int unVirtualMachineLoopCounter = 0; unVirtualMachineLoopCounter < oInitializerData.GetNumberOfVirtualMachines(); unVirtualMachineLoopCounter++)
+        {
+
+            CreateVirtualMachineParamaters * poCreateVirtualMachineParamaters = new CreateVirtualMachineParamaters();
+            poCreateVirtualMachineParamaters->unIndex = unDatasetIndex;
+
+            poThreadManager->CreateThread("VirtualMachineCreation", CreateVirtualMachines, (void *)poCreateVirtualMachineParamaters);
+            // ::CreateVirtualMachines((void *)poCreateVirtualMachineParamaters);
+            if (true == fUsingConfigFile)
+            {
+                unDatasetIndex++;
+            }
+        }
+
+        // Wait for all of the threads to gracefull exit
+        poThreadManager->JoinThreadGroup("VirtualMachineCreation");
+
+        std::cout << "************************************************************************" << std::endl;
+        std::cout << "!! Kindly delete the Virtual Machines after use from the Azure Portal !!" << std::endl;
+        std::cout << "************************************************************************" << std::endl;
     }
-    
+
     catch (BaseException oException)
     {
         std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
@@ -358,7 +438,7 @@ int __cdecl main(
                   << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
                   << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
     }
-    
+
     catch (...)
     {
         std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
@@ -368,6 +448,6 @@ int __cdecl main(
                   << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
                   << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
     }
-    
+
     return 0;
 }

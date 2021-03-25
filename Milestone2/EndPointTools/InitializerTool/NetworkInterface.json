@@ -13,7 +13,10 @@
           }
         }
       }
-    ]
+    ],
+    "networkSecurityGroup": {
+      "id": "/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Network/networkSecurityGroups/{{NetworkSecurityGroup}}"
+    }
   },
   "location": "{{Location}}"
 }

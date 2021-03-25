@@ -26,6 +26,7 @@
 #include <iostream>
 
 /********************************************************************************************/
+extern char *__progname;
 
 StatusMonitor::StatusMonitor(
     _in const char * c_szDescription
@@ -39,7 +40,7 @@ StatusMonitor::StatusMonitor(
         StructuredBuffer oRequest;
         oRequest.PutDword("Transaction", 0x10000000);
         oRequest.PutGuid("MonitoringIdentifier", m_oStatusMonitorIdentifier);
-        oRequest.PutString("ProcessFilename", (const char *) ::getenv("_"));
+        oRequest.PutString("ProcessFilename", (const char *)__progname);
         oRequest.PutString("Description", c_szDescription);
         oRequest.PutInt32("ProcessIdentifier", (int) ::getpid());
         oRequest.PutInt32("ThreadIdentifier", (int) ::pthread_self());
@@ -48,7 +49,7 @@ StatusMonitor::StatusMonitor(
         (void) ::PutIpcTransactionAndGetResponse(poSocket, oRequest.GetSerializedBuffer());
         poSocket->Release();
     }
-    
+
     catch(...)
     {
         

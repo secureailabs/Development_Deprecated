@@ -25,6 +25,11 @@
 #include <fstream>
 #include <sstream>
 
+#ifndef SERVER_IP_ADDRESS
+    #define SERVER_PORT 6200
+    #define SERVER_IP_ADDRESS "127.0.0.1"
+#endif
+
 __thiscall Frontend::Frontend(void):
     m_stlConnectionMap(),
     m_stlFNTable(),
@@ -130,7 +135,7 @@ std::string Login(
     {
         bool fSuccess = false;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6200);
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         std::string strHttpLoginRequest = "POST /SAIL/AuthenticationManager/User/Login?Email="+ c_strEmail +"&Password="+ c_strUserPassword +" HTTP/1.1\r\n"
                                         "Accept: */*\r\n"

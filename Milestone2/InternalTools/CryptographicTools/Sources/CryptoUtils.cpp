@@ -17,6 +17,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+/********************************************************************************************/
+
 void __thiscall PrintBytesBufferAsHexOnStdout(
     const std::vector<Byte> & stlByteBuffer
 )
@@ -35,6 +37,8 @@ void __thiscall PrintBytesBufferAsHexOnStdout(
     }
     printf("0x%02X]\n", stlByteBuffer.at(i));
 }
+
+/********************************************************************************************/
 
 std::string __cdecl Base64HashOfEmailPassword(
     const std::string & strEmail,
@@ -71,6 +75,8 @@ std::string __cdecl Base64HashOfEmailPassword(
 
     return ::Base64Encode(stlMessageDigest.data(), stlMessageDigest.size());
 }
+
+/********************************************************************************************/
 
 StructuredBuffer __thiscall EncryptUsingSailSecretKey(
     const std::vector<Byte> & stlPlainText
@@ -124,6 +130,8 @@ StructuredBuffer __thiscall EncryptUsingSailSecretKey(
     return oEncryptedConfidentialUserRecord;
 }
 
+/********************************************************************************************/
+
 std::vector<Byte> __thiscall EncryptUsingPasswordKey(
     const std::vector<Byte> & stlPlainText,
     const std::string & strBase64HashOfEmailPassword
@@ -145,6 +153,8 @@ std::vector<Byte> __thiscall EncryptUsingPasswordKey(
     return stlCipherText;
 }
 
+/********************************************************************************************/
+
 std::vector<Byte> __thiscall EncryptUsingPasswordKey(
     const std::vector<Byte> & stlPlainText,
     const std::string & strEmail,
@@ -155,6 +165,8 @@ std::vector<Byte> __thiscall EncryptUsingPasswordKey(
 
     return ::EncryptUsingPasswordKey(stlPlainText, ::Base64HashOfEmailPassword(strEmail, strPassword));
 }
+
+/********************************************************************************************/
 
 std::vector<Byte> __thiscall DecryptUsingPasswordKey(
     const std::vector<Byte> & stlCipherText,
@@ -177,6 +189,7 @@ std::vector<Byte> __thiscall DecryptUsingPasswordKey(
     return stlDecrypted;
 }
 
+/********************************************************************************************/
 
 std::vector<Byte> __thiscall DecryptUsingPasswordKey(
     const std::vector<Byte> & stlCipherText,
@@ -186,8 +199,56 @@ std::vector<Byte> __thiscall DecryptUsingPasswordKey(
 {
     __DebugFunction();
 
-    return ::EncryptUsingPasswordKey(stlCipherText, ::Base64HashOfEmailPassword(strEmail, strPassword));
+    return ::DecryptUsingPasswordKey(stlCipherText, ::Base64HashOfEmailPassword(strEmail, strPassword));
 }
+
+/********************************************************************************************/
+
+
+std::vector<Byte> __thiscall DecryptUsingSailSecretKey(
+    const std::vector<Byte> & stlCipherText
+)
+{
+    __DebugFunction();
+
+    StructuredBuffer oEncryptedUserRecord(stlCipherText);
+    StructuredBuffer oDecryptParams;
+    oDecryptParams.PutBuffer("IV", oEncryptedUserRecord.GetBuffer("IV"));
+    oDecryptParams.PutBuffer("TAG", oEncryptedUserRecord.GetBuffer("TAG"));
+
+    Guid oSailSecretKey = "76A426D93D1F4F82AFA48843140EF603";
+    struct stat buffer;
+    if (0 != stat("76A426D93D1F4F82AFA48843140EF603.key", &buffer))
+    {
+        std::vector<Byte> c_stlSailKeyFile = {
+            0xCD, 0xAB, 0x9C, 0xE5, 0x3B, 0x93, 0x52, 0x2C, 0xB2, 0x9A, 0x7D, 0xE5, 0x57, 0x55, 0x12, 0x98,
+            0xC1, 0x6F, 0x29, 0xE8, 0x02, 0x00, 0x00, 0x00, 0x83, 0x63, 0x74, 0x83, 0x3D, 0x00, 0x00, 0x00,
+            0x34, 0x01, 0xFB, 0x54, 0x12, 0x04, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x0D, 0x02, 0x0F,
+            0x01, 0x4B, 0x65, 0x79, 0x00, 0x0B, 0x04, 0x0C, 0x03, 0xE5, 0x26, 0x7B, 0x98, 0xA6, 0x03, 0x84,
+            0x1F, 0x6C, 0x5F, 0x40, 0xF4, 0x4D, 0xAE, 0x3D, 0x1C, 0xE8, 0x06, 0x0E, 0xEB, 0xC1, 0xCB, 0x68,
+            0xD7, 0x0C, 0x0C, 0x60, 0x28, 0xEF, 0xA2, 0x21, 0x8A, 0x45, 0xBF, 0x10, 0x34, 0x83, 0x63, 0x74,
+            0x83, 0x28, 0x00, 0x00, 0x00, 0x34, 0x01, 0xFB, 0x54, 0x03, 0x08, 0x00, 0x00, 0x00, 0x07, 0x00,
+            0x00, 0x00, 0x0D, 0x02, 0x0F, 0x01, 0x4B, 0x65, 0x79, 0x53, 0x70, 0x65, 0x63, 0x00, 0x0B, 0x04,
+            0x0C, 0x03, 0x41, 0x45, 0x53, 0x32, 0x35, 0x36, 0x00, 0x45, 0xBF, 0x10, 0x34, 0x5E, 0xC9, 0xBA,
+            0xDC};
+
+        std::ofstream oKeyFile("76A426D93D1F4F82AFA48843140EF603.key", std::ios::binary);
+        oKeyFile.write((const char *)c_stlSailKeyFile.data(), c_stlSailKeyFile.size());
+        oKeyFile.close();
+    }
+
+    CryptographicEngine & oCryptographicEngine = CryptographicEngine::Get();
+
+    std::vector<Byte> stlUserKeyEncryptedUserRecord;
+    OperationID oDecryptionID = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, oSailSecretKey, &oDecryptParams);
+    oCryptographicEngine.OperationUpdate(oDecryptionID, oEncryptedUserRecord.GetBuffer("SailKeyEncryptedConfidentialUserRecord"), stlUserKeyEncryptedUserRecord);
+    bool fDecryptStatus = oCryptographicEngine.OperationFinish(oDecryptionID, stlUserKeyEncryptedUserRecord);
+    _ThrowBaseExceptionIf((false == fDecryptStatus), "Confidential User Record Decryption using SAIL Key failed.", nullptr);
+
+    return stlUserKeyEncryptedUserRecord;
+}
+
+/********************************************************************************************/
 
 std::vector<Byte> __thiscall GenerateAccountKey(void)
 {

@@ -11,6 +11,7 @@
 #pragma once
 
 #include "DebugLibrary.h"
+#include "EntityTypes.h"
 #include "Exceptions.h"
 #include "Object.h"
 #include "PluginDictionary.h"
@@ -78,8 +79,39 @@ class VirtualMachineManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
-        // Register a VmInstance
+        // Take in a full IEOSB and send back a StructuredBuffer containing user metadata
+        std::vector<Byte> __thiscall GetUserInfo(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch the virtual machine information
+        std::vector<Byte> __thiscall GetVmInformation(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Check if IEosb is of the data owner of the digital contract associated with the strDcGuid
+        std::vector<Byte> __thiscall VerifyDigitalContract(
+            _in const StructuredBuffer & c_oRequest,
+            _in bool fIsResearcher
+            );
+
+        // Take in IEOSB of the Initializer and add the vm record to the database
         std::vector<Byte> __thiscall RegisterVmInstance(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Take in VmEOSB of the data owner and add a VM branch event 
+        std::vector<Byte> __thiscall RegisterVmAfterDataUpload(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Take in VmEOSB of the researcher and add a VM branch event
+        std::vector<Byte> __thiscall RegisterVmForComputation(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Register VM audit event
+        std::vector<Byte> __thiscall RegisterVmAuditEvent(
             _in const StructuredBuffer & c_oRequest
             );
 

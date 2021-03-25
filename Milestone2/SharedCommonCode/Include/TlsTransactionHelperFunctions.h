@@ -13,7 +13,8 @@
 #include "StructuredBuffer.h"
 
 extern std::vector<Byte> __stdcall GetTlsTransaction(
-    _in TlsNode * poTlsNode
+    _in TlsNode * poTlsNode,
+    _in unsigned int unMillisecondTimeout
     );
 extern bool __stdcall PutTlsTransaction(
     _in TlsNode * poTlsNode,
@@ -25,5 +26,6 @@ extern bool __stdcall PutTlsTransaction(
     ) throw();
 extern std::vector<Byte> __stdcall PutTlsTransactionAndGetResponse(
     _in TlsNode * poTlsNode,
-    _in const StructuredBuffer & c_oTransaction
+    _in const StructuredBuffer & c_oTransaction,
+    _in unsigned int unMillisecondTimeout
     );

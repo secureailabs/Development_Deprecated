@@ -32,6 +32,7 @@ OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))
 
 all: $(OUTPUT)
 	@cp VmConfig.json $(ABSROOTDIR)/Binary/
+	@cp VmFromImage.json $(ABSROOTDIR)/Binary/
 	@cp NetworkInterface.json $(ABSROOTDIR)/Binary/
 	@cp PublicIpAddress.json $(ABSROOTDIR)/Binary/
 	@cp ResourceGroup.json $(ABSROOTDIR)/Binary/

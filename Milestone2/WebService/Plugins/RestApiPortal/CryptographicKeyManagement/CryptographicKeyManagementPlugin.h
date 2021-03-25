@@ -100,6 +100,12 @@ class CryptographicKeyManagementPlugin : public Object
         std::vector<Byte> __thiscall UnregisterEosb(
             _in const StructuredBuffer & c_stlRequest
             );
+        std::vector<Byte> __thiscall ModifyEosbAccessRights(
+            _in const StructuredBuffer & c_oRequest
+            );
+        std::vector<Byte> __thiscall CheckEosbAccessRights(
+            _in const StructuredBuffer & c_oRequest
+            );
         std::vector<Byte> __thiscall CreateEosbFromPlainSsb(
             _in const std::vector<Byte> & c_stlPlainTextSsb
             );
@@ -111,6 +117,9 @@ class CryptographicKeyManagementPlugin : public Object
             );
         std::vector<Byte> __thiscall VerifySignature(
             _in const StructuredBuffer & c_stlRequest
+            );
+        std::vector<Byte> __thiscall CreateDigitalSignature(
+            _in const StructuredBuffer & c_oStructuredBufferRequest
             );
 
         // private data members

@@ -61,6 +61,12 @@ DatabaseTools::DatabaseTools(
 DatabaseTools::~DatabaseTools(void)
 {
     __DebugFunction();
+
+    m_stlOrganizations.clear();
+    m_stlAdmins.clear();
+    m_stlUsers.clear();
+    m_stlDigitalContractGuids.clear();
+    m_stlDigitalContracts.clear();
 }
 
 /********************************************************************************************/
@@ -69,25 +75,35 @@ void __thiscall DatabaseTools::InitializeMembers(void)
 {
     __DebugFunction();
 
-    // Add Organizations informations
-    m_stlOrganizations.push_back(OrganizationInformation{"Zerg", "Char", "Naruto", "Supply Generator", "overlord@zerg.com", "000-000-0000", "Saitama", "Network Engineer", "nydus@zerg.com", "000-000-0000"});
-    m_stlOrganizations.push_back(OrganizationInformation{"Terran", "Earth", "Eren", "Security Expert", "marine@terran.com", "000-000-0000", "Gon", "Hardware Engineer", "scv@t1erran.com", "000-000-0000"});
+    // Add Organizations information
+    m_stlOrganizations.push_back(OrganizationInformation{"International Genetics Research Facility", "New York City", "Lily Bart", "System Administrator", "lbart@igr.com", "000-000-0000", "Philip Carey", "Network Engineer", "pcarey@igr.com", "000-000-0000"});
+    m_stlOrganizations.push_back(OrganizationInformation{"Mercy General Hospital", "Los Angeles", "Nick Adams", "System Administrator", "nadams@mghl.com", "000-000-0000", "Nora Helmer", "Network Engineer", "nhelmer@mghl.com", "000-000-0000"});
     // Add super admins information
-    m_stlAdmins.push_back(UserInformation{"queen@zerg.com", "Queen of Blades", "Hardware Engineer", "000-000-0000", eAdmin});
-    m_stlAdmins.push_back(UserInformation{"marine@terran.com", "Eren", "Security Expert", "000-000-0000", eAdmin});
+    m_stlAdmins.push_back(UserInformation{"lbart@igr.com", "Lily Bart", "System Administrator", "000-000-0000", eAdmin});
+    m_stlAdmins.push_back(UserInformation{"nadams@mgh.com", "Nick Adams", "System Administrator", "000-000-0000", eAdmin});
     // Add other users information
-    m_stlUsers.push_back({"larva@zerg.com", "Larva", "Security Expert", "000-000-0000", eOrganizationUser});
-    m_stlUsers.push_back({"overlord@zerg.com", "Lord", "Supply Generator", "000-000-0000", eOrganizationUser});
-    m_stlUsers.push_back({"zergling@zerg.com", "Zergling", "Network Engineer", "000-000-0000", eAuditor});
-    m_stlUsers.push_back({"roach@zerg.com", "Roach", "Field Engineer", "000-000-0000", eDigitalContractAdmin});
-    m_stlUsers.push_back({"lurker@zerg.com", "Lurker", "Market Discovery Expert", "000-000-0000", eDatasetAdmin});
-    m_stlUsers.push_back({"scv@terran.com", "Gon", "Hardware Engineer", "000-000-0000", eOrganizationUser});
-    m_stlUsers.push_back({"marauder@terran.com", "Naruto", "Supply Generator", "000-000-0000", eOrganizationUser});
-    m_stlUsers.push_back({"reaper@terran.com", "Saitama", "Network Engineer", "000-000-0000", eAuditor});
-    m_stlUsers.push_back(UserInformation{"ghost@terran.com", "Alex", "Field Engineer", "000-000-0000", eDigitalContractAdmin});
-    m_stlUsers.push_back(UserInformation("banshee@terran.com", "Yagami", "Market Discovery Expert", "000-000-0000", eDatasetAdmin));
+    m_stlUsers.push_back(UserInformation{"iarcher@igr.com", "Isabel Archer", "Security Expert", "000-000-0000", eOrganizationUser});
+    m_stlUsers.push_back(UserInformation{"abede@igr.com", "Adam Bede", "Supply Generator", "000-000-0000", eOrganizationUser});
+    m_stlUsers.push_back(UserInformation{"pcarey@igr.com", "Philip Carey", "Network Engineer", "000-000-0000", eAuditor});
+    m_stlUsers.push_back(UserInformation{"achristie@igr.com", "Anna Christie", "Research Scientist", "000-000-0000", eDigitalContractAdmin});
+    m_stlUsers.push_back(UserInformation{"rcory@igr.com", "Richard Cory", "Data Scientist", "000-000-0000", eDatasetAdmin});
+    m_stlUsers.push_back(UserInformation{"sbowles@mghl.com", "Sally Bowles", "Hardware Engineer", "000-000-0000", eOrganizationUser});
+    m_stlUsers.push_back(UserInformation{"ncarter@mghl.com", "Nick Carter", "Supply Generator", "000-000-0000", eOrganizationUser});
+    m_stlUsers.push_back(UserInformation{"nhelmer@mghl.com", "Nora Helmer", "Network Engineer", "000-000-0000", eAuditor});
+    m_stlUsers.push_back(UserInformation{"pmason@mghl.com", "Perry Mason", "Research Scientist", "000-000-0000", eDigitalContractAdmin});
+    m_stlUsers.push_back(UserInformation("dquilp@mghl.com", "Daniel Quilp", "Data Scientist", "000-000-0000", eDatasetAdmin));
     // Initialize to the number of other users that will be added for each organization
     m_unNumberOfOtherUsers = 5;
+    // Add digital contracts information
+    std::string strLegalAgreement = "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties. "
+    "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";
+    std::string strEulaSignedByDoo = "Company grants You a revocable, non-exclusive, non-transferable, limited right to use the dataset on a single machine.";
+    std::string strEulaSignedByRo = "Company grants You a revocable, non-exclusive, non-transferable, limited right to use the dataset on a single machine.";
+    m_stlDigitalContracts.push_back(DigitalContractInformation{10, strLegalAgreement, 16186603, strEulaSignedByDoo, strEulaSignedByRo});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{28, strLegalAgreement, 24117352, strEulaSignedByDoo, strEulaSignedByRo});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{35, strLegalAgreement, 60768913, strEulaSignedByDoo, strEulaSignedByRo});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{90, strLegalAgreement, 8090084, strEulaSignedByDoo, strEulaSignedByRo});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{120, strLegalAgreement, 18605667, strEulaSignedByDoo, strEulaSignedByRo});
 }
 
 /********************************************************************************************/
@@ -174,16 +190,13 @@ void __thiscall DatabaseTools::AddDigitalContracts(void)
     std::string strRoGuid = m_stlOrganizations.at(unRoIndex).m_strOrganizationGuid;
     // Add digital contract information
     std::string strDooGuid = m_stlOrganizations.at(unDooIndex).m_strOrganizationGuid;
-    uint64_t unSubscriptionDays = 5;
-    std::string strLegalAgreement = "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties. "
-    "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";
     StructuredBuffer oDcInformation;
     oDcInformation.PutString("DOOGuid", strDooGuid);
-    oDcInformation.PutUnsignedInt64("SubscriptionDays", unSubscriptionDays);
-    oDcInformation.PutString("LegalAgreement", strLegalAgreement);
     // Register five digital contracts for the organizations
     for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
     {
+        oDcInformation.PutUnsignedInt64("SubscriptionDays", m_stlDigitalContracts.at(unIndex).m_unSubscriptionDays);
+        oDcInformation.PutString("LegalAgreement", m_stlDigitalContracts.at(unIndex).m_strLegalAgreement);
         // Register digital contract
         ::RegisterDigitalContract(strEncodedEosb, oDcInformation);
     }
@@ -203,22 +216,18 @@ void __thiscall DatabaseTools::AcceptDigitalContracts(void)
     std::string strEncodedEosb = Login(m_stlUsers.at(unDatasetAdminIndex).m_strEmail, m_strPassword);
     _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
     // Get list of all digital contracts for the data owner organization
-    std::vector<std::string> stlDigitalContracts = StructuredBuffer(::ListDigitalContracts(strEncodedEosb)).GetNamesOfElements();
-    uint64_t unRetentionTime = 5;
-    std::string strEula = "Eula accepted by DOO";
-    std::string strLegalAgreement = "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties. "
-    "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";
-    StructuredBuffer oDcInformation;
-    oDcInformation.PutUnsignedInt64("RetentionTime", unRetentionTime);
-    oDcInformation.PutString("EULA", strEula);
-    oDcInformation.PutString("LegalAgreement", strLegalAgreement);
-
+    for (std::string strGuid : StructuredBuffer(::ListDigitalContracts(strEncodedEosb)).GetNamesOfElements())
+    {
+        m_stlDigitalContractGuids.push_back(strGuid);
+    }
     // Accept all five digital contracts
     for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
     {
-        // Get digital contract guid
-        std::string strDcGuid = stlDigitalContracts.at(unIndex);
-        oDcInformation.PutString("DigitalContractGuid", strDcGuid);
+        StructuredBuffer oDcInformation;
+        oDcInformation.PutUnsignedInt64("RetentionTime", m_stlDigitalContracts.at(unIndex).m_unRetentionTime);
+        oDcInformation.PutString("EULA", m_stlDigitalContracts.at(unIndex).m_strEulaSignedByDoo);
+        oDcInformation.PutString("LegalAgreement", m_stlDigitalContracts.at(unIndex).m_strLegalAgreement);
+        oDcInformation.PutString("DigitalContractGuid", m_stlDigitalContractGuids.at(unIndex));
         // Accept digital contract
         ::AcceptDigitalContract(strEncodedEosb, oDcInformation);
     }
@@ -237,21 +246,14 @@ void __thiscall DatabaseTools::ActivateDigitalContracts(void)
     unsigned int unDcAdminIndex = 3;
     std::string strEncodedEosb = Login(m_stlUsers.at(unDcAdminIndex).m_strEmail, m_strPassword);
     _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
-    // Get list of all digital contracts for the data owner organization
-    std::vector<std::string> stlDigitalContracts = StructuredBuffer(::ListDigitalContracts(strEncodedEosb)).GetNamesOfElements();
-    std::string strEula = "Eula accepted by RO";
-    std::string strLegalAgreement = "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties. "
-    "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";
-    StructuredBuffer oDcInformation;
-    oDcInformation.PutString("EULA", strEula);
-    oDcInformation.PutString("LegalAgreement", strLegalAgreement);
 
     // Activate all five digital contracts
     for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
     {
-        // Get digital contract guid
-        std::string strDcGuid = stlDigitalContracts.at(unIndex);
-        oDcInformation.PutString("DigitalContractGuid", strDcGuid);
+        StructuredBuffer oDcInformation;
+        oDcInformation.PutString("EULA", m_stlDigitalContracts.at(unIndex).m_strEulaSignedByRo);
+        oDcInformation.PutString("LegalAgreement", m_stlDigitalContracts.at(unIndex).m_strLegalAgreement);
+        oDcInformation.PutString("DigitalContractGuid", m_stlDigitalContractGuids.at(unIndex));
         // Activate digital contract
         ::ActivateDigitalContract(strEncodedEosb, oDcInformation);
     }

@@ -112,6 +112,31 @@ typedef struct OrganizationInformation
 } 
 OrganizationInformation;
 
+typedef struct DigitalContractInformation
+{
+    uint64_t m_unSubscriptionDays;
+    std::string m_strLegalAgreement;
+    uint64_t m_unRetentionTime;
+    std::string m_strEulaSignedByDoo;
+    std::string m_strEulaSignedByRo;
+
+    DigitalContractInformation(
+        _in uint64_t unSubscriptionDays, 
+        _in const std::string & c_strLegalAgreement,
+        _in uint64_t unRetentionTime,
+        _in const std::string & c_strEulaSignedByDoo,
+        _in const std::string & c_strEulaSignedByRo
+        )
+    {
+        m_unSubscriptionDays = unSubscriptionDays;
+        m_strLegalAgreement = c_strLegalAgreement;
+        m_unRetentionTime = unRetentionTime;
+        m_strEulaSignedByDoo = c_strEulaSignedByDoo;
+        m_strEulaSignedByRo = c_strEulaSignedByRo;
+    }
+} 
+DigitalContractInformation;
+
 /********************************************************************************************/
 
 class DatabaseTools : public Object 
@@ -149,6 +174,8 @@ class DatabaseTools : public Object
         std::vector<OrganizationInformation> m_stlOrganizations;
         std::vector<UserInformation> m_stlAdmins;
         std::vector<UserInformation> m_stlUsers;
+        std::vector<DigitalContractInformation> m_stlDigitalContracts;
+        std::vector<std::string> m_stlDigitalContractGuids;
 };
 
 // Testing mongocxx::pool

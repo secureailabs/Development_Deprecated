@@ -16,17 +16,17 @@
 
 class BaseException
 {
-	public:
+    public:
 
         BaseException(
-			_in const char *c_szFilename,
-			_in const char *c_szFunctionName,
-			_in unsigned int unLineNumber,
-			_in const char *c_szExceptionFormat,
-			... );
-		BaseException(
-			_in const BaseException & c_oBaseException
-			);
+            _in const char *c_szFilename,
+            _in const char *c_szFunctionName,
+            _in unsigned int unLineNumber,
+            _in const char *c_szExceptionFormat,
+           ... );
+        BaseException(
+            _in const BaseException & c_oBaseException
+            );
         ~BaseException( void );
 
         const char * GetFilename(void) const;
@@ -34,7 +34,7 @@ class BaseException
         unsigned int GetLineNumber(void) const;
         const char * GetExceptionMessage(void) const;
 
-	protected:
+    protected:
 
         const char * m_szFilename;
         const char * m_szFunctionName;

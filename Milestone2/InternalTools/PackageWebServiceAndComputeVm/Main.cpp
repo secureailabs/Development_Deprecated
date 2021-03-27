@@ -65,7 +65,7 @@ std::vector<Byte> FileToBytes(
     }
     else
     {
-        _ThrowBaseException("Invalid File Path", nullptr);
+        _ThrowBaseException("Invalid File Path: %s", nullptr, c_strFileName.c_str());
     }
     return stlFileData;
 }
@@ -89,7 +89,7 @@ void __stdcall PackageComputeServices()
     oFilesToPut.PutBuffer("SignalTerminationProcess", ::FileToBytes("SignalTerminationProcess"));
     oFilesToPut.PutBuffer("DataDomainProcess", ::FileToBytes("DataDomainProcess"));
     oFilesToPut.PutBuffer("ComputationalDomainProcess", ::FileToBytes("ComputationalDomainProcess"));
-    oFilesToPut.PutBuffer("/usr/local/lib/python3.8/dist-packages/_DataConnector.so", ::FileToBytes("../VirtualMachine/DataConnectorPythonModule/libDataConnector.so"));
+    oFilesToPut.PutBuffer("/usr/local/lib/python3.8/dist-packages/_DataConnector.so", ::FileToBytes("libDataConnector.so"));
 
     oPayloadToVm.PutStructuredBuffer("ExecutableFiles", oFilesToPut);
 
@@ -116,7 +116,7 @@ void __stdcall PackageWebService()
     oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libAccountDatabase.so", ::FileToBytes("SharedLibraries/RestApiPortal/libAccountDatabase.so"));
     oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libCryptographicKeyManagement.so", ::FileToBytes("SharedLibraries/RestApiPortal/libCryptographicKeyManagement.so"));
     oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libDigitalContractDatabase.so", ::FileToBytes("SharedLibraries/RestApiPortal/libDigitalContractDatabase.so"));
-    // oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libVmManager.so", ::FileToBytes("SharedLibraries/RestApiPortal/libVmManager.so"));
+    oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libVirtualMachineManager.so", ::FileToBytes("SharedLibraries/RestApiPortal/libVirtualMachineManager.so"));
     oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libAuditLogManager.so", ::FileToBytes("SharedLibraries/RestApiPortal/libAuditLogManager.so"));
     oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libDatasetDatabase.so", ::FileToBytes("SharedLibraries/RestApiPortal/libDatasetDatabase.so"));
     oFilesToPut.PutBuffer("SharedLibraries/RestApiPortal/libSailAuthentication.so", ::FileToBytes("SharedLibraries/RestApiPortal/libSailAuthentication.so"));

@@ -33,10 +33,10 @@ static const char * gsc_szYesNoInputCharacters = "yYnN";
 
 const std::string gc_strSubscriptionId = "20c11edd-abb4-4bc0-a6d5-c44d6d2524be";
 const std::string gc_strLocation = "eastus2";
-const std::string gc_strResourceGroup = "WebServiceTemplate0.1_group";
-const std::string gc_strImageName = "WebServiceTemplate0.1Image";
-const std::string gc_strVirtualNetwork = "WebServiceTemplate0.1_group-vnet";
-const std::string gc_strNetworkSecurityGroup = "WebServiceTemplate0.1-nsg";
+const std::string gc_strResourceGroup = "WebServiceTemplate0.2_group";
+const std::string gc_strImageName = "WebServiceTemplate0.2Image";
+const std::string gc_strVirtualNetwork = "WebServiceTemplate0.2_group-vnet";
+const std::string gc_strNetworkSecurityGroup = "WebServiceTemplate0.2-nsg";
 const std::string gc_strVirtualMachineSize = "Standard_B1ms";
 
 /********************************************************************************************/

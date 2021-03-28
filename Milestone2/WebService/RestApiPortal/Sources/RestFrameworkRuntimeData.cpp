@@ -186,7 +186,7 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 100);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -230,7 +230,7 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
             if (0 < unContentLength)
             {
                 // Read request content
-                std::vector<Byte> stlBodyData = poTlsNode->Read(unContentLength, 100);
+                std::vector<Byte> stlBodyData = poTlsNode->Read(unContentLength, 2000);
                 _ThrowBaseExceptionIf((0 == stlBodyData.size()), "Dead Packet.", nullptr);
                 std::string strRequestBody = std::string(stlBodyData.begin(), stlBodyData.end());
                 std::cout << "\nRequest Content:\n\n" << strRequestBody << std::endl;

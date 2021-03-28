@@ -1235,7 +1235,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddLeafEvent(
         // Create an audit log event document and add it to stlEventDocuments vector
         stlEventDocuments.push_back(bsoncxx::builder::stream::document{}
         << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
-        << "OrganizationGuid" << oEvent.GetString("OrganizationGuid")
+        << "OrganizationGuid" << c_oRequest.GetString("OrganizationGuid")
         << "ParentGuid" << strIdentifierOfParent
         << "EventGuid" << oEvent.GetString("EventGuid")
         << "IsLeaf" << true

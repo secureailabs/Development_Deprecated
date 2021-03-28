@@ -75,7 +75,6 @@ extern bool RegisterBranchEvent(
     );
 extern bool RegisterLeafEvents(
     _in const std::string & c_strEncodedEosb,
-    _in const std::string & c_strOrganizationGuid,
     _in const std::string & c_strParentGuid
     );
 

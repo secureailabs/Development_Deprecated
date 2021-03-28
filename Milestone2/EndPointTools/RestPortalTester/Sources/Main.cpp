@@ -159,17 +159,12 @@ int main()
                                 }
                                 else 
                                 {
-                                    // if (5 == qwAccessRights) // Check if user is a dataset admin
-                                    // {
-                                        // Register Vm branch event for a DOO
-                                        std::string strVmEventGuid = ::RegisterVmAfterDataUpload(strVmEosb, strVmGuid);
-                                        // Register Leaf events
-                                        ::RegisterLeafEvents(strEncodedEosb, strOrganizationGuid, strVmEventGuid);
-                                    // }
-                                    // else 
-                                    // {
-                                    //     ::ShowErrorMessage("Transaction not authorized.");
-                                    // }
+                                    std::string strVmEventGuid = ::RegisterVmAfterDataUpload(strEncodedEosb, strVmGuid);
+                                    // Register Leaf events
+                                    if (0 < strVmEventGuid.size())
+                                    {
+                                        ::RegisterLeafEvents(strEncodedEosb, strVmEventGuid);
+                                    }
                                 }
 
                                 ::WaitForUserToContinue();
@@ -184,10 +179,12 @@ int main()
                                 else
                                 {
                                     // Register Vm branch event for RO
-                                    std::string strVmEventGuid = ::RegisterVmForComputation(strVmEosb, strVmGuid);
-                                    std::cout << "strVmEventGuid: " << strVmEventGuid << std::endl;
+                                    std::string strVmEventGuid = ::RegisterVmForComputation(strEncodedEosb, strVmGuid);
                                     // Register Leaf events
-                                    ::RegisterLeafEvents(strEncodedEosb, strOrganizationGuid, strVmEventGuid);
+                                    if (0 < strVmEventGuid.size())
+                                    {
+                                        ::RegisterLeafEvents(strEncodedEosb, strVmEventGuid);
+                                    }
                                 }
                                 ::WaitForUserToContinue();
                             break;

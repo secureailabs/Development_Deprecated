@@ -840,7 +840,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmAfterDataUpload(
     // Check if the user is a dataset admin
     Dword dwStatus = 204;
     // if ((eVmEosb == oUserInfo.GetQword("AccessRights"))&&(eDatasetAdmin == oUserInfo.GetQword("UserAccessRights")))
-    if (eVmEosb == oUserInfo.GetQword("AccessRights"))
+    if (eEosb == oUserInfo.GetQword("AccessRights"))
     {
         // Get the organization guid
         std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
@@ -915,7 +915,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmForComputation(
     // Check if the Eosb is a Vm Eosb
     // Register Vm if it is a Vm Eosb
     Dword dwStatus = 204;
-    if (eVmEosb == oUserInfo.GetQword("AccessRights"))
+    if (eEosb == oUserInfo.GetQword("AccessRights"))
     {
         // Get the organization guid
         std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);

@@ -530,14 +530,12 @@ bool RegisterBranchEvent(
 
 bool RegisterLeafEvents(
     _in const std::string & c_strEncodedEosb,
-    _in const std::string & c_strOrganizationGuid,
     _in const std::string & c_strParentGuid
     )
 {
     __DebugFunction();
     __DebugAssert(0 < c_strEncodedEosb.size());
     __DebugAssert(0 < c_strParentGuid.size());
-    __DebugAssert(0 < c_strOrganizationGuid.size());
 
     bool fSuccess = false;
 
@@ -553,7 +551,6 @@ bool RegisterLeafEvents(
                                 "\n    \"LeafEvents\": ["
                                 "\n        {"
                                 "\n            \"EventGuid\": \""+ Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces) +"\","
-                                "\n            \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n            \"EventType\": 6,"
                                 "\n            \"Timestamp\": "+ ::_GetEpochTimeInMilliseconds() +","
                                 "\n            \"SequenceNumber\": 1,"
@@ -561,7 +558,6 @@ bool RegisterLeafEvents(
                                 "\n        },"
                                 "\n        {"
                                 "\n            \"EventGuid\": \""+ Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces) +"\","
-                                "\n            \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n            \"EventType\": 6,"
                                 "\n            \"Timestamp\": "+ ::_GetEpochTimeInMilliseconds() +","
                                 "\n            \"SequenceNumber\": 2,"

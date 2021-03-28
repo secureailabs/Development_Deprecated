@@ -12,7 +12,7 @@
 #include "64BitHashes.h"
 #include "IpcTransactionHelperFunctions.h"
 #include "SmartMemoryAllocator.h"
-#include "SocketServer.h"
+#include "SocketClient.h"
 #include "ThreadManager.h"
 #include "TlsClient.h"
 
@@ -654,6 +654,54 @@ bool __thiscall AuditLogManager::GetResponse(
 /********************************************************************************************
  *
  * @class AuditLogManager
+ * @function GetUserInfo
+ * @brief Take in a full EOSB and send back a StructuredBuffer containing user metadata
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns StructuredBuffer containing user metadata
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AuditLogManager::GetUserInfo(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+
+    StructuredBuffer oDecryptEosbRequest;
+    oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
+    oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
+
+    // Call CryptographicManager plugin to get the decrypted eosb
+    bool fSuccess = false;
+    Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+    StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+    if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
+    {
+        StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
+        oResponse.PutDword("Status", 200);
+        oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
+        oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
+        // TODO: get user access rights from the confidential record, for now it can't be decrypted
+        oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
+        fSuccess = true;
+    }
+    // Add error code if transaction was unsuccessful
+    if (false == fSuccess)
+    {
+        oResponse.PutDword("Status", 404);
+    }
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AuditLogManager
  * @function AddLeafEvent
  * @brief Take in a full EOSB and non-leaf event, and call Database portal to store it in the database
  * @param[in] c_oRequest contains the request body
@@ -723,33 +771,39 @@ std::vector<Byte> __thiscall AuditLogManager::AddLeafEvent(
 
     StructuredBuffer oStatus;
 
-    // Make a Tls connection with the database portal
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-    // Create a request to store a non leaf event in the database
-    StructuredBuffer oRequest;
-    oRequest.PutString("PluginName", "DatabaseManager");
-    oRequest.PutString("Verb", "POST");
-    oRequest.PutString("Resource", "/SAIL/DatabaseManager/LeafEvent");
-    oRequest.PutString("ParentGuid", c_oRequest.GetString("ParentGuid"));
-    oRequest.PutStructuredBuffer("LeafEvents", c_oRequest.GetStructuredBuffer("LeafEvents"));
-    std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-    // Send request packet
-    poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-
-    Dword dwStatus = 204;
-    // Check if DatabaseManager registered the events or not
-    StructuredBuffer oResponse(stlResponse);
-    if (200 == oResponse.GetDword("Status"))
+    Dword dwStatus = 404;
+    // Get user information to check if the user is a digital contract admin or database admin
+    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+    if (200 == oUserInfo.GetDword("Status"))
     {
-        dwStatus = 201;
+        // Make a Tls connection with the database portal
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        // Create a request to store a non leaf event in the database
+        StructuredBuffer oRequest;
+        oRequest.PutString("PluginName", "DatabaseManager");
+        oRequest.PutString("Verb", "POST");
+        oRequest.PutString("Resource", "/SAIL/DatabaseManager/LeafEvent");
+        oRequest.PutString("ParentGuid", c_oRequest.GetString("ParentGuid"));
+        oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+        oRequest.PutStructuredBuffer("LeafEvents", c_oRequest.GetStructuredBuffer("LeafEvents"));
+        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+        // Send request packet
+        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+        // Read header and body of the response
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+        // Check if DatabaseManager registered the events or not
+        StructuredBuffer oResponse(stlResponse);
+        if (200 == oResponse.GetDword("Status"))
+        {
+            dwStatus = 201;
+        }
     }
 
     // Send back status of the transaction

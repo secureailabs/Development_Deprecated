@@ -78,6 +78,11 @@ class AuditLogManager : public Object
 
     private:
 
+        // Given an EOSB, return a StructuredBuffer containing user metadata
+        std::vector<Byte> __thiscall GetUserInfo(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Given an EOSB and a non-leaf event, call Database portal to store in the database
         std::vector<Byte> __thiscall AddNonLeafEvent(
             _in const StructuredBuffer & c_oRequest

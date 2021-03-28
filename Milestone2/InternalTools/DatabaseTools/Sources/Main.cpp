@@ -9,6 +9,7 @@
  ********************************************************************************************/
 
 #include "DatabaseTools.h"
+#include "ConsoleInputHelperFunctions.h"
 
 /********************************************************************************************/
 
@@ -16,11 +17,17 @@ int main()
 {
     __DebugFunction();
 
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
     try
     {
-        const char * c_szIpAddress = "127.0.0.1";
-        unsigned int unPort = 6200;
-        DatabaseTools oDatabaseTools(c_szIpAddress, unPort);
+        ::ClearScreen();
+
+        std::cout << "************************\n  SAIL DATABASE TOOL\n************************\n" << std::endl;
+        std::string strIpAddress = ::GetStringInput("IP address: ", 50, false, c_szValidInputCharacters);
+        unsigned int unPortNumber = std::stoul(::GetStringInput("Port number: ", 50, false, c_szValidInputCharacters));
+
+        DatabaseTools oDatabaseTools(strIpAddress.c_str(), unPortNumber);
         // Add organizations and their super admins
         oDatabaseTools.AddOrganizationsAndSuperAdmins();
         // Add other users for the organizations

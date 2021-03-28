@@ -78,9 +78,21 @@ extern bool RegisterLeafEvents(
     _in const std::string & c_strParentGuid
     );
 
+extern bool RegisterLeafEvents(
+    _in const std::string & c_strEncodedEosb,
+    _in const std::string & c_strParentGuid,
+    _in const StructuredBuffer & c_oLeafEvents
+    );
+
 extern std::string RegisterVirtualMachine(
     _in const std::string & c_strEncodedEosb,
     _in const std::string & c_strVmGuid
+    );
+
+extern std::string RegisterVirtualMachine(
+    _in const std::string & c_strEncodedEosb,
+    _in const std::string & c_strVmGuid,
+    _in const StructuredBuffer & c_oVmInformation
     );
 
 extern std::string RegisterVmAfterDataUpload(

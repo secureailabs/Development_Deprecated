@@ -9,6 +9,7 @@
  ********************************************************************************************/
 
 #include "InteractiveClient.h"
+#include "Base64Encoder.h"
 
 const char * g_szServerIpAddress;
 unsigned int g_unPortNumber;
@@ -539,6 +540,52 @@ bool RegisterLeafEvents(
 
     bool fSuccess = false;
 
+    StructuredBuffer oLeafEvents;
+    // Add first leaf event
+    StructuredBuffer oEvent1;
+    oEvent1.PutString("EventGuid", Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
+    oEvent1.PutQword("EventType", 6);
+    oEvent1.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+    StructuredBuffer oEncryptedEventData;
+    oEncryptedEventData.PutString("EventName", "VMAdded");
+    oEncryptedEventData.PutByte("EventType", 1);
+    StructuredBuffer oEventData;
+    oEventData.PutUnsignedInt64("VersionNumber", 0x0000000100000001);
+    oEventData.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+    oEncryptedEventData.PutStructuredBuffer("EventData", oEventData);
+    oEvent1.PutString("EncryptedEventData", ::Base64Encode(oEncryptedEventData.GetSerializedBufferRawDataPtr(), oEncryptedEventData.GetSerializedBufferRawDataSizeInBytes()));
+    oLeafEvents.PutStructuredBuffer("0", oEvent1);
+    // Add second leaf event
+    StructuredBuffer oEvent2;
+    oEvent2.PutString("EventGuid", Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
+    oEvent2.PutQword("EventType", 6);
+    oEvent2.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+    oEncryptedEventData.PutString("EventName", "VMDeleted");
+    oEncryptedEventData.PutByte("EventType", 2);
+    oEventData.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+    oEncryptedEventData.PutStructuredBuffer("EventData", oEventData);
+    oEvent2.PutString("EncryptedEventData", ::Base64Encode(oEncryptedEventData.GetSerializedBufferRawDataPtr(), oEncryptedEventData.GetSerializedBufferRawDataSizeInBytes()));
+    oLeafEvents.PutStructuredBuffer("1", oEvent2);
+
+    fSuccess = ::RegisterLeafEvents(c_strEncodedEosb, c_strParentGuid, oLeafEvents);
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool RegisterLeafEvents(
+    _in const std::string & c_strEncodedEosb,
+    _in const std::string & c_strParentGuid,
+    _in const StructuredBuffer & c_oLeafEvents
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEncodedEosb.size());
+    __DebugAssert(0 < c_strParentGuid.size());
+
+    bool fSuccess = false;
+
     try
     {
         std::vector<Byte> stlRestResponse;
@@ -548,23 +595,33 @@ bool RegisterLeafEvents(
         // Create rest request
         std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
                                 "\n    \"ParentGuid\": \""+ c_strParentGuid +"\","
-                                "\n    \"LeafEvents\": ["
-                                "\n        {"
-                                "\n            \"EventGuid\": \""+ Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces) +"\","
-                                "\n            \"EventType\": 6,"
-                                "\n            \"Timestamp\": "+ ::_GetEpochTimeInMilliseconds() +","
-                                "\n            \"SequenceNumber\": 1,"
-                                "\n            \"EncryptedEventData\": \"5iEQAhtloSMplcUnh1L0nooYrO0TKDJZSOAIzOgfaItg8i+EFrmGkDE7SNm6icKgskkBpoMBAABO6L5OOW6aS0pw3aMZjP2Q0KeKL2XtoeVCmW+2sN34h0LuFaPqN48Ku2WytWVHK2t0ilp50Xo7RHxcMPKkiUqSatRD42UjaqcpFCoy3plz+JfogTONcCDiRe+4tRcmg1zHAk2zsXZhwFg5tJioNIQdSoG1bOz4dPYqltRtMYlpbea85IH3pMkB4qduM5OK5zDNCxB0SdlyNpsREhRzeUCxAAiiop7PYgZb/8Vdsd67BTeSd73JkyFr301nqaa5+LCJpnSv19B6yUqQK7ZoSVsTwNsUqO+mtIRTEomvRspqu4hwQf++4I4rIyCwIlN2daJtxNI5RVujFTellgaWB0BudhxqIk72EMEkE9vOihEdaPcJJC2FkEBJTH9Dg3DBNRSck5ZXYmP2MBGAM474iwisvSpfiUSBNNkM3AL6y782K3vrhNDxvY2uxKmR3rfs8TJI9V7lAvIogLht2VYKJi1DWWLtMbccGScTYfyqZgjBw5m7R5LL1CkREZsV6kVymL1kYDkyGlaxKZESbg==\""
-                                "\n        },"
-                                "\n        {"
-                                "\n            \"EventGuid\": \""+ Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces) +"\","
-                                "\n            \"EventType\": 6,"
-                                "\n            \"Timestamp\": "+ ::_GetEpochTimeInMilliseconds() +","
-                                "\n            \"SequenceNumber\": 2,"
-                                "\n            \"EncryptedEventData\": \"5iEQAhtloSMplcUnh1L0nooYrO0TKDJZSOAIzOgfaItg8i+EFrmGkDE7SNm6icKgskkBpoMBAABO6L5OOW6aS0pw3aMZjP2Q0KeKL2XtoeVCmW+2sN34h0LuFaPqN48Ku2WytWVHK2t0ilp50Xo7RHxcMPKkiUqSatRD42UjaqcpFCoy3plz+JfogTONcCDiRe+4tRcmg1zHAk2zsXZhwFg5tJioNIQdSoG1bOz4dPYqltRtMYlpbea85IH3pMkB4qduM5OK5zDNCxB0SdlyNpsREhRzeUCxAAiiop7PYgZb/8Vdsd67BTeSd73JkyFr301nqaa5+LCJpnSv19B6yUqQK7ZoSVsTwNsUqO+mtIRTEomvRspqu4hwQf++4I4rIyCwIlN2daJtxNI5RVujFTellgaWB0BudhxqIk72EMEkE9vOihEdaPcJJC2FkEBJTH9Dg3DBNRSck5ZXYmP2MBGAM474iwisvSpfiUSBNNkM3AL6y782K3vrhNDxvY2uxKmR3rfs8TJI9V7lAvIogLht2VYKJi1DWWLtMbccGScTYfyqZgjBw5m7R5LL1CkREZsV6kVymL1kYDkyGlaxKZESbg==\""
-                                "\n        }"
-                                "\n    ]"
-                                "\n}";
+                                "\n    \"LeafEvents\": [";
+
+        // Add leaf events to the rest request body
+        std::vector<std::string> stlEvents = c_oLeafEvents.GetNamesOfElements();
+        unsigned int unNumberOfEvents = stlEvents.size();
+        for (unsigned int unIndex = 0; unIndex < unNumberOfEvents; ++unIndex)
+        {
+            StructuredBuffer oEvent(c_oLeafEvents.GetStructuredBuffer(stlEvents.at(unIndex).c_str()));
+            strContent += "\n        {"
+                        "\n            \"EventGuid\": \""+ oEvent.GetString("EventGuid") +"\","
+                        "\n            \"EventType\": "+ std::to_string(oEvent.GetQword("EventType")) +","
+                        "\n            \"Timestamp\": "+ std::to_string(oEvent.GetUnsignedInt64("Timestamp")) +","
+                        "\n            \"SequenceNumber\": "+ stlEvents.at(unIndex) +","
+                        "\n            \"EncryptedEventData\": \""+ oEvent.GetString("EncryptedEventData") +"\"";
+            if ((unNumberOfEvents - 1) != unIndex)
+            {   
+                strContent += "\n        },";
+            }
+            else 
+            {
+                strContent += "\n        }";
+            }
+        }
+        
+        strContent += "\n    ]"
+                    "\n}";
+
         std::string strHttpRegisterRequest = "POST /SAIL/AuditLogManager/LeafEvents HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
@@ -642,6 +699,29 @@ std::string RegisterVirtualMachine(
 
     __DebugAssert(38 == strDcGuid.size());
 
+    StructuredBuffer oVmInformation;
+    oVmInformation.PutString("DigitalContractGuid", strDcGuid);
+    oVmInformation.PutString("IPAddress", "127.0.0.1");
+
+    strVmEosb = ::RegisterVirtualMachine(c_strEncodedIEosb, c_strVmGuid, oVmInformation);
+
+    return strVmEosb;
+}
+
+/********************************************************************************************/
+
+std::string RegisterVirtualMachine(
+    _in const std::string & c_strEncodedIEosb,
+    _in const std::string & c_strVmGuid,
+    _in const StructuredBuffer & c_oVmInformation
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEncodedIEosb.size());
+    __DebugAssert(0 < c_strVmGuid.size());
+
+    std::string strVmEosb;
+
     try
     {
         std::vector<Byte> stlRestResponse;
@@ -650,10 +730,10 @@ std::string RegisterVirtualMachine(
 
         // Create rest request
         std::string strContent = "{\n    \"IEosb\": \""+ c_strEncodedIEosb +"\","
-                                "\n    \"DigitalContractGuid\": \""+ strDcGuid +"\","
+                                "\n    \"DigitalContractGuid\": \""+ c_oVmInformation.GetString("DigitalContractGuid") +"\","
                                 "\n    \"VirtualMachineGuid\": \""+ c_strVmGuid +"\","
                                 "\n    \"HeartbeatBroadcastTime\": "+ std::to_string(::GetEpochTimeInSeconds()) +","
-                                "\n    \"IPAddress\": \"127.0.0.1\""
+                                "\n    \"IPAddress\": \""+ c_oVmInformation.GetString("IPAddress") +"\""
                                 "\n}";
         std::string strHttpRegisterRequest = "POST /SAIL/VirtualMachineManager/RegisterVM HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
@@ -722,10 +802,6 @@ std::string RegisterVmAfterDataUpload(
     __DebugAssert(0 < c_strVmGuid.size());
 
     std::string strVmEventGuid;
-
-    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
-
-    std::cout << "************************\n Register Virtual Machine Event For DOO\n************************\n" << std::endl;
 
     try
     {
@@ -804,10 +880,6 @@ std::string RegisterVmForComputation(
     __DebugAssert(0 < c_strVmGuid.size());
 
     std::string strVmEventGuid;
-
-    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
-
-    std::cout << "************************\n Register Virtual Machine For RO \n************************\n" << std::endl;
 
     try
     {

@@ -639,10 +639,10 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetVmInformation(
     poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
 
     // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
     _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
     unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+    std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
     _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
 
     StructuredBuffer oDatabaseResponse(stlResponse);
@@ -773,10 +773,10 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
         poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
 
         // Read header and body of the response
-        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
         _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
         unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
 
         // Check if DatabaseManager registered the virtual machine or not

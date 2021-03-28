@@ -9,6 +9,7 @@
  ********************************************************************************************/
 
 #include "DatabaseTools.h"
+#include "Base64Encoder.h"
 
 /********************************************************************************************/
 
@@ -232,7 +233,7 @@ void __thiscall DatabaseTools::AcceptDigitalContracts(void)
         ::AcceptDigitalContract(strEncodedEosb, oDcInformation);
     }
 
-    std::cout << "Digital contracts approved." << std::endl;;
+    std::cout << "Digital contracts approved." << std::endl;
 }
 
 /********************************************************************************************/
@@ -258,7 +259,119 @@ void __thiscall DatabaseTools::ActivateDigitalContracts(void)
         ::ActivateDigitalContract(strEncodedEosb, oDcInformation);
     }
 
-    std::cout << "Digital contracts activated." << std::endl;;
+    std::cout << "Digital contracts activated." << std::endl;
+}
+
+/********************************************************************************************/
+
+void __thiscall DatabaseTools::AddVirtualMachine(void)
+{
+    __DebugFunction();
+
+    // Login to the web services with DOO admin credentials
+    std::string strEncodedEosb = Login(m_stlAdmins.at(1).m_strEmail, m_strPassword);
+    _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
+    // Get imposter eosb
+    std::string strIEosb = ::GetIEosb(strEncodedEosb);
+    _ThrowBaseExceptionIf((0 == strIEosb.size()), "Exiting!", nullptr);
+    // Add Vm information
+    StructuredBuffer oVmInformation;
+    oVmInformation.PutString("DigitalContractGuid", m_stlDigitalContractGuids.at(0));
+    oVmInformation.PutString("IPAddress", "127.0.0.1");
+    // Register Vm
+    std::string strVmGuid = Guid(eVirtualMachine).ToString(eHyphensAndCurlyBraces);
+    std::string strVmEosb = ::RegisterVirtualMachine(strIEosb, strVmGuid, oVmInformation);
+    // Check if the virtual machine was registered successfully
+    _ThrowBaseExceptionIf((0 == strVmEosb.size()), "Error occurred when registering a virtual machine.", nullptr);
+    std::cout << "Virtual machine registered successfully." << std::endl;
+    // Register VM for DOO and add leaf events
+    this->RegisterVmAfterDataUpload(strVmGuid);
+    // Register VM for RO and add leaf events
+    this->RegisterVmForComputation(strVmGuid);
+}
+
+/********************************************************************************************/
+
+void __thiscall DatabaseTools::RegisterVmAfterDataUpload(
+    _in const std::string & c_strVmGuid
+    )
+{
+    __DebugFunction();
+
+    // Login to the web services with DOO admin credentials
+    std::string strEncodedEosb = Login(m_stlAdmins.at(1).m_strEmail, m_strPassword);
+    _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
+    // Add Vm information
+    StructuredBuffer oVmInformation;
+    oVmInformation.PutString("DigitalContractGuid", m_stlDigitalContractGuids.at(0));
+    // Generate VM branch event for DOO
+    std::string strVmEventGuid = ::RegisterVmAfterDataUpload(strEncodedEosb, c_strVmGuid);
+    // Check if the virtual machine was registered successfully
+    _ThrowBaseExceptionIf((0 == strVmEventGuid.size()), "Error occurred when adding VM branch event for data owner organization", nullptr);
+    std::cout << "VM branch event added for DOO." << std::endl;
+    // Add leaf events information
+    StructuredBuffer oLeafEvents;
+    std::vector<std::string> strEventNames = {"VMAdded", "DataUploaded", "VMToolsInstalled", "VMToolsUpdated", "VMHighDiskLatency", "VMCPUUsageAlarm"};
+    for (unsigned int unIndex = 0; unIndex < 6; ++unIndex)
+    {
+        StructuredBuffer oEvent;
+        oEvent.PutString("EventGuid", Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
+        oEvent.PutQword("EventType", unIndex % 6);
+        oEvent.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+        StructuredBuffer oEncryptedEventData;
+        oEncryptedEventData.PutString("EventName", strEventNames.at(unIndex));
+        oEncryptedEventData.PutByte("EventType", unIndex + 1);
+        StructuredBuffer oEventData;
+        oEventData.PutUnsignedInt64("VersionNumber", 0x0000000100000001);
+        oEventData.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+        oEncryptedEventData.PutStructuredBuffer("EventData", oEventData);
+        oEvent.PutString("EncryptedEventData", ::Base64Encode(oEncryptedEventData.GetSerializedBufferRawDataPtr(), oEncryptedEventData.GetSerializedBufferRawDataSizeInBytes()));
+        oLeafEvents.PutStructuredBuffer(std::to_string(unIndex).c_str(), oEvent);
+    }
+    // Register leaf events for DOO 
+    ::RegisterLeafEvents(strEncodedEosb, strVmEventGuid, oLeafEvents);
+}
+
+/********************************************************************************************/
+
+void __thiscall DatabaseTools::RegisterVmForComputation(
+    _in const std::string & c_strVmGuid
+    )
+{
+    __DebugFunction();
+
+    // Login to the web services with RO admin credentials
+    std::string strEncodedEosb = Login(m_stlAdmins.at(0).m_strEmail, m_strPassword);
+    _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
+    // Add Vm information
+    StructuredBuffer oVmInformation;
+    oVmInformation.PutString("DigitalContractGuid", m_stlDigitalContractGuids.at(0));
+    // Generate VM branch event for DOO
+    std::string strVmEventGuid = ::RegisterVmForComputation(strEncodedEosb, c_strVmGuid);
+    // Check if the virtual machine was registered successfully
+    _ThrowBaseExceptionIf((0 == strVmEventGuid.size()), "Error occurred when adding VM branch event for researcher organization", nullptr);
+    std::cout << "VM branch event added for RO." << std::endl;
+    // Add leaf events information
+    StructuredBuffer oLeafEvents;
+    std::vector<std::string> strEventNames = {"VMAdded", "PoweredOff", "VMToolsInstalled", "VMNetworkReconfigured", "VMRestartedOnAlternateHost", "VMDeleted"};
+    for (unsigned int unIndex = 0; unIndex < 6; ++unIndex)
+    {
+        StructuredBuffer oEvent;
+        oEvent.PutString("EventGuid", Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
+        oEvent.PutQword("EventType", unIndex % 6);
+        oEvent.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+        StructuredBuffer oEncryptedEventData;
+        oEncryptedEventData.PutString("EventName", strEventNames.at(unIndex));
+        oEncryptedEventData.PutByte("EventType", unIndex + 1);
+        StructuredBuffer oEventData;
+        oEventData.PutUnsignedInt64("VersionNumber", 0x0000000100000001);
+        oEventData.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+        oEncryptedEventData.PutStructuredBuffer("EventData", oEventData);
+        oEvent.PutString("EncryptedEventData", ::Base64Encode(oEncryptedEventData.GetSerializedBufferRawDataPtr(), oEncryptedEventData.GetSerializedBufferRawDataSizeInBytes()));
+        oLeafEvents.PutStructuredBuffer(std::to_string(unIndex).c_str(), oEvent);
+    }
+    // Register leaf events for DOO 
+    ::RegisterLeafEvents(strEncodedEosb, strVmEventGuid, oLeafEvents);
 }
 
 

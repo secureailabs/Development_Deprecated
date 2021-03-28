@@ -38,6 +38,8 @@ int main()
         oDatabaseTools.AcceptDigitalContracts();
         // Activate digital contracts
         oDatabaseTools.ActivateDigitalContracts();
+        // Add a Virtual Machine, add VM branch and leaf events for DOO and RO
+        oDatabaseTools.AddVirtualMachine();
     }
     catch(BaseException & oBaseException)
     {

@@ -166,6 +166,19 @@ class DatabaseTools : public Object
         // Activate all digital contracts
         void __thiscall ActivateDigitalContracts(void);
 
+        // Add virtual machine
+        void __thiscall AddVirtualMachine(void);
+
+        // Add VM branch event node and leaf events for DOO
+        void __thiscall RegisterVmAfterDataUpload(
+            _in const std::string & c_strVmGuid
+            );
+
+        // Add VM branch event node and leaf events for RO
+        void __thiscall RegisterVmForComputation(
+            _in const std::string & c_strVmGuid
+            );
+
     private:
 
         // Data members

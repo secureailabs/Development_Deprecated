@@ -25,6 +25,23 @@
 #include <sstream>
 #include <algorithm>
 
+std::string __stdcall GeneratePassword(
+    _in const unsigned int c_unPasswordLength
+)
+{
+    __DebugFunction();
+
+    std::string strPasswordCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789~!@#$%^&*()_-+={[}]|.?/";
+    std::string strGeneratedPassword = "";
+
+    for(unsigned int i = 0; i < c_unPasswordLength; i++)
+    {
+        strGeneratedPassword.push_back(strPasswordCharacters.at(::rand() % strPasswordCharacters.length()));
+    }
+
+    return strGeneratedPassword;
+}
+
 /********************************************************************************************
  *
  * @function ReplaceAll
@@ -254,11 +271,13 @@ void __thiscall Azure::SetResourceGroup(
 std::string __thiscall Azure::ProvisionVirtualMachine(
     _in const std::string c_strBaseImageName,
     _in const std::string c_strVirtualMachineSize,
-    _in const std::string c_strDnsLabel
+    _in const std::string c_strDnsLabel,
+    _in const std::string c_strPassword
 )
 {
     __DebugFunction();
 
+    // Create a name for the Virtual Machine which is just a Guid.
     Guid oGuidVirtualMachine;
     std::string strVirtualMachineName = oGuidVirtualMachine.ToString(eRaw);
 
@@ -292,6 +311,9 @@ std::string __thiscall Azure::ProvisionVirtualMachine(
     ::ReplaceAll(strVirtualMachineSpec, "{{NetworkInterface}}", strVirtualMachineName + "-nic");
     ::ReplaceAll(strVirtualMachineSpec, "{{ImageName}}", c_strBaseImageName);
     ::ReplaceAll(strVirtualMachineSpec, "{{VmSize}}", c_strVirtualMachineSize);
+    ::ReplaceAll(strVirtualMachineSpec, "{{Password}}", c_strPassword);
+    ::ReplaceAll(strVirtualMachineSpec, "{{Username}}", strVirtualMachineName);
+    ::ReplaceAll(strVirtualMachineSpec, "{{ComputerName}}", "SailVirtualMachine");
     strRestResponse = this->MakeRestCall("PUT", "Microsoft.Compute/virtualMachines/" + strVirtualMachineName, "management.azure.com", strVirtualMachineSpec, "2020-12-01");
     // std::cout << "VM response \n\n" << strRestResponse << "\n\n";
     _ThrowBaseExceptionIf((0 == strRestResponse.length()), "Request timed out", nullptr);

@@ -20,6 +20,10 @@
 
 /********************************************************************************************/
 
+std::string __stdcall GeneratePassword(
+    _in const unsigned int c_unPasswordLength
+    );
+
 class Azure : public Object
 {
     public:
@@ -42,7 +46,8 @@ class Azure : public Object
         std::string __thiscall ProvisionVirtualMachine(
             _in const std::string c_strBaseImageName,
             _in const std::string c_strVirtualMachineSize,
-            _in const std::string c_strDnsLabel
+            _in const std::string c_strDnsLabel,
+            _in const std::string c_strPassword
             );
         std::string __thiscall GetVmProvisioningState(
             _in std::string & c_strVirtualMachineName

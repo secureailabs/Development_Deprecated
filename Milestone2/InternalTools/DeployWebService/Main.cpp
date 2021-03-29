@@ -106,11 +106,14 @@ static void __stdcall CreateVirtualMachine(void)
             unsigned int unVmCreationCounter = 0;
             oAzure.SetResourceGroup(gc_strResourceGroup);
             oAzure.SetVirtualNetwork(gc_strVirtualNetwork);
-
-            std::string strVmName = oAzure.ProvisionVirtualMachine(gc_strImageName, gc_strVirtualMachineSize, "WebService");
+        
+            std::string strPassword = ::GeneratePassword(16);
+            std::string strVmName = oAzure.ProvisionVirtualMachine(gc_strImageName, gc_strVirtualMachineSize, "WebService", strPassword);
             std::string strVirtualMachinePublicIp = oAzure.GetVmIp(strVmName);
             std::cout << "Virtual Machine Provisioning status: Success\n";
             std::cout << "Virtual Machine Public IP Address: " << strVirtualMachinePublicIp << std::endl;
+            std::cout << "Virtual Machine Public username: " << strVmName << std::endl;
+            std::cout << "Virtual Machine Public password: " << strPassword << std::endl;
             // It makes sense to sleep for some time so that the VMs init process process can initialize
             // RootOfTrust process further communication.
             // TODO: This is a blocking call, make this non-blocking

@@ -21,9 +21,9 @@
       }
     },
     "osProfile": {
-      "adminUsername": "azureuser",
-      "computerName": "myVM",
-      "adminPassword": "azureuser@123"
+      "adminUsername": "{{Username}}",
+      "computerName": "{{ComputerName}}",
+      "adminPassword": "{{Password}}"
     },
     "networkProfile": {
       "networkInterfaces": [

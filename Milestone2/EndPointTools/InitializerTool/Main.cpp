@@ -399,9 +399,9 @@ int __cdecl main(
 
         ThreadManager * poThreadManager = ThreadManager::GetInstance();
 
-        std::cout << "+------------------------------------+---------------------+-------------------+-------------------+-------------------------------+" << std::endl
-                  << "|        Virtual Machine Name        |  Public IP Address  |   Provisioning    |  Initialization   |           Dataset             |" << std::endl
-                  << "+------------------------------------+---------------------+-------------------+-------------------+-------------------------------+" << std::endl;
+        std::cout << "+------------------------------------+--------------------+---------------------+-------------------+-------------------+-------------------------------+" << std::endl
+                  << "|        Virtual Machine Name        |      Password      |  Public IP Address  |   Provisioning    |  Initialization   |           Dataset             |" << std::endl
+                  << "+------------------------------------+--------------------+---------------------+-------------------+-------------------+-------------------------------+" << std::endl;
 
         unsigned int unDatasetIndex = 0;
         for (unsigned int unVirtualMachineLoopCounter = 0; unVirtualMachineLoopCounter < oInitializerData.GetNumberOfVirtualMachines(); unVirtualMachineLoopCounter++)

@@ -11,6 +11,8 @@
 #include "InteractiveClient.h"
 #include "Base64Encoder.h"
 
+#include <openssl/rand.h>
+
 const char * g_szServerIpAddress;
 unsigned int g_unPortNumber;
 
@@ -2250,3 +2252,85 @@ bool PullDigitalContract(
 
     return fSuccess;
 }
+
+/********************************************************************************************/
+
+std::vector<Byte> GetRemoteAttestationCertificate(void)
+{
+    __DebugFunction();
+
+    std::vector<Byte> stlSerializedResponse;
+
+    // Generate a random nonce using OpenSSL
+    std::vector<Byte> stlNonce(256);
+    int nStatus = ::RAND_bytes(stlNonce.data(), stlNonce.size());
+    _ThrowBaseExceptionIf((1 != nStatus), "Failed to generate a random nonce.", nullptr);
+    // Base64 encode buffer
+    std::string strNonce = ::Base64Encode(stlNonce.data(), stlNonce.size());
+
+    try 
+    {
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
+
+        // Create rest request
+        std::string strContent = "{\n    \"Nonce\": \""+ strNonce +"\""
+                                "\n}";
+        std::string strHttpRequest = "GET /SAIL/AuthenticationManager/RemoteAttestationCertificate HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRequest.data(), (strHttpRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
+            {
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
+                {
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
+                }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+        
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting remote attestation certificate.", nullptr);
+        // The following is the response structure
+        std::vector<Byte> stlRemoteAttestationCert = ::Base64Decode(oResponse.GetString("RemoteAttestationCertificatePem").c_str());
+        std::string strPulicKeyPem = oResponse.GetString("PublicKeyCertificate");
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+    catch(...)
+    {
+        ::ShowErrorMessage("Error getting list of digital contracts.");
+    }
+
+    return stlSerializedResponse;
+}
+

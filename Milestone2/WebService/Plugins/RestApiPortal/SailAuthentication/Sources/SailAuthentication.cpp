@@ -237,6 +237,13 @@ void __thiscall SailAuthentication::InitializePlugin(void)
     StructuredBuffer oGetBasicUserInformationParameters;
     oGetBasicUserInformationParameters.PutStructuredBuffer("Eosb", oEosb);
 
+    // Add parameters for GetRemoteAttestationCertificate resource
+    StructuredBuffer oGetRemoteAttestationCertificate;
+    StructuredBuffer oNonce;
+    oNonce.PutByte("ElementType", BUFFER_VALUE_TYPE);
+    oNonce.PutBoolean("IsRequired", true);
+    oGetRemoteAttestationCertificate.PutStructuredBuffer("Nonce", oNonce);
+
     // Verifies user credentials and starts an authenticated session with SAIL SaaS
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuthenticationManager/User/Login", oLoginParameters);
 
@@ -246,6 +253,9 @@ void __thiscall SailAuthentication::InitializePlugin(void)
 
     // Take in a full EOSB, call Cryptographic plugin and fetches user guid and organization guid
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AuthenticationManager/GetBasicUserInformation", oGetBasicUserInformationParameters);
+
+    // Take in a nonce and send back a certificate and public key
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AuthenticationManager/RemoteAttestationCertificate", oGetRemoteAttestationCertificate);
 
 }
 
@@ -293,6 +303,10 @@ uint64_t __thiscall SailAuthentication::SubmitRequest(
         if ("/SAIL/AuthenticationManager/GetBasicUserInformation" == strResource)
         {
             stlResponseBuffer = this->GetBasicUserInformation(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/AuthenticationManager/RemoteAttestationCertificate" == strResource)
+        {
+            stlResponseBuffer = this->GetRemoteAttestationCertificate(c_oRequestStructuredBuffer);
         }
     }
 
@@ -502,6 +516,53 @@ std::vector<Byte> __thiscall SailAuthentication::GetBasicUserInformation(
     {
         oResponse.PutDword("Status", 404);
     }
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class SailAuthentication
+ * @function GetRemoteAttestationCertificate
+ * @brief Take in a nonce and send back a certificate and public key
+ * @param[in] c_oRequest contains the request body
+ * @returns remote attestation certificate and public key
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall SailAuthentication::GetRemoteAttestationCertificate(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 204;
+    // Get nonce
+    std::vector<Byte> stlNonce = c_oRequest.GetBuffer("Nonce");
+
+    StructuredBuffer oRemoteAttestationCertificate;
+    oRemoteAttestationCertificate.PutDword("TransactionType", 0x00000004);
+    oRemoteAttestationCertificate.PutBuffer("MessageDigest", stlNonce);
+
+    // Call CryptographicManager plugin to get the digital signature blob
+    Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+    StructuredBuffer oPluginResponse(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oRemoteAttestationCertificate));
+    if ((0 < oPluginResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oPluginResponse.GetDword("Status")))
+    {
+        // Add digital signature and public key to the response
+        StructuredBuffer oDigitalSignature(oPluginResponse.GetStructuredBuffer("DSIG"));
+        oResponse.PutBuffer("RemoteAttestationCertificatePem", oDigitalSignature.GetBuffer("DigitalSignature"));
+        oResponse.PutString("PublicKeyCertificate", oDigitalSignature.GetString("PublicKeyPEM"));
+        dwStatus = 200;
+    }
+    else
+    {
+        _ThrowBaseException("Error getting digital signatures.", nullptr);
+    }
+
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }

@@ -25,6 +25,9 @@ int main()
         unsigned int unPort = 6200;
         ::AddWebPortalConfiguration(c_szIpAddress, unPort);
 
+        // PING web services portal
+        ::GetRemoteAttestationCertificate();
+
         bool fTerminatedSignalEncountered = false;
         while(false == fTerminatedSignalEncountered)
         {

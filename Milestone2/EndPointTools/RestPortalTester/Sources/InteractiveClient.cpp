@@ -641,7 +641,7 @@ bool RegisterLeafEvents(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 5000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {

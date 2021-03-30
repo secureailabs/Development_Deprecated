@@ -271,6 +271,11 @@ void __thiscall DatabaseTools::AddVirtualMachine(void)
     // Login to the web services with DOO admin credentials
     std::string strEncodedEosb = Login(m_stlAdmins.at(1).m_strEmail, m_strPassword);
     _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
+    // Get list of all digital contracts for the data owner organization
+    for (std::string strGuid : StructuredBuffer(::ListDigitalContracts(strEncodedEosb)).GetNamesOfElements())
+    {
+        m_stlDigitalContractGuids.push_back(strGuid);
+    }
     // Get imposter eosb
     std::string strIEosb = ::GetIEosb(strEncodedEosb);
     _ThrowBaseExceptionIf((0 == strIEosb.size()), "Exiting!", nullptr);
@@ -309,17 +314,33 @@ void __thiscall DatabaseTools::RegisterVmAfterDataUpload(
     // Check if the virtual machine was registered successfully
     _ThrowBaseExceptionIf((0 == strVmEventGuid.size()), "Error occurred when adding VM branch event for data owner organization", nullptr);
     std::cout << "VM branch event added for DOO." << std::endl;
+    // Create vector representing event names
+    std::vector<std::string> stlEventNames = {"VM_STARTED", "VM_INITIALIZED", "VM_DATASET_UPLOADED", "VM_READY", "CONNECT_FAILURE", "CONNECT_SUCCESS"};
+    for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
+    {
+        stlEventNames.push_back("PUSH_DATA");
+        stlEventNames.push_back("PUSH_FN");
+        stlEventNames.push_back("RUN_FN");
+        stlEventNames.push_back("CHECK_JOB");
+        stlEventNames.push_back("PULL_DATA");
+    }
+    stlEventNames.push_back("INSPECT");
+    stlEventNames.push_back("GET_TABLE");
+    stlEventNames.push_back("DELETE_DATA");
+    stlEventNames.push_back("LOGOFF");
+    stlEventNames.push_back("VM_SHUTTING_DOWN");
     // Add leaf events information
+    uint64_t un64EpochTimeInMilliseconds = ::GetEpochTimeInMilliseconds();
     StructuredBuffer oLeafEvents;
-    std::vector<std::string> strEventNames = {"VMAdded", "DataUploaded", "VMToolsInstalled", "VMToolsUpdated", "VMHighDiskLatency", "VMCPUUsageAlarm"};
-    for (unsigned int unIndex = 0; unIndex < 6; ++unIndex)
+    for (unsigned int unIndex = 0; unIndex < 30; ++unIndex)
     {
         StructuredBuffer oEvent;
         oEvent.PutString("EventGuid", Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
-        oEvent.PutQword("EventType", unIndex % 6);
-        oEvent.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+        oEvent.PutQword("EventType", unIndex % 16);
+        un64EpochTimeInMilliseconds += 1000;
+        oEvent.PutUnsignedInt64("Timestamp", un64EpochTimeInMilliseconds);
         StructuredBuffer oEncryptedEventData;
-        oEncryptedEventData.PutString("EventName", strEventNames.at(unIndex));
+        oEncryptedEventData.PutString("EventName", stlEventNames.at(unIndex));
         oEncryptedEventData.PutByte("EventType", unIndex + 1);
         StructuredBuffer oEventData;
         oEventData.PutUnsignedInt64("VersionNumber", 0x0000000100000001);
@@ -351,17 +372,31 @@ void __thiscall DatabaseTools::RegisterVmForComputation(
     // Check if the virtual machine was registered successfully
     _ThrowBaseExceptionIf((0 == strVmEventGuid.size()), "Error occurred when adding VM branch event for researcher organization", nullptr);
     std::cout << "VM branch event added for RO." << std::endl;
+    // Create vector representing event names
+    std::vector<std::string> stlEventNames = {"VM_STARTED", "VM_INITIALIZED", "VM_DATASET_UPLOADED", "VM_READY", "CONNECT_FAILURE", "CONNECT_SUCCESS"};
+    for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
+    {
+        stlEventNames.push_back("PUSH_DATA");
+        stlEventNames.push_back("PUSH_FN");
+        stlEventNames.push_back("RUN_FN");
+        stlEventNames.push_back("CHECK_JOB");
+        stlEventNames.push_back("PULL_DATA");
+    }
+    stlEventNames.push_back("INSPECT");
+    stlEventNames.push_back("GET_TABLE");
+    stlEventNames.push_back("DELETE_DATA");
+    stlEventNames.push_back("LOGOFF");
+    stlEventNames.push_back("VM_SHUTTING_DOWN");
     // Add leaf events information
     StructuredBuffer oLeafEvents;
-    std::vector<std::string> strEventNames = {"VMAdded", "PoweredOff", "VMToolsInstalled", "VMNetworkReconfigured", "VMRestartedOnAlternateHost", "VMDeleted"};
-    for (unsigned int unIndex = 0; unIndex < 6; ++unIndex)
+    for (unsigned int unIndex = 0; unIndex < 30; ++unIndex)
     {
         StructuredBuffer oEvent;
         oEvent.PutString("EventGuid", Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
-        oEvent.PutQword("EventType", unIndex % 6);
+        oEvent.PutQword("EventType", unIndex % 16);
         oEvent.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
         StructuredBuffer oEncryptedEventData;
-        oEncryptedEventData.PutString("EventName", strEventNames.at(unIndex));
+        oEncryptedEventData.PutString("EventName", stlEventNames.at(unIndex));
         oEncryptedEventData.PutByte("EventType", unIndex + 1);
         StructuredBuffer oEventData;
         oEventData.PutUnsignedInt64("VersionNumber", 0x0000000100000001);
@@ -373,6 +408,3 @@ void __thiscall DatabaseTools::RegisterVmForComputation(
     // Register leaf events for DOO 
     ::RegisterLeafEvents(strEncodedEosb, strVmEventGuid, oLeafEvents);
 }
-
-
-

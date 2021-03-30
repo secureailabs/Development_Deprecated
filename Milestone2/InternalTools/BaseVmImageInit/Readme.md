@@ -12,6 +12,13 @@ The BaseVmImageInit tool is a process that runs on the newly provisioned Azure V
 3. Set a crontab job to run BaseVmImageInit on every reboot by:
     * Run `crontab -e`
     * Add the line `@reboot sudo ./BaseVmImageInit > ImageInit.log`. This will run the BaseVmImageInit on every reboot and put all the logs in the `ImageInit.log` file.
+    * Install the following:
+        ```
+        sudo apt-get update
+        sudo apt-get install -y libssl-dev libuuid1 python3-dev python3-pip
+        sudo pip3 install numpy scipy pandas xgboost matplotlib shap imbalanced-learn ipython torch
+        sudo pip3 install -U scikit-learn
+        ```
 4. Copy the BaseVmImageInit using the following instructions to the virtual machine.
 
 ## Build Instructions
@@ -36,3 +43,4 @@ Once the Virtual Machine is in a state that can be rebooted and can download all
 3. Run `az vm generalize --resource-group <ResourceGroupName> --name <Virtual Machine Name>`
 4. Create an image using the generalized Virtual Machine `az image create --resource-group <ResourceGroupName> --name <New Image Name> --source <Virtual Machine Name>`
 5. Make sure to update the relevant global constants `EndPointTools/InitializerTool/InitializerData.h` for these changes to get used while creating a new Virtual Machine using the Initializer tool.
+

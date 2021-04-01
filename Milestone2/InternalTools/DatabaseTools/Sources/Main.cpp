@@ -12,10 +12,15 @@
 #include "ConsoleInputHelperFunctions.h"
 
 #include "getopt.h"
+#include <mongocxx/client.hpp>
+#include <mongocxx/instance.hpp>
+#include <mongocxx/uri.hpp>
+#include <mongocxx/exception/operation_exception.hpp>
 
 // struct containing valid command line options
 struct option Options[] = {
-    {"vm", no_argument, NULL, 'z'},
+    {"create-vm", no_argument, NULL, 'a'},
+    {"delete-db", no_argument, NULL, 'd'},
     {NULL, 0, NULL, 0}
 };
 
@@ -27,10 +32,10 @@ int main(int argc, char * argv[])
 
     // Check if any options supplied
     int nCharacter, nStatus, nSuccess = -1;
-    bool fRegisterVm = false;
+    bool fRegisterVm = false, fDeleteDb = false;
     while(-1 == nSuccess)
     {
-        nCharacter = getopt_long(argc, argv, "z", Options, &nStatus);
+        nCharacter = getopt_long(argc, argv, "ad", Options, &nStatus);
         // No more short swicthes
         if (-1 == nCharacter)
         {
@@ -38,15 +43,20 @@ int main(int argc, char * argv[])
         }
         else
         {
-            if ('z' == nCharacter)
+            if ('a' == nCharacter)
             {
                 fRegisterVm = true;
+                nSuccess = 1;
+            }
+            else if ('d' == nCharacter)
+            {
+                fDeleteDb = true;
                 nSuccess = 1;
             }
             else 
             {
                 // Invalid switch
-                std::cout << "Usage: options [-z] [--vm]" << std::endl;
+                std::cout << "Usage: options [-a create-vm] [-d delete-db]" << std::endl;
                 nSuccess = -2; 
             }
         }
@@ -65,7 +75,30 @@ int main(int argc, char * argv[])
             unsigned int unPortNumber = std::stoul(::GetStringInput("Port number: ", 50, false, c_szValidInputCharacters));
 
             DatabaseTools oDatabaseTools(strIpAddress.c_str(), unPortNumber);
-            if (false == fRegisterVm)
+            if (true == fRegisterVm)
+            {
+                // Add a Virtual Machine, add VM branch and leaf events for DOO and RO
+                oDatabaseTools.AddVirtualMachine();
+            }
+            else if (true == fDeleteDb)
+            {
+                std::string strChoice = ::GetStringInput("This action will delete the database. Type 'y' to confirm and 'n' to cancel: ", 1, false, c_szValidInputCharacters);
+                if ("y" == strChoice)
+                {
+                    // Delete database
+                    mongocxx::instance oMongoInstance{}; // Create only one instance
+                    mongocxx::uri oUri{"mongodb://localhost:27017/?replicaSet=rs0"};
+                    mongocxx::client oClient(oUri);
+                    mongocxx::database oDatabase = oClient["SailDatabase"];
+                    oDatabase.drop();
+                    std::cout << "Database deleted!" << std::endl;
+                }
+                else 
+                {
+                    std::cout << "No action taken. Exiting." << std::endl;
+                }
+            }
+            else 
             {
                 // Add organizations and their super admins
                 oDatabaseTools.AddOrganizationsAndSuperAdmins();
@@ -78,16 +111,15 @@ int main(int argc, char * argv[])
                 // Activate digital contracts
                 oDatabaseTools.ActivateDigitalContracts();
             }
-            else 
-            {
-                // Add a Virtual Machine, add VM branch and leaf events for DOO and RO
-                oDatabaseTools.AddVirtualMachine();
-            }
         }
         catch(BaseException & oBaseException)
         {
             std::cout << "Exception: " << std::endl;
             std::cout << oBaseException.GetExceptionMessage() << std::endl;
+        }
+        catch(mongocxx::operation_exception & oMongoException)
+        {
+            std::cout << oMongoException.what() << std::endl;
         }
         catch(...)
         {

@@ -321,6 +321,7 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
         std::cerr << oBaseException.GetExceptionMessage() << '\n';
         // send back error message
         std::string strErrorMessage = "HTTP/1.1 404 NotFound\r\nConnection: close\r\n\r\n";
+        std::cout << "\n\nRest Response:\n\n" << strErrorMessage << std::endl;
         // Send back error
         poTlsNode->Write((const Byte *) strErrorMessage.data(), strErrorMessage.size());
     }
@@ -332,6 +333,7 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
         std::cerr << bErrorResponse << std::endl;
         // send back error message
         std::string strErrorMessage = "HTTP/1.1 500 InternalServerError\r\nConnection: close\r\n\r\n";
+        std::cout << "\n\nRest Response:\n\n" << strErrorMessage << std::endl;
         // Send back error
         poTlsNode->Write((const Byte *) strErrorMessage.data(), strErrorMessage.size());
     }

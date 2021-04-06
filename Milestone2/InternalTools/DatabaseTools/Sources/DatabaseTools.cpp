@@ -100,11 +100,11 @@ void __thiscall DatabaseTools::InitializeMembers(void)
     "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";
     std::string strEulaSignedByDoo = "Company grants You a revocable, non-exclusive, non-transferable, limited right to use the dataset on a single machine.";
     std::string strEulaSignedByRo = "Company grants You a revocable, non-exclusive, non-transferable, limited right to use the dataset on a single machine.";
-    m_stlDigitalContracts.push_back(DigitalContractInformation{10, strLegalAgreement, 16186603, strEulaSignedByDoo, strEulaSignedByRo});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{28, strLegalAgreement, 24117352, strEulaSignedByDoo, strEulaSignedByRo});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{35, strLegalAgreement, 60768913, strEulaSignedByDoo, strEulaSignedByRo});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{90, strLegalAgreement, 8090084, strEulaSignedByDoo, strEulaSignedByRo});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{120, strLegalAgreement, 18605667, strEulaSignedByDoo, strEulaSignedByRo});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Kidney Cancer Research Consortium", 10, strLegalAgreement, 16186603, strEulaSignedByDoo, strEulaSignedByRo});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Diabetes Re-admission Model Phase 1", 28, strLegalAgreement, 24117352, strEulaSignedByDoo, strEulaSignedByRo});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Churn Prediction Project", 35, strLegalAgreement, 60768913, strEulaSignedByDoo, strEulaSignedByRo});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Harvest Model", 90, strLegalAgreement, 8090084, strEulaSignedByDoo, strEulaSignedByRo});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Obesity Model", 120, strLegalAgreement, 18605667, strEulaSignedByDoo, strEulaSignedByRo});
 }
 
 /********************************************************************************************/
@@ -196,6 +196,7 @@ void __thiscall DatabaseTools::AddDigitalContracts(void)
     // Register five digital contracts for the organizations
     for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
     {
+        oDcInformation.PutString("Title", m_stlDigitalContracts.at(unIndex).m_strTitle);
         oDcInformation.PutUnsignedInt64("SubscriptionDays", m_stlDigitalContracts.at(unIndex).m_unSubscriptionDays);
         oDcInformation.PutString("LegalAgreement", m_stlDigitalContracts.at(unIndex).m_strLegalAgreement);
         // Register digital contract

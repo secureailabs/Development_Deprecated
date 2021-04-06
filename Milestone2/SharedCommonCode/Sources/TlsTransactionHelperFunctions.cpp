@@ -11,9 +11,80 @@
 #include "DebugLibrary.h"
 #include "Exceptions.h"
 #include "TlsTransactionHelperFunctions.h"
+#include "Base64Encoder.h"
 
 #include <vector>
 #include <iostream>
+#include <sstream>
+
+/********************************************************************************************/
+
+bool PutResponse(
+    TlsNode * poTlsNode,
+    const std::string & stlPayload
+)
+{
+    __DebugFunction();
+    std::string strResponseHeader = "HTTP/1.1 200 OK \r\nContent-Length: " + std::to_string(stlPayload.length()) + "\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
+    std::string strResponseData(strResponseHeader);
+    strResponseData += stlPayload;
+    std::cout << "\n\nRest Response:\n\n" << strResponseData << std::endl;
+
+    // Send back response data
+    poTlsNode->Write((const Byte *) strResponseData.data(), strResponseData.size());
+
+    return true;
+}
+
+/********************************************************************************************/
+
+std::vector<Byte> GetPayload(
+    TlsNode * poTlsNode,
+    unsigned int unMillisecondTimeout
+)
+{
+    __DebugFunction();
+
+    std::string strPayload;
+
+    // Check whether the read was successful or not
+    bool fIsEndOfHeader = false;
+    while (false == fIsEndOfHeader)
+    {
+        std::vector<Byte> stlBuffer = poTlsNode->Read(1, unMillisecondTimeout);
+        if (0 < stlBuffer.size())
+        {
+            strPayload.push_back(stlBuffer.at(0));
+            if (4 <= strPayload.size())
+            {
+                if (("\r\n\r\n" == std::string(strPayload.end() - 4, strPayload.end())) || ("\n\r\n\r" == std::string(strPayload.end() - 4, strPayload.end())))
+                {
+                    fIsEndOfHeader = true;
+                }
+            }
+        }
+    }
+
+    // Get the length of the header
+    std::istringstream oStringStream(strPayload);
+    std::string strTempLine;
+    std::string strLineWithKey;
+    while (std::getline(oStringStream, strTempLine))
+    {
+        if (strTempLine.find("Content-Length") != std::string::npos)
+        {
+            strLineWithKey = strTempLine;
+            break;
+        }
+    }
+
+    std::string strStartOfValue = strLineWithKey.substr(strLineWithKey.find(": ")+2);
+    unsigned int unSizeOfPayload = std::stoi(strStartOfValue.c_str());
+
+    std::vector<Byte> stlFileToDownload = poTlsNode->Read(unSizeOfPayload, unMillisecondTimeout);
+    std::vector stlResponseDecodedBuffer = ::Base64Decode((char *)stlFileToDownload.data());
+    return stlResponseDecodedBuffer;
+}
 
 /********************************************************************************************/
 

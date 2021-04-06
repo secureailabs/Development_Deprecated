@@ -12,8 +12,50 @@
 #include "SailAuthentication.h"
 #include "SocketClient.h"
 #include "IpcTransactionHelperFunctions.h"
+#include "TlsClient.h"
 
 static SailAuthentication * gs_oSailAuthentication = nullptr;
+
+/********************************************************************************************
+ *
+ * @function CreateRequestPacket
+ * @brief Create a Tls request packet to send to the database portal
+ * @param[in] c_oRequest StructuredBuffer containing the request parameters
+ * @return Serialized request packet
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __stdcall CreateRequestPacket(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    unsigned int unSerializedBufferSizeInBytes = sizeof(Dword) + sizeof(uint32_t) + c_oRequest.GetSerializedBufferRawDataSizeInBytes() + sizeof(Dword);
+
+    std::vector<Byte> stlSerializedBuffer(unSerializedBufferSizeInBytes);
+    Byte * pbSerializedBuffer = (Byte *) stlSerializedBuffer.data();
+
+    // The format of the request data is:
+    //
+    // +------------------------------------------------------------------------------------+
+    // | [Dword] 0x436f6e74                                                                 |
+    // +------------------------------------------------------------------------------------+
+    // | [uint32_t] SizeInBytesOfRestRequestStructuredBuffer                                |
+    // +------------------------------------------------------------------------------------+
+    // | [SizeInBytesOfRestRequestStructuredBuffer] RestRequestStructuredBuffer             |
+    // +------------------------------------------------------------------------------------+
+    // | [Dword] 0x656e6420                                                                 |
+    // +------------------------------------------------------------------------------------+
+
+    *((Dword *) pbSerializedBuffer) = 0x436f6e74;
+    pbSerializedBuffer += sizeof(Dword);
+    *((uint32_t *) pbSerializedBuffer) = (uint32_t) c_oRequest.GetSerializedBufferRawDataSizeInBytes();
+    pbSerializedBuffer += sizeof(uint32_t);
+    ::memcpy((void *) pbSerializedBuffer, (const void *) c_oRequest.GetSerializedBufferRawDataPtr(), c_oRequest.GetSerializedBufferRawDataSizeInBytes());
+    pbSerializedBuffer += c_oRequest.GetSerializedBufferRawDataSizeInBytes();
+    *((Dword *) pbSerializedBuffer) = 0x656e6420;
+
+    return stlSerializedBuffer;
+}
 
 /********************************************************************************************
  *
@@ -257,6 +299,8 @@ void __thiscall SailAuthentication::InitializePlugin(void)
     // Take in a nonce and send back a certificate and public key
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AuthenticationManager/RemoteAttestationCertificate", oGetRemoteAttestationCertificate);
 
+    // Reset the database
+    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AuthenticationManager/Admin/ResetDatabase");
 }
 
 /********************************************************************************************
@@ -308,6 +352,13 @@ uint64_t __thiscall SailAuthentication::SubmitRequest(
         {
             stlResponseBuffer = this->GetRemoteAttestationCertificate(c_oRequestStructuredBuffer);
         }
+    }
+    else if ("DELETE" == strVerb)
+    {
+       if ("/SAIL/AuthenticationManager/Admin/ResetDatabase" == strResource)
+        {
+            stlResponseBuffer = this->ResetDatabase(c_oRequestStructuredBuffer);
+        } 
     }
 
     // Return size of response buffer
@@ -560,6 +611,56 @@ std::vector<Byte> __thiscall SailAuthentication::GetRemoteAttestationCertificate
     else
     {
         _ThrowBaseException("Error getting digital signatures.", nullptr);
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class SailAuthentication
+ * @function ResetDatabase
+ * @brief Reset the database
+ * @param[in] c_oRequest contains the request body
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall SailAuthentication::ResetDatabase(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    // TODO: disable this function in production
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 204;
+    // Make a Tls connection with the database portal
+    TlsNode * poTlsNode = nullptr;
+    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+    // Reset the database
+    StructuredBuffer oRequest;
+    oRequest.PutString("PluginName", "DatabaseManager");
+    oRequest.PutString("Verb", "DELETE");
+    oRequest.PutString("Resource", "/SAIL/DatabaseManager/ResetDatabase");
+    std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+    // Send request packet
+    poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+    // Read header and body of the response
+    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+    std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+
+    StructuredBuffer oDatabaseResponse(stlResponse);
+    if (404 != oDatabaseResponse.GetDword("Status"))
+    {
+        dwStatus = 200;
     }
 
     oResponse.PutDword("Status", dwStatus);

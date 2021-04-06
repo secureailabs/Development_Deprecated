@@ -12,10 +12,6 @@
 #include "ConsoleInputHelperFunctions.h"
 
 #include "getopt.h"
-#include <mongocxx/client.hpp>
-#include <mongocxx/instance.hpp>
-#include <mongocxx/uri.hpp>
-#include <mongocxx/exception/operation_exception.hpp>
 
 // struct containing valid command line options
 struct option Options[] = {
@@ -86,11 +82,7 @@ int main(int argc, char * argv[])
                 if ("y" == strChoice)
                 {
                     // Delete database
-                    mongocxx::instance oMongoInstance{}; // Create only one instance
-                    mongocxx::uri oUri{"mongodb://localhost:27017/?replicaSet=rs0"};
-                    mongocxx::client oClient(oUri);
-                    mongocxx::database oDatabase = oClient["SailDatabase"];
-                    oDatabase.drop();
+                    oDatabaseTools.DeleteDatabase();
                     std::cout << "Database deleted!" << std::endl;
                 }
                 else 
@@ -116,10 +108,6 @@ int main(int argc, char * argv[])
         {
             std::cout << "Exception: " << std::endl;
             std::cout << oBaseException.GetExceptionMessage() << std::endl;
-        }
-        catch(mongocxx::operation_exception & oMongoException)
-        {
-            std::cout << oMongoException.what() << std::endl;
         }
         catch(...)
         {

@@ -182,6 +182,9 @@ class DatabaseTools : public Object
             _in const std::string & c_strVmGuid
             );
 
+        // Delete database
+        void __thiscall DeleteDatabase();
+
     private:
 
         // Data members

@@ -409,3 +409,62 @@ void __thiscall DatabaseTools::RegisterVmForComputation(
     // Register leaf events for DOO 
     ::RegisterLeafEvents(strEncodedEosb, strVmEventGuid, oLeafEvents);
 }
+
+/********************************************************************************************/
+
+void __thiscall DatabaseTools::DeleteDatabase(void)
+{
+    __DebugFunction();
+
+    // Reset database
+    try
+    {
+        bool fSuccess = false;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
+
+        std::string strHttpLoginRequest = "DELETE /SAIL/AuthenticationManager/Admin/ResetDatabase HTTP/1.1\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: 0\r\n"
+                                        "\r\n";
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpLoginRequest.data(), (strHttpLoginRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 20000);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
+            {
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
+                {
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
+                }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error resetting the database.", nullptr);
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage("Resetting the database failed!");
+    }
+}

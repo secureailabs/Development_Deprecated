@@ -374,6 +374,10 @@ void __thiscall DigitalContractDatabase::InitializePlugin(void)
     oGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oGuid.PutBoolean("IsRequired", true);
     oRegisterDc.PutStructuredBuffer("DataOwnerOrganization", oGuid);
+    StructuredBuffer oTitle;
+    oTitle.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oTitle.PutBoolean("IsRequired", true);
+    oRegisterDc.PutStructuredBuffer("Title", oTitle);
     StructuredBuffer oVersionNumber;
     oVersionNumber.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oVersionNumber.PutBoolean("IsRequired", true);
@@ -1087,6 +1091,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
         std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
         // Create Ssb containing Dc information
         StructuredBuffer oSsb;
+        oSsb.PutString("Title", c_oRequest.GetString("Title"));
         oSsb.PutString("VersionNumber", c_oRequest.GetString("VersionNumber"));
         oSsb.PutString("DigitalContractGuid", strDcGuid);
         oSsb.PutDword("ContractStage", eApplication);

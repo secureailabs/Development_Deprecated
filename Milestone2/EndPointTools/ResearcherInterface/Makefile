@@ -36,7 +36,7 @@ FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
-OUTPUT=libSAILPyAPI.so
+OUTPUT=SAILPyAPI.so
 
 all: $(OUTPUT)
 

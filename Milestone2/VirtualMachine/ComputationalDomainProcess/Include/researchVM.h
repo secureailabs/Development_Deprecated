@@ -11,7 +11,7 @@
 #pragma once
 
 #include "StructuredBuffer.h"
-#include "SocketServer.h"
+#include "TlsServer.h"
 #include "RootOfTrustNode.h"
 #include "Socket.h"
 #include "engine.h"
@@ -23,19 +23,21 @@
 
 /********************************************************************************************/
 
-class ComputationVM{
+class ComputationVM : public Object
+{
     private:
         JobEngine m_oEngine;
-        SocketServer m_oSocketServer;
+        TlsServer m_oTlsServer;
         std::map<std::string, std::unique_ptr<FunctionNode>> m_stlFNMap;
-        std::string m_strVMID;
+        const std::string m_strVMID;
         std::string m_strEOSB;
+        const RootOfTrustNode m_oRootOfTrustNode;
         bool m_fStop;
-        RootOfTrustNode m_oRootOfTrustNode;
+        
 
         void __thiscall HandleConnection
         (
-            _in Socket* poSocket
+            _in TlsNode* poSocket
         );
         void __thiscall SocketListen(void);
         void __thiscall HandleConnect
@@ -133,7 +135,19 @@ class ComputationVM{
         (
             _in Word wPortIdentifier, 
             _in size_t nMaxProcess,
-            _in RootOfTrustNode& oRootOfTrustNode
+            _in const RootOfTrustNode& oRootOfTrustNode
         );
+        ~ComputationVM
+        (
+            void
+        );
+        ComputationVM
+        (
+            _in const ComputationVM & c_oComputationVM
+        ) = delete;
+        ComputationVM & operator=(
+            _in const ComputationVM & c_oComputationVM
+        ) = delete;
+
         void __thiscall InitializeVM(void);
 };

@@ -22,6 +22,20 @@
 #include <iostream>
 #include <sstream>
 
+JobEngine::JobEngine
+(
+    _in size_t nMaxProcesses
+)
+:m_nMaxWorkers(nMaxProcesses) 
+{
+    __DebugFunction();
+}
+
+JobEngine::~JobEngine(void)
+{
+    __DebugFunction();
+}
+
 /********************************************************************************************
  *
  * @class JobEngine
@@ -33,6 +47,8 @@
 
 void __thiscall JobEngine::AddOneJob(std::unique_ptr<Job>&& stlJobPtr)
 {
+    __DebugFunction();
+
     std::unique_lock<std::mutex> stlQueueLock(m_stlQueueMutex);
     m_stlJobQueue.push_back(std::move(stlJobPtr));
     stlQueueLock.unlock();
@@ -109,7 +125,8 @@ void __thiscall JobEngine::ProcessOneJob(void)
             }
 
             //the main process will create a thread to wait for the job to finish
-            else{
+            else
+            {
             	int nStatus;
             	waitpid(nPid, &nStatus, 0);
             	std::cout<<"job done"<<std::endl;
@@ -139,7 +156,8 @@ void __thiscall JobEngine::ProcessOneJob(void)
 
 std::unique_ptr<Job> __thiscall JobEngine::GetOneJob()
 {
-
+    __DebugFunction();
+    
     std::unique_ptr<Job> stlTempJobPtr(std::move(m_stlJobQueue.front()));
     m_stlJobQueue.pop_front();
 
@@ -169,6 +187,8 @@ std::unique_ptr<Job> __thiscall JobEngine::GetOneJob()
 
 void __thiscall JobEngine::Dispatch()
 {
+    __DebugFunction();
+
     m_fStop = false;
 
     std::vector<std::thread> stlWorkersThreadPool(m_nMaxWorkers);
@@ -194,6 +214,8 @@ void __thiscall JobEngine::Dispatch()
 
 void __thiscall JobEngine::RemoveDone(std::string& strJobName)
 {
+    __DebugFunction();
+
     m_stlJobMap.erase(strJobName);
 }
 
@@ -208,6 +230,7 @@ void __thiscall JobEngine::RemoveDone(std::string& strJobName)
 
 void __thiscall JobEngine::Halt()
 {
+    __DebugFunction();
 
 	m_fStop=true;
 	m_stlQueueConditionVariable.notify_all();
@@ -223,6 +246,8 @@ void __thiscall JobEngine::Halt()
 
 std::string __thiscall JobEngine::GetJobResult(std::string& strJobName)
 {
+    __DebugFunction();
+
 	return m_stlJobMap[strJobName]->GetOutput();
 }
 
@@ -236,6 +261,8 @@ std::string __thiscall JobEngine::GetJobResult(std::string& strJobName)
 
 std::string __thiscall JobEngine::RetrieveJobs(void)
 {
+    __DebugFunction();
+
 	std::stringstream stlStream;
 	stlStream<<"Job ID                                       "<<"Job Status            "<<std::endl;
 	for(auto it = m_stlJobQueue.begin(); it != m_stlJobQueue.end(); ++it)
@@ -259,5 +286,7 @@ std::string __thiscall JobEngine::RetrieveJobs(void)
 
 JobStatus& __thiscall JobEngine::PeekStatus(std::string& strJobID)
 {
+    __DebugFunction();
+
     return m_stlJobMap[strJobID]->GetStatus();    
 }

@@ -12,10 +12,10 @@
 #include "CoreTypes.h"
 #include "researchVM.h"
 #include "DataConnector.h"
-#include "DebugLibrary.h"
 #include "SocketClient.h"
 #include "StatusMonitor.h"
 #include "StructuredBuffer.h"
+#include "TlsTransactionHelperFunctions.h"
 #include "IpcTransactionHelperFunctions.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
@@ -48,14 +48,30 @@
  *
  ********************************************************************************************/
 
-ComputationVM::ComputationVM(
-    _in Word wPortIdentifier, 
+ComputationVM::ComputationVM
+(
+    _in Word WordPortIdentifier,
     _in size_t nMaxProcess,
-    _in RootOfTrustNode& oRootOfTrustNode
-    )
-    : m_oEngine(nMaxProcess), m_oSocketServer(wPortIdentifier), m_fStop(false), m_oRootOfTrustNode(oRootOfTrustNode)
+    _in const RootOfTrustNode& oRootOfTrustNode
+): m_oEngine(nMaxProcess), 
+   m_oTlsServer(WordPortIdentifier), 
+   m_strVMID(Guid().ToString(eRaw)),
+   m_oRootOfTrustNode(oRootOfTrustNode),
+   m_fStop(false)
 {
-    m_strVMID = Guid().ToString(eRaw);
+    __DebugFunction();
+}
+
+ComputationVM::~ComputationVM
+(
+    void
+)
+{
+    __DebugFunction();
+
+    m_oEngine.Release();
+    m_oTlsServer.Release();
+    //m_oRootOfTrustNode->Release();
 }
 
 /********************************************************************************************
@@ -68,7 +84,9 @@ ComputationVM::ComputationVM(
 
 void __thiscall ComputationVM::InitializeVM(void)
 {
-	std::vector<std::thread> stlThreadPool;
+    __DebugFunction();
+
+    std::vector<std::thread> stlThreadPool;
 
 	stlThreadPool.push_back(std::thread(&ComputationVM::SocketListen, this));
 	stlThreadPool.push_back(std::thread(&JobEngine::Dispatch, &m_oEngine));
@@ -95,11 +113,22 @@ void ComputationVM::SocketListen(void)
     
     while (false == oStatusMonitor.IsTerminating())
     {
-        if (true == m_oSocketServer.WaitForConnection(1000))
+        try 
         {
-            Socket * poNewConnection = m_oSocketServer.Accept();
-            this->HandleConnection(poNewConnection);
-        }    
+            if (true == m_oTlsServer.WaitForConnection(1000))
+            {
+                TlsNode*  poNewConnection = m_oTlsServer.Accept();
+                _ThrowIfNull(poNewConnection, "Handle computationVM connection request retures a null pointer.", nullptr);
+                this->HandleConnection(poNewConnection);
+            }
+        }
+        catch(const BaseException & oBaseException)
+        {
+            StructuredBuffer oResponseStructuredBuffer;
+            std::cout<<oBaseException.GetExceptionMessage()<<std::endl;
+            oResponseStructuredBuffer.PutString("Status", "Fail");
+            oResponseStructuredBuffer.PutString("Error", oBaseException.GetExceptionMessage());
+        }
     }
 }
 
@@ -113,61 +142,63 @@ void ComputationVM::SocketListen(void)
  ********************************************************************************************/
 
 void ComputationVM::HandleConnection(
-    _in Socket* poSocket
+    _in TlsNode*  poSocket
     )
 {
     __DebugFunction();
     
     bool bConnectionState = true;
-    while(bConnectionState)
-    {
-        std::vector<Byte> stlContent = GetIpcTransaction(poSocket);
-        if(0<stlContent.size())
-        {
-			StructuredBuffer oContent(stlContent);
-			StructuredBuffer oResponse;
-			
-			std::string strReply;
-			unsigned int nType = (unsigned int)oContent.GetInt8("Type");
+    StructuredBuffer oResponseStructuredBuffer;
 
-			switch(nType)
-			{
-				//TODO: handle failure cases
-				case (unsigned int)eQUIT:
-					HandleQuit(oContent, oResponse);
-					bConnectionState =false;
-					Halt();
-					break;
-				case (unsigned int)eRUN:
-					HandleRun(oContent, oResponse);
-					break;
-                case (unsigned int)eCONNECT:
-					HandleConnect(oContent, oResponse);
-					break;
-				case (unsigned int)eINSPECT:
-					HandleInspect(oContent, oResponse);
-					break;
-				case (unsigned int)eGETTABLE:
-					HandleGetTable(oContent, oResponse);
-					break;
-				case (unsigned int)ePUSHDATA:
-					HandlePushData(oContent, oResponse);
-					break;
-				case (unsigned int)ePULLDATA:
-					HandlePullData(oContent, oResponse);
-					break;
-				case (unsigned int)eDELETEDATA:
-					HandleDeleteData(oContent, oResponse);
-					break;
-				case (unsigned int)ePUSHFN:
-					HandlePushFN(oContent, oResponse);
-					break;
-				default:
-					oResponse.PutBoolean("Status", false);
-					oResponse.PutString("Payload", "invalid request");
-			}
-			PutIpcTransaction(poSocket, oResponse);
+    std::vector<Byte> stlContent = GetTlsTransaction(poSocket, 10*1000);
+    std::cout<<"Get tls transaction request: "<<stlContent.size()<<std::endl;
+    if(0<stlContent.size())
+    {
+        StructuredBuffer oContent(stlContent);
+        StructuredBuffer oResponse;
+        
+        std::string strReply;
+        unsigned int nType = (unsigned int)oContent.GetInt8("Type");
+        std::cout<<"check type: "<<nType<<std::endl;
+
+        switch(nType)
+        {
+            //TODO: handle failure cases
+            case (unsigned int)eQUIT:
+                HandleQuit(oContent, oResponse);
+                bConnectionState =false;
+                Halt();
+                break;
+            case (unsigned int)eRUN:
+                HandleRun(oContent, oResponse);
+                break;
+            case (unsigned int)eCONNECT:
+                std::cout<<"handle vm connection"<<std::endl;
+                HandleConnect(oContent, oResponse);
+                break;
+            case (unsigned int)eINSPECT:
+                HandleInspect(oContent, oResponse);
+                break;
+            case (unsigned int)eGETTABLE:
+                HandleGetTable(oContent, oResponse);
+                break;
+            case (unsigned int)ePUSHDATA:
+                HandlePushData(oContent, oResponse);
+                break;
+            case (unsigned int)ePULLDATA:
+                HandlePullData(oContent, oResponse);
+                break;
+            case (unsigned int)eDELETEDATA:
+                HandleDeleteData(oContent, oResponse);
+                break;
+            case (unsigned int)ePUSHFN:
+                HandlePushFN(oContent, oResponse);
+                break;
+            default:
+                oResponse.PutBoolean("Status", false);
+                oResponse.PutString("Payload", "invalid request");
         }
+        PutTlsTransaction(poSocket, oResponse);
     }
 }
 
@@ -185,6 +216,8 @@ void __thiscall ComputationVM::HandleQuit
     _in StructuredBuffer& oResponse
 )
 {
+    __DebugFunction();
+
     oResponse.PutBoolean("Status", true);
     m_oEngine.Halt();
 }
@@ -195,7 +228,8 @@ void __thiscall ComputationVM::HandleConnect
     _in StructuredBuffer& oResponse
 )
 {
-    //__DebugFunction();
+    __DebugFunction();
+
     std::string strEOSB = oContent.GetString("EOSB");
     SetEOSB(strEOSB);
     oResponse.PutString("VMID", m_strVMID);
@@ -207,6 +241,8 @@ void __thiscall ComputationVM::HandleRun
     _in StructuredBuffer& oResponse
 )
 {
+    __DebugFunction();
+
     std::string strFunctionNode = oContent.GetString("FNID");
     std::string strJobID = oContent.GetString("JobID");
     std::vector<std::string> stlInput = m_stlFNMap[strFunctionNode]->GetInput();
@@ -252,6 +288,8 @@ void __thiscall ComputationVM::HandleInspect
     _in StructuredBuffer& oResponse
 )
 {
+    __DebugFunction();
+
     std::string strReply;
 
     strReply = m_oEngine.RetrieveJobs();
@@ -265,6 +303,8 @@ void __thiscall ComputationVM::HandleGetTable
 )
 {
     //ToDo
+    __DebugFunction();
+
     std::string strReply;
 
     strReply = RetrieveDatasets();
@@ -284,6 +324,8 @@ std::string __thiscall ComputationVM::RetrieveDatasets
     void
 )
 {
+    __DebugFunction();
+
     Socket * poSocket =  ConnectToUnixDomainSocket("/tmp/{0bd8a254-49e4-4b86-b1b8-f353c18013c5}");
     StructuredBuffer oRequest;
     
@@ -325,6 +367,7 @@ void __thiscall ComputationVM::HandleCheck
     _in StructuredBuffer& oResponse
 )
 {
+    __DebugFunction();
     std::string strRequest = oContent.GetString("JobID");
 
     std::string strReply = m_oEngine.GetJobResult(strRequest);
@@ -337,6 +380,7 @@ void __thiscall ComputationVM::HandlePushData
     _in StructuredBuffer& oResponse
 )
 {
+    __DebugFunction();
 
     std::vector<std::string> stlVarIDs;
     std::vector<std::vector<Byte>> stlVars;
@@ -377,6 +421,8 @@ void __thiscall ComputationVM::SaveBuffer
     std::vector<std::vector<Byte>>& stlVars 
 )
 {
+    __DebugFunction();
+
     size_t nNumber = stlVars.size();
     for(size_t i =0; i<nNumber; i++)
     {
@@ -394,16 +440,36 @@ void __thiscall ComputationVM::LinkPassID
     _in std::vector<std::string>& stlPassIDs
 )
 {
+    __DebugFunction();
+
     size_t nNumber = stlPassIDs.size();
+    for(i=0;i<nNumber;i++){
+        std::cout<<stlPassIDs[i]<<std::endl;
+    }
     std::vector<std::string> stlConfidentialInputIDs =  m_stlFNMap[strFNID]->GetConfidentialInput();
-    for(size_t i =0;i<nNumber;i++)
+
+    try{
+        for(size_t i =0;i<nNumber;i++)
+        {
+            std::ofstream stlVarFile;
+            std::string strTarget = std::string("/tmp/"+stlPassIDs[i]);
+            std::string strLinkpath = std::string("/tmp/"+strJobID+stlConfidentialInputIDs[i]);
+            const char* target = strTarget.c_str();
+            const char* linkpath = strLinkpath.c_str();
+
+            while(access(target, F_OK)!=0)   
+            {
+                std::cout<<"filename:"<<target<<" linkdata waiting for file"<<std::endl;
+            }
+
+            int res = symlink(target, linkpath);
+            if(-1 == res)
+                _ThrowBaseException("Can not establish symbolic link", nullptr);
+        }
+    }
+    catch(const BaseException & oBaseException)
     {
-        std::ofstream stlVarFile;
-        std::string strTarget = std::string("/tmp/"+stlPassIDs[i]);
-        std::string strLinkpath = std::string("/tmp/"+strJobID+stlConfidentialInputIDs[i]);
-        const char* target = strTarget.c_str();
-        const char* linkpath = strLinkpath.c_str();
-        int res = symlink(target, linkpath);
+        std::cout<<oBaseException.GetExceptionMessage()<<std::endl;
     }
 }
 
@@ -413,6 +479,9 @@ void __thiscall ComputationVM::HandlePullData
     _in StructuredBuffer& oResponse
 )
 {
+
+    __DebugFunction();
+
     std::string strJobID = oContent.GetString("JobID");
     StructuredBuffer oVarIDs = oContent.GetStructuredBuffer("VarIDs");
 
@@ -445,6 +514,8 @@ void __thiscall ComputationVM::LoadDataToBuffer
     _in std::vector<std::vector<Byte>>& stlVars
 )
 {
+    __DebugFunction();
+
     size_t nNumber = stlVarIDs.size();
     for(size_t i=0; i<nNumber; i++)
     {
@@ -474,6 +545,8 @@ void __thiscall ComputationVM::HandleDeleteData
 )
 {
     //TODO
+    __DebugFunction();
+
     std::vector<std::string> stlVars;
     StructuredBuffer oVars = oContent.GetStructuredBuffer("Vars");
 
@@ -493,6 +566,9 @@ void __thiscall ComputationVM::HandlePushFN
     _in StructuredBuffer& oResponse
 )
 {
+
+    __DebugFunction();
+
     std::string strFNID = oContent.GetString("FNID");
     std::string strFNScript = oContent.GetString("FNScript");
 
@@ -533,6 +609,8 @@ void __thiscall ComputationVM::SaveFN
     std::string& strFNScript
 )
 {
+    __DebugFunction();
+
     std::ofstream stlFNFile;
     stlFNFile.open("/tmp/"+strFNID);
     stlFNFile<<strFNScript;
@@ -549,6 +627,7 @@ void __thiscall ComputationVM::SaveFN
 
 void __thiscall ComputationVM::Halt(void)
 {
+    __DebugFunction();
     m_fStop = true;
 }
 

@@ -10,7 +10,7 @@
     <Compile Update="SailWebApiPortalLoginDialog.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Update="MicrosoftAzureExceptionsDialog.cs">
+    <Compile Update="ExceptionsDialog.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="MicrosoftAzureLoginDialog.cs">

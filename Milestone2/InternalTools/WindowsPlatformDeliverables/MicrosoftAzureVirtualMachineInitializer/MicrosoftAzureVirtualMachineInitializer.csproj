@@ -20,9 +20,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Update="SailWebApiPortalExceptionsDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
     <Compile Update="MicrosoftAzureLoginDialog - Copy.Designer.cs">
       <DependentUpon>MicrosoftAzureLoginDialog.Designer.cs</DependentUpon>
     </Compile>

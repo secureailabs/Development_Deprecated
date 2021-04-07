@@ -39,6 +39,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_StatusStrip = new System.Windows.Forms.StatusStrip();
             this.m_CopyrightStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.m_HelpStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.m_ExceptionsToolStripStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.m_VirtualMachineCountLabel = new System.Windows.Forms.Label();
             this.m_SailLogoPictureBox = new System.Windows.Forms.PictureBox();
             this.m_NextButton = new System.Windows.Forms.Button();
@@ -119,22 +120,24 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             // m_StatusStrip
             // 
+            this.m_StatusStrip.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.m_StatusStrip.ImageScalingSize = new System.Drawing.Size(24, 24);
             this.m_StatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.m_CopyrightStripStatusLabel,
-            this.m_HelpStripStatusLabel});
-            this.m_StatusStrip.Location = new System.Drawing.Point(0, 479);
+            this.m_HelpStripStatusLabel,
+            this.m_ExceptionsToolStripStatusLabel});
+            this.m_StatusStrip.LayoutStyle = System.Windows.Forms.ToolStripLayoutStyle.HorizontalStackWithOverflow;
+            this.m_StatusStrip.Location = new System.Drawing.Point(0, 482);
             this.m_StatusStrip.Name = "m_StatusStrip";
-            this.m_StatusStrip.Size = new System.Drawing.Size(1014, 32);
+            this.m_StatusStrip.Size = new System.Drawing.Size(1014, 29);
             this.m_StatusStrip.TabIndex = 6;
             this.m_StatusStrip.Text = "statusStrip1";
             // 
             // m_CopyrightStripStatusLabel
             // 
-            this.m_CopyrightStripStatusLabel.AutoSize = false;
             this.m_CopyrightStripStatusLabel.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.m_CopyrightStripStatusLabel.Name = "m_CopyrightStripStatusLabel";
-            this.m_CopyrightStripStatusLabel.Size = new System.Drawing.Size(920, 25);
+            this.m_CopyrightStripStatusLabel.Size = new System.Drawing.Size(400, 22);
             this.m_CopyrightStripStatusLabel.Text = "Copyright (C) 2021 Secure AI Labs, Inc.";
             this.m_CopyrightStripStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
@@ -143,9 +146,20 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_HelpStripStatusLabel.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.m_HelpStripStatusLabel.IsLink = true;
             this.m_HelpStripStatusLabel.Name = "m_HelpStripStatusLabel";
-            this.m_HelpStripStatusLabel.Size = new System.Drawing.Size(50, 25);
+            this.m_HelpStripStatusLabel.Size = new System.Drawing.Size(50, 22);
             this.m_HelpStripStatusLabel.Text = "Help";
             this.m_HelpStripStatusLabel.Click += new System.EventHandler(this.m_HelpStripStatusLabel_Click);
+            // 
+            // m_ExceptionsToolStripStatusLabel
+            // 
+            this.m_ExceptionsToolStripStatusLabel.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
+            this.m_ExceptionsToolStripStatusLabel.IsLink = true;
+            this.m_ExceptionsToolStripStatusLabel.LinkColor = System.Drawing.Color.Red;
+            this.m_ExceptionsToolStripStatusLabel.Name = "m_ExceptionsToolStripStatusLabel";
+            this.m_ExceptionsToolStripStatusLabel.Size = new System.Drawing.Size(300, 22);
+            this.m_ExceptionsToolStripStatusLabel.Text = "Click here to view exceptions";
+            this.m_ExceptionsToolStripStatusLabel.Click += new System.EventHandler(this.m_ExceptionsToolStripStatusLabel_Click);
+
             // 
             // m_VirtualMachineCountLabel
             // 
@@ -348,8 +362,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // ManualSettingsDialog
             // 
             this.AcceptButton = this.m_NextButton;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 25F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.ClientSize = new System.Drawing.Size(1014, 511);
             this.ControlBox = false;
             this.Controls.Add(this.m_VirtualMachineSizeLabel);
@@ -422,5 +435,6 @@ namespace MicrosoftAzureVirtualMachineInitializer
         private System.Windows.Forms.TextBox m_VirtualMachineSizeTextBox;
         private System.Windows.Forms.Label m_BaseMachineNameLabel;
         private System.Windows.Forms.Label m_VirtualMachineSizeLabel;
+        private System.Windows.Forms.ToolStripStatusLabel m_ExceptionsToolStripStatusLabel;
     }
 }

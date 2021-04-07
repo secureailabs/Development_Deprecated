@@ -20,7 +20,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
         {
             InitializeComponent();
 
-            m_SailWebApiPortalExceptionsDialog = new SailWebApiPortalExceptionsDialog();
+            m_ExceptionsDialog = new ExceptionsDialog();
 
             // Load default settings from the registry of they exist
             RegistryKey registryKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\SAIL");
@@ -112,7 +112,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             EventArgs e
             )
         {
-            m_SailWebApiPortalExceptionsDialog.ShowDialog(this);
+            m_ExceptionsDialog.ShowDialog(this);
         }
 
         /// <summary>
@@ -125,7 +125,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             EventArgs e
             )
         {
-            if ((0 == SailWebApiPortalInterop.GetExceptionCount())&&(0 == m_SailWebApiPortalExceptionsDialog.GetExceptionsCount()))
+            if (0 == m_ExceptionsDialog.ExceptionsCount)
             {
                 m_ExceptionsStripStatusLabel.Text = "";
             }
@@ -135,6 +135,6 @@ namespace MicrosoftAzureVirtualMachineInitializer
             }
         }
 
-        private SailWebApiPortalExceptionsDialog m_SailWebApiPortalExceptionsDialog;
+        private ExceptionsDialog m_ExceptionsDialog;
     }
 }

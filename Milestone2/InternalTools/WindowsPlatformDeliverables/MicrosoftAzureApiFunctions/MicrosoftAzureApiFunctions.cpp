@@ -28,8 +28,6 @@
 #include <string>
 #include <iostream>
 
-// This library is thread safe and is protected by a mutex
-static std::mutex gs_stlMutex;
 // Microsoft Azure global data
 static bool gs_fWinsockInitializer = false;
 static std::string gs_strMicrosoftAzureAccessToken;
@@ -209,8 +207,6 @@ extern "C" __declspec(dllexport) bool __cdecl LoginToMicrosoftAzureApiPortal(
 
     try
     {
-        // Make things thread safe
-        const std::lock_guard<std::mutex> lock(gs_stlMutex);
         // Make sure we are not currently logged on
         _ThrowBaseExceptionIf((false == gs_strMicrosoftAzureAccessToken.empty()), "Already logged in. Make sure to logout first.", nullptr);
 
@@ -270,8 +266,6 @@ extern "C" __declspec(dllexport) BSTR __cdecl ProvisionVirtualMachineAndWait(
 
     try
     {
-        // Make things thread safe
-        const std::lock_guard<std::mutex> lock(gs_stlMutex);
         // Make sure we are not currently logged on
         _ThrowBaseExceptionIf((0 == gs_strMicrosoftAzureAccessToken.size()), "Authentication required...", nullptr);
 

@@ -1,0 +1,15 @@
+C:\Users\Luis Huapaya\Documents\GitHub\Development\Milestone2\InternalTools\WindowsPlatformDeliverables\Binaries\x64\Debug\StringTo64BitHashGenerator.exe
+C:\Users\Luis Huapaya\Documents\GitHub\Development\Milestone2\InternalTools\WindowsPlatformDeliverables\Binaries\x64\Debug\StringTo64BitHashGenerator.deps.json
+C:\Users\Luis Huapaya\Documents\GitHub\Development\Milestone2\InternalTools\WindowsPlatformDeliverables\Binaries\x64\Debug\StringTo64BitHashGenerator.runtimeconfig.json
+C:\Users\Luis Huapaya\Documents\GitHub\Development\Milestone2\InternalTools\WindowsPlatformDeliverables\Binaries\x64\Debug\StringTo64BitHashGenerator.runtimeconfig.dev.json
+C:\Users\Luis Huapaya\Documents\GitHub\Development\Milestone2\InternalTools\WindowsPlatformDeliverables\Binaries\x64\Debug\StringTo64BitHashGenerator.dll
+C:\Users\Luis Huapaya\Documents\GitHub\Development\Milestone2\InternalTools\WindowsPlatformDeliverables\Binaries\x64\Debug\StringTo64BitHashGenerator.pdb
+C:\Users\Luis Huapaya\Documents\GitHub\Development\Milestone2\InternalTools\WindowsPlatformDeliverables\StringTo64BitHashGenerator\obj\Debug\StringTo64BitHashGenerator.MainDialog.resources
+C:\Users\Luis Huapaya\Documents\GitHub\Development\Milestone2\InternalTools\WindowsPlatformDeliverables\StringTo64BitHashGenerator\obj\Debug\StringTo64BitHashGenerator.Properties.Resources.resources
+C:\Users\Luis Huapaya\Documents\GitHub\Development\Milestone2\InternalTools\WindowsPlatformDeliverables\StringTo64BitHashGenerator\obj\Debug\StringTo64BitHashGenerator.csproj.GenerateResource.cache
+C:\Users\Luis Huapaya\Documents\GitHub\Development\Milestone2\InternalTools\WindowsPlatformDeliverables\StringTo64BitHashGenerator\obj\Debug\StringTo64BitHashGenerator.AssemblyInfoInputs.cache
+C:\Users\Luis Huapaya\Documents\GitHub\Development\Milestone2\InternalTools\WindowsPlatformDeliverables\StringTo64BitHashGenerator\obj\Debug\StringTo64BitHashGenerator.AssemblyInfo.cs
+C:\Users\Luis Huapaya\Documents\GitHub\Development\Milestone2\InternalTools\WindowsPlatformDeliverables\StringTo64BitHashGenerator\obj\Debug\StringTo64BitHashGenerator.csproj.CoreCompileInputs.cache
+C:\Users\Luis Huapaya\Documents\GitHub\Development\Milestone2\InternalTools\WindowsPlatformDeliverables\StringTo64BitHashGenerator\obj\Debug\StringTo64BitHashGenerator.dll
+C:\Users\Luis Huapaya\Documents\GitHub\Development\Milestone2\InternalTools\WindowsPlatformDeliverables\StringTo64BitHashGenerator\obj\Debug\StringTo64BitHashGenerator.pdb
+C:\Users\Luis Huapaya\Documents\GitHub\Development\Milestone2\InternalTools\WindowsPlatformDeliverables\StringTo64BitHashGenerator\obj\Debug\StringTo64BitHashGenerator.genruntimeconfig.cache

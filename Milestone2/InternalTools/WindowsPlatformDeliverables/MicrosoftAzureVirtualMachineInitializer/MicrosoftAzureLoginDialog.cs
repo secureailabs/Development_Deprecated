@@ -19,9 +19,8 @@ namespace MicrosoftAzureVirtualMachineInitializer
         public MicrosoftAzureLoginDialog()
         {
             InitializeComponent();
-            // Initialize data members
-            m_MicrosoftAzureExceptionsDialog = new MicrosoftAzureExceptionsDialog();
-            m_PasswordDialogOutcome = 0;
+
+            m_MicrosoftAzureExceptionsDialog = new ExceptionsDialog();
 
             // Load default settings from the registry of they exist
             RegistryKey registryKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\SAIL");
@@ -78,8 +77,8 @@ namespace MicrosoftAzureVirtualMachineInitializer
                     registryKey.SetValue("DefaultMicrosoftAzureApiPortalApplicationIdentifier", m_ApplicationIdentifierTextBox.Text);
                     registryKey.SetValue("DefaultMicrosoftAzureApiPortalTenantIdentifier", m_TenantIdentifierEditBox.Text);
                     registryKey.Close();
-                    m_PasswordDialogOutcome = 1;
                     this.m_RefreshTimer.Stop();
+                    this.DialogResult = DialogResult.OK;
                     this.Close();
                 }
             }
@@ -95,8 +94,8 @@ namespace MicrosoftAzureVirtualMachineInitializer
             EventArgs e
             )
         {
-            m_PasswordDialogOutcome = 2;
             this.m_RefreshTimer.Stop();
+            this.DialogResult = DialogResult.Cancel;
             this.Close();
         }
 
@@ -133,7 +132,6 @@ namespace MicrosoftAzureVirtualMachineInitializer
             }
         }
 
-        private MicrosoftAzureExceptionsDialog m_MicrosoftAzureExceptionsDialog;
-        public int m_PasswordDialogOutcome;
+        private ExceptionsDialog m_MicrosoftAzureExceptionsDialog;
     }
 }

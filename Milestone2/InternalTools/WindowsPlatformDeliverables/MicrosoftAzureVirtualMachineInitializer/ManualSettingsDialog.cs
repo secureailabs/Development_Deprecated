@@ -19,6 +19,9 @@ namespace MicrosoftAzureVirtualMachineInitializer
         public ManualSettingsDialog()
         {
             InitializeComponent();
+
+            m_ExceptionsDialog = new ExceptionsDialog();
+
             // Get a list of all of the digital contracts
             uint numberOfDigitalContracts = SailWebApiPortalInterop.LoadDigitalContracts();
             for (uint index = 0; index < numberOfDigitalContracts; index++)
@@ -274,6 +277,19 @@ namespace MicrosoftAzureVirtualMachineInitializer
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
+        private void m_ExceptionsToolStripStatusLabel_Click(
+            object sender,
+            EventArgs e
+            )
+        {
+            m_ExceptionsDialog.ShowDialog(this);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void m_RefreshTimer_Tick(
             object sender,
             EventArgs e
@@ -287,6 +303,17 @@ namespace MicrosoftAzureVirtualMachineInitializer
             {
                 m_NextButton.Enabled = false;
             }
+
+            if (0 == m_ExceptionsDialog.ExceptionsCount)
+            {
+                m_ExceptionsToolStripStatusLabel.Text = "";
+            }
+            else
+            {
+                m_ExceptionsToolStripStatusLabel.Text = "Click here to view exceptions";
+            }
         }
+
+        private ExceptionsDialog m_ExceptionsDialog;
     }
 }

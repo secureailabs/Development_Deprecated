@@ -100,11 +100,11 @@ void __thiscall DatabaseTools::InitializeMembers(void)
     "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";
     std::string strEulaSignedByDoo = "Company grants You a revocable, non-exclusive, non-transferable, limited right to use the dataset on a single machine.";
     std::string strEulaSignedByRo = "Company grants You a revocable, non-exclusive, non-transferable, limited right to use the dataset on a single machine.";
-    m_stlDigitalContracts.push_back(DigitalContractInformation{10, strLegalAgreement, 16186603, strEulaSignedByDoo, strEulaSignedByRo});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{28, strLegalAgreement, 24117352, strEulaSignedByDoo, strEulaSignedByRo});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{35, strLegalAgreement, 60768913, strEulaSignedByDoo, strEulaSignedByRo});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{90, strLegalAgreement, 8090084, strEulaSignedByDoo, strEulaSignedByRo});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{120, strLegalAgreement, 18605667, strEulaSignedByDoo, strEulaSignedByRo});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Kidney Cancer Research Consortium", 10, strLegalAgreement, 16186603, strEulaSignedByDoo, strEulaSignedByRo});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Diabetes Re-admission Model Phase 1", 28, strLegalAgreement, 24117352, strEulaSignedByDoo, strEulaSignedByRo});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Churn Prediction Project", 35, strLegalAgreement, 60768913, strEulaSignedByDoo, strEulaSignedByRo});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Harvest Model", 90, strLegalAgreement, 8090084, strEulaSignedByDoo, strEulaSignedByRo});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Obesity Model", 120, strLegalAgreement, 18605667, strEulaSignedByDoo, strEulaSignedByRo});
 }
 
 /********************************************************************************************/
@@ -196,6 +196,7 @@ void __thiscall DatabaseTools::AddDigitalContracts(void)
     // Register five digital contracts for the organizations
     for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
     {
+        oDcInformation.PutString("Title", m_stlDigitalContracts.at(unIndex).m_strTitle);
         oDcInformation.PutUnsignedInt64("SubscriptionDays", m_stlDigitalContracts.at(unIndex).m_unSubscriptionDays);
         oDcInformation.PutString("LegalAgreement", m_stlDigitalContracts.at(unIndex).m_strLegalAgreement);
         // Register digital contract
@@ -271,6 +272,11 @@ void __thiscall DatabaseTools::AddVirtualMachine(void)
     // Login to the web services with DOO admin credentials
     std::string strEncodedEosb = Login(m_stlAdmins.at(1).m_strEmail, m_strPassword);
     _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
+    // Get list of all digital contracts for the data owner organization
+    for (std::string strGuid : StructuredBuffer(::ListDigitalContracts(strEncodedEosb)).GetNamesOfElements())
+    {
+        m_stlDigitalContractGuids.push_back(strGuid);
+    }
     // Get imposter eosb
     std::string strIEosb = ::GetIEosb(strEncodedEosb);
     _ThrowBaseExceptionIf((0 == strIEosb.size()), "Exiting!", nullptr);
@@ -309,17 +315,33 @@ void __thiscall DatabaseTools::RegisterVmAfterDataUpload(
     // Check if the virtual machine was registered successfully
     _ThrowBaseExceptionIf((0 == strVmEventGuid.size()), "Error occurred when adding VM branch event for data owner organization", nullptr);
     std::cout << "VM branch event added for DOO." << std::endl;
+    // Create vector representing event names
+    std::vector<std::string> stlEventNames = {"VM_STARTED", "VM_INITIALIZED", "VM_DATASET_UPLOADED", "VM_READY", "CONNECT_SUCCESS"};
+    for (unsigned int unIndex = 0; unIndex < 4; ++unIndex)
+    {
+        stlEventNames.push_back("PUSH_DATA");
+        stlEventNames.push_back("PUSH_FN");
+        stlEventNames.push_back("RUN_FN");
+        stlEventNames.push_back("CHECK_JOB");
+        stlEventNames.push_back("PULL_DATA");
+    }
+    stlEventNames.push_back("INSPECT");
+    stlEventNames.push_back("GET_TABLE");
+    stlEventNames.push_back("DELETE_DATA");
+    stlEventNames.push_back("LOGOFF");
+    stlEventNames.push_back("VM_SHUTTING_DOWN");
     // Add leaf events information
+    uint64_t un64EpochTimeInMilliseconds = ::GetEpochTimeInMilliseconds();
     StructuredBuffer oLeafEvents;
-    std::vector<std::string> strEventNames = {"VMAdded", "DataUploaded", "VMToolsInstalled", "VMToolsUpdated", "VMHighDiskLatency", "VMCPUUsageAlarm"};
-    for (unsigned int unIndex = 0; unIndex < 6; ++unIndex)
+    for (unsigned int unIndex = 0; unIndex < 30; ++unIndex)
     {
         StructuredBuffer oEvent;
         oEvent.PutString("EventGuid", Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
-        oEvent.PutQword("EventType", unIndex % 6);
-        oEvent.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+        oEvent.PutQword("EventType", unIndex % 16);
+        un64EpochTimeInMilliseconds += 1000;
+        oEvent.PutUnsignedInt64("Timestamp", un64EpochTimeInMilliseconds);
         StructuredBuffer oEncryptedEventData;
-        oEncryptedEventData.PutString("EventName", strEventNames.at(unIndex));
+        oEncryptedEventData.PutString("EventName", stlEventNames.at(unIndex));
         oEncryptedEventData.PutByte("EventType", unIndex + 1);
         StructuredBuffer oEventData;
         oEventData.PutUnsignedInt64("VersionNumber", 0x0000000100000001);
@@ -351,17 +373,31 @@ void __thiscall DatabaseTools::RegisterVmForComputation(
     // Check if the virtual machine was registered successfully
     _ThrowBaseExceptionIf((0 == strVmEventGuid.size()), "Error occurred when adding VM branch event for researcher organization", nullptr);
     std::cout << "VM branch event added for RO." << std::endl;
+    // Create vector representing event names
+    std::vector<std::string> stlEventNames = {"VM_STARTED", "VM_INITIALIZED", "VM_DATASET_UPLOADED", "VM_READY", "CONNECT_SUCCESS"};
+    for (unsigned int unIndex = 0; unIndex < 4; ++unIndex)
+    {
+        stlEventNames.push_back("PUSH_DATA");
+        stlEventNames.push_back("PUSH_FN");
+        stlEventNames.push_back("RUN_FN");
+        stlEventNames.push_back("CHECK_JOB");
+        stlEventNames.push_back("PULL_DATA");
+    }
+    stlEventNames.push_back("INSPECT");
+    stlEventNames.push_back("GET_TABLE");
+    stlEventNames.push_back("DELETE_DATA");
+    stlEventNames.push_back("LOGOFF");
+    stlEventNames.push_back("VM_SHUTTING_DOWN");
     // Add leaf events information
     StructuredBuffer oLeafEvents;
-    std::vector<std::string> strEventNames = {"VMAdded", "PoweredOff", "VMToolsInstalled", "VMNetworkReconfigured", "VMRestartedOnAlternateHost", "VMDeleted"};
-    for (unsigned int unIndex = 0; unIndex < 6; ++unIndex)
+    for (unsigned int unIndex = 0; unIndex < 30; ++unIndex)
     {
         StructuredBuffer oEvent;
         oEvent.PutString("EventGuid", Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
-        oEvent.PutQword("EventType", unIndex % 6);
+        oEvent.PutQword("EventType", unIndex % 16);
         oEvent.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
         StructuredBuffer oEncryptedEventData;
-        oEncryptedEventData.PutString("EventName", strEventNames.at(unIndex));
+        oEncryptedEventData.PutString("EventName", stlEventNames.at(unIndex));
         oEncryptedEventData.PutByte("EventType", unIndex + 1);
         StructuredBuffer oEventData;
         oEventData.PutUnsignedInt64("VersionNumber", 0x0000000100000001);
@@ -374,5 +410,61 @@ void __thiscall DatabaseTools::RegisterVmForComputation(
     ::RegisterLeafEvents(strEncodedEosb, strVmEventGuid, oLeafEvents);
 }
 
+/********************************************************************************************/
 
+void __thiscall DatabaseTools::DeleteDatabase(void)
+{
+    __DebugFunction();
 
+    // Reset database
+    try
+    {
+        bool fSuccess = false;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
+
+        std::string strHttpLoginRequest = "DELETE /SAIL/AuthenticationManager/Admin/ResetDatabase HTTP/1.1\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: 0\r\n"
+                                        "\r\n";
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpLoginRequest.data(), (strHttpLoginRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 20000);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
+            {
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
+                {
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
+                }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error resetting the database.", nullptr);
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage("Resetting the database failed!");
+    }
+}

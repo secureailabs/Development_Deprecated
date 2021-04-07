@@ -261,6 +261,8 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/DeleteUser");
     // Delete an organization and its users from the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/DeleteOrganization");
+    // Reset the database
+    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/ResetDatabase");
 }
 
 /********************************************************************************************
@@ -410,6 +412,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             else if ("/SAIL/DatabaseManager/DeleteOrganization" == strResource)
             {
                 stlResponseBuffer = this->DeleteOrganization(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/ResetDatabase" == strResource)
+            {
+                stlResponseBuffer = this->ResetDatabase(c_oRequestStructuredBuffer);
             }
             else
             {
@@ -1057,12 +1063,12 @@ std::vector<Byte> __thiscall DatabaseManager::PullVirtualMachine(
                                 StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size);
                                 oResponse.PutStructuredBuffer("VirtualMachine", oObject);
                                 oResponse.PutString("DigitalContractGuid", strDcGuid);
+                                dwStatus = 200;
                             }
                         }
                     }
                 }
             }
-            dwStatus = 200;
         }
     }
 
@@ -2603,12 +2609,12 @@ std::vector<Byte> __thiscall DatabaseManager::PullDigitalContract(
                                 oResponse.PutStructuredBuffer("DigitalContract", oObject);
                                 oResponse.PutString("ResearcherOrganization", strRoGuid);
                                 oResponse.PutString("DataOwnerOrganization", strDooGuid);
+                                dwStatus = 200;
                             }
                         }
                     }
                 }
             }
-            dwStatus = 200;
         }
     }
 
@@ -2801,7 +2807,6 @@ std::vector<Byte> __thiscall DatabaseManager::UpdateDigitalContract(
                     }
                 }
             }
-            dwStatus = 200;
         }
     }
 
@@ -2810,3 +2815,49 @@ std::vector<Byte> __thiscall DatabaseManager::UpdateDigitalContract(
     return oResponse.GetSerializedBuffer();
 }
 
+/********************************************************************************************
+ *
+ * @class DatabaseManager
+ * @function ResetDatabase
+ * @brief Reset the database
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns status of the transaction
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::ResetDatabase(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    // Each client and transaction can only be used in a single thread
+    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+    // Access SailDatabase
+    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+
+    oResponse.PutDword("Status", dwStatus);
+
+    mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
+    {
+        // Drop the database
+        oSailDatabase.drop();
+    };
+    // Create a session and start the transaction
+    mongocxx::client_session oSession = oClient->start_session();
+    try 
+    {
+        oSession.with_transaction(oCallback);
+        dwStatus = 200;
+    }
+    catch (mongocxx::exception& e) 
+    {
+        std::cout << "Collection transaction exception: " << e.what() << std::endl;
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}

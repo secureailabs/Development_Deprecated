@@ -1,5 +1,5 @@
 BUILD_MODE?=debug
-CXXFLAGS=-std=c++17 -fstack-protector -DUNIX -DOS_UNIX -fPIC
+CXXFLAGS=-std=c++17 -fPIC -fstack-protector -DUNIX -DOS_UNIX -fPIC
 LDFLAGS=-lpthread -ldl -luuid -lrt -lcrypto -lssl -lstdc++fs -lssl
 
 ifeq ($(BUILD_MODE), debug)
@@ -24,9 +24,6 @@ SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
-SOURCES += $(shell realpath ../../WebService/RestApiPortal/Sources/HttpRequestParser.cpp)
-SOURCES += $(shell realpath ../../WebService/RestApiPortal/Sources/JsonValue.cpp)
-SOURCES += $(shell realpath ../../WebService/RestApiPortal/Sources/Utils.cpp)
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
 OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))

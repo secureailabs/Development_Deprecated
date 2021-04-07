@@ -87,6 +87,16 @@ class SailAuthentication : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Take in a nonce and send back a certificate and public key
+        std::vector<Byte> __thiscall GetRemoteAttestationCertificate(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Reset the database
+        std::vector<Byte> __thiscall ResetDatabase(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // private data members
         mutable pthread_mutex_t m_sMutex;
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;

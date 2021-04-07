@@ -184,6 +184,11 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Reset the database
+        std::vector<Byte> __thiscall ResetDatabase(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Private data members
         mutable pthread_mutex_t m_sMutex;
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;

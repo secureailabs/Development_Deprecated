@@ -19,7 +19,6 @@ INITIALIZER_TOOL=$(shell realpath ../../EndPointTools/InitializerTool)
 # Add the new include folders here
 INCLUDE+=-I$(shell realpath .)
 INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
-INCLUDE+=-I$(shell realpath ../../WebService/RestApiPortal/Include)
 INCLUDE+=-I$(INITIALIZER_TOOL)
 
 # Add the new source directory here
@@ -28,8 +27,6 @@ SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
-SOURCES+=$(shell realpath ../../WebService/RestApiPortal/Sources/JsonValue.cpp)
-SOURCES+=$(shell realpath ../../WebService/RestApiPortal/Sources/Utils.cpp)
 SOURCES+=$(INITIALIZER_TOOL)/Azure.cpp
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)

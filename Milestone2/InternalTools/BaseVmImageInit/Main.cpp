@@ -15,10 +15,12 @@
 #include "SocketServer.h"
 #include "TlsServer.h"
 #include "TlsTransactionHelperFunctions.h"
+#include "JsonValue.h"
 
 #include <iostream>
 #include <iterator>
 #include <fstream>
+#include <sstream>
 
 #include <sys/stat.h>
 #include <unistd.h>
@@ -57,8 +59,7 @@ void __cdecl InitVirtualMachine(
     __DebugFunction();
 
     TlsServer oTlsServer(9090);
-
-    TlsNode * poTlsNode;
+    TlsNode * poTlsNode = nullptr;
 
     StructuredBuffer oResponseStructuredBuffer;
     oResponseStructuredBuffer.PutString("Status", "Fail");
@@ -77,7 +78,8 @@ void __cdecl InitVirtualMachine(
                 _ThrowIfNull(poTlsNode, "Cannot establish connection.", nullptr);
 
                 // Fetch the serialized Structure Buffer from the remote Initializer Tool
-                std::vector<Byte> stlPayload = ::GetTlsTransaction(poTlsNode, 60*1000);
+
+                std::vector<Byte> stlPayload = ::GetPayload(poTlsNode, 60*1000);
                 _ThrowBaseExceptionIf((0 == stlPayload.size()), "Bad Initialization data", nullptr);
 
                 // deserialize the buffer
@@ -179,7 +181,8 @@ void __cdecl InitVirtualMachine(
             // virtual machine and exit the init process and leave it on the discretion of the initialization tool
             if (nullptr != poTlsNode)
             {
-                bool fResponseStatus = ::PutTlsTransaction(poTlsNode, oResponseStructuredBuffer.GetSerializedBuffer());
+                JsonValue * poResponseJson = JsonValue::ParseStructuredBufferToJson(oResponseStructuredBuffer);
+                bool fResponseStatus = ::PutResponse(poTlsNode, poResponseJson->ToString());
                 poTlsNode->Release();
             }
         }

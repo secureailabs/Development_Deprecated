@@ -15,9 +15,15 @@
 #include "RootOfTrustNode.h"
 #include "Socket.h"
 #include "engine.h"
-#include "job.h"
-#include "utils.h"
 #include "function_node.h"
+#include "job.h"
+#include "Object.h"
+#include "RootOfTrustNode.h"
+#include "Socket.h"
+#include "SocketServer.h"
+#include "StructuredBuffer.h"
+#include "utils.h"
+
 
 #define HEADERLENGTH 2
 
@@ -25,21 +31,24 @@
 
 class ComputationVM : public Object
 {
-    private:
-        JobEngine m_oEngine;
-        TlsServer m_oTlsServer;
-        std::map<std::string, std::unique_ptr<FunctionNode>> m_stlFNMap;
-        const std::string m_strVMID;
-        std::string m_strEOSB;
-        const RootOfTrustNode m_oRootOfTrustNode;
-        bool m_fStop;
+    public:
+    
+        ComputationVM(
+            _in Word wPortIdentifier, 
+            _in size_t nMaxProcess,
+            _in RootOfTrustNode & oRootOfTrustNode
+            );
+        virtual ~ComputationVM(void);
         
+        void __thiscall Initialize(void);
 
-        void __thiscall HandleConnection
-        (
-            _in TlsNode* poSocket
-        );
+    private:
+    
         void __thiscall SocketListen(void);
+        void __thiscall HandleConnection(
+            _in TlsNode * poSocket
+            );
+
         void __thiscall HandleConnect
         (
             _in StructuredBuffer& oContent,
@@ -128,26 +137,13 @@ class ComputationVM : public Object
             void
         );
         void __thiscall Halt(void);
-        void __thiscall SetEOSB(std::string& strEOSB);
-
-    public:
-        ComputationVM
-        (
-            _in Word wPortIdentifier, 
-            _in size_t nMaxProcess,
-            _in const RootOfTrustNode& oRootOfTrustNode
-        );
-        ~ComputationVM
-        (
-            void
-        );
-        ComputationVM
-        (
-            _in const ComputationVM & c_oComputationVM
-        ) = delete;
-        ComputationVM & operator=(
-            _in const ComputationVM & c_oComputationVM
-        ) = delete;
-
-        void __thiscall InitializeVM(void);
+        
+        // Private data members
+        
+        JobEngine m_oEngine;
+        TlsServer m_oTlsServer;
+        std::map<std::string, std::unique_ptr<FunctionNode>> m_stlFNMap;
+        std::string m_strVirtualMachineIdentifier;
+        std::string m_strEOSB;
+        RootOfTrustNode m_oRootOfTrustNode;
 };

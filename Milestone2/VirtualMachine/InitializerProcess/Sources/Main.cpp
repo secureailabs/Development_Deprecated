@@ -18,6 +18,7 @@
 #include "SocketClient.h"
 #include "TlsServer.h"
 #include "StructuredBuffer.h"
+#include "JsonValue.h"
 #include <iostream>
 #include <string>
 #include <thread>
@@ -41,7 +42,14 @@ static std::vector<Byte> __stdcall WaitForInitializationParameters(void)
     // There is a connection is waiting to be made!!!
     TlsNode * poTlsNode = oTlsServer.Accept();
     _ThrowBaseExceptionIf((nullptr == poTlsNode), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
-    stlSerializedParameters = ::GetTlsTransaction(poTlsNode, 10*1000);
+    stlSerializedParameters = ::GetPayload(poTlsNode, 10*1000);
+
+    StructuredBuffer oStructuredBufferResponse;
+    oStructuredBufferResponse.PutString("Status", "Success");
+
+    JsonValue * poJson = JsonValue::ParseStructuredBufferToJson(oStructuredBufferResponse);
+    ::PutResponse(poTlsNode, poJson->ToString());
+
     // Close the connection
     poTlsNode->Release();
 

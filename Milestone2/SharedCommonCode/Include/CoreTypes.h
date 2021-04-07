@@ -109,7 +109,7 @@ typedef void * Handle;
 #endif
 
 #ifndef MAX_STRING_LENGTH
-#define MAX_STRING_LENGTH 32728
+#define MAX_STRING_LENGTH 1073741824
 #endif
 
 #ifdef __cplusplus

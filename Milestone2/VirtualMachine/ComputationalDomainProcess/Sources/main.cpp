@@ -47,7 +47,7 @@ int __cdecl main(
         RootOfTrustNode oRootOfTrustNode(oCommandLineArguments.GetString("ipc").c_str());
         // Run the computation engine
         ComputationVM oTest(7000, 5, oRootOfTrustNode);
-        oTest.InitializeVM();
+        oTest.Initialize();
     }
     
     catch (BaseException oException)

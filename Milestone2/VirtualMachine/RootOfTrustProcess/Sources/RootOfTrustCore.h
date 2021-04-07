@@ -15,6 +15,11 @@
 #include "Socket.h"
 #include "SmartMemoryAllocator.h"
 
+#include <mutex>
+#include <queue>
+#include <string>
+#include <vector>
+
 /********************************************************************************************/
 
 class RootOfTrustCore : public Object
@@ -29,11 +34,10 @@ class RootOfTrustCore : public Object
             );
         virtual ~RootOfTrustCore(void);
         
-        Guid __thiscall GetRootOfTrustDomainIdentifier(void) const throw();
-        Guid __thiscall GetComputationalDomainIdentifier(void) const throw();
         Guid __thiscall GetDataDomainIdentifier(void) const throw();
-        
         std::string __thiscall GetRootOfTrustIpcPath(void) const throw();
+        
+        void __thiscall AuditEventDispatcher(void);
         
         void __thiscall RunIpcListener(void);
         void __thiscall HandleIncomingTransaction(
@@ -45,53 +49,49 @@ class RootOfTrustCore : public Object
     
         // Private methods dedicated to handling incoming transactions
         
-        std::vector<Byte> __thiscall TransactGetDataDomainIpcPath(
-            _in const Guid & c_oOriginatingDomainIdentifier
-            );
-        std::vector<Byte> __thiscall TransactGetDataDomainRootKeyCertificate(
-            _in const Guid & c_oOriginatingDomainIdentifier
-            );
-        std::vector<Byte> __thiscall TransactGetComputationalDomainIpcPath(
-            _in const Guid & c_oOriginatingDomainIdentifier
-            );
-        std::vector<Byte> __thiscall TransactGetComputationalDomainRootKeyCertificate(
-            _in const Guid & c_oOriginatingDomainIdentifier
-            );
-        std::vector<Byte> __thiscall TransactGetDigitalContract(
-            _in const Guid & c_oOriginatingDomainIdentifier
-            );
         std::vector<Byte> __thiscall TransactGetDataSet(
             _in const Guid & c_oOriginatingDomainIdentifier
             );
-        std::vector<Byte> __thiscall TransactGetAllDomainCertificates(
-            _in const Guid & c_oOriginatingDomainIdentifier
+        std::vector<Byte> __thiscall TransactRecordAuditEvent(
+            _in const Guid & c_oOriginatingDomainIdentifier,
+            _in const StructuredBuffer & c_oTransactionParameters
             );
-        std::vector<Byte> __thiscall TransactGenerateEphemeralTlsKeyPair(
-            _in const Guid & c_oOriginatingDomainIdentifier
-            );
-    
+        bool __thiscall InitializeVirtualMachine(void);
+        bool __thiscall InitializeDataset(void);
+        bool __thiscall RegisterDataOwnerEosb(void);
+        bool __thiscall RegisterResearcherEosb(void);
+        
         // Private data members
         
         bool m_fIsInitialized;
         bool m_fIsRunning;
 
-        std::vector<Byte> m_stlSerializedDigitalContract;
-        std::string m_stlDataOwnerImpostorEncryptedOpaqueSessionBlob;
-        std::string m_stlResearcherImpostorEncryptedOpaqueSessionBlob;
-        std::vector<Byte> m_stlGlobalRootKeyCertificate;
-        std::vector<Byte> m_stlComputationalDomainRootKeyCertificate;
-        std::vector<Byte> m_stlDataDomainRootKeyCertificate;
+        std::string m_strDataOwnerImpostorEosb;
+        std::string m_strResearcherImpostorEosb;
 
-        Guid m_oClusterInstanceIdentifier;
-
-        Guid m_oRootOfTrustDomainIdentifier;
-        Guid m_oComputationalDomainIdentifier;
-        Guid m_oDataDomainIdentifier;
-        Guid m_oInitializerDomainIdentifier;
-
+        std::string m_strNameOfVirtualMachine;
+        std::string m_strIpAddressOfVirtualMachine;
+        std::string m_strVirtualMachineIdentifier;
+        std::string m_strClusterIdentifier;
+        std::string m_strDigitalContractIdentifier;
+        std::string m_strDatasetIdentifier;
+        std::string m_strRootOfTrustDomainIdentifier;
+        std::string m_strComputationalDomainIdentifier;
+        std::string m_strDataConnectorDomainIdentifier;
+        std::string m_strSailWebApiPortalIpAddress;
+        std::string m_strDataOwnerOrganizationIdentifier;
+        std::string m_strDataOwnerUserIdentifier;
+        std::vector<Byte> m_stlDataset;
+    
         std::string m_strRootOfTrustIpcPath;
         std::string m_strComputationalDomainIpcPath;
         std::string m_strDataDomainIpcPath;
         
-        std::vector<Byte> m_stlDataSet;
+        std::mutex m_stlAuditEventsMutex;
+        std::string m_strDataOrganizationAuditEventParentBranchNodeIdentifier;
+        std::string m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier;
+        std::queue<std::string> m_stlDataOrganizationAuditEventQueue;
+        std::queue<std::string> m_stlResearchOrganizationAuditEventQueue;
+        std::queue<std::string> m_stlIndependentAuditorOrganizationAuditEventQueue;
+        std::queue<std::string> m_stlSailOrganizationAuditEventQueue;
 };

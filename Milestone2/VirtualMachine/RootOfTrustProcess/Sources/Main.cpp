@@ -95,6 +95,7 @@ static void __stdcall RunProcess(
     // Create a unique IPC path. This value is very ephemeral and will not be required
     // past this function
     std::string strTemporaryIpcPath = Guid().ToString(eRaw);
+    std::cout << "Temporary IPC path = " << strTemporaryIpcPath << std::endl;
     // Create a TlsServer Unix Domain Socket using the unique IPC path. We need to start this
     // before calling fork() and execl() in order to prevent any sort of race condition that
     // might arise since the first thing the Initializer process does is connect to the
@@ -112,6 +113,7 @@ static void __stdcall RunProcess(
     }
     else
     {
+        std::cout << "A.001" << std::endl;
         // Wait until the remote process connects to the temporary Ipc
         while (false == oSocketServer.WaitForConnection(1000))
         {
@@ -121,6 +123,7 @@ static void __stdcall RunProcess(
         }
         // There is a connection is waiting to be made!!!
         Socket * poSocket = oSocketServer.Accept();
+        std::cout << "A.002" << std::endl;
         _ThrowBaseExceptionIf((nullptr == poSocket), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
         // The connection has been made. At this point, we write the outgoing initialization
         // packet. There are only two elements in the initialization data
@@ -175,7 +178,7 @@ int __cdecl main(
         // the computation process. The computation process will end up connecting
         // to the root of trust engine and query it for all the information that it needs
         // to initialize itself
-        ::RunProcess("ComputationalDomainProcess", oRootOfTrustCore);
+        //::RunProcess("ComputationalDomainProcess", oRootOfTrustCore);
         // Make sure to wait for all things 'RootOfTrust' to terminate before exiting
         // the try...catch block since doing so will destroy the RootOfTrust core object
         oRootOfTrustCore.WaitForTermination();

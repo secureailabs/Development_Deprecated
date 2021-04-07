@@ -183,3 +183,5 @@ extern void PrintDigitalContracts(
 extern bool PullDigitalContract(
     _in const std::string & c_strEosb
     );
+
+extern std::vector<Byte> GetRemoteAttestationCertificate(void);

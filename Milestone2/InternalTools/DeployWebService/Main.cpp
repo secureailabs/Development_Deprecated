@@ -37,7 +37,7 @@ const std::string gc_strResourceGroup = "WebServiceTemplate0.2_group";
 const std::string gc_strImageName = "WebServiceTemplate0.2Image";
 const std::string gc_strVirtualNetwork = "WebServiceTemplate0.2_group-vnet";
 const std::string gc_strNetworkSecurityGroup = "WebServiceTemplate0.2-nsg";
-const std::string gc_strVirtualMachineSize = "Standard_B1ms";
+const std::string gc_strVirtualMachineSize = "Standard_A8_v2";
 
 /********************************************************************************************/
 

@@ -555,7 +555,17 @@ void __thiscall StructuredBuffer::PutString(
 {
     __DebugFunction();
 
-    this->AddElement(c_szElementName, ANSI_CHARACTER_STRING_VALUE_TYPE, (const void *) c_szElement, (::strnlen(c_szElement, MAX_STRING_LENGTH) + 1));
+    if (nullptr != c_szElement)
+    {
+        this->AddElement(c_szElementName, ANSI_CHARACTER_STRING_VALUE_TYPE, (const void *) c_szElement, (::strnlen(c_szElement, MAX_STRING_LENGTH) + 1));
+    }
+    else
+    {
+        char szTemporaryString[1];
+        
+        szTemporaryString[0] = 0;
+        this->AddElement(c_szElementName, ANSI_CHARACTER_STRING_VALUE_TYPE, (const void *) szTemporaryString, 1);
+    }
 }
 
 /********************************************************************************************/
@@ -567,7 +577,17 @@ void __thiscall StructuredBuffer::PutString(
 {
     __DebugFunction();
 
-    this->AddElement(c_szElementName, ANSI_CHARACTER_STRING_VALUE_TYPE, (const void *) c_strElement.c_str(), (c_strElement.size() + 1));
+    if (0 < c_strElement.size())
+    {
+        this->AddElement(c_szElementName, ANSI_CHARACTER_STRING_VALUE_TYPE, (const void *) c_strElement.c_str(), (c_strElement.size() + 1));
+    }
+    else
+    {
+        char szTemporaryString[1];
+        
+        szTemporaryString[0] = 0;
+        this->AddElement(c_szElementName, ANSI_CHARACTER_STRING_VALUE_TYPE, (const void *) szTemporaryString, 1);
+    }
 }
 
 /********************************************************************************************/

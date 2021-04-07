@@ -177,6 +177,9 @@ bool __thiscall DataConnector::LoadAndVerify(
             stlIndividualTable.push_back(stlOneRow);
         }
         m_stlTableData.push_back(stlIndividualTable);
+
+        // Also add table name to id in the cache map
+        m_stlMapOfTableNameToId.insert(std::make_pair(m_stlTableMetaData[unTableID].GetString("Name"), unTableID));
     }
 
     return true;
@@ -213,16 +216,35 @@ void __thiscall DataConnector::HandleRequestsUntilClose(
             {
                 // Respose Structured Buffer
                 StructuredBuffer oDataResponse;
-
                 StructuredBuffer oResearcherRequest(stlRequestBuffer);
 
                 // Check the digital contract to check if the request is allowed
                 bool fAllowed = this->FilterDataRequest(oResearcherRequest);
 
+                // Get the table ID either from the table name provided or the table ID
+                uint32_t unTableID;
+                if (oResearcherRequest.IsElementPresent("TableID", UINT32_VALUE_TYPE))
+                {
+                    unTableID = oResearcherRequest.GetUnsignedInt32("TableID");
+                }
+                else
+                {
+                    std::string strTableName = oResearcherRequest.GetString("TableName");
+                    if (m_stlMapOfTableNameToId.end() != m_stlMapOfTableNameToId.find(strTableName))
+                    {
+                        unTableID = m_stlMapOfTableNameToId.at(strTableName);
+                    }
+                    else
+                    {
+                        oDataResponse.PutBoolean("Status", "Fail");
+                        oDataResponse.PutString("ResponseString", "Invalid Table Name");
+                        fAllowed = false;
+                    }
+                }
+
                 if (true == fAllowed)
                 {
                     uint8_t requestType = oResearcherRequest.GetInt8("RequestType");
-                    uint32_t unTableID = oResearcherRequest.GetUnsignedInt32("TableID");
 
                     if (eGetRowRange == requestType)
                     {

@@ -1,5 +1,5 @@
 BUILD_MODE?=debug
-CXXFLAGS=-std=c++17 -fstack-protector -DUNIX -DOS_UNIX
+CXXFLAGS=-std=c++17 -fPIC -fstack-protector -DUNIX -DOS_UNIX
 LDFLAGS=-lpthread -ldl -luuid -lrt -lcrypto -lssl -lmongocxx -lbsoncxx
 
 ifeq ($(BUILD_MODE), debug)
@@ -33,9 +33,6 @@ SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
 SOURCES += $(shell realpath ../../InternalTools/CryptographicTools/Sources/CryptoUtils.cpp)
 SOURCES += $(shell realpath ../../EndPointTools/RestPortalTester/Sources/InteractiveClient.cpp)
 SOURCES += $(shell realpath ../../EndPointTools/RestPortalTester/Sources/GuiTerminal.cpp)
-SOURCES += $(shell realpath ../../WebService/RestApiPortal/Sources/HttpRequestParser.cpp)
-SOURCES += $(shell realpath ../../WebService/RestApiPortal/Sources/JsonValue.cpp)
-SOURCES += $(shell realpath ../../WebService/RestApiPortal/Sources/Utils.cpp)
 SOURCES += $(shell realpath ../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement/CryptographicEngine.cpp)
 SOURCES += $(shell realpath ../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement/CryptographicKey.cpp)
 SOURCES += $(shell realpath ../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement/CryptographyHelperFunctions.cpp)

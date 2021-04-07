@@ -73,6 +73,7 @@ class DataConnector
         StructuredBuffer * m_oDataSetMetaDataStructuredBuffer;
         std::vector<StructuredBuffer> m_stlTableMetaData;
         std::vector<std::vector<std::vector<std::string>>> m_stlTableData;
+        std::map<std::string, int> m_stlMapOfTableNameToId;
 };
 
 /********************************************************************************************/

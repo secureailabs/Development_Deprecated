@@ -114,6 +114,7 @@ OrganizationInformation;
 
 typedef struct DigitalContractInformation
 {
+    std::string m_strTitle;
     uint64_t m_unSubscriptionDays;
     std::string m_strLegalAgreement;
     uint64_t m_unRetentionTime;
@@ -121,6 +122,7 @@ typedef struct DigitalContractInformation
     std::string m_strEulaSignedByRo;
 
     DigitalContractInformation(
+        _in std::string strTitle,
         _in uint64_t unSubscriptionDays, 
         _in const std::string & c_strLegalAgreement,
         _in uint64_t unRetentionTime,
@@ -128,6 +130,7 @@ typedef struct DigitalContractInformation
         _in const std::string & c_strEulaSignedByRo
         )
     {
+        m_strTitle = strTitle;
         m_unSubscriptionDays = unSubscriptionDays;
         m_strLegalAgreement = c_strLegalAgreement;
         m_unRetentionTime = unRetentionTime;
@@ -178,6 +181,9 @@ class DatabaseTools : public Object
         void __thiscall RegisterVmForComputation(
             _in const std::string & c_strVmGuid
             );
+
+        // Delete database
+        void __thiscall DeleteDatabase();
 
     private:
 

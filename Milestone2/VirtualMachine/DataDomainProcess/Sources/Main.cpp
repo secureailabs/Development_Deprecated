@@ -47,10 +47,8 @@ static void __cdecl InitDataConnector(
     // Get the singleton DataConnector object
     DataConnector * poDataConnector = ::GetDataConnector();
     __DebugAssert(nullptr != poDataConnector);
-
     // Pull the dataset from the Root of Trust
     std::vector<Byte> c_stlDataset = c_oRootOfTrustNode.GetDataset();
-
     // Load and Verify the contents of the dataset
     _ThrowBaseExceptionIf((false == poDataConnector->LoadAndVerify(c_stlDataset)), "Failed to verify the integrity of the DataSet", nullptr);
     // Get ready to wait for incoming connections. This includes setting up the

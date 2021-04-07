@@ -11,6 +11,8 @@
 #include "InteractiveClient.h"
 #include "Base64Encoder.h"
 
+#include <openssl/rand.h>
+
 const char * g_szServerIpAddress;
 unsigned int g_unPortNumber;
 
@@ -66,6 +68,7 @@ bool ParseFirstLine(
     // Get transaction status
     std::getline(oFirstLineStream, strProtocol, ' ');
     std::getline(oFirstLineStream, strStatus, ' ');
+
     if (!strStatus.empty())
     {
         fSuccess = true;
@@ -74,7 +77,7 @@ bool ParseFirstLine(
     {
         _ThrowBaseException("ERROR: Invalid request.", nullptr);
     }
-    _ThrowBaseExceptionIf(("200" != strStatus), "Transaction returned with error code:", strStatus);
+    _ThrowBaseExceptionIf(("200" != strStatus), "Transaction returned with error code.", nullptr);
 
     return fSuccess;
 }
@@ -358,8 +361,7 @@ std::string RegisterRootEvent(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"NonLeafEvent\":"
+        std::string strContent = "{\n    \"NonLeafEvent\":"
                                 "\n    {"
                                 "\n        \"EventGuid\": \""+ strRootEventGuid +"\","
                                 "\n        \"ParentGuid\": \"{00000000-0000-0000-0000-000000000000}\","
@@ -372,7 +374,7 @@ std::string RegisterRootEvent(
                                 "\n    }"
                                 "\n}";
 
-        std::string strHttpRegisterRequest = "POST /SAIL/AuditLogManager/Events HTTP/1.1\r\n"
+        std::string strHttpRegisterRequest = "POST /SAIL/AuditLogManager/Events?Eosb="+ c_strEncodedEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
@@ -454,8 +456,7 @@ bool RegisterBranchEvent(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"NonLeafEvent\":"
+        std::string strContent = "{\n    \"NonLeafEvent\":"
                                 "\n    {"
                                 "\n        \"EventGuid\": \""+ Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces) +"\","
                                 "\n        \"ParentGuid\": \""+ c_strParentGuid +"\","
@@ -469,7 +470,7 @@ bool RegisterBranchEvent(
                                 "\n        }"
                                 "\n    }"
                                 "\n}";
-        std::string strHttpRegisterRequest = "POST /SAIL/AuditLogManager/Events HTTP/1.1\r\n"
+        std::string strHttpRegisterRequest = "POST /SAIL/AuditLogManager/Events?Eosb="+ c_strEncodedEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
@@ -593,8 +594,7 @@ bool RegisterLeafEvents(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"ParentGuid\": \""+ c_strParentGuid +"\","
+        std::string strContent = "{\n    \"ParentGuid\": \""+ c_strParentGuid +"\","
                                 "\n    \"LeafEvents\": [";
 
         // Add leaf events to the rest request body
@@ -622,7 +622,7 @@ bool RegisterLeafEvents(
         strContent += "\n    ]"
                     "\n}";
 
-        std::string strHttpRegisterRequest = "POST /SAIL/AuditLogManager/LeafEvents HTTP/1.1\r\n"
+        std::string strHttpRegisterRequest = "POST /SAIL/AuditLogManager/LeafEvents?Eosb="+ c_strEncodedEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
@@ -639,7 +639,7 @@ bool RegisterLeafEvents(
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
         {   
-            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 5000);
             // Check whether the read was successful or not
             if (0 < stlBuffer.size())
             {
@@ -729,13 +729,12 @@ std::string RegisterVirtualMachine(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"IEosb\": \""+ c_strEncodedIEosb +"\","
-                                "\n    \"DigitalContractGuid\": \""+ c_oVmInformation.GetString("DigitalContractGuid") +"\","
+        std::string strContent = "{\n   \"DigitalContractGuid\": \""+ c_oVmInformation.GetString("DigitalContractGuid") +"\","
                                 "\n    \"VirtualMachineGuid\": \""+ c_strVmGuid +"\","
                                 "\n    \"HeartbeatBroadcastTime\": "+ std::to_string(::GetEpochTimeInSeconds()) +","
                                 "\n    \"IPAddress\": \""+ c_oVmInformation.GetString("IPAddress") +"\""
                                 "\n}";
-        std::string strHttpRegisterRequest = "POST /SAIL/VirtualMachineManager/RegisterVM HTTP/1.1\r\n"
+        std::string strHttpRegisterRequest = "POST /SAIL/VirtualMachineManager/RegisterVM?IEosb="+ c_strEncodedIEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
@@ -810,10 +809,9 @@ std::string RegisterVmAfterDataUpload(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedVmEosb +"\","
-                                "\n    \"VirtualMachineGuid\": \""+ c_strVmGuid +"\""
+        std::string strContent = "{\n    \"VirtualMachineGuid\": \""+ c_strVmGuid +"\""
                                 "\n}";
-        std::string strHttpRegisterRequest = "POST /SAIL/VirtualMachineManager/DataOwner/RegisterVM HTTP/1.1\r\n"
+        std::string strHttpRegisterRequest = "POST /SAIL/VirtualMachineManager/DataOwner/RegisterVM?Eosb="+ c_strEncodedVmEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
@@ -888,10 +886,9 @@ std::string RegisterVmForComputation(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedVmEosb +"\","
-                                "\n    \"VirtualMachineGuid\": \""+ c_strVmGuid +"\""
+        std::string strContent = "{\n    \"VirtualMachineGuid\": \""+ c_strVmGuid +"\""
                                 "\n}";
-        std::string strHttpRegisterRequest = "POST /SAIL/VirtualMachineManager/Researcher/RegisterVM HTTP/1.1\r\n"
+        std::string strHttpRegisterRequest = "POST /SAIL/VirtualMachineManager/Researcher/RegisterVM?Eosb="+ c_strEncodedVmEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
@@ -969,15 +966,14 @@ bool GetListOfEvents(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"ParentGuid\": \""+ c_strParentGuid +"\","
+        std::string strContent = "{\n    \"ParentGuid\": \""+ c_strParentGuid +"\","
                                 "\n    \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\","
                                 "\n    \"Filters\":"
                                 "\n    {"
                                 "\n         \"SequenceNumber\": 0"
                                 "\n    }"
                                 "\n}";
-        std::string strHttpRequest = "GET /SAIL/AuditLogManager/GetListOfEvents HTTP/1.1\r\n"
+        std::string strHttpRequest = "GET /SAIL/AuditLogManager/GetListOfEvents?Eosb="+ c_strEncodedEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
@@ -1196,7 +1192,7 @@ bool RegisterOrganizationAndSuperUser(
     }
     catch(...)
     {
-        ::ShowErrorMessage("Error getting list of events.");
+        ::ShowErrorMessage("Error registering new organization and super user.");
     }
 
     return fSuccess;
@@ -1268,8 +1264,7 @@ bool RegisterUser(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"Email\": \""+ c_oUserInformation.GetString("Email") +"\","
+        std::string strContent = "{\n   \"Email\": \""+ c_oUserInformation.GetString("Email") +"\","
                                 "\n    \"Password\": \""+ c_oUserInformation.GetString("Password") +"\","
                                 "\n    \"Name\": \""+ c_oUserInformation.GetString("Name") +"\","
                                 "\n    \"PhoneNumber\": \""+ c_oUserInformation.GetString("PhoneNumber") +"\","
@@ -1277,7 +1272,7 @@ bool RegisterUser(
                                 "\n    \"AccessRights\": "+ std::to_string(c_oUserInformation.GetQword("AccessRights")) +","
                                 "\n    \"OrganizationGuid\": \""+ c_strOrganizationGuid +"\""
                                 "\n}";
-        std::string strHttpRequest = "POST /SAIL/AccountManager/Admin/RegisterUser HTTP/1.1\r\n"
+        std::string strHttpRequest = "POST /SAIL/AccountManager/Admin/RegisterUser?Eosb="+ c_strEncodedEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
@@ -1377,8 +1372,7 @@ bool UpdateOrganizationInformation(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","
-                                "\n    \"OrganizationGuid\": \""+ strOrganizationGuid +"\","
+        std::string strContent = "{\n    \"OrganizationGuid\": \""+ strOrganizationGuid +"\","
                                 "\n    \"OrganizationInformation\": "
                                 "\n    {"
                                 "\n        \"OrganizationName\": \""+ strOrganizationName +"\","
@@ -1393,7 +1387,7 @@ bool UpdateOrganizationInformation(
                                 "\n        \"SecondaryContactPhoneNumber\" : \""+ strSecondaryContactPhoneNumber +"\""
                                 "\n     }"
                                 "\n}";
-        std::string strHttpRequest = "PUT /SAIL/AccountManager/Update/Organization HTTP/1.1\r\n"
+        std::string strHttpRequest = "PUT /SAIL/AccountManager/Update/Organization?Eosb="+ c_strEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
@@ -1465,16 +1459,13 @@ bool ListOrganizations(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\""
-                                "\n}";
-        std::string strHttpRequest = "GET /SAIL/AccountManager/Organizations HTTP/1.1\r\n"
+        std::string strHttpRequest = "GET /SAIL/AccountManager/Organizations?Eosb="+ c_strEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
                                         "Connection: keep-alive\r\n"
-                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
-                                        "\r\n"
-                                        + strContent;
+                                        "Content-Length: 0\r\n"
+                                        "\r\n";
 
         // Send request packet
         poTlsNode->Write((Byte *) strHttpRequest.data(), (strHttpRequest.size()));
@@ -1565,11 +1556,10 @@ bool DeleteUser(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","
-                                "\n    \"UserGuid\": \""+ strUserGuid +"\","
+        std::string strContent = "{\n   \"UserGuid\": \""+ strUserGuid +"\","
                                 "\n    \"IsHardDelete\": true"
                                 "\n}";
-        std::string strHttpRequest = "DELETE /SAIL/AccountManager/Remove/User HTTP/1.1\r\n"
+        std::string strHttpRequest = "DELETE /SAIL/AccountManager/Remove/User?Eosb="+ c_strEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
@@ -1649,11 +1639,10 @@ bool DeleteOrganization(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","
-                                "\n    \"OrganizationGuid\": \""+ strOrganizationGuid +"\","
+        std::string strContent = "{\n   \"OrganizationGuid\": \""+ strOrganizationGuid +"\","
                                 "\n    \"IsHardDelete\": true"
                                 "\n}";
-        std::string strHttpRequest = "DELETE /SAIL/AccountManager/Remove/Organization HTTP/1.1\r\n"
+        std::string strHttpRequest = "DELETE /SAIL/AccountManager/Remove/Organization?Eosb="+ c_strEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
@@ -1723,7 +1712,8 @@ bool RegisterDigitalContract(
 
     // Get digital contract information
     std::cout << "************************\n Register Digital Contract \n************************\n" << std::endl;
-    std::string strDooGuid = ::GetStringInput("Enter hyphen and curly braces formatted data owner organization guid: ", 38, true, c_szValidInputCharacters);
+    std::string strTitle = ::GetStringInput("Enter digital contract title: ", 50, false, c_szValidInputCharacters);
+    std::string strDooGuid = ::GetStringInput("Enter hyphen and curly braces formatted data owner organization guid: ", 38, false, c_szValidInputCharacters);
     std::string strVersionNumber = "0x0000000100000001";
     uint64_t unSubscriptionDays = std::stoull(::GetStringInput("Enter your requested subscription period (in days): ", 50, false, c_szValidInputCharacters));
     std::string strDatasetGuid = Guid(eDataset).ToString(eHyphensAndCurlyBraces);
@@ -1734,6 +1724,7 @@ bool RegisterDigitalContract(
     __DebugAssert(0 < strLegalAgreement.size());
 
     StructuredBuffer oDcInformation;
+    oDcInformation.PutString("Title", strTitle);
     oDcInformation.PutString("DOOGuid", strDooGuid);
     oDcInformation.PutUnsignedInt64("SubscriptionDays", unSubscriptionDays);
     oDcInformation.PutString("LegalAgreement", strLegalAgreement);
@@ -1765,8 +1756,8 @@ bool RegisterDigitalContract(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"DataOwnerOrganization\": \""+ c_oDcInformation.GetString("DOOGuid") +"\","
+        std::string strContent = "{\n   \"DataOwnerOrganization\": \""+ c_oDcInformation.GetString("DOOGuid") +"\","
+                                "\n    \"Title\": \""+ c_oDcInformation.GetString("Title") +"\","
                                 "\n    \"VersionNumber\": \""+ strVersionNumber +"\","
                                 "\n    \"SubscriptionDays\": "+ std::to_string(c_oDcInformation.GetUnsignedInt64("SubscriptionDays")) +","
                                 "\n    \"DatasetGuid\": \""+ strDatasetGuid +"\","
@@ -1774,7 +1765,7 @@ bool RegisterDigitalContract(
                                 "\n    \"DatasetDRMMetadataSize\": "+ std::to_string(0) +","
                                 "\n    \"DatasetDRMMetadata\":{}"
                                 "\n}";
-        std::string strHttpRequest = "POST /SAIL/DigitalContractManager/Applications HTTP/1.1\r\n"
+        std::string strHttpRequest = "POST /SAIL/DigitalContractManager/Applications?Eosb="+ c_strEncodedEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
@@ -1884,13 +1875,12 @@ bool AcceptDigitalContract(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"DigitalContractGuid\": \""+ c_oDcInformation.GetString("DigitalContractGuid") +"\","
+        std::string strContent = "{\n    \"DigitalContractGuid\": \""+ c_oDcInformation.GetString("DigitalContractGuid") +"\","
                                 "\n    \"RetentionTime\": "+ std::to_string(c_oDcInformation.GetUnsignedInt64("RetentionTime")) +","
                                 "\n    \"EULA\": \""+ c_oDcInformation.GetString("EULA") +"\","
                                 "\n    \"LegalAgreement\": \""+ c_oDcInformation.GetString("LegalAgreement") +"\""
                                 "\n}";
-        std::string strHttpRequest = "PATCH /SAIL/DigitalContractManager/DataOwner/Accept HTTP/1.1\r\n"
+        std::string strHttpRequest = "PATCH /SAIL/DigitalContractManager/DataOwner/Accept?Eosb="+ c_strEncodedEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
@@ -1998,12 +1988,11 @@ bool ActivateDigitalContract(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEncodedEosb +"\","
-                                "\n    \"DigitalContractGuid\": \""+ c_oDcInformation.GetString("DigitalContractGuid") +"\","
+        std::string strContent = "{\n    \"DigitalContractGuid\": \""+ c_oDcInformation.GetString("DigitalContractGuid") +"\","
                                 "\n    \"EULA\": \""+ c_oDcInformation.GetString("EULA") +"\","
                                 "\n    \"LegalAgreement\": \""+ c_oDcInformation.GetString("LegalAgreement") +"\""
                                 "\n}";
-        std::string strHttpRequest = "PATCH /SAIL/DigitalContractManager/Researcher/Activate HTTP/1.1\r\n"
+        std::string strHttpRequest = "PATCH /SAIL/DigitalContractManager/Researcher/Activate?Eosb="+ c_strEncodedEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
@@ -2076,16 +2065,13 @@ std::vector<Byte> ListDigitalContracts(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\""
-                                "\n}";
-        std::string strHttpRequest = "GET /SAIL/DigitalContractManager/DigitalContracts HTTP/1.1\r\n"
+        std::string strHttpRequest = "GET /SAIL/DigitalContractManager/DigitalContracts?Eosb="+ c_strEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
                                         "Connection: keep-alive\r\n"
-                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
-                                        "\r\n"
-                                        + strContent;
+                                        "Content-Length: 0\r\n"
+                                        "\r\n";
 
         // Send request packet
         poTlsNode->Write((Byte *) strHttpRequest.data(), (strHttpRequest.size()));
@@ -2147,6 +2133,7 @@ void PrintDigitalContracts(
     {
         StructuredBuffer oElement(c_oDigitalContracts.GetStructuredBuffer(strElement.c_str()));
         std::cout << "Digital contract guid: " << strElement << std::endl;
+        std::cout << "Title: " << oElement.GetString("Title") << std::endl;
         std::cout << "Version number: " << oElement.GetString("VersionNumber") << std::endl;
         std::cout << "Contract stage: " << (Dword) oElement.GetFloat64("ContractStage") << std::endl;
         std::cout << "Subscription days: " << (uint64_t) oElement.GetFloat64("SubscriptionDays") << std::endl;
@@ -2185,10 +2172,9 @@ bool PullDigitalContract(
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
-        std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","
-                                "\n    \"DigitalContractGuid\": \""+ strDcGuid +"\""
+        std::string strContent = "{\n    \"DigitalContractGuid\": \""+ strDcGuid +"\""
                                 "\n}";
-        std::string strHttpRequest = "GET /SAIL/DigitalContractManager/PullDigitalContract HTTP/1.1\r\n"
+        std::string strHttpRequest = "GET /SAIL/DigitalContractManager/PullDigitalContract?Eosb="+ c_strEosb +" HTTP/1.1\r\n"
                                         "Content-Type: application/json\r\n"
                                         "Accept: */*\r\n"
                                         "Host: localhost:6200\r\n"
@@ -2232,6 +2218,7 @@ bool PullDigitalContract(
         fSuccess = true;
         StructuredBuffer oDigitalContract(oResponse.GetStructuredBuffer("DigitalContract"));
         std::cout << "Digital contract guid: " << oDigitalContract.GetString("DigitalContractGuid") << std::endl;
+        std::cout << "Title: " << oDigitalContract.GetString("Title") << std::endl;
         std::cout << "Version number: " << oDigitalContract.GetString("VersionNumber") << std::endl;
         std::cout << "Contract stage: " << (Dword) oDigitalContract.GetFloat64("ContractStage") << std::endl;
         std::cout << "Subscription days: " << (uint64_t) oDigitalContract.GetFloat64("SubscriptionDays") << std::endl;
@@ -2245,8 +2232,90 @@ bool PullDigitalContract(
     }
     catch(...)
     {
-        ::ShowErrorMessage("Error getting list of digital contracts.");
+        ::ShowErrorMessage("Error pulling the digital contract.");
     }
 
     return fSuccess;
 }
+
+/********************************************************************************************/
+
+std::vector<Byte> GetRemoteAttestationCertificate(void)
+{
+    __DebugFunction();
+
+    std::vector<Byte> stlSerializedResponse;
+
+    // Generate a random nonce using OpenSSL
+    std::vector<Byte> stlNonce(256);
+    int nStatus = ::RAND_bytes(stlNonce.data(), stlNonce.size());
+    _ThrowBaseExceptionIf((1 != nStatus), "Failed to generate a random nonce.", nullptr);
+    // Base64 encode buffer
+    std::string strNonce = ::Base64Encode(stlNonce.data(), stlNonce.size());
+
+    try 
+    {
+        std::vector<Byte> stlRestResponse;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
+
+        // Create rest request
+        std::string strContent = "{\n    \"Nonce\": \""+ strNonce +"\""
+                                "\n}";
+        std::string strHttpRequest = "GET /SAIL/AuthenticationManager/RemoteAttestationCertificate HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
+                                        "\r\n"
+                                        + strContent;
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRequest.data(), (strHttpRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
+            {
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
+                {
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
+                }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+        
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting remote attestation certificate.", nullptr);
+        // The following is the response structure
+        std::vector<Byte> stlRemoteAttestationCert = ::Base64Decode(oResponse.GetString("RemoteAttestationCertificatePem").c_str());
+        std::string strPulicKeyPem = oResponse.GetString("PublicKeyCertificate");
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+    catch(...)
+    {
+        ::ShowErrorMessage("Error getting remote attestation certificate.");
+    }
+
+    return stlSerializedResponse;
+}
+

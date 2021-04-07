@@ -24,6 +24,9 @@
 #include "SmartMemoryAllocator.h"
 
 #include <mutex>
+#include <sstream>
+#include <string>
+#include <iostream>
 
 // This library is thread safe and is protected by a mutex
 static std::mutex gs_stlMutex;

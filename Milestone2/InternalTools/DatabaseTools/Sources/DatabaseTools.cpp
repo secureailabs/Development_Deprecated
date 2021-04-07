@@ -316,7 +316,7 @@ void __thiscall DatabaseTools::RegisterVmAfterDataUpload(
     _ThrowBaseExceptionIf((0 == strVmEventGuid.size()), "Error occurred when adding VM branch event for data owner organization", nullptr);
     std::cout << "VM branch event added for DOO." << std::endl;
     // Create vector representing event names
-    std::vector<std::string> stlEventNames = {"VM_STARTED", "VM_INITIALIZED", "VM_DATASET_UPLOADED", "VM_READY", "CONNECT_FAILURE", "CONNECT_SUCCESS"};
+    std::vector<std::string> stlEventNames = {"VM_STARTED", "VM_INITIALIZED", "VM_DATASET_UPLOADED", "VM_READY", "CONNECT_SUCCESS"};
     for (unsigned int unIndex = 0; unIndex < 4; ++unIndex)
     {
         stlEventNames.push_back("PUSH_DATA");
@@ -374,8 +374,8 @@ void __thiscall DatabaseTools::RegisterVmForComputation(
     _ThrowBaseExceptionIf((0 == strVmEventGuid.size()), "Error occurred when adding VM branch event for researcher organization", nullptr);
     std::cout << "VM branch event added for RO." << std::endl;
     // Create vector representing event names
-    std::vector<std::string> stlEventNames = {"VM_STARTED", "VM_INITIALIZED", "VM_DATASET_UPLOADED", "VM_READY", "CONNECT_FAILURE", "CONNECT_SUCCESS"};
-    for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
+    std::vector<std::string> stlEventNames = {"VM_STARTED", "VM_INITIALIZED", "VM_DATASET_UPLOADED", "VM_READY", "CONNECT_SUCCESS"};
+    for (unsigned int unIndex = 0; unIndex < 4; ++unIndex)
     {
         stlEventNames.push_back("PUSH_DATA");
         stlEventNames.push_back("PUSH_FN");

@@ -624,7 +624,15 @@ extern "C" __declspec(dllexport) bool __cdecl UploadInstallationPackageToVirtual
         __DebugAssert(0 != gs_qwAuthenticatedUserAccessRights);
 
         std::vector<std::string> stlHeaders;
-        std::vector<Byte> stlResponse = ::RestApiCall(c_szIpAddressOfVirtualMachine, 9090, "POST", "/UploadData", c_szBase64EncodedInstallationPackage, true, stlHeaders);
+        std::vector<Byte> stlResponse;
+        unsigned int unLoopCounter = 24;
+        do
+        {
+            stlResponse = ::RestApiCall(c_szIpAddressOfVirtualMachine, 9090, "POST", "/UploadData", c_szBase64EncodedInstallationPackage, true, stlHeaders);
+            unLoopCounter -= 1;
+            ::Sleep(5000);
+        } while ((0 <= unLoopCounter) && (0 == stlResponse.size()));
+
         fSuccess = true;
     }
 
@@ -706,7 +714,14 @@ extern "C" __declspec(dllexport) bool __cdecl UploadInitializationParametersToVi
         oInitializationParameters.PutString("DataOwnerUserIdentifier", gs_strAuthenticatedUserIdentifier);
         // Now we blast out the transaction
         std::vector<std::string> stlHeaders;
-        std::vector<Byte> stlResponse = ::RestApiCall(c_szIpAddressOfVirtualMachine, 6800, "POST", "/SAIL/InitializationParameters", oInitializationParameters.GetBase64SerializedBuffer(), true, stlHeaders);
+        unsigned int unLoopCounter = 24;
+        std::vector<Byte> stlResponse;
+        do
+        {
+            stlResponse = ::RestApiCall(c_szIpAddressOfVirtualMachine, 6800, "POST", "/SAIL/InitializationParameters", oInitializationParameters.GetBase64SerializedBuffer(), true, stlHeaders);
+            unLoopCounter -= 1;
+            ::Sleep(5000);
+        } while((0 <= unLoopCounter) && (0 == stlResponse.size()));
         fSuccess = true;
     }
 

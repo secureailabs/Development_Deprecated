@@ -203,7 +203,7 @@ RootOfTrustCore::RootOfTrustCore(
     m_strComputationalDomainIdentifier = oInitializationData.GetString("ComputationalDomainIdentifier");
     m_strDataConnectorDomainIdentifier = oInitializationData.GetString("DataConnectorDomainIdentifier");
     m_strSailWebApiPortalIpAddress = oInitializationData.GetString("SailWebApiPortalIpAddress");
-    m_stlDataOwnerImpostorEosb = oInitializationData.GetString("DataOwnerAccessToken");
+    m_strDataOwnerImpostorEosb = oInitializationData.GetString("DataOwnerAccessToken");
     m_strDataOwnerOrganizationIdentifier = oInitializationData.GetString("DataOwnerOrganizationIdentifier");
     m_strDataOwnerUserIdentifier = oInitializationData.GetString("DataOwnerUserIdentifier");
     std::string strBase64EncodedSerializedDataset = oInitializationData.GetString("Base64EncodedDataset");    
@@ -225,7 +225,7 @@ RootOfTrustCore::RootOfTrustCore(
     std::cout << "m_strComputationalDomainIdentifier: " << m_strComputationalDomainIdentifier << std::endl;
     std::cout << "m_strDataConnectorDomainIdentifier: " << m_strDataConnectorDomainIdentifier << std::endl;
     std::cout << "m_strSailWebApiPortalIpAddress: " << m_strSailWebApiPortalIpAddress << std::endl;
-    std::cout << "m_stlDataOwnerImpostorEosb: " << m_stlDataOwnerImpostorEosb << std::endl;
+    std::cout << "m_strDataOwnerImpostorEosb: " << m_strDataOwnerImpostorEosb << std::endl;
     std::cout << "m_strDataOwnerOrganizationIdentifier: " << m_strDataOwnerOrganizationIdentifier << std::endl;
     std::cout << "m_strDataOwnerOrganizationIdentifier: " << m_strDataOwnerOrganizationIdentifier << std::endl;
     std::cout << "m_strDataOwnerUserIdentifier: " << m_strDataOwnerUserIdentifier << std::endl;
@@ -259,7 +259,7 @@ RootOfTrustCore::RootOfTrustCore(
         m_strComputationalDomainIdentifier = c_oRootOfTrust.m_strComputationalDomainIdentifier;
         m_strDataConnectorDomainIdentifier = c_oRootOfTrust.m_strDataConnectorDomainIdentifier;
         m_strSailWebApiPortalIpAddress = c_oRootOfTrust.m_strSailWebApiPortalIpAddress;
-        m_stlDataOwnerImpostorEosb = c_oRootOfTrust.m_stlDataOwnerImpostorEosb;
+        m_strDataOwnerImpostorEosb = c_oRootOfTrust.m_strDataOwnerImpostorEosb;
         m_strDataOwnerOrganizationIdentifier = c_oRootOfTrust.m_strDataOwnerOrganizationIdentifier;
         m_strDataOwnerUserIdentifier = c_oRootOfTrust.m_strDataOwnerUserIdentifier;
         m_stlDataset = c_oRootOfTrust.m_stlDataset;    
@@ -326,7 +326,7 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
             // Handle lingering events within the data organization audit event queue
             while (0 < m_stlDataOrganizationAuditEventQueue.size())
             {
-                if ((0 < m_stlDataOwnerImpostorEosb.size())&&(0 < m_strDataOrganizationAuditEventParentBranchNodeIdentifier.size()))
+                if ((0 < m_strDataOwnerImpostorEosb.size())&&(0 < m_strDataOrganizationAuditEventParentBranchNodeIdentifier.size()))
                 {
                     fTransmitAuditEvents = true;
                     StructuredBuffer oNewAuditEvent(m_stlDataOrganizationAuditEventQueue.front().c_str());
@@ -337,16 +337,16 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
             }
             if (true == fTransmitAuditEvents)
             {    
-                __DebugAssert(0 < m_stlDataOwnerImpostorEosb.size());
+                __DebugAssert(0 < m_strDataOwnerImpostorEosb.size());
                 __DebugAssert(0 < m_strDataOrganizationAuditEventParentBranchNodeIdentifier.size());
                 
-                ::RecordAuditEvents(m_stlDataOwnerImpostorEosb, m_strDataOrganizationAuditEventParentBranchNodeIdentifier, oAuditEventsToTransmit);
+                ::TransmitAuditEventsToSailWebApiPortal(m_strDataOwnerImpostorEosb, m_strDataOrganizationAuditEventParentBranchNodeIdentifier, oAuditEventsToTransmit);
             }
             oAuditEventsToTransmit.Clear();
             // Handle lingering events within the researcher organization audit event queue
             while (0 < m_stlResearchOrganizationAuditEventQueue.size())
             {
-                if ((0 < m_stlResearcherImpostorEosb.size())&&(0 < m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier.size()))
+                if ((0 < m_strResearcherImpostorEosb.size())&&(0 < m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier.size()))
                 {
                     fTransmitAuditEvents = true;
                     StructuredBuffer oNewAuditEvent(m_stlResearchOrganizationAuditEventQueue.front().c_str());
@@ -357,10 +357,10 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
             }
             if (true == fTransmitAuditEvents)
             {    
-                __DebugAssert(0 < m_stlDataOwnerImpostorEosb.size());
-                __DebugAssert(0 < m_strDataOrganizationAuditEventParentBranchNodeIdentifier.size());
+                __DebugAssert(0 < m_strResearcherImpostorEosb.size());
+                __DebugAssert(0 < m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier.size());
                 
-                ::RecordAuditEvents(m_stlDataOwnerImpostorEosb, m_strDataOrganizationAuditEventParentBranchNodeIdentifier, oAuditEventsToTransmit);
+                ::TransmitAuditEventsToSailWebApiPortal(m_strResearcherImpostorEosb, m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier, oAuditEventsToTransmit);
             }
             oAuditEventsToTransmit.Clear();        
         }
@@ -551,7 +551,7 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactRecordAuditEvent(
             {
                 StructuredBuffer oCopyOfEventData(oCopyOfTransactionParameters.GetStructuredBuffer("EventData"));
                 
-                m_stlResearcherImpostorEosb = oCopyOfEventData.GetString("EOSB");
+                m_strResearcherImpostorEosb = oCopyOfEventData.GetString("EOSB");
                 // Make sure that element is removed from the audit record
                 oCopyOfEventData.RemoveElement("EOSB");
                 // Update the EventData

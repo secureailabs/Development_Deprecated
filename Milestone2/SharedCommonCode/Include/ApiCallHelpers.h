@@ -30,7 +30,7 @@ extern StructuredBuffer __stdcall GetBasicUserInformation(
     _in const std::string & c_strEosb
     );
     
-extern bool __stdcall RecordAuditEvents(
+extern bool __stdcall TransmitAuditEventsToSailWebApiPortal(
     _in const std::string & c_strEosb,
     _in const std::string & c_strParentBranchNodeIdentifier,
     _in const StructuredBuffer & c_oAuditEvents

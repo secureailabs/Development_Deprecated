@@ -363,13 +363,13 @@ extern "C" __declspec(dllexport) void __cdecl ReloadLoadAllAuditEvents(
                                 :   oReconstructedAuditEvent.PutString("AuditEventType", "DIGITAL_CONTRACT_BRANCH_NODE");
                                     oReconstructedAuditEvent.PutString("DigitalContractIdentifier", oPlainTextEventData.GetString("GuidOfDcOrVm"));
                                     break;
-                                    case 2
-                                    :   oReconstructedAuditEvent.PutString("AuditEventType", "VIRTUAL_MACHINE_BRANCH_NODE");
-                                        oReconstructedAuditEvent.PutString("VirtualMachineIdentifier", oPlainTextEventData.GetString("GuidOfDcOrVm"));
-                                        break;
-                                        default
-                                    :   oReconstructedAuditEvent.PutString("AuditEventType", "STRANGE_BRANCH_NODE");
-                                        break;
+                                case 2
+                                :   oReconstructedAuditEvent.PutString("AuditEventType", "VIRTUAL_MACHINE_BRANCH_NODE");
+                                    oReconstructedAuditEvent.PutString("VirtualMachineIdentifier", oPlainTextEventData.GetString("GuidOfDcOrVm"));
+                                    break;
+                                default
+                                :   oReconstructedAuditEvent.PutString("AuditEventType", "STRANGE_BRANCH_NODE");
+                                    break;
                             }
                         }
 

@@ -19,7 +19,6 @@ INITIALIZER_TOOL=$(shell realpath ../../EndPointTools/InitializerTool)
 # Add the new include folders here
 INCLUDE+=-I$(shell realpath .)
 INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
-INCLUDE+=-I$(shell realpath ../../WebService/RestApiPortal/Include)
 INCLUDE+=-I$(INITIALIZER_TOOL)
 
 # Add the new source directory here

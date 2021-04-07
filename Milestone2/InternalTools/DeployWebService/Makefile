@@ -28,8 +28,6 @@ SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
-SOURCES+=$(shell realpath ../../WebService/RestApiPortal/Sources/JsonValue.cpp)
-SOURCES+=$(shell realpath ../../WebService/RestApiPortal/Sources/Utils.cpp)
 SOURCES+=$(INITIALIZER_TOOL)/Azure.cpp
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)

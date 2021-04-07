@@ -10,34 +10,41 @@
 
 #pragma once
 
-#include "StructuredBuffer.h"
-#include "SocketServer.h"
+#include "engine.h"
+#include "function_node.h"
+#include "job.h"
+#include "Object.h"
 #include "RootOfTrustNode.h"
 #include "Socket.h"
-#include "engine.h"
-#include "job.h"
+#include "SocketServer.h"
+#include "StructuredBuffer.h"
 #include "utils.h"
-#include "function_node.h"
+
 
 #define HEADERLENGTH 2
 
 /********************************************************************************************/
 
-class ComputationVM{
-    private:
-        JobEngine m_oEngine;
-        SocketServer m_oSocketServer;
-        std::map<std::string, std::unique_ptr<FunctionNode>> m_stlFNMap;
-        std::string m_strVMID;
-        std::string m_strEOSB;
-        bool m_fStop;
-        RootOfTrustNode m_oRootOfTrustNode;
+class ComputationVM : public Object
+{
+    public:
+    
+        ComputationVM(
+            _in Word wPortIdentifier, 
+            _in size_t nMaxProcess,
+            _in RootOfTrustNode & oRootOfTrustNode
+            );
+        virtual ~ComputationVM(void);
+        
+        void __thiscall Initialize(void);
 
-        void __thiscall HandleConnection
-        (
-            _in Socket* poSocket
-        );
+    private:
+    
         void __thiscall SocketListen(void);
+        void __thiscall HandleConnection(
+            _in Socket * poSocket
+            );
+
         void __thiscall HandleConnect
         (
             _in StructuredBuffer& oContent,
@@ -126,14 +133,13 @@ class ComputationVM{
             void
         );
         void __thiscall Halt(void);
-        void __thiscall SetEOSB(std::string& strEOSB);
-
-    public:
-        ComputationVM
-        (
-            _in Word wPortIdentifier, 
-            _in size_t nMaxProcess,
-            _in RootOfTrustNode& oRootOfTrustNode
-        );
-        void __thiscall InitializeVM(void);
+        
+        // Private data members
+        
+        JobEngine m_oEngine;
+        SocketServer m_oSocketServer;
+        std::map<std::string, std::unique_ptr<FunctionNode>> m_stlFNMap;
+        std::string m_strVirtualMachineIdentifier;
+        std::string m_strEOSB;
+        RootOfTrustNode m_oRootOfTrustNode;
 };

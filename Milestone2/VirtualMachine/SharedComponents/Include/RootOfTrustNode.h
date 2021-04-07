@@ -30,20 +30,12 @@ class RootOfTrustNode : public Object
             );
         virtual ~RootOfTrustNode(void);
         
-        StructuredBuffer __thiscall GetEphemeralTlsKeyPairAndCertificate(void) const;
-        
-        std::vector<Byte> __thiscall GetGlobalRootKeyCertificate(void) const;
-        std::vector<Byte> __thiscall GetComputationalDomainRootKeyCertificate(void) const;
-        std::vector<Byte> __thiscall GetDataDomainRootKeyCertificate(void) const;
-        
-        std::string __thiscall GetDataDomainIpcPath(void) const;
-        std::string __thiscall GetComputationalDomainIpcPath(void) const;
-        
-        StructuredBuffer __thiscall GetDigitalContract(void) const;
+        Guid __thiscall GetDomainIdentifier(void) const;
         std::vector<Byte> __thiscall GetDataset(void) const;
         
         void __thiscall RecordAuditEvent(
-            _in const std::string & c_oEncryptedOpaqueSessionBlob,
+            _in const char * c_szEventName,
+            _in Word wTargetChannelsBitMask,
             _in Dword dwEventType,
             _in const StructuredBuffer & c_oEventData
             ) const;
@@ -54,8 +46,4 @@ class RootOfTrustNode : public Object
         Guid m_oDomainIdentifier;
         
         std::string m_strRootOfTrustIpcPath;
-        
-        std::vector<Byte> m_stlGlobalRootKeyCertificate;
-        std::vector<Byte> m_stlComputationalDomainRootKeyCertificate;
-        std::vector<Byte> m_stlDataDomainRootKeyCertificate;
 };

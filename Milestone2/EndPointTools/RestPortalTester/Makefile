@@ -24,9 +24,6 @@ SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
-SOURCES += $(shell realpath ../../WebService/RestApiPortal/Sources/HttpRequestParser.cpp)
-SOURCES += $(shell realpath ../../WebService/RestApiPortal/Sources/JsonValue.cpp)
-SOURCES += $(shell realpath ../../WebService/RestApiPortal/Sources/Utils.cpp)
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
 OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))

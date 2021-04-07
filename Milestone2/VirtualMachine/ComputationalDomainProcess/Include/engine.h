@@ -25,7 +25,7 @@
 
 /********************************************************************************************/
 
-class JobEngine
+class JobEngine : public Object
 {
     private:
         std::deque<std::unique_ptr<Job>> m_stlJobQueue;
@@ -43,9 +43,15 @@ class JobEngine
         JobEngine
         (
             _in size_t nMaxProcesses
-		): 
-            m_nMaxWorkers(nMaxProcesses) 
-            {}
+		);
+        ~JobEngine(void);
+        JobEngine
+        (
+            _in const Job & c_oJobEngine
+        ) = delete;
+        JobEngine & operator=(
+            _in const JobEngine& c_oJobEngine
+        ) = delete;
 
         void __thiscall AddOneJob
         (

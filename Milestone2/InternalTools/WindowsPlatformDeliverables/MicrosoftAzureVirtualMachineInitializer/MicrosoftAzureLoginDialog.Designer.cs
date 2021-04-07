@@ -52,9 +52,10 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_SecretLabel
             // 
             this.m_SecretLabel.AutoSize = true;
-            this.m_SecretLabel.Location = new System.Drawing.Point(391, 165);
+            this.m_SecretLabel.Location = new System.Drawing.Point(261, 110);
+            this.m_SecretLabel.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.m_SecretLabel.Name = "m_SecretLabel";
-            this.m_SecretLabel.Size = new System.Drawing.Size(60, 25);
+            this.m_SecretLabel.Size = new System.Drawing.Size(39, 15);
             this.m_SecretLabel.TabIndex = 0;
             this.m_SecretLabel.Text = "Secret";
             this.m_SecretLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -62,9 +63,10 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_TenantIdentifierLabel
             // 
             this.m_TenantIdentifierLabel.AutoSize = true;
-            this.m_TenantIdentifierLabel.Location = new System.Drawing.Point(313, 117);
+            this.m_TenantIdentifierLabel.Location = new System.Drawing.Point(209, 78);
+            this.m_TenantIdentifierLabel.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.m_TenantIdentifierLabel.Name = "m_TenantIdentifierLabel";
-            this.m_TenantIdentifierLabel.Size = new System.Drawing.Size(138, 25);
+            this.m_TenantIdentifierLabel.Size = new System.Drawing.Size(92, 15);
             this.m_TenantIdentifierLabel.TabIndex = 1;
             this.m_TenantIdentifierLabel.Text = "Tenant Identifier";
             // 
@@ -72,10 +74,11 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.m_SecretEditBox.BackColor = System.Drawing.SystemColors.Info;
             this.m_SecretEditBox.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.m_SecretEditBox.Location = new System.Drawing.Point(455, 164);
+            this.m_SecretEditBox.Location = new System.Drawing.Point(303, 109);
+            this.m_SecretEditBox.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.m_SecretEditBox.Name = "m_SecretEditBox";
             this.m_SecretEditBox.PasswordChar = '*';
-            this.m_SecretEditBox.Size = new System.Drawing.Size(395, 29);
+            this.m_SecretEditBox.Size = new System.Drawing.Size(265, 22);
             this.m_SecretEditBox.TabIndex = 3;
             // 
             // m_TenantIdentifierEditBox
@@ -83,27 +86,30 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_TenantIdentifierEditBox.BackColor = System.Drawing.SystemColors.Info;
             this.m_TenantIdentifierEditBox.CharacterCasing = System.Windows.Forms.CharacterCasing.Upper;
             this.m_TenantIdentifierEditBox.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.m_TenantIdentifierEditBox.Location = new System.Drawing.Point(455, 116);
+            this.m_TenantIdentifierEditBox.Location = new System.Drawing.Point(303, 77);
+            this.m_TenantIdentifierEditBox.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.m_TenantIdentifierEditBox.Name = "m_TenantIdentifierEditBox";
-            this.m_TenantIdentifierEditBox.Size = new System.Drawing.Size(395, 29);
+            this.m_TenantIdentifierEditBox.Size = new System.Drawing.Size(265, 22);
             this.m_TenantIdentifierEditBox.TabIndex = 2;
             // 
             // m_InstructionsLabel
             // 
             this.m_InstructionsLabel.AutoSize = true;
             this.m_InstructionsLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.m_InstructionsLabel.Location = new System.Drawing.Point(451, 23);
+            this.m_InstructionsLabel.Location = new System.Drawing.Point(301, 15);
+            this.m_InstructionsLabel.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.m_InstructionsLabel.Name = "m_InstructionsLabel";
-            this.m_InstructionsLabel.Size = new System.Drawing.Size(377, 25);
+            this.m_InstructionsLabel.Size = new System.Drawing.Size(245, 15);
             this.m_InstructionsLabel.TabIndex = 0;
             this.m_InstructionsLabel.Text = "Please enter your Microsoft Azure centials.";
             // 
             // m_LoginButton
             // 
             this.m_LoginButton.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this.m_LoginButton.Location = new System.Drawing.Point(455, 210);
+            this.m_LoginButton.Location = new System.Drawing.Point(303, 140);
+            this.m_LoginButton.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.m_LoginButton.Name = "m_LoginButton";
-            this.m_LoginButton.Size = new System.Drawing.Size(128, 40);
+            this.m_LoginButton.Size = new System.Drawing.Size(85, 27);
             this.m_LoginButton.TabIndex = 4;
             this.m_LoginButton.Text = "&Login";
             this.m_LoginButton.UseVisualStyleBackColor = true;
@@ -112,9 +118,10 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_CancelButton
             // 
             this.m_CancelButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.m_CancelButton.Location = new System.Drawing.Point(588, 210);
+            this.m_CancelButton.Location = new System.Drawing.Point(392, 140);
+            this.m_CancelButton.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.m_CancelButton.Name = "m_CancelButton";
-            this.m_CancelButton.Size = new System.Drawing.Size(128, 40);
+            this.m_CancelButton.Size = new System.Drawing.Size(85, 27);
             this.m_CancelButton.TabIndex = 5;
             this.m_CancelButton.Text = "&Cancel";
             this.m_CancelButton.UseVisualStyleBackColor = true;
@@ -125,27 +132,30 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_ApplicationIdentifierTextBox.BackColor = System.Drawing.SystemColors.Info;
             this.m_ApplicationIdentifierTextBox.CharacterCasing = System.Windows.Forms.CharacterCasing.Upper;
             this.m_ApplicationIdentifierTextBox.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.m_ApplicationIdentifierTextBox.Location = new System.Drawing.Point(455, 68);
+            this.m_ApplicationIdentifierTextBox.Location = new System.Drawing.Point(303, 45);
+            this.m_ApplicationIdentifierTextBox.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.m_ApplicationIdentifierTextBox.Name = "m_ApplicationIdentifierTextBox";
-            this.m_ApplicationIdentifierTextBox.Size = new System.Drawing.Size(395, 29);
+            this.m_ApplicationIdentifierTextBox.Size = new System.Drawing.Size(265, 22);
             this.m_ApplicationIdentifierTextBox.TabIndex = 1;
             // 
             // m_IpAddressLabel
             // 
             this.m_IpAddressLabel.AutoSize = true;
-            this.m_IpAddressLabel.Location = new System.Drawing.Point(274, 68);
+            this.m_IpAddressLabel.Location = new System.Drawing.Point(183, 45);
+            this.m_IpAddressLabel.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.m_IpAddressLabel.Name = "m_IpAddressLabel";
-            this.m_IpAddressLabel.Size = new System.Drawing.Size(177, 25);
+            this.m_IpAddressLabel.Size = new System.Drawing.Size(118, 15);
             this.m_IpAddressLabel.TabIndex = 8;
             this.m_IpAddressLabel.Text = "Application Identifier";
             this.m_IpAddressLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // m_MicrosoftLogoPictureBox
             // 
-            this.m_MicrosoftLogoPictureBox.Image = global::MicrosoftAzureVirtualMachineInitializer.Properties.Resources.MicrosoftLogo;
-            this.m_MicrosoftLogoPictureBox.Location = new System.Drawing.Point(32, 36);
+            this.m_MicrosoftLogoPictureBox.Image = ((System.Drawing.Image)(resources.GetObject("m_MicrosoftLogoPictureBox.Image")));
+            this.m_MicrosoftLogoPictureBox.Location = new System.Drawing.Point(21, 24);
+            this.m_MicrosoftLogoPictureBox.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
             this.m_MicrosoftLogoPictureBox.Name = "m_MicrosoftLogoPictureBox";
-            this.m_MicrosoftLogoPictureBox.Size = new System.Drawing.Size(214, 190);
+            this.m_MicrosoftLogoPictureBox.Size = new System.Drawing.Size(143, 127);
             this.m_MicrosoftLogoPictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.m_MicrosoftLogoPictureBox.TabIndex = 9;
             this.m_MicrosoftLogoPictureBox.TabStop = false;
@@ -156,9 +166,10 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_StatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.m_CopyrightStripStatusLabel,
             this.m_ExceptionStripStatusLabel});
-            this.m_StatusStrip.Location = new System.Drawing.Point(0, 264);
+            this.m_StatusStrip.Location = new System.Drawing.Point(0, 166);
             this.m_StatusStrip.Name = "m_StatusStrip";
-            this.m_StatusStrip.Size = new System.Drawing.Size(880, 29);
+            this.m_StatusStrip.Padding = new System.Windows.Forms.Padding(1, 0, 9, 0);
+            this.m_StatusStrip.Size = new System.Drawing.Size(587, 29);
             this.m_StatusStrip.TabIndex = 10;
             this.m_StatusStrip.Text = "statusStrip1";
             // 
@@ -167,7 +178,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_CopyrightStripStatusLabel.AutoSize = false;
             this.m_CopyrightStripStatusLabel.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.m_CopyrightStripStatusLabel.Name = "m_CopyrightStripStatusLabel";
-            this.m_CopyrightStripStatusLabel.Size = new System.Drawing.Size(530, 22);
+            this.m_CopyrightStripStatusLabel.Size = new System.Drawing.Size(530, 24);
             this.m_CopyrightStripStatusLabel.Text = "Copyright (C) 2021 Secure AI Labs, Inc.";
             this.m_CopyrightStripStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
@@ -179,7 +190,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_ExceptionStripStatusLabel.IsLink = true;
             this.m_ExceptionStripStatusLabel.LinkColor = System.Drawing.Color.Red;
             this.m_ExceptionStripStatusLabel.Name = "m_ExceptionStripStatusLabel";
-            this.m_ExceptionStripStatusLabel.Size = new System.Drawing.Size(320, 22);
+            this.m_ExceptionStripStatusLabel.Size = new System.Drawing.Size(320, 24);
             this.m_ExceptionStripStatusLabel.Text = "Click here to view exceptions";
             this.m_ExceptionStripStatusLabel.Click += new System.EventHandler(this.m_ExceptionStripStatusLabel_Click);
             // 
@@ -191,10 +202,10 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // MicrosoftAzureLoginDialog
             // 
             this.AcceptButton = this.m_LoginButton;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(144F, 144F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
             this.CancelButton = this.m_CancelButton;
-            this.ClientSize = new System.Drawing.Size(880, 293);
+            this.ClientSize = new System.Drawing.Size(587, 195);
             this.ControlBox = false;
             this.Controls.Add(this.m_StatusStrip);
             this.Controls.Add(this.m_MicrosoftLogoPictureBox);
@@ -210,7 +221,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            this.Margin = new System.Windows.Forms.Padding(2, 3, 2, 3);
             this.Name = "MicrosoftAzureLoginDialog";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Ignite! a Microsoft Azure Initializer";

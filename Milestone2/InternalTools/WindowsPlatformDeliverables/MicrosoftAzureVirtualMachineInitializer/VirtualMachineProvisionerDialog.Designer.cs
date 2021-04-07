@@ -45,10 +45,10 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_InstructionsLabel
             // 
             this.m_InstructionsLabel.AutoSize = true;
-            this.m_InstructionsLabel.Location = new System.Drawing.Point(8, 6);
-            this.m_InstructionsLabel.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.m_InstructionsLabel.Location = new System.Drawing.Point(6, 4);
+            this.m_InstructionsLabel.Margin = new System.Windows.Forms.Padding(1, 0, 1, 0);
             this.m_InstructionsLabel.Name = "m_InstructionsLabel";
-            this.m_InstructionsLabel.Size = new System.Drawing.Size(912, 25);
+            this.m_InstructionsLabel.Size = new System.Drawing.Size(605, 15);
             this.m_InstructionsLabel.TabIndex = 1;
             this.m_InstructionsLabel.Text = "Press \"Go!\" in order to trigger the provisioning and initialization process of al" +
     "l of the virtual machines listed below.";
@@ -56,10 +56,10 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_GoButton
             // 
             this.m_GoButton.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this.m_GoButton.Location = new System.Drawing.Point(306, 368);
-            this.m_GoButton.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.m_GoButton.Location = new System.Drawing.Point(214, 221);
+            this.m_GoButton.Margin = new System.Windows.Forms.Padding(1, 1, 1, 1);
             this.m_GoButton.Name = "m_GoButton";
-            this.m_GoButton.Size = new System.Drawing.Size(102, 37);
+            this.m_GoButton.Size = new System.Drawing.Size(71, 22);
             this.m_GoButton.TabIndex = 2;
             this.m_GoButton.Text = "Go!";
             this.m_GoButton.UseVisualStyleBackColor = true;
@@ -68,10 +68,10 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_CancelButton
             // 
             this.m_CancelButton.DialogResult = System.Windows.Forms.DialogResult.Abort;
-            this.m_CancelButton.Location = new System.Drawing.Point(412, 368);
-            this.m_CancelButton.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.m_CancelButton.Location = new System.Drawing.Point(288, 221);
+            this.m_CancelButton.Margin = new System.Windows.Forms.Padding(1, 1, 1, 1);
             this.m_CancelButton.Name = "m_CancelButton";
-            this.m_CancelButton.Size = new System.Drawing.Size(102, 37);
+            this.m_CancelButton.Size = new System.Drawing.Size(71, 22);
             this.m_CancelButton.TabIndex = 3;
             this.m_CancelButton.Text = "Cancel";
             this.m_CancelButton.UseVisualStyleBackColor = true;
@@ -80,10 +80,10 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_ExitButton
             // 
             this.m_ExitButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.m_ExitButton.Location = new System.Drawing.Point(518, 368);
-            this.m_ExitButton.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.m_ExitButton.Location = new System.Drawing.Point(363, 221);
+            this.m_ExitButton.Margin = new System.Windows.Forms.Padding(1, 1, 1, 1);
             this.m_ExitButton.Name = "m_ExitButton";
-            this.m_ExitButton.Size = new System.Drawing.Size(102, 37);
+            this.m_ExitButton.Size = new System.Drawing.Size(71, 22);
             this.m_ExitButton.TabIndex = 4;
             this.m_ExitButton.Text = "Exit";
             this.m_ExitButton.UseVisualStyleBackColor = true;
@@ -91,20 +91,21 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             // m_StatusStrip
             // 
+            this.m_StatusStrip.AutoSize = false;
             this.m_StatusStrip.ImageScalingSize = new System.Drawing.Size(24, 24);
             this.m_StatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.m_CopyrightToolStripStatusLabel});
-            this.m_StatusStrip.Location = new System.Drawing.Point(0, 416);
+            this.m_StatusStrip.Location = new System.Drawing.Point(0, 250);
             this.m_StatusStrip.Name = "m_StatusStrip";
-            this.m_StatusStrip.Padding = new System.Windows.Forms.Padding(1, 0, 9, 0);
-            this.m_StatusStrip.Size = new System.Drawing.Size(924, 22);
+            this.m_StatusStrip.Padding = new System.Windows.Forms.Padding(1, 0, 6, 0);
+            this.m_StatusStrip.Size = new System.Drawing.Size(647, 13);
             this.m_StatusStrip.TabIndex = 5;
             this.m_StatusStrip.Text = "statusStrip1";
             // 
             // m_CopyrightToolStripStatusLabel
             // 
             this.m_CopyrightToolStripStatusLabel.Name = "m_CopyrightToolStripStatusLabel";
-            this.m_CopyrightToolStripStatusLabel.Size = new System.Drawing.Size(141, 15);
+            this.m_CopyrightToolStripStatusLabel.Size = new System.Drawing.Size(210, 8);
             this.m_CopyrightToolStripStatusLabel.Text = "Copyright (C) 2021 Secure AI Labs, Inc.";
             this.m_CopyrightToolStripStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
@@ -119,20 +120,20 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_ListBox.BackColor = System.Drawing.SystemColors.Info;
             this.m_ListBox.Font = new System.Drawing.Font("Consolas", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.m_ListBox.FormattingEnabled = true;
-            this.m_ListBox.ItemHeight = 23;
-            this.m_ListBox.Location = new System.Drawing.Point(11, 33);
-            this.m_ListBox.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.m_ListBox.ItemHeight = 15;
+            this.m_ListBox.Location = new System.Drawing.Point(8, 20);
+            this.m_ListBox.Margin = new System.Windows.Forms.Padding(1, 1, 1, 1);
             this.m_ListBox.Name = "m_ListBox";
-            this.m_ListBox.Size = new System.Drawing.Size(902, 326);
+            this.m_ListBox.Size = new System.Drawing.Size(633, 184);
             this.m_ListBox.TabIndex = 6;
             // 
             // VirtualMachineProvisionerDialog
             // 
             this.AcceptButton = this.m_GoButton;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 25F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.m_ExitButton;
-            this.ClientSize = new System.Drawing.Size(924, 438);
+            this.ClientSize = new System.Drawing.Size(647, 263);
             this.ControlBox = false;
             this.Controls.Add(this.m_ListBox);
             this.Controls.Add(this.m_StatusStrip);
@@ -142,7 +143,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.Controls.Add(this.m_InstructionsLabel);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.Margin = new System.Windows.Forms.Padding(1, 1, 1, 1);
             this.Name = "VirtualMachineProvisionerDialog";
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;

@@ -14,9 +14,9 @@
 #include "StructuredBuffer.h"
 #include "SocketClient.h"
 #include "TlsClient.h"
-#include "Exceptions.h"
 #include "DebugLibrary.h"
-#include "IpcTransactionHelperFunctions.h"
+#include "Exceptions.h"
+#include "TlsTransactionHelperFunctions.h"
 #include "HttpRequestParser.h"
 #include "JsonValue.h"
 #include <exception>
@@ -28,11 +28,12 @@
 
 #ifndef SERVER_IP_ADDRESS
     #define SERVER_PORT 6200
-    #define SERVER_IP_ADDRESS "127.0.0.1"
+    #define SERVER_IP_ADDRESS "40.70.210.133"
 #endif
 
 __thiscall Frontend::Frontend(void):
     m_stlConnectionMap(),
+    m_stlPortMap(),
     m_stlFNTable(),
     m_fStop(false)
 {
@@ -62,6 +63,7 @@ bool ParseFirstLine(
     // Get transaction status
     std::getline(oFirstLineStream, strProtocol, ' ');
     std::getline(oFirstLineStream, strStatus, ' ');
+
     if (!strStatus.empty())
     {
         fSuccess = true;
@@ -147,11 +149,11 @@ std::string Login(
     {
         bool fSuccess = false;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("132.34.4.23", 6200);
+        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
 
         std::string strHttpLoginRequest = "POST /SAIL/AuthenticationManager/User/Login?Email="+ c_strEmail +"&Password="+ c_strUserPassword +" HTTP/1.1\r\n"
                                         "Accept: */*\r\n"
-                                        "Host: 132.34.4.23:6200\r\n"
+                                        "Host: localhost:6200\r\n"
                                         "Connection: keep-alive\r\n"
                                         "Content-Length: 0\r\n"
                                         "\r\n";
@@ -192,12 +194,14 @@ std::string Login(
     }
     catch(BaseException oBaseException)
     {
-        //::ShowErrorMessage("Login Failed!");
+        std::cout<<oBaseException.GetExceptionMessage()<<std::endl;
         std::cout<<"Login Failed!"<<std::endl;
+        //::ShowErrorMessage("Login Failed!");
     }
 
     return strEosb;
 }
+
 
 void __thiscall Frontend::SetFrontend
 (
@@ -208,21 +212,35 @@ void __thiscall Frontend::SetFrontend
     _in std::string& strPassword
 )
 {
-    Socket* poSocket = ConnectToNetworkSocket(strServerIP, wPort);
-    std::shared_ptr<Socket>stlSocket=std::shared_ptr<Socket>(poSocket);
-
     std::string strEOSB = Login(strEmail, strPassword);
+    
+    std::cout<<"Login done"<<std::endl;
 
     StructuredBuffer oBuffer;
     oBuffer.PutInt8("Type", eCONNECT);
     oBuffer.PutString("EOSB", strEOSB);
 
-    std::vector<Byte> stlResponse = PutIpcTransactionAndGetResponse(stlSocket.get(),oBuffer);
-    StructuredBuffer oResponse(stlResponse);
+    TlsNode* poSocket;
 
-    strVMID = oResponse.GetString("VMID");
+    try
+    {
+        poSocket = TlsConnectToNetworkSocket(strServerIP.c_str(), wPort);
+        _ThrowIfNull(poSocket, "Tls connection error for connectVM", nullptr);
 
-    m_stlConnectionMap.emplace(strVMID, stlSocket);
+        std::vector<Byte> stlResponse = PutTlsTransactionAndGetResponse(poSocket,oBuffer,2*60*1000);
+        if(0==stlResponse.size())
+            _ThrowBaseException("No response for connectVM request", nullptr);
+
+        StructuredBuffer oResponse(stlResponse);
+        strVMID = oResponse.GetString("VMID");
+    }
+    catch(BaseException oException)
+    {
+        poSocket->Release();
+        std::cout<<oException.GetExceptionMessage()<<std::endl;
+    }
+    m_stlConnectionMap.emplace(strVMID, strServerIP);
+    m_stlPortMap.emplace(strVMID, wPort);
 }
 
 /********************************************************************************************
@@ -246,8 +264,20 @@ void __thiscall Frontend::HandleExecJob
     oBuffer.PutInt8("Type", eRUN);
     oBuffer.PutString("FNID", strFNID);
     oBuffer.PutString("JobID", strJobID);
-    
-    PutIpcTransactionAndGetResponse(m_stlConnectionMap[strVMID].get(),oBuffer);
+
+    TlsNode* poSocket;
+
+    try
+    {
+        poSocket = TlsConnectToNetworkSocket(m_stlConnectionMap[strVMID].c_str(), m_stlPortMap[strVMID]);
+        _ThrowIfNull(poSocket, "Tls connection error for ExecJob", nullptr);
+        std::vector<Byte> stlResponse = PutTlsTransactionAndGetResponse(poSocket,oBuffer,2*60*1000);
+    }
+    catch(BaseException oException)
+    {
+        poSocket->Release();
+        std::cout<<oException.GetExceptionMessage()<<std::endl;
+    }
     //StructuredBuffer oResponse(stlResponse);
 }
 
@@ -269,11 +299,24 @@ void __thiscall Frontend::HandleInspect
 {
     StructuredBuffer oBuffer;
     oBuffer.PutInt8("Type", eINSPECT);
-    
-    std::vector<Byte> stlResponse = PutIpcTransactionAndGetResponse(m_stlConnectionMap[strVMID].get(),oBuffer);
-    StructuredBuffer oResponse(stlResponse);
-    
-    strJobs = oResponse.GetString("Payload");
+
+    TlsNode* poSocket;
+    try
+    {
+        poSocket = TlsConnectToNetworkSocket(m_stlConnectionMap[strVMID].c_str(), m_stlPortMap[strVMID]);
+        _ThrowIfNull(poSocket, "Tls connection error for inspect request", nullptr);
+        std::vector<Byte> stlResponse = PutTlsTransactionAndGetResponse(poSocket,oBuffer,2*60*1000);
+        if(0==stlResponse.size())
+            _ThrowBaseException("No response for inspect request", nullptr);
+        
+        StructuredBuffer oResponse(stlResponse);
+        strJobs = oResponse.GetString("Payload");
+    }
+    catch(BaseException oException)
+    {
+        poSocket->Release();
+        std::cout<<oException.GetExceptionMessage()<<std::endl;
+    }
 }
 
 void __thiscall Frontend::HandleGetTable
@@ -285,11 +328,23 @@ void __thiscall Frontend::HandleGetTable
     StructuredBuffer oBuffer;
     oBuffer.PutInt8("Type", eGETTABLE);
     
-    std::vector<Byte> stlResponse = PutIpcTransactionAndGetResponse(m_stlConnectionMap[strVMID].get(),oBuffer);
-    StructuredBuffer oResponse(stlResponse);
+    TlsNode* poSocket;
+    try
+    {
+        poSocket = TlsConnectToNetworkSocket(m_stlConnectionMap[strVMID].c_str(), m_stlPortMap[strVMID]);
+        _ThrowIfNull(poSocket, "Tls connection error for getTable", nullptr);
+        std::vector<Byte> stlResponse = PutTlsTransactionAndGetResponse(poSocket,oBuffer,2*60*1000);
+        if(0==stlResponse.size())
+            _ThrowBaseException("No response for getTable request", nullptr);
 
-    strTables = oResponse.GetString("Payload");
-
+        StructuredBuffer oResponse(stlResponse);
+        strTables = oResponse.GetString("Payload");
+    }
+    catch(BaseException oException)
+    {
+        poSocket->Release();
+        std::cout<<oException.GetExceptionMessage()<<std::endl;
+    }
 }
 
 /********************************************************************************************
@@ -313,7 +368,18 @@ void __thiscall Frontend::HandleQuit
     
     for(auto const& i : m_stlConnectionMap)
     {
-        std::vector<Byte> stlResponse = PutIpcTransactionAndGetResponse(m_stlConnectionMap[i.first].get(), oBuffer);
+        TlsNode* poSocket;
+        try
+        {
+            poSocket = TlsConnectToNetworkSocket(i.second.c_str(), m_stlPortMap[i.first]);
+            _ThrowIfNull(poSocket, "Tls connection error for quit", nullptr);
+            std::vector<Byte> stlResponse = PutTlsTransactionAndGetResponse(poSocket,oBuffer,2*60*1000);
+        }
+        catch(BaseException oException)
+        {
+            poSocket->Release();
+            std::cout<<oException.GetExceptionMessage()<<std::endl;
+        }
         //StructuredBuffer oResponse(stlResponse);
     }
 
@@ -348,7 +414,18 @@ void __thiscall Frontend::HandlePushData
     VecToBuf<std::vector<std::string>>(stlConfidentialInputIDs, oConfidentialInputIDs);
     oBuffer.PutStructuredBuffer("ConfidentialInputIDs", oConfidentialInputIDs);
     
-    PutIpcTransactionAndGetResponse(m_stlConnectionMap[strVMID].get(),oBuffer);
+    TlsNode* poSocket;
+    try
+    {
+        poSocket = TlsConnectToNetworkSocket(m_stlConnectionMap[strVMID].c_str(), m_stlPortMap[strVMID]);
+        _ThrowIfNull(poSocket, "Tls connection error for pushData", nullptr);
+        std::vector<Byte> stlResponse = PutTlsTransactionAndGetResponse(poSocket,oBuffer,2*60*1000);
+    }
+    catch(BaseException oException)
+    {
+        poSocket->Release();
+        std::cout<<oException.GetExceptionMessage()<<std::endl;
+    }
     //StructuredBuffer oResponse(stlResponse);
 }
 
@@ -406,10 +483,23 @@ void __thiscall Frontend::HandlePullData
     VecToBuf<std::vector<std::string>>(stlvarIDs, oVarIDs);
     oBuffer.PutStructuredBuffer("VarIDs", oVarIDs);
     
-    std::vector<Byte> stlResponse = PutIpcTransactionAndGetResponse(m_stlConnectionMap[strVMID].get(),oBuffer);
-    StructuredBuffer oResponse(stlResponse);
-    StructuredBuffer oVars = oResponse.GetStructuredBuffer("Vars");
-    BufToVec<std::vector<std::vector<Byte>>>(oVars, stlVars);
+    TlsNode* poSocket;
+    try
+    {
+        poSocket = TlsConnectToNetworkSocket(m_stlConnectionMap[strVMID].c_str(), m_stlPortMap[strVMID]);
+        _ThrowIfNull(poSocket, "Tls connection error for pullData", nullptr);
+        std::vector<Byte> stlResponse = PutTlsTransactionAndGetResponse(poSocket,oBuffer,2*60*1000);
+        if(0==stlResponse.size())
+            _ThrowBaseException("No response for pullData request", nullptr);
+        StructuredBuffer oResponse(stlResponse);
+        StructuredBuffer oVars = oResponse.GetStructuredBuffer("Vars");
+        BufToVec<std::vector<std::vector<Byte>>>(oVars, stlVars);
+    }
+    catch(BaseException oException)
+    {
+        poSocket->Release();
+        std::cout<<oException.GetExceptionMessage()<<std::endl;
+    }
     //std::ofstream logfile;
     //logfile.open("/home/jjj/playground/pulldataoutput.log" ,std::ios::out);
     //logfile<<stlResponse.size();
@@ -432,8 +522,19 @@ void __thiscall Frontend::HandleDeleteData
     VecToBuf<std::vector<std::string>>(stlvarID, oVars);
     oBuffer.PutStructuredBuffer("Vars", oVars);
     
-    std::vector<Byte> stlResponse = PutIpcTransactionAndGetResponse(m_stlConnectionMap[strVMID].get(),oBuffer);
-    StructuredBuffer oResponse(stlResponse);
+    TlsNode* poSocket;
+    try
+    {
+        poSocket = TlsConnectToNetworkSocket(m_stlConnectionMap[strVMID].c_str(), m_stlPortMap[strVMID]);
+        _ThrowIfNull(poSocket, "Tls connection error for DeleteData", nullptr);
+        std::vector<Byte> stlResponse = PutTlsTransactionAndGetResponse(poSocket,oBuffer,2*60*1000);
+    }
+    catch(BaseException oException)
+    {
+        poSocket->Release();
+        std::cout<<oException.GetExceptionMessage()<<std::endl;
+    }
+    //StructuredBuffer oResponse(stlResponse);
 }
 
 void __thiscall Frontend::HandlePushFN
@@ -468,8 +569,21 @@ void __thiscall Frontend::HandlePushFN
     oBuffer.PutStructuredBuffer("Output", oOutputBuffer);
     oBuffer.PutStructuredBuffer("ConfidentialInput", oConfidentialInputBuffer);
     oBuffer.PutStructuredBuffer("ConfidentialOutput", oConfidentialOutputBuffer);
-
-    PutIpcTransactionAndGetResponse(m_stlConnectionMap[strVMID].get(),oBuffer);
+    
+    TlsNode* poSocket;
+    try
+    {
+        poSocket = TlsConnectToNetworkSocket(m_stlConnectionMap[strVMID].c_str(), m_stlPortMap[strVMID]);
+        _ThrowIfNull(poSocket, "Tls connection error for pushFN", nullptr);
+        std::vector<Byte> stlResponse = PutTlsTransactionAndGetResponse(poSocket,oBuffer,2*60*1000);
+        if(0==stlResponse.size())
+            _ThrowBaseException("No response for pushFN request", nullptr);
+    }
+    catch(BaseException oException)
+    {
+        poSocket->Release();
+        std::cout<<oException.GetExceptionMessage()<<std::endl;
+    }
 }
 
 void __thiscall Frontend::RegisterFN

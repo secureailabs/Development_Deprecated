@@ -46,52 +46,52 @@ namespace SailAuditInterface
             // m_UsernameLabel
             // 
             this.m_UsernameLabel.AutoSize = true;
-            this.m_UsernameLabel.Location = new System.Drawing.Point(279, 120);
+            this.m_UsernameLabel.Location = new System.Drawing.Point(169, 84);
             this.m_UsernameLabel.Name = "m_UsernameLabel";
-            this.m_UsernameLabel.Size = new System.Drawing.Size(91, 25);
+            this.m_UsernameLabel.Size = new System.Drawing.Size(60, 15);
             this.m_UsernameLabel.TabIndex = 0;
             this.m_UsernameLabel.Text = "Username";
             // 
             // m_PasswordLabel
             // 
             this.m_PasswordLabel.AutoSize = true;
-            this.m_PasswordLabel.Location = new System.Drawing.Point(284, 170);
+            this.m_PasswordLabel.Location = new System.Drawing.Point(172, 119);
             this.m_PasswordLabel.Name = "m_PasswordLabel";
-            this.m_PasswordLabel.Size = new System.Drawing.Size(87, 25);
+            this.m_PasswordLabel.Size = new System.Drawing.Size(57, 15);
             this.m_PasswordLabel.TabIndex = 1;
             this.m_PasswordLabel.Text = "Password";
             // 
             // m_UsernameEditBox
             // 
-            this.m_UsernameEditBox.Location = new System.Drawing.Point(374, 117);
+            this.m_UsernameEditBox.Location = new System.Drawing.Point(235, 81);
             this.m_UsernameEditBox.Name = "m_UsernameEditBox";
-            this.m_UsernameEditBox.Size = new System.Drawing.Size(476, 31);
+            this.m_UsernameEditBox.Size = new System.Drawing.Size(323, 23);
             this.m_UsernameEditBox.TabIndex = 2;
             // 
             // m_PasswordEditBox
             // 
-            this.m_PasswordEditBox.Location = new System.Drawing.Point(374, 166);
+            this.m_PasswordEditBox.Location = new System.Drawing.Point(235, 116);
             this.m_PasswordEditBox.Name = "m_PasswordEditBox";
             this.m_PasswordEditBox.PasswordChar = '*';
-            this.m_PasswordEditBox.Size = new System.Drawing.Size(476, 31);
+            this.m_PasswordEditBox.Size = new System.Drawing.Size(323, 23);
             this.m_PasswordEditBox.TabIndex = 3;
             // 
             // m_InstructionsLabel
             // 
             this.m_InstructionsLabel.AutoSize = true;
             this.m_InstructionsLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.m_InstructionsLabel.Location = new System.Drawing.Point(272, 16);
+            this.m_InstructionsLabel.Location = new System.Drawing.Point(167, 18);
             this.m_InstructionsLabel.Name = "m_InstructionsLabel";
-            this.m_InstructionsLabel.Size = new System.Drawing.Size(603, 25);
+            this.m_InstructionsLabel.Size = new System.Drawing.Size(391, 15);
             this.m_InstructionsLabel.TabIndex = 0;
             this.m_InstructionsLabel.Text = "Please enter your SAIL Credentials. The username your email address.";
             // 
             // m_LoginButton
             // 
             this.m_LoginButton.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this.m_LoginButton.Location = new System.Drawing.Point(309, 222);
+            this.m_LoginButton.Location = new System.Drawing.Point(235, 155);
             this.m_LoginButton.Name = "m_LoginButton";
-            this.m_LoginButton.Size = new System.Drawing.Size(128, 40);
+            this.m_LoginButton.Size = new System.Drawing.Size(128, 28);
             this.m_LoginButton.TabIndex = 4;
             this.m_LoginButton.Text = "&Login";
             this.m_LoginButton.UseVisualStyleBackColor = true;
@@ -100,9 +100,9 @@ namespace SailAuditInterface
             // m_CancelButton
             // 
             this.m_CancelButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.m_CancelButton.Location = new System.Drawing.Point(442, 222);
+            this.m_CancelButton.Location = new System.Drawing.Point(369, 155);
             this.m_CancelButton.Name = "m_CancelButton";
-            this.m_CancelButton.Size = new System.Drawing.Size(128, 40);
+            this.m_CancelButton.Size = new System.Drawing.Size(128, 28);
             this.m_CancelButton.TabIndex = 5;
             this.m_CancelButton.Text = "&Cancel";
             this.m_CancelButton.UseVisualStyleBackColor = true;
@@ -110,17 +110,17 @@ namespace SailAuditInterface
             // 
             // m_IpAddressTextBox
             // 
-            this.m_IpAddressTextBox.Location = new System.Drawing.Point(374, 68);
+            this.m_IpAddressTextBox.Location = new System.Drawing.Point(235, 46);
             this.m_IpAddressTextBox.Name = "m_IpAddressTextBox";
-            this.m_IpAddressTextBox.Size = new System.Drawing.Size(476, 31);
+            this.m_IpAddressTextBox.Size = new System.Drawing.Size(323, 23);
             this.m_IpAddressTextBox.TabIndex = 1;
             // 
             // m_IpAddressLabel
             // 
             this.m_IpAddressLabel.AutoSize = true;
-            this.m_IpAddressLabel.Location = new System.Drawing.Point(272, 70);
+            this.m_IpAddressLabel.Location = new System.Drawing.Point(167, 49);
             this.m_IpAddressLabel.Name = "m_IpAddressLabel";
-            this.m_IpAddressLabel.Size = new System.Drawing.Size(97, 25);
+            this.m_IpAddressLabel.Size = new System.Drawing.Size(62, 15);
             this.m_IpAddressLabel.TabIndex = 8;
             this.m_IpAddressLabel.Text = "IP Address";
             // 
@@ -128,10 +128,10 @@ namespace SailAuditInterface
             // 
             this.pictureBox1.Image = global::SailAuditInterface.Properties.Resources.SAIL_Icon;
             this.pictureBox1.InitialImage = ((System.Drawing.Image)(resources.GetObject("pictureBox1.InitialImage")));
-            this.pictureBox1.Location = new System.Drawing.Point(18, 18);
-            this.pictureBox1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.pictureBox1.Location = new System.Drawing.Point(18, 33);
+            this.pictureBox1.Margin = new System.Windows.Forms.Padding(4);
             this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(230, 230);
+            this.pictureBox1.Size = new System.Drawing.Size(135, 133);
             this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.pictureBox1.TabIndex = 9;
             this.pictureBox1.TabStop = false;
@@ -141,7 +141,7 @@ namespace SailAuditInterface
             this.AcceptButton = this.m_LoginButton;
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.CancelButton = this.m_CancelButton;
-            this.ClientSize = new System.Drawing.Size(880, 278);
+            this.ClientSize = new System.Drawing.Size(574, 198);
             this.ControlBox = false;
             this.Controls.Add(this.pictureBox1);
             this.Controls.Add(this.m_IpAddressLabel);

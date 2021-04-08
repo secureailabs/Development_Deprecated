@@ -19,7 +19,6 @@
 #include "TlsTransactionHelperFunctions.h"
 #include "HttpRequestParser.h"
 #include "JsonValue.h"
-#include "InteractiveClient.h"
 #include <exception>
 #include <iostream>
 #include <vector>
@@ -50,6 +49,157 @@ __thiscall Frontend::Frontend(void):
  * @brief Create a frontendCLI object
  *
  ********************************************************************************************/
+
+bool ParseFirstLine(
+    _in const std::string & c_strRequestData
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+    std::string strProtocol, strStatus;
+    std::stringstream oFirstLineStream(c_strRequestData);
+
+    // Get transaction status
+    std::getline(oFirstLineStream, strProtocol, ' ');
+    std::getline(oFirstLineStream, strStatus, ' ');
+
+    if (!strStatus.empty())
+    {
+        fSuccess = true;
+    }
+    else
+    {
+        _ThrowBaseException("ERROR: Invalid request.", nullptr);
+    }
+    _ThrowBaseExceptionIf(("200" != strStatus), "Transaction returned with error code.", nullptr);
+
+    return fSuccess;
+}
+
+/********************************************************************************************
+ *
+ * @function GetResponseBody
+ * @brief Parse and return response body
+ * @param[in] c_strRequestData response data
+ * @return Serialized response body
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> GetResponseBody(
+    _in const std::string & c_strRequestData,
+    _in TlsNode * poTlsNode
+    )
+{
+    __DebugFunction();
+
+    std::vector<Byte> stlSerializedResponse;
+
+    // Check http code
+    bool fSuccess = ::ParseFirstLine(c_strRequestData);
+    // Parse Header of the Rest Request
+    HttpRequestParser oParser;
+    fSuccess = oParser.ParseResponse(c_strRequestData);
+    _ThrowBaseExceptionIf((false == fSuccess), "Error: Parsing response failed.", nullptr);
+
+    if (true == oParser.HeaderExists("Content-Length"))
+    {
+        unsigned int unContentLength = std::stoi(oParser.GetHeaderValue("Content-Length"));
+        if (0 < unContentLength)
+        {
+            // Read request content
+            std::vector<Byte> stlBodyData = poTlsNode->Read(unContentLength, 2000);
+            _ThrowBaseExceptionIf((0 == stlBodyData.size()), "Dead Packet.", nullptr);
+            std::string strRequestBody = std::string(stlBodyData.begin(), stlBodyData.end());
+
+            // Check Content-Type
+            _ThrowBaseExceptionIf((false == oParser.HeaderExists("Content-Type")), "Invalid request format.", nullptr);
+            std::string strContentType = oParser.GetHeaderValue("Content-Type");
+            if ("application/json" == strContentType)
+            {
+                // Parse Json
+                std::string strUnEscapseJsonString = ::UnEscapeJsonString(strRequestBody);
+                stlSerializedResponse = JsonValue::ParseDataToStructuredBuffer(strUnEscapseJsonString.c_str());
+            }
+            else
+            {
+                _ThrowBaseException("Content Type: %s not supported.", strContentType);
+            }
+        }
+    }
+    _ThrowBaseExceptionIf((0 == stlSerializedResponse.size()), "Error logging in.", nullptr);
+
+    return stlSerializedResponse;
+}
+
+/********************************************************************************************/
+
+std::string Login(
+    _in const std::string & c_strEmail,
+    _in const std::string & c_strUserPassword
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEmail.size());
+    __DebugAssert(0 < c_strUserPassword.size());
+
+    std::string strEosb;
+
+    try
+    {
+        bool fSuccess = false;
+        TlsNode * poTlsNode = nullptr;
+        poTlsNode = ::TlsConnectToNetworkSocket("132.34.4.23", 6200);
+
+        std::string strHttpLoginRequest = "POST /SAIL/AuthenticationManager/User/Login?Email="+ c_strEmail +"&Password="+ c_strUserPassword +" HTTP/1.1\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: 132.34.4.23:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: 0\r\n"
+                                        "\r\n";
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpLoginRequest.data(), (strHttpLoginRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 20000);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
+            {
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
+                {
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
+                }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
+
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error logging in.", nullptr);
+        strEosb = oResponse.GetString("Eosb");
+    }
+    catch(BaseException oBaseException)
+    {
+        //::ShowErrorMessage("Login Failed!");
+        std::cout<<"Login Failed!"<<std::endl;
+    }
+
+    return strEosb;
+}
 
 void __thiscall Frontend::SetFrontend
 (

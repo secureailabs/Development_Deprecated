@@ -12,11 +12,14 @@
 #include "CoreTypes.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "Guid.h"
+
 #include <stdio.h>
 #include <string.h>
 
 #pragma comment(lib, "rpcrt4.lib")
+
 #include <windows.h>
 #include <iostream>
 #include <guiddef.h>

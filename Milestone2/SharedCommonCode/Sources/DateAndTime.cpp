@@ -12,7 +12,6 @@
 #include "DebugLibrary.h"
 #include <time.h>
 
-
 /********************************************************************************************/
 
 uint64_t __stdcall GetEpochTimeInSeconds(void) throw()

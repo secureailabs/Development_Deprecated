@@ -8,26 +8,29 @@
  *
  ********************************************************************************************/
 
+#include "CoreTypes.h"
+#include "DebugLibrary.h"
+#include "Exceptions.h"
+#include "ExceptionRegister.h"
+#include "Chronometer.h"
+#include "SocketClient.h"
 #include "TlsClient.h"
 #include "TlsNode.h"
-#include "DebugLibrary.h"
-#include "SocketClient.h"
-#include "CoreTypes.h"
-#include "Exceptions.h"
-#include "Chronometer.h"
 
-#include <unistd.h>
+#include <string>
 #include <iostream>
+#include <unistd.h>
+
 
 /********************************************************************************************/
 
 TlsNode * __stdcall TlsConnectToUnixDomainSocket(
-    _in const char * c_strSocketPath
+    _in const char * c_szSocketPath
     )
 {
     __DebugFunction();
 
-    Socket * poSocket = ::ConnectToUnixDomainSocket(c_strSocketPath);
+    Socket * poSocket = ::ConnectToUnixDomainSocket(std::string(c_szSocketPath));
 
     return new TlsNode(poSocket, eSSLModeClient);
 }
@@ -35,13 +38,13 @@ TlsNode * __stdcall TlsConnectToUnixDomainSocket(
 /********************************************************************************************/
 
 TlsNode * __stdcall TlsConnectToNetworkSocket(
-    _in const char * c_strTargetIpAddress,
+    _in const char * c_szTargetIpAddress,
     _in Word wPortNumber
     )
 {
     __DebugFunction();
 
-    Socket * poSocket = ::ConnectToNetworkSocket(c_strTargetIpAddress, wPortNumber);
+    Socket * poSocket = ::ConnectToNetworkSocket(std::string(c_szTargetIpAddress), wPortNumber);
 
     return new TlsNode(poSocket, eSSLModeClient);
 }
@@ -67,6 +70,7 @@ TlsNode * __stdcall TlsConnectToNetworkSocketWithTimeout(
         {
             poSocket = ::ConnectToNetworkSocket(c_strTargetIpAddress, wPortNumber);
         }
+        
         catch(const BaseException & oBaseException)
         {
             ::sleep(unMillesecondStepTime/1000);

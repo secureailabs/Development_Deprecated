@@ -13,6 +13,7 @@
 #include "DateAndTime.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "HttpRequestParser.h"
 #include "JsonValue.h"
 #include "SmartMemoryAllocator.h"
@@ -248,14 +249,16 @@ StructuredBuffer __stdcall GetSailWebApiPortalBasicUserInformation(
         }
     }
     
-    catch (BaseException oBaseException)
+    catch (BaseException oException)
     {
+        ::RegisterException(oException, __func__, __LINE__);
         oBasicUserInformation.Clear();
         oBasicUserInformation.PutBoolean("Success", false);
     }
     
     catch(...)
     {
+        ::RegisterUnknownException(__func__, __LINE__);
         oBasicUserInformation.Clear();
         oBasicUserInformation.PutBoolean("Success", false);
     }
@@ -355,14 +358,14 @@ bool __stdcall TransmitAuditEventsToSailWebApiPortal(
         }
     }
     
-    catch (BaseException oBaseException)
+    catch (BaseException oException)
     {
-        
+        ::RegisterException(oException, __func__, __LINE__);
     }
     
     catch(...)
     {
-        
+        ::RegisterUnknownException(__func__, __LINE__);
     }
     
     return fSuccess;
@@ -430,14 +433,16 @@ StructuredBuffer __stdcall GetListOfDigitalContracts(
         }
     }
     
-    catch (BaseException oBaseException)
+    catch (BaseException oException)
     {
+        ::RegisterException(oException, __func__, __LINE__);
         oListOfDigitalContracts.Clear();
         oListOfDigitalContracts.PutBoolean("Success", false);
     }
     
     catch(...)
     {
+        ::RegisterUnknownException(__func__, __LINE__);
         oListOfDigitalContracts.Clear();
         oListOfDigitalContracts.PutBoolean("Success", false);
     }
@@ -510,14 +515,16 @@ StructuredBuffer __stdcall GetDigitalContract(
         }
     }
     
-    catch (BaseException oBaseException)
+    catch (BaseException oException)
     {
+        ::RegisterException(oException, __func__, __LINE__);
         oDigitalContract.Clear();
         oDigitalContract.PutBoolean("Success", false);
     }
     
     catch(...)
     {
+        ::RegisterUnknownException(__func__, __LINE__);
         oDigitalContract.Clear();
         oDigitalContract.PutBoolean("Success", false);
     }
@@ -590,19 +597,20 @@ std::string __stdcall RegisterVirtualMachineWithSailWebApiPortal(
             std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
             std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
             StructuredBuffer oResponse(stlSerializedResponse);
+            std::cout << oResponse.ToString() << std::endl;
             _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
             strVirtualMachineEosb = oResponse.GetString("VmEosb");
         }
     }
     
-    catch(BaseException oBaseException)
+    catch(BaseException oException)
     {
-        
+        ::RegisterException(oException, __func__, __LINE__);
     }
     
     catch(...)
     {
-        
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return strVirtualMachineEosb;
@@ -674,14 +682,14 @@ std::string __stdcall RegisterVirtualMachineDataOwner(
         }
     }
     
-    catch(BaseException oBaseException)
+    catch(BaseException oException)
     {
-        
+        ::RegisterException(oException, __func__, __LINE__);
     }
     
     catch(...)
     {
-        
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return strVirtualMachineAuditEventBranchNodeIdentifier;
@@ -752,14 +760,14 @@ std::string RegisterVirtualMachineResearcher(
         }
     }
     
-    catch(BaseException oBaseException)
+    catch(BaseException oException)
     {
-        
+        ::RegisterException(oException, __func__, __LINE__);
     }
     
     catch(...)
     {
-        
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return strVirtualMachineAuditEventBranchNodeIdentifier;

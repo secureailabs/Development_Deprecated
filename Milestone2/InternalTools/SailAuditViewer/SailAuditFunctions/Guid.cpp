@@ -12,7 +12,9 @@
 #include "CoreTypes.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "Guid.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -268,9 +270,14 @@ bool __thiscall Guid::operator == (
         fIsEqual = (m_stlRawData == oGuidToCompareTo.m_stlRawData);
     }
 
+    catch (BaseException oException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    
     catch(...)
     {
-
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return fIsEqual;
@@ -325,9 +332,14 @@ bool __thiscall Guid::operator != (
         fIsDifferent = (m_stlRawData != oGuidToCompareTo.m_stlRawData);
     }
 
+    catch (BaseException oException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    
     catch(...)
     {
-
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return fIsDifferent;

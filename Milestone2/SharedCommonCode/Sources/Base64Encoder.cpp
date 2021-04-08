@@ -11,6 +11,7 @@
 #include "Base64Encoder.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 
 /********************************************************************************************/
 

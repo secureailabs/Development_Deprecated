@@ -8,14 +8,15 @@
  *
  ********************************************************************************************/
 
- #include "Utils.h"
- #include "DebugLibrary.h"
- #include "Exceptions.h"
+#include "Utils.h"
+#include "DebugLibrary.h"
+#include "Exceptions.h"
+#include "ExceptionRegister.h"
 
- #include <algorithm>
- #include <cctype>
- #include <cstring>
- #include <sstream>
+#include <algorithm>
+#include <cctype>
+#include <cstring>
+#include <sstream>
 
 /********************************************************************************************
  *

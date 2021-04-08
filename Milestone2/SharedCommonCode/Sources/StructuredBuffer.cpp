@@ -13,11 +13,13 @@
 #include "CoreTypes.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "StructuredBuffer.h"
+
+#include <string.h>
 
 #include <algorithm>
 #include <iostream>
-#include <string.h>
 #include <vector>
 
 static const char * gs_aszTypeNames[] =
@@ -271,6 +273,33 @@ std::vector<std::string> __thiscall StructuredBuffer::GetDescriptionOfElements(v
     }
     
     return stlListOfElements;
+}
+
+/********************************************************************************************/
+
+std::string __thiscall StructuredBuffer::ToString(void) throw()
+{
+    __DebugFunction();
+
+    std::string strIndex = "";
+    std::string strDestination;
+
+    try
+    {
+        StructuredBuffer::ToString(strDestination, strIndex, *this);
+    }
+
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return strDestination;
 }
 
 /********************************************************************************************/
@@ -947,15 +976,17 @@ void __thiscall StructuredBuffer::Serialize(void) const throw()
         }
     }
     
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+        m_qw64BitHash = 0;
+        m_qwComposition64BitHash = 0;
+        m_stlSerializedBuffer.clear();
+    }
+    
     catch(...)
     {
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
-                  
+        ::RegisterUnknownException(__func__, __LINE__);
         m_qw64BitHash = 0;
         m_qwComposition64BitHash = 0;
         m_stlSerializedBuffer.clear();
@@ -1042,4 +1073,133 @@ void __thiscall StructuredBuffer::DeleteCachedData(void) throw()
     m_stlSerializedBuffer.clear();
     m_qw64BitHash = 0;
     m_qwComposition64BitHash = 0;
+}
+
+/********************************************************************************************/
+
+void __thiscall StructuredBuffer::ToString(
+    _inout std::string & strDestination,
+    _in const std::string & c_strIndent,
+    _in const StructuredBuffer & c_oStructuredBuffer
+    )
+{
+    __DebugFunction();
+
+    char szTemporaryString[40];
+    
+    for (auto element : c_oStructuredBuffer.m_stlMapOfElements)
+    {
+        strDestination += c_strIndent;
+        strDestination += element.second->GetElementName();
+        strDestination += " (";
+        switch (element.second->GetElementType())
+        {
+            case NULL_VALUE_TYPE
+            :   strDestination += "NULL)";
+                break;
+            case BOOLEAN_VALUE_TYPE
+            :   if (true == *((bool*) element.second->GetRawDataPtr()))
+                {
+                    strDestination += "BOOLEAN) = TRUE";
+                }
+                else
+                {
+                    strDestination += "BOOLEAN) = FALSE";
+                }
+                break;
+            case ANSI_CHARACTER_VALUE_TYPE
+            :   strDestination += "ANSI_CHARACTER) = ";
+                strDestination += *((const char *) element.second->GetRawDataPtr());
+                break;
+            case ANSI_CHARACTER_STRING_VALUE_TYPE
+            :   strDestination += "STRING) = ";
+                strDestination += (const char *) element.second->GetRawDataPtr();
+                break;
+            case FLOAT32_VALUE_TYPE
+            :   strDestination += "FLOAT32) = ";
+                strDestination += std::to_string(*((const float32_t *) element.second->GetRawDataPtr()));
+                break;
+            case FLOAT64_VALUE_TYPE
+            :   strDestination += "FLOAT64) = ";
+                strDestination += std::to_string(*((const float64_t *) element.second->GetRawDataPtr()));
+                break;
+            case INT8_VALUE_TYPE
+            :   strDestination += "INT8) = ";
+                strDestination += std::to_string(*((const int8_t *) element.second->GetRawDataPtr()));
+                break;
+            case INT16_VALUE_TYPE
+            :   strDestination += "INT16) = ";
+                strDestination += std::to_string(*((const int16_t *) element.second->GetRawDataPtr()));
+                break;
+            case INT32_VALUE_TYPE
+            :   strDestination += "INT32) = ";
+                strDestination += std::to_string(*((const int32_t *) element.second->GetRawDataPtr()));
+                break;
+            case INT64_VALUE_TYPE
+            :   strDestination += "INT64) = ";
+                strDestination += std::to_string(*((const int64_t *) element.second->GetRawDataPtr()));
+                break;
+            case UINT8_VALUE_TYPE
+            :   strDestination += "UINT8) = ";
+                strDestination += std::to_string(*((const uint8_t *) element.second->GetRawDataPtr()));
+                break;
+            case UINT16_VALUE_TYPE
+            :   strDestination += "UINT16) = ";
+                strDestination += std::to_string(*((const uint16_t *) element.second->GetRawDataPtr()));
+                break;
+            case UINT32_VALUE_TYPE
+            :   strDestination += "UINT32) = ";
+                strDestination += std::to_string(*((const uint32_t *) element.second->GetRawDataPtr()));
+                break;
+            case UINT64_VALUE_TYPE
+            :   strDestination += "UINT64) = ";
+                strDestination += std::to_string(*((const uint64_t *) element.second->GetRawDataPtr()));
+                break;
+            case BYTE_VALUE_TYPE
+            :   ::sprintf(szTemporaryString, "0x%02X", (unsigned int) *((const Byte*) element.second->GetRawDataPtr()));
+                strDestination += "BYTE) = ";
+                strDestination += szTemporaryString;
+                break;
+            case WORD_VALUE_TYPE
+            :   ::sprintf(szTemporaryString, "0x%04X", (unsigned int) *((const Word *) element.second->GetRawDataPtr()));
+                strDestination += "WORD) = ";
+                strDestination += szTemporaryString;
+                break;
+            case DWORD_VALUE_TYPE
+            :   ::sprintf(szTemporaryString, "0x%08X", (unsigned int) *((const Dword *) element.second->GetRawDataPtr()));
+                strDestination += "DWORD) = ";
+                strDestination += szTemporaryString;
+                break;
+            case QWORD_VALUE_TYPE
+            :   ::sprintf(szTemporaryString, "0x%08X%08X", HIDWORD(*((const Qword *) element.second->GetRawDataPtr())), LODWORD(*((const Qword *) element.second->GetRawDataPtr())));
+                strDestination += "QWORD) = ";
+                strDestination += szTemporaryString;
+                break;
+            case BUFFER_VALUE_TYPE
+            :   strDestination += "BUFFER) = ";
+                strDestination += ::Base64Encode(element.second->GetRawDataPtr(), element.second->GetRawDataSizeInBytes());
+                break;
+            case INDEXED_BUFFER_VALUE_TYPE
+            :   {
+                    std::string strNewIndent = c_strIndent + "    ";
+                    StructuredBuffer oStructuredBuffer(element.second->GetRawDataPtr(), element.second->GetRawDataSizeInBytes());
+                    strDestination += "STRUCTURED_BUFFER) = {\r\n";
+                    StructuredBuffer::ToString(strDestination, strNewIndent, oStructuredBuffer);
+                    strDestination += c_strIndent;
+                    strDestination += "}";
+                }
+                break;
+            case GUID_VALUE_TYPE
+            :   {
+                    Guid oGuid(element.second->GetRawDataPtr());
+                    strDestination += "GUID) = ";
+                    strDestination += oGuid.ToString(eHyphensAndCurlyBraces);
+                }
+                break;
+            default
+            :   strDestination += "UNKNOWN)";
+                break;
+        }
+        strDestination += "\r\n";
+    }
 }

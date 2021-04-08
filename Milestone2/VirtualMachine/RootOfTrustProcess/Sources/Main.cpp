@@ -12,6 +12,7 @@
 #include "CoreTypes.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "GlobalMonitor.h"
 #include "IpcTransactionHelperFunctions.h"
 #include "RootOfTrustCore.h"
@@ -95,7 +96,6 @@ static void __stdcall RunProcess(
     // Create a unique IPC path. This value is very ephemeral and will not be required
     // past this function
     std::string strTemporaryIpcPath = Guid().ToString(eRaw);
-    std::cout << "Temporary IPC path = " << strTemporaryIpcPath << std::endl;
     // Create a TlsServer Unix Domain Socket using the unique IPC path. We need to start this
     // before calling fork() and execl() in order to prevent any sort of race condition that
     // might arise since the first thing the Initializer process does is connect to the
@@ -113,7 +113,6 @@ static void __stdcall RunProcess(
     }
     else
     {
-        std::cout << "A.001" << std::endl;
         // Wait until the remote process connects to the temporary Ipc
         while (false == oSocketServer.WaitForConnection(1000))
         {
@@ -123,7 +122,6 @@ static void __stdcall RunProcess(
         }
         // There is a connection is waiting to be made!!!
         Socket * poSocket = oSocketServer.Accept();
-        std::cout << "A.002" << std::endl;
         _ThrowBaseExceptionIf((nullptr == poSocket), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
         // The connection has been made. At this point, we write the outgoing initialization
         // packet. There are only two elements in the initialization data
@@ -184,35 +182,22 @@ int __cdecl main(
         oRootOfTrustCore.WaitForTermination();
     }
 
-    catch (BaseException oException)
+    catch(BaseException oBaseException)
     {
+        ::RegisterException(oBaseException, __func__, __LINE__);
         // If there is an exception here, this means that the RootOfTrust process is
         // truly wrecked. We need to signal termination across the board
         StatusMonitor oStatusMonitor("void __thiscall RootOfTrustCore::RootOfTrustIpcListenerThread(void)");
         oStatusMonitor.SignalTermination("Unrecoverable exception");
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
-                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
     }
     
-    catch (...)
+    catch(...)
     {
+        ::RegisterUnknownException(__func__, __LINE__);
         // If there is an exception here, this means that the RootOfTrust process is
         // truly wrecked. We need to signal termination across the board
         StatusMonitor oStatusMonitor("void __thiscall RootOfTrustCore::RootOfTrustIpcListenerThread(void)");
         oStatusMonitor.SignalTermination("Unrecoverable exception");
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
     }
 
     // All we have to do now is basically wait for ALL other threads to finish

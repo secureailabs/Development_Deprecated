@@ -12,8 +12,11 @@
 #include "64BitHashes.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "ThreadManager.h"
+
 #include <pthread.h>
+
 #include <signal.h>
 #include <map>
 #include <queue>

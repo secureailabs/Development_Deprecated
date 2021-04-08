@@ -68,6 +68,7 @@ class RootOfTrustCore : public Object
 
         std::string m_strDataOwnerAccessToken;
         std::string m_strResearcherEosb;
+        std::string m_strVirtualMachineEosb;
 
         std::string m_strNameOfVirtualMachine;
         std::string m_strIpAddressOfVirtualMachine;

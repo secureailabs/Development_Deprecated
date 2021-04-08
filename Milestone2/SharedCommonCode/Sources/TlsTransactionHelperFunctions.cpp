@@ -10,6 +10,7 @@
 
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "TlsTransactionHelperFunctions.h"
 #include "Base64Encoder.h"
 
@@ -124,27 +125,14 @@ std::vector<Byte> __stdcall GetTlsTransaction(
         _ThrowBaseExceptionIf((0x0123456789ABCDEF != qwTailMarker), "Invalid marker encountered.", nullptr);
     }
 
-    catch (BaseException oException)
+    catch(BaseException oBaseException)
     {
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
-                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+        ::RegisterException(oBaseException, __func__, __LINE__);
     }
-
-    catch (...)
+    
+    catch(...)
     {
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return stlSerializedTransactionBuffer;
@@ -187,27 +175,14 @@ bool __stdcall PutTlsTransaction(
         }
     }
 
-    catch (BaseException oException)
+    catch(BaseException oBaseException)
     {
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
-                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+        ::RegisterException(oBaseException, __func__, __LINE__);
     }
-
-    catch (...)
+    
+    catch(...)
     {
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return fSuccess;

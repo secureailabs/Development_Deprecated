@@ -13,6 +13,7 @@
 #include "SocketServer.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 
 /********************************************************************************************
  *

@@ -186,6 +186,7 @@ void __cdecl InitVirtualMachine(
                 poTlsNode->Release();
             }
         }
+        
         catch(...)
         {
             std::cout << "Unexpected Error while sending init response.";

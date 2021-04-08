@@ -24,6 +24,6 @@ extern Socket * __stdcall ConnectToUnixDomainSocket(
 /********************************************************************************************/
 
 extern Socket * __stdcall ConnectToNetworkSocket(
-    _in const std::string c_strTargetIpAddress,
+    _in const std::string & c_strTargetIpAddress,
     _in Word wSocket
     );

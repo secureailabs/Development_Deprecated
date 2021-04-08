@@ -13,6 +13,7 @@
 #include "DateAndTime.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "GlobalMonitor.h"
 #include "IpcTransactionHelperFunctions.h"
 #include "SocketServer.h"
@@ -53,29 +54,14 @@ static void * GlobalMonitorRunThread(
         gs_oGlobalMonitor.Run();
     }
     
-    catch (BaseException oException)
+    catch(BaseException oBaseException)
     {
-        // Print out the exception
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
-                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+        ::RegisterException(oBaseException, __func__, __LINE__);
     }
     
-    catch (...)
+    catch(...)
     {
-        // Print out the exception
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
     }
     
     return nullptr;
@@ -97,27 +83,14 @@ static void * GlobalMonitorHandleTransactionThread(
         gs_oGlobalMonitor.HandleTransaction(poSocket);
     }
     
-    catch (BaseException oException)
+    catch(BaseException oBaseException)
     {
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
-                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+        ::RegisterException(oBaseException, __func__, __LINE__);
     }
     
-    catch (...)
+    catch(...)
     {
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
     }
     
     // No matter what happens in the transaction, we need to release the socket and then
@@ -223,30 +196,15 @@ void __thiscall GlobalMonitor::Run(void)
             }
         }
         
-        catch (BaseException oException)
-        {
-            // Print out the exception
-            std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                      << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
-                      << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
-                      << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
-                      << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
-                      << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                      << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                      << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                      << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
-        }
-        
-        catch (...)
-        {
-            // Print out the exception
-            std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                      << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
-                      << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                      << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                      << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                      << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
-        }
+        catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
     }
 
     poThreadManager->JoinThreadGroup("GlobalMonitorHandlers");

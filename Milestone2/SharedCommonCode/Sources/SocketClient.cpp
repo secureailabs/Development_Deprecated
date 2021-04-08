@@ -11,7 +11,9 @@
 
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "SocketClient.h"
+
 #include <string.h>
 #include <arpa/inet.h>
 #include <sys/epoll.h>
@@ -20,6 +22,8 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <unistd.h>
+
+#include <iostream>
 
 /********************************************************************************************
  *
@@ -68,7 +72,7 @@ Socket * __stdcall ConnectToUnixDomainSocket(
  ********************************************************************************************/
 
 Socket * __stdcall ConnectToNetworkSocket(
-    _in const std::string c_strTargetIpAddress,
+    _in const std::string & c_strTargetIpAddress,
     _in Word wPortIdentifier
     )
 {
@@ -85,6 +89,7 @@ Socket * __stdcall ConnectToNetworkSocket(
     ::memset(&sSocketAddress, 0, sizeof(sSocketAddress));
     sSocketAddress.sin_family = AF_INET;
     sSocketAddress.sin_port = htons(wPortIdentifier);
+    std::cout << "ConnectToNetworkSocket(" << c_strTargetIpAddress << "," << wPortIdentifier << ");" << std::endl;
     int nReturnValue = ::inet_pton(AF_INET, c_strTargetIpAddress.c_str(), &(sSocketAddress.sin_addr));
     _ThrowBaseExceptionIf((1 != nReturnValue), "inet_pton() failed with errno = %d", errno);
 

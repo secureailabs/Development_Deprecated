@@ -18,6 +18,7 @@
 #include "DateAndTime.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "IpcTransactionHelperFunctions.h"
 #include "RootOfTrustNode.h"
 #include "SocketClient.h"
@@ -125,6 +126,7 @@ void __thiscall RootOfTrustNode::RecordAuditEvent(
     ) const
 {
     __DebugFunction();
+    
     try
     {   // Construct the transaction packet
         StructuredBuffer oTransactionData;
@@ -147,25 +149,14 @@ void __thiscall RootOfTrustNode::RecordAuditEvent(
         StructuredBuffer oTransactionResponse(::PutIpcTransactionAndGetResponse(poSocket, oTransactionData));
         poSocket->Release();
     }
-    catch (BaseException oException)
+    
+    catch(BaseException oBaseException)
     {
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
-                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+        ::RegisterException(oBaseException, __func__, __LINE__);
     }
-    catch (...)
+    
+    catch(...)
     {
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 }

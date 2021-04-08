@@ -10,7 +10,9 @@
 
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "SocketServer.h"
+
 #include <string.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>

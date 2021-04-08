@@ -11,6 +11,7 @@
 #include "CoreTypes.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "IpcTransactionHelperFunctions.h"
 #include "SocketClient.h"
 #include "StatusMonitor.h"
@@ -50,9 +51,14 @@ StatusMonitor::StatusMonitor(
         poSocket->Release();
     }
 
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    
     catch(...)
     {
-        
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 }
 
@@ -74,9 +80,14 @@ StatusMonitor::~StatusMonitor(void)
         poSocket->Release();
     }
     
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    
     catch(...)
     {
-        
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 }
 
@@ -108,9 +119,14 @@ bool __thiscall StatusMonitor::IsTerminating(void) const throw()
         }
     }
     
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    
     catch(...)
     {
-        std::cout << "asdasda" << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
     }
     
     return fIsTerminating;
@@ -137,9 +153,14 @@ void __thiscall StatusMonitor::SignalTermination(
         poSocket->Release();
     }
     
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    
     catch(...)
     {
-        
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 }
             
@@ -176,9 +197,14 @@ void __thiscall StatusMonitor::UpdateStatus(
         poSocket->Release();
     }
     
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    
     catch(...)
     {
-        
+        ::RegisterUnknownException(__func__, __LINE__);
     }
     
     // No matter what happens, we must free the szResultingString. This is done outside the

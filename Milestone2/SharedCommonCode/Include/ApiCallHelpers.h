@@ -16,7 +16,7 @@
 
 #include <string>
 
-extern bool __stdcall SetIpAddressOfWebPortalGateway(
+extern bool __stdcall SetIpAddressOfSailWebApiPortalGateway(
     _in const std::string & c_strIpAddressOfWebPortalGateway,
     _in Word wPortAddressOfWebPortalGateway
     ) throw();

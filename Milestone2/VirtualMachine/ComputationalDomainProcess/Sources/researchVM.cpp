@@ -211,33 +211,20 @@ void __thiscall ComputationVM::HandleConnect(
 {
     __DebugFunction();
 
-    bool fSuccess = false;
+    bool fSuccess = true;
         
-    if (true == fSuccess)
-    {
-        __DebugAssert(true == oContent.IsElementPresent("EOSB", ANSI_CHARACTER_STRING_VALUE_TYPE));
+    __DebugAssert(true == oContent.IsElementPresent("EOSB", ANSI_CHARACTER_STRING_VALUE_TYPE));
     
-        oResponse.PutString("VMID", m_strVirtualMachineIdentifier);
-    
-        StructuredBuffer oEventData;
-        oEventData.PutBoolean("Success", true);
-        oEventData.PutString("Username", "lbart@igr.com");
-        oEventData.PutString("OrchestratorIpAddress", "132.34.4.23");
-        oEventData.PutString("OrchestratorVersion", "1.0.0");
-        oEventData.PutString("EOSB", oContent.GetString("EOSB"));
-        m_oRootOfTrustNode.RecordAuditEvent("CONNECT_SUCCESS", 0x1111, 0x04, oEventData);
-    }
-    else
-    {
-        StructuredBuffer oEventData;
-        oEventData.PutBoolean("Success", false);
-        oEventData.PutString("Username", "lbart@igr.com");
-        oEventData.PutString("OrchestratorIpAddress", "132.34.4.23");
-        oEventData.PutString("OrchestratorVersion", "1.0.0");
-        m_oRootOfTrustNode.RecordAuditEvent("CONNECT_FAILURE", 0x1111, 0x04, oEventData);
-    }
-    
+    oResponse.PutString("VMID", m_strVirtualMachineIdentifier);
     oResponse.PutBoolean("Success", fSuccess);
+    
+    StructuredBuffer oEventData;
+    oEventData.PutBoolean("Success", true);
+    oEventData.PutString("Username", "lbart@igr.com");
+    oEventData.PutString("OrchestratorIpAddress", "132.34.4.23");
+    oEventData.PutString("OrchestratorVersion", "1.0.0");
+    oEventData.PutString("EOSB", oContent.GetString("EOSB"));
+    m_oRootOfTrustNode.RecordAuditEvent("CONNECT_SUCCESS", 0x1111, 0x04, oEventData);
 }
 
 /********************************************************************************************

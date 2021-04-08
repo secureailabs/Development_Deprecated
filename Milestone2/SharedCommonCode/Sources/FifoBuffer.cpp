@@ -17,9 +17,12 @@
 #include "Chronometer.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
-#include <iostream>
+#include "ExceptionRegister.h"
+
 #include <pthread.h>
 #include <unistd.h>
+
+#include <iostream>
 
 /********************************************************************************************
  *

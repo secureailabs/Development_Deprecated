@@ -12,6 +12,7 @@
 #include "Chronometer.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "Socket.h"
 #include "TlsNode.h"
 #include "HardCodedCryptographicKeys.h"

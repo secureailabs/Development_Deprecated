@@ -12,6 +12,7 @@
 #include "CoreTypes.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 
 #include <ctype.h>
 #include <stdlib.h>

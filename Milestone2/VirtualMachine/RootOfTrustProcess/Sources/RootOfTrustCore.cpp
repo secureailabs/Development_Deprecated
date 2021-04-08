@@ -13,6 +13,7 @@
 #include "Base64Encoder.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "HardCodedCryptographicKeys.h"
 #include "IpcTransactionHelperFunctions.h"
 #include "RootOfTrustCore.h"
@@ -57,35 +58,20 @@ static void * RootOfTrustIpcListenerThread(
     
     catch (BaseException oException)
     {
+        ::RegisterException(oException, __func__, __LINE__);
         // If there is an exception here, this means that the RootOfTrust process is
         // truly wrecked. We need to signal termination across the board
         StatusMonitor oStatusMonitor("void __thiscall RootOfTrustCore::RootOfTrustIpcListenerThread(void)");
         oStatusMonitor.SignalTermination("Unrecoverable exception");
-        // Print out the exception
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
-                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
     }
     
     catch (...)
     {
+        ::RegisterUnknownException(__func__, __LINE__);
         // If there is an exception here, this means that the RootOfTrust process is
         // truly wrecked. We need to signal termination across the board
         StatusMonitor oStatusMonitor("void __thiscall RootOfTrustCore::RootOfTrustIpcListenerThread(void)");
         oStatusMonitor.SignalTermination("Unrecoverable exception");
-        // Print out the exception
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
     }
     
     return nullptr;
@@ -111,25 +97,12 @@ static void * RootOfTrustTransactionHandlerThread(
     
     catch (BaseException oException)
     {
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
-                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+        ::RegisterException(oException, __func__, __LINE__);
     }
     
     catch (...)
     {
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
     }
     
     // No matter what happens in the transaction, we need to release the socket and then
@@ -158,25 +131,12 @@ static void * RootOfTrustAuditEventDispatcherThread(
     
     catch (BaseException oException)
     {
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
-                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+        ::RegisterException(oException, __func__, __LINE__);
     }
     
     catch (...)
     {
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
     }
     
     return nullptr;
@@ -214,6 +174,8 @@ RootOfTrustCore::RootOfTrustCore(
     m_strDataDomainIpcPath = Guid().ToString(eRaw);
 
     m_fIsInitialized = true;
+    
+    ::SetIpAddressOfSailWebApiPortalGateway(m_strSailWebApiPortalIpAddress, 6200);
     
     this->InitializeVirtualMachine();
     this->RegisterDataOwnerEosb();
@@ -294,8 +256,6 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
 {
     __DebugFunction();
     
-    std::cout << "CRAPCRAPCRAP" << std::endl;
-    
     unsigned int unDataOrganizationSequenceNumber = 0;
     unsigned int unResearcherOrganizationSequenceNumber = 0;
     StatusMonitor oStatusMonitor("void __thiscall RootOfTrustCore::AuditEventDispatcher(void)");
@@ -329,10 +289,6 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
                     ::TransmitAuditEventsToSailWebApiPortal(m_strDataOwnerAccessToken, m_strDataOrganizationAuditEventParentBranchNodeIdentifier, oAuditEventsToTransmit);
                 }
             }
-            else
-            {
-                std::cout << "Outstanding DOO event are: " << m_stlDataOrganizationAuditEventQueue.size() << std::endl;
-            }
             
             if ((0 < m_strResearcherEosb.size())&&(0 < m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier.size()))
             {
@@ -355,15 +311,16 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
                     ::TransmitAuditEventsToSailWebApiPortal(m_strResearcherEosb, m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier, oAuditEventsToTransmit);
                 }
             }
-            else
-            {
-                std::cout << "Outstanding RO event are: " << m_stlDataOrganizationAuditEventQueue.size() << std::endl;
-            }
+        }
+        
+        catch (BaseException oException)
+        {
+            ::RegisterException(oException, __func__, __LINE__);
         }
         
         catch(...)
         {
-            
+            ::RegisterUnknownException(__func__, __LINE__);
         }
         
         // Put this thread to sleep for 5 seconds
@@ -385,6 +342,7 @@ void __thiscall RootOfTrustCore::RunIpcListener(void)
         m_fIsRunning = true;
         _ThrowBaseExceptionIf((0xFFFFFFFFFFFFFFFF == poThreadManager->CreateThread("RootOfTrustCodeGroup", RootOfTrustAuditEventDispatcherThread, (void *) this)), "Failed to start the audit event dispacher thread", nullptr);
         _ThrowBaseExceptionIf((0xFFFFFFFFFFFFFFFF == poThreadManager->CreateThread("RootOfTrustCodeGroup", RootOfTrustIpcListenerThread, (void *) this)), "Failed to start the Root of Trust Listener Thread", nullptr);
+
     }
     else
     {
@@ -397,9 +355,14 @@ void __thiscall RootOfTrustCore::RunIpcListener(void)
         
         while (false == oStatusMonitor.IsTerminating())
         {
+            std::string strComputationalDomainIdentifier = m_strComputationalDomainIdentifier;
             // We wait for a connection
             if (true == poIpcServer->WaitForConnection(1000))
             {
+                // BUGBUG: We are cheating here because there is a memory corruption issue when WaitForConnection()
+                // get calls, the m_strComputationalDomainIdentifier gets corrupted.
+                m_strComputationalDomainIdentifier = strComputationalDomainIdentifier;
+                
                 // Get the socket for the waiting connection
                 Socket * poSocket = poIpcServer->Accept();
                 if (nullptr != poSocket)
@@ -415,6 +378,7 @@ void __thiscall RootOfTrustCore::RunIpcListener(void)
                     // If we fail to create the thread, then we fail to process the transaction
                     // and this is impossibly BAD. We need to throw an exception. This will
                     // terminate the RunIpcListener thread and exit.
+                    
                     if (0xFFFFFFFFFFFFFFFF == poThreadManager->CreateThread("RootOfTrustCodeGroup", RootOfTrustTransactionHandlerThread, (void *) poRootOfTrustTransactionPacket))
                     {
                         unNumberOfFailedTransactions++;
@@ -508,8 +472,15 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactGetDataSet(
         }
     }
     
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponseBuffer.PutBoolean("Success", false);
+    }
+        
     catch(...)
     {
+        ::RegisterUnknownException(__func__, __LINE__);
         oResponseBuffer.PutBoolean("Success", false);
     }
     
@@ -529,7 +500,6 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactRecordAuditEvent(
     
     try
     {
-        std::cout << "TransactRecordAuditEvent.001" << std::endl;
         StructuredBuffer oCopyOfTransactionParameters(c_oTransactionParameters);
         // Make a copy of the target channels
         Word wTargetChannelsBitMask = oCopyOfTransactionParameters.GetWord("TargetChannelsBitMask");
@@ -574,8 +544,15 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactRecordAuditEvent(
         }
     }
     
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponseBuffer.PutBoolean("Success", false);
+    }
+    
     catch(...)
     {
+        ::RegisterUnknownException(__func__, __LINE__);
         oResponseBuffer.PutBoolean("Success", false);
     }
     
@@ -597,14 +574,19 @@ bool __thiscall RootOfTrustCore::InitializeVirtualMachine(void)
         // Make sure all of the parameters are proper
         if ((0 < m_strDataOwnerAccessToken.size())&&(0 < m_strVirtualMachineIdentifier.size())&&(0 < m_strDigitalContractIdentifier.size())&&(0 < m_strIpAddressOfVirtualMachine.size()))
         {
-            ::RegisterVirtualMachineWithSailWebApiPortal(m_strDataOwnerAccessToken, m_strVirtualMachineIdentifier, m_strDigitalContractIdentifier, m_strIpAddressOfVirtualMachine);
+            m_strVirtualMachineEosb = ::RegisterVirtualMachineWithSailWebApiPortal(m_strDataOwnerAccessToken, m_strVirtualMachineIdentifier, m_strDigitalContractIdentifier, m_strIpAddressOfVirtualMachine);
             fSuccess = true;
         }
     }
     
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+    }
+    
     catch(...)
     {
-        
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return fSuccess;
@@ -629,10 +611,15 @@ bool __thiscall RootOfTrustCore::RegisterDataOwnerEosb(void)
             fSuccess = true;
         }
     }
-        
+    
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+    }
+    
     catch(...)
     {
-        
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return fSuccess;
@@ -657,10 +644,15 @@ bool __thiscall RootOfTrustCore::RegisterResearcherEosb(void)
             fSuccess = true;
         }
     }
-        
+    
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+    }
+    
     catch(...)
     {
-        
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return fSuccess;

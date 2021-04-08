@@ -10,9 +10,12 @@
 
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "StructuredBuffer.h"
 #include "64BitHashes.h"
+
 #include <string.h>
+
 #include <iostream>
 
 /********************************************************************************************/

@@ -33,6 +33,10 @@ namespace MicrosoftAzureVirtualMachineInitializer
             {
                 m_TenantIdentifierEditBox.Text = registryKey.GetValue("DefaultMicrosoftAzureApiPortalTenantIdentifier").ToString();
             }
+            if (true == registryKeyValues.Contains("DefaultMicrosoftAzureApiPortalSecret"))
+            {
+                m_SecretEditBox.Text = registryKey.GetValue("DefaultMicrosoftAzureApiPortalSecret").ToString();
+            }
             registryKey.Close();
 
             // Figure out where to put the input focus based on which text box is pre-populated
@@ -76,6 +80,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
                     RegistryKey registryKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\SAIL");
                     registryKey.SetValue("DefaultMicrosoftAzureApiPortalApplicationIdentifier", m_ApplicationIdentifierTextBox.Text);
                     registryKey.SetValue("DefaultMicrosoftAzureApiPortalTenantIdentifier", m_TenantIdentifierEditBox.Text);
+                    registryKey.SetValue("DefaultMicrosoftAzureApiPortalSecret", m_SecretEditBox.Text);
                     registryKey.Close();
                     this.m_RefreshTimer.Stop();
                     this.DialogResult = DialogResult.OK;

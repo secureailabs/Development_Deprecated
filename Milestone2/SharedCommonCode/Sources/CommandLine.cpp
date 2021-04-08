@@ -23,11 +23,15 @@
 #include "CommandLine.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
+
+#include <string.h>         // For memcmp()
+
 #include <algorithm>        // For std::replace
 #include <string>           // For std::string
 #include <sstream>          // For std::istringstream
 #include <vector>           // For std:vector
-#include <string.h>         // For memcmp()
+
 
 /********************************************************************************************
  *

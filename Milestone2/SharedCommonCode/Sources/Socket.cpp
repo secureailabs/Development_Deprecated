@@ -13,9 +13,12 @@
 #include "Socket.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
+
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+
 #include <iostream>
 
 /********************************************************************************************
@@ -180,9 +183,15 @@ std::vector<Byte> __thiscall Socket::Read(
             }
         }
     }
-    catch(BaseException & oBaseException)
+    
+    catch(BaseException oBaseException)
     {
-        std::cout << "Socket Exception" << oBaseException.GetExceptionMessage() << std::endl;
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return stlDestinationBuffer;

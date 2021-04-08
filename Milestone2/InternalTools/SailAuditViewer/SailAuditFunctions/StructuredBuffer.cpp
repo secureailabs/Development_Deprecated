@@ -13,6 +13,7 @@
 #include "CoreTypes.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "StructuredBuffer.h"
 
 #include <algorithm>
@@ -287,9 +288,14 @@ std::string __thiscall StructuredBuffer::ToString(void) throw()
         StructuredBuffer::ToString(strDestination, strIndex, *this);
     }
 
-    catch (...)
+    catch (BaseException oException)
     {
-
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return strDestination;
@@ -949,15 +955,17 @@ void __thiscall StructuredBuffer::Serialize(void) const throw()
         }
     }
     
+    catch (BaseException oException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+        m_qw64BitHash = 0;
+        m_qwComposition64BitHash = 0;
+        m_stlSerializedBuffer.clear();
+    }
+    
     catch(...)
     {
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
-                  
+        ::RegisterUnknownException(__func__, __LINE__);
         m_qw64BitHash = 0;
         m_qwComposition64BitHash = 0;
         m_stlSerializedBuffer.clear();

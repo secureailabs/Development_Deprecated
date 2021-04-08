@@ -44,14 +44,10 @@ int __cdecl main(
         // Parse the command line
         StructuredBuffer oCommandLineArguments = ::ParseCommandLineParameters((unsigned int) nNumberOfArguments, (const char **) pszCommandLineArguments);
         // First we initialize the RootOfTrustNode. Without that, nothing else matters
-        std::cout << "Comp.001" << std::endl;
         RootOfTrustNode oRootOfTrustNode(oCommandLineArguments.GetString("ipc").c_str());
-        std::cout << "Comp.002" << std::endl;
         // Run the computation engine
         ComputationVM oTest(7000, 5, oRootOfTrustNode);
-        std::cout << "Comp.003" << std::endl;
         oTest.Initialize();
-        std::cout << "Comp.004" << std::endl;
     }
     
     catch (BaseException oException)

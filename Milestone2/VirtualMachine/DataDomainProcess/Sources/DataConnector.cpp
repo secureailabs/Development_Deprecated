@@ -100,11 +100,14 @@ DataConnector::~DataConnector(void)
 
 // TODO: instead of fileName, take the file as a buffer
 bool __thiscall DataConnector::LoadAndVerify(
-    _in const std::vector<Byte> c_stlDataset
+    _in const std::vector<Byte> c_stlDataset,
+    _in RootOfTrustNode * poRootOfTrustNode
     )
 {
     __DebugFunction();
 
+    m_poRootOfTrustNode = poRootOfTrustNode;
+    
     // Set the stream to take input from the data vector;
     std::stringstream stlDatasetFile;
     stlDatasetFile.rdbuf()->pubsetbuf((char *)c_stlDataset.data(), c_stlDataset.size());
@@ -182,6 +185,10 @@ bool __thiscall DataConnector::LoadAndVerify(
         m_stlMapOfTableNameToId.insert(std::make_pair(m_stlTableMetaData[unTableID].GetString("Name"), unTableID));
     }
 
+    StructuredBuffer oEventData;
+    oEventData.PutBoolean("Success", true);
+    m_poRootOfTrustNode->RecordAuditEvent("LOAD_DATASET", 0x1111, 0x05, oEventData);
+        
     return true;
 }
 
@@ -253,6 +260,13 @@ void __thiscall DataConnector::HandleRequestsUntilClose(
                         StructuredBuffer oTempResponse = GetTableRowRange(unTableID, unTableRowStart, unTableRowEnd);
                         oDataResponse.PutBoolean("Status", oTempResponse.GetBoolean("Status"));
                         oDataResponse.PutString("ResponseString", oTempResponse.GetString("ResponseString"));
+                        
+                        StructuredBuffer oEventData;
+                        oEventData.PutBoolean("Success", oTempResponse.GetBoolean("Status"));
+                        oEventData.PutUnsignedInt32("TableIdentifier", unTableID);
+                        oEventData.PutInt32("RowRangeStart", unTableRowStart);
+                        oEventData.PutInt32("RowRangeStart", unTableRowEnd);                        
+                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_REQUEST_ROW_RANGE", 0x1100, 0x01, oEventData);
                     }
                     else if (eGetColumnRange == requestType)
                     {
@@ -261,33 +275,53 @@ void __thiscall DataConnector::HandleRequestsUntilClose(
                         StructuredBuffer oTempResponse = GetTableColumnRange(unTableID, unTableColumnStart, unTableColumnEnd);
                         oDataResponse.PutBoolean("Status", oTempResponse.GetBoolean("Status"));
                         oDataResponse.PutString("ResponseString", oTempResponse.GetString("ResponseString"));
+                        
+                        StructuredBuffer oEventData;
+                        oEventData.PutBoolean("Success", oTempResponse.GetBoolean("Status"));
+                        oEventData.PutUnsignedInt32("TableIdentifier", unTableID);
+                        oEventData.PutInt32("ColumnRangeStart", unTableColumnStart);
+                        oEventData.PutInt32("ColumnRangeEnd", unTableColumnEnd);                        
+                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_REQUEST_COLUMN_RANGE", 0x1100, 0x01, oEventData);
                     }
                     else if (eGetTable == requestType)
                     {
                         StructuredBuffer oTempResponse = GetTableRowRange(unTableID, 0, m_stlTableMetaData[unTableID].GetInt32("NumberRows")-1);
                         oDataResponse.PutBoolean("Status", oTempResponse.GetBoolean("Status"));
                         oDataResponse.PutString("ResponseString", oTempResponse.GetString("ResponseString"));
+                        
+                        StructuredBuffer oEventData;
+                        oEventData.PutBoolean("Success", oTempResponse.GetBoolean("Status"));
+                        oEventData.PutUnsignedInt32("TableIdentifier", unTableID);
+                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_REQUEST_TABLE", 0x1100, 0x01, oEventData);
                     }
                     else if (eGetDatasetMetadata == requestType)
                     {
                         oDataResponse.PutBoolean("Status", true);
                         oDataResponse.PutStructuredBuffer("ResponseData", *m_oDataSetMetaDataStructuredBuffer);
+                        
+                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_GET_METADATA", 0x1100, 0x01, oDataResponse);
                     }
                     else if (eGetTableMetadata == requestType)
                     {
                         oDataResponse.PutBoolean("Status", true);
                         oDataResponse.PutStructuredBuffer("ResponseData", m_stlTableMetaData[unTableID]);
+                        
+                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_TABLE_GET_METADATA", 0x1100, 0x01, oDataResponse);
                     }
                     else if (eCloseFile == requestType)
                     {
                         oDataResponse.PutBoolean("Status", true);
                         fCloseRequest = true;
+                        
+                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_CLOSE", 0x1100, 0x01, oDataResponse);
                     }
                     else
                     {
                         // Do something for invalid rquest
                         oDataResponse.PutBoolean("Status", false);
                         oDataResponse.PutString("ResponseData", "Invalid Request Type");
+                        
+                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_INVALID_REQUEST", 0x1100, 0x02, oDataResponse);
                     }
                 }
                 else

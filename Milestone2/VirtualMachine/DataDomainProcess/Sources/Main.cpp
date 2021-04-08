@@ -21,6 +21,8 @@
 
 #include <iostream>
 
+static RootOfTrustNode * gs_poRootOfTrustNode = nullptr;
+
 /********************************************************************************************/
 
 static void * __stdcall InitializeResearchProcess(
@@ -38,9 +40,7 @@ static void * __stdcall InitializeResearchProcess(
 
 /********************************************************************************************/
 
-static void __cdecl InitDataConnector(
-    _in const RootOfTrustNode & c_oRootOfTrustNode
-    )
+static void __cdecl InitDataConnector(void)
 {
     __DebugFunction();
     
@@ -48,9 +48,9 @@ static void __cdecl InitDataConnector(
     DataConnector * poDataConnector = ::GetDataConnector();
     __DebugAssert(nullptr != poDataConnector);
     // Pull the dataset from the Root of Trust
-    std::vector<Byte> c_stlDataset = c_oRootOfTrustNode.GetDataset();
+    std::vector<Byte> c_stlDataset = gs_poRootOfTrustNode->GetDataset();
     // Load and Verify the contents of the dataset
-    _ThrowBaseExceptionIf((false == poDataConnector->LoadAndVerify(c_stlDataset)), "Failed to verify the integrity of the DataSet", nullptr);
+    _ThrowBaseExceptionIf((false == poDataConnector->LoadAndVerify(c_stlDataset, gs_poRootOfTrustNode)), "Failed to verify the integrity of the DataSet", nullptr);
     // Get ready to wait for incoming connections. This includes setting up the
     // TerminationSignal object, the ThreadManager object as well as starting up
     // the SocketServer
@@ -68,10 +68,6 @@ static void __cdecl InitDataConnector(
                 poThreadManager->CreateThread(nullptr, InitializeResearchProcess, (void *) poSocket);
             }
         }
-        
-        StructuredBuffer oEventData;
-        oEventData.PutBoolean("Success", true);
-        c_oRootOfTrustNode.RecordAuditEvent("PING", 0x1111, 0x05, oEventData);
     }
     while (false == oStatusMonitor.IsTerminating());
     
@@ -93,9 +89,9 @@ int __cdecl main(
         // Parse the command line
         StructuredBuffer oCommandLineArguments = ::ParseCommandLineParameters((unsigned int) nNumberOfArguments, (const char **) pszCommandLineArguments);
         // First we initialize the RootOfTrustNode. Without that, nothing else matters
-        RootOfTrustNode oRootOfTrustNode(oCommandLineArguments.GetString("ipc").c_str());
+        gs_poRootOfTrustNode = new RootOfTrustNode(oCommandLineArguments.GetString("ipc").c_str());
         // Insert process specific code here. For now, just some stupid test code
-        ::InitDataConnector(oRootOfTrustNode);
+        ::InitDataConnector();
     }
 
     catch (BaseException oException)

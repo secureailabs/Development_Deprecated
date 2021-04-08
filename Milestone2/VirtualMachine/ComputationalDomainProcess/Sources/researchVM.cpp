@@ -124,10 +124,6 @@ void ComputationVM::SocketListen(void)
             Socket * poNewConnection = m_oSocketServer.Accept();
             this->HandleConnection(poNewConnection);
         }
-        
-        StructuredBuffer oEventData;
-        oEventData.PutBoolean("Success", true);
-        m_oRootOfTrustNode.RecordAuditEvent("PING", 0x1111, 0x05, oEventData);
     }
 }
 

@@ -317,7 +317,6 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
                     fTransmitAuditEvents = true;
                     StructuredBuffer oNewAuditEvent(m_stlDataOrganizationAuditEventQueue.front().c_str());
                     m_stlDataOrganizationAuditEventQueue.pop();
-                    oNewAuditEvent.PutUnsignedInt32("SequenceNumber", unDataOrganizationSequenceNumber++);
                     oAuditEventsToTransmit.PutStructuredBuffer(std::to_string(unElementIndex++).c_str(), oNewAuditEvent);
                     std::cout << "Transmitting an audit event (DOO)" << std::endl;
                 }
@@ -344,7 +343,6 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
                     fTransmitAuditEvents = true;
                     StructuredBuffer oNewAuditEvent(m_stlResearchOrganizationAuditEventQueue.front().c_str());
                     m_stlResearchOrganizationAuditEventQueue.pop();
-                    oNewAuditEvent.PutUnsignedInt32("SequenceNumber", unResearcherOrganizationSequenceNumber++);
                     oAuditEventsToTransmit.PutStructuredBuffer(std::to_string(unElementIndex++).c_str(), oNewAuditEvent);
                     std::cout << "Transmitting an audit event (RO)" << std::endl;
                 }
@@ -371,8 +369,6 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
         // Put this thread to sleep for 5 seconds
         ::sleep(5);
     }
-    
-    std::cout << "AuditViewerDispatchedExit!!!" << std::endl;
 }
 
 /********************************************************************************************/

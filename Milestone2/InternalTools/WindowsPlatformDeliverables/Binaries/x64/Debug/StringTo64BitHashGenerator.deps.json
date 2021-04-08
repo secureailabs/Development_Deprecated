@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v3.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v3.0": {
+      "StringTo64BitHashGenerator/1.0.0": {
+        "runtime": {
+          "StringTo64BitHashGenerator.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "StringTo64BitHashGenerator/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

@@ -149,9 +149,8 @@ std::vector<Byte> RestApiCall(
         // Execute the API call
         unsigned int unResponse = ::curl_easy_perform(psCurl);
         ::curl_easy_cleanup(psCurl);
-        _ThrowBaseExceptionIf((CURLE_OK != unResponse), "curl_easy_perform() has failed with code = 0x%08X", unResponse);
-
-        if (true == fIsJsonResponse)
+        
+        if ((CURLE_OK == unResponse)&&(true == fIsJsonResponse))
         {
             // Append the new incoming bytes to the existing response buffer
             std::string strResponse;
@@ -246,30 +245,31 @@ std::vector<Byte> __stdcall RestApiCall(
         // Execute the API call
         unsigned int unResponse = ::curl_easy_perform(psCurl);
         ::curl_easy_cleanup(psCurl);
-        _ThrowBaseExceptionIf((CURLE_OK != unResponse), "curl_easy_perform() has failed with code = 0x%08X", unResponse);
-
-        // Figure out what the Content-Type is to check if it is JSON. If it is, we need
-        // to do some string scrubbing to unescape the JSON string
-        std::string strContentType = stlMapOfHeaders.at("Content-Type");
-        strContentType = strContentType.substr(0, strContentType.find_first_of(';'));
-        strContentType = strContentType.substr(strContentType.find_last_of(' ') + 1);
-        // Check if the response is a JSON
-        if ("application/json" == strContentType)
+        if (CURLE_OK == unResponse)
         {
-            // Append the new incoming bytes to the existing response buffer
-            std::string strResponse;
-            strResponse.insert(strResponse.end(), stlResponse.begin(), stlResponse.end());
-            // Now we need to unescape the string to clean it up
-            strResponse = ::UnEscapeJsonString(strResponse);
-            // It's possible that the call to RestApiCall returns a JSON buffer that is NOT null terminated.
-            // So even though the std::vector is the correct size, because it's not terminated, the JSON
-            // string basically has crap at the end. We make sure it's null terminated here
-            stlResponse.clear();
-            stlResponse.insert(stlResponse.end(), strResponse.begin(), strResponse.end());
-            // Because of how std::vectors work, we need to add a null terminator here since JSON is
-            // effectively a string and needs to be properly null terminated for some functions to
-            // work properly
-            stlResponse.insert(stlResponse.end(), 0);
+            // Figure out what the Content-Type is to check if it is JSON. If it is, we need
+            // to do some string scrubbing to unescape the JSON string
+            std::string strContentType = stlMapOfHeaders.at("Content-Type");
+            strContentType = strContentType.substr(0, strContentType.find_first_of(';'));
+            strContentType = strContentType.substr(strContentType.find_last_of(' ') + 1);
+            // Check if the response is a JSON
+            if ("application/json" == strContentType)
+            {
+                // Append the new incoming bytes to the existing response buffer
+                std::string strResponse;
+                strResponse.insert(strResponse.end(), stlResponse.begin(), stlResponse.end());
+                // Now we need to unescape the string to clean it up
+                strResponse = ::UnEscapeJsonString(strResponse);
+                // It's possible that the call to RestApiCall returns a JSON buffer that is NOT null terminated.
+                // So even though the std::vector is the correct size, because it's not terminated, the JSON
+                // string basically has crap at the end. We make sure it's null terminated here
+                stlResponse.clear();
+                stlResponse.insert(stlResponse.end(), strResponse.begin(), strResponse.end());
+                // Because of how std::vectors work, we need to add a null terminator here since JSON is
+                // effectively a string and needs to be properly null terminated for some functions to
+                // work properly
+                stlResponse.insert(stlResponse.end(), 0);
+            }
         }
     }
 

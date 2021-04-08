@@ -203,7 +203,7 @@ RootOfTrustCore::RootOfTrustCore(
     m_strComputationalDomainIdentifier = oInitializationData.GetString("ComputationalDomainIdentifier");
     m_strDataConnectorDomainIdentifier = oInitializationData.GetString("DataConnectorDomainIdentifier");
     m_strSailWebApiPortalIpAddress = oInitializationData.GetString("SailWebApiPortalIpAddress");
-    m_strDataOwnerImpostorEosb = oInitializationData.GetString("DataOwnerAccessToken");
+    m_strDataOwnerAccessToken = oInitializationData.GetString("DataOwnerAccessToken");
     m_strDataOwnerOrganizationIdentifier = oInitializationData.GetString("DataOwnerOrganizationIdentifier");
     m_strDataOwnerUserIdentifier = oInitializationData.GetString("DataOwnerUserIdentifier");
     std::string strBase64EncodedSerializedDataset = oInitializationData.GetString("Base64EncodedDataset");    
@@ -215,28 +215,8 @@ RootOfTrustCore::RootOfTrustCore(
 
     m_fIsInitialized = true;
     
-    std::cout << "m_strNameOfVirtualMachine: " << m_strNameOfVirtualMachine << std::endl;
-    std::cout << "m_strIpAddressOfVirtualMachine: " << m_strIpAddressOfVirtualMachine << std::endl;
-    std::cout << "m_strVirtualMachineIdentifier: " << m_strVirtualMachineIdentifier << std::endl;
-    std::cout << "m_strClusterIdentifier: " << m_strClusterIdentifier << std::endl;
-    std::cout << "m_strDigitalContractIdentifier: " << m_strDigitalContractIdentifier << std::endl;
-    std::cout << "m_strDatasetIdentifier: " << m_strDatasetIdentifier << std::endl;
-    std::cout << "m_strRootOfTrustDomainIdentifier: " << m_strRootOfTrustDomainIdentifier << std::endl;
-    std::cout << "m_strComputationalDomainIdentifier: " << m_strComputationalDomainIdentifier << std::endl;
-    std::cout << "m_strDataConnectorDomainIdentifier: " << m_strDataConnectorDomainIdentifier << std::endl;
-    std::cout << "m_strSailWebApiPortalIpAddress: " << m_strSailWebApiPortalIpAddress << std::endl;
-    std::cout << "m_strDataOwnerImpostorEosb: " << m_strDataOwnerImpostorEosb << std::endl;
-    std::cout << "m_strDataOwnerOrganizationIdentifier: " << m_strDataOwnerOrganizationIdentifier << std::endl;
-    std::cout << "m_strDataOwnerOrganizationIdentifier: " << m_strDataOwnerOrganizationIdentifier << std::endl;
-    std::cout << "m_strDataOwnerUserIdentifier: " << m_strDataOwnerUserIdentifier << std::endl;
-    std::cout << "m_stlDataset.size(): " << m_stlDataset.size() << std::endl;
-    
     this->InitializeVirtualMachine();
-    this->InitializeDataset();
     this->RegisterDataOwnerEosb();
-    
-    ThreadManager * poThreadManager = ThreadManager::GetInstance();
-    _ThrowBaseExceptionIf((0xFFFFFFFFFFFFFFFF == poThreadManager->CreateThread("RootOfTrustCodeGroup", RootOfTrustAuditEventDispatcherThread, (void *) this)), "Failed to start the audit event dispacher thread", nullptr);
 }
 
 /********************************************************************************************/
@@ -249,6 +229,12 @@ RootOfTrustCore::RootOfTrustCore(
     
     if (true == c_oRootOfTrust.m_fIsInitialized)
     {
+        m_strDataOwnerAccessToken = c_oRootOfTrust.m_strDataOwnerAccessToken;;
+        m_strResearcherEosb = c_oRootOfTrust.m_strResearcherEosb;
+        
+        m_strDataOrganizationAuditEventParentBranchNodeIdentifier = c_oRootOfTrust.m_strDataOrganizationAuditEventParentBranchNodeIdentifier;
+        m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier = c_oRootOfTrust.m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier;
+        
         m_strNameOfVirtualMachine = c_oRootOfTrust.m_strNameOfVirtualMachine;
         m_strIpAddressOfVirtualMachine = c_oRootOfTrust.m_strIpAddressOfVirtualMachine;
         m_strVirtualMachineIdentifier = c_oRootOfTrust.m_strVirtualMachineIdentifier;
@@ -259,7 +245,6 @@ RootOfTrustCore::RootOfTrustCore(
         m_strComputationalDomainIdentifier = c_oRootOfTrust.m_strComputationalDomainIdentifier;
         m_strDataConnectorDomainIdentifier = c_oRootOfTrust.m_strDataConnectorDomainIdentifier;
         m_strSailWebApiPortalIpAddress = c_oRootOfTrust.m_strSailWebApiPortalIpAddress;
-        m_strDataOwnerImpostorEosb = c_oRootOfTrust.m_strDataOwnerImpostorEosb;
         m_strDataOwnerOrganizationIdentifier = c_oRootOfTrust.m_strDataOwnerOrganizationIdentifier;
         m_strDataOwnerUserIdentifier = c_oRootOfTrust.m_strDataOwnerUserIdentifier;
         m_stlDataset = c_oRootOfTrust.m_stlDataset;    
@@ -272,14 +257,13 @@ RootOfTrustCore::RootOfTrustCore(
         // By default, this new instance of RootOfTrustCore is NOT running it's own thread
         m_fIsRunning = false;
     }
-}
-
+}        
+        
 /********************************************************************************************/
 
 RootOfTrustCore::~RootOfTrustCore(void)
 {
     __DebugFunction();
-    __DebugAssert(false == m_fIsRunning);
     
     // TODO: Securely zeroize buffers
 }
@@ -301,8 +285,6 @@ std::string __thiscall RootOfTrustCore::GetRootOfTrustIpcPath(void) const throw(
     __DebugFunction();
     __DebugAssert(true == m_fIsInitialized);
     
-    std::cout << "GetRootOfTrustIpcPath = " << m_strRootOfTrustIpcPath << std::endl;
-    
     return m_strRootOfTrustIpcPath;
 }
 
@@ -312,9 +294,11 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
 {
     __DebugFunction();
     
+    std::cout << "CRAPCRAPCRAP" << std::endl;
+    
     unsigned int unDataOrganizationSequenceNumber = 0;
     unsigned int unResearcherOrganizationSequenceNumber = 0;
-    StatusMonitor oStatusMonitor("void __thiscall RootOfTrustCore::RunIpcListener(void)");
+    StatusMonitor oStatusMonitor("void __thiscall RootOfTrustCore::AuditEventDispatcher(void)");
     while (false == oStatusMonitor.IsTerminating())
     {
         try
@@ -322,47 +306,61 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
             const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
             // We use a intermediate StructuredBuffer to store all of the new audit events
             bool fTransmitAuditEvents = false;
-            StructuredBuffer oAuditEventsToTransmit;
+            
             // Handle lingering events within the data organization audit event queue
-            while (0 < m_stlDataOrganizationAuditEventQueue.size())
+            if ((0 < m_strDataOwnerAccessToken.size())&&(0 < m_strDataOrganizationAuditEventParentBranchNodeIdentifier.size()))
             {
-                if ((0 < m_strDataOwnerImpostorEosb.size())&&(0 < m_strDataOrganizationAuditEventParentBranchNodeIdentifier.size()))
+                StructuredBuffer oAuditEventsToTransmit;
+                unsigned int unElementIndex = 0;
+                while (0 < m_stlDataOrganizationAuditEventQueue.size())
                 {
                     fTransmitAuditEvents = true;
                     StructuredBuffer oNewAuditEvent(m_stlDataOrganizationAuditEventQueue.front().c_str());
-                    oAuditEventsToTransmit.PutStructuredBuffer(std::to_string(unDataOrganizationSequenceNumber).c_str(), oNewAuditEvent);
                     m_stlDataOrganizationAuditEventQueue.pop();
-                    unDataOrganizationSequenceNumber++;
+                    oNewAuditEvent.PutUnsignedInt32("SequenceNumber", unDataOrganizationSequenceNumber++);
+                    oAuditEventsToTransmit.PutStructuredBuffer(std::to_string(unElementIndex++).c_str(), oNewAuditEvent);
+                    std::cout << "Transmitting an audit event (DOO)" << std::endl;
+                }
+                
+                if (true == fTransmitAuditEvents)
+                {    
+                    __DebugAssert(0 < m_strDataOwnerAccessToken.size());
+                    __DebugAssert(0 < m_strDataOrganizationAuditEventParentBranchNodeIdentifier.size());
+                    
+                    ::TransmitAuditEventsToSailWebApiPortal(m_strDataOwnerAccessToken, m_strDataOrganizationAuditEventParentBranchNodeIdentifier, oAuditEventsToTransmit);
                 }
             }
-            if (true == fTransmitAuditEvents)
-            {    
-                __DebugAssert(0 < m_strDataOwnerImpostorEosb.size());
-                __DebugAssert(0 < m_strDataOrganizationAuditEventParentBranchNodeIdentifier.size());
-                
-                ::TransmitAuditEventsToSailWebApiPortal(m_strDataOwnerImpostorEosb, m_strDataOrganizationAuditEventParentBranchNodeIdentifier, oAuditEventsToTransmit);
-            }
-            oAuditEventsToTransmit.Clear();
-            // Handle lingering events within the researcher organization audit event queue
-            while (0 < m_stlResearchOrganizationAuditEventQueue.size())
+            else
             {
-                if ((0 < m_strResearcherImpostorEosb.size())&&(0 < m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier.size()))
+                std::cout << "Outstanding DOO event are: " << m_stlDataOrganizationAuditEventQueue.size() << std::endl;
+            }
+            
+            if ((0 < m_strResearcherEosb.size())&&(0 < m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier.size()))
+            {
+                StructuredBuffer oAuditEventsToTransmit;
+                unsigned int unElementIndex = 0;
+                while (0 < m_stlResearchOrganizationAuditEventQueue.size())
                 {
                     fTransmitAuditEvents = true;
                     StructuredBuffer oNewAuditEvent(m_stlResearchOrganizationAuditEventQueue.front().c_str());
-                    oAuditEventsToTransmit.PutStructuredBuffer(std::to_string(unResearcherOrganizationSequenceNumber).c_str(), oNewAuditEvent);
                     m_stlResearchOrganizationAuditEventQueue.pop();
-                    unResearcherOrganizationSequenceNumber++;
+                    oNewAuditEvent.PutUnsignedInt32("SequenceNumber", unResearcherOrganizationSequenceNumber++);
+                    oAuditEventsToTransmit.PutStructuredBuffer(std::to_string(unElementIndex++).c_str(), oNewAuditEvent);
+                    std::cout << "Transmitting an audit event (RO)" << std::endl;
+                }
+
+                if (true == fTransmitAuditEvents)
+                {    
+                    __DebugAssert(0 < m_strResearcherEosb.size());
+                    __DebugAssert(0 < m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier.size());
+                    
+                    ::TransmitAuditEventsToSailWebApiPortal(m_strResearcherEosb, m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier, oAuditEventsToTransmit);
                 }
             }
-            if (true == fTransmitAuditEvents)
-            {    
-                __DebugAssert(0 < m_strResearcherImpostorEosb.size());
-                __DebugAssert(0 < m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier.size());
-                
-                ::TransmitAuditEventsToSailWebApiPortal(m_strResearcherImpostorEosb, m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier, oAuditEventsToTransmit);
+            else
+            {
+                std::cout << "Outstanding RO event are: " << m_stlDataOrganizationAuditEventQueue.size() << std::endl;
             }
-            oAuditEventsToTransmit.Clear();        
         }
         
         catch(...)
@@ -371,8 +369,10 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
         }
         
         // Put this thread to sleep for 5 seconds
-        ::sleep(5000);
+        ::sleep(5);
     }
+    
+    std::cout << "AuditViewerDispatchedExit!!!" << std::endl;
 }
 
 /********************************************************************************************/
@@ -387,6 +387,7 @@ void __thiscall RootOfTrustCore::RunIpcListener(void)
     if (false == m_fIsRunning)
     {
         m_fIsRunning = true;
+        _ThrowBaseExceptionIf((0xFFFFFFFFFFFFFFFF == poThreadManager->CreateThread("RootOfTrustCodeGroup", RootOfTrustAuditEventDispatcherThread, (void *) this)), "Failed to start the audit event dispacher thread", nullptr);
         _ThrowBaseExceptionIf((0xFFFFFFFFFFFFFFFF == poThreadManager->CreateThread("RootOfTrustCodeGroup", RootOfTrustIpcListenerThread, (void *) this)), "Failed to start the Root of Trust Listener Thread", nullptr);
     }
     else
@@ -400,7 +401,6 @@ void __thiscall RootOfTrustCore::RunIpcListener(void)
         
         while (false == oStatusMonitor.IsTerminating())
         {
-            std::cout << "." << std::endl;
             // We wait for a connection
             if (true == poIpcServer->WaitForConnection(1000))
             {
@@ -461,7 +461,6 @@ void __thiscall RootOfTrustCore::HandleIncomingTransaction(
     // as well as a Transaction identifier
     Guid oOriginatingDomainIdentifier = oTransactionParameters.GetGuid("DomainIdentifier");
     Dword dwTransaction = oTransactionParameters.GetDword("Transaction");
-    
     switch(dwTransaction)
     {
         case 0x00000006 //  "GetDataSet"
@@ -534,6 +533,7 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactRecordAuditEvent(
     
     try
     {
+        std::cout << "TransactRecordAuditEvent.001" << std::endl;
         StructuredBuffer oCopyOfTransactionParameters(c_oTransactionParameters);
         // Make a copy of the target channels
         Word wTargetChannelsBitMask = oCopyOfTransactionParameters.GetWord("TargetChannelsBitMask");
@@ -546,16 +546,15 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactRecordAuditEvent(
         // can register the EOSB of the researcher
         if (c_oOriginatingDomainIdentifier == m_strComputationalDomainIdentifier.c_str())
         {
-            std::string eventName = oCopyOfTransactionParameters.GetString("EventName");
+            StructuredBuffer oEncryptedData(oCopyOfTransactionParameters.GetString("EncryptedEventData").c_str());
+            std::string eventName = oEncryptedData.GetString("EventName");
             if (eventName == "CONNECT_SUCCESS")
             {
-                StructuredBuffer oCopyOfEventData(oCopyOfTransactionParameters.GetStructuredBuffer("EventData"));
-                
-                m_strResearcherImpostorEosb = oCopyOfEventData.GetString("EOSB");
+                m_strResearcherEosb = oEncryptedData.GetString("EOSB");
                 // Make sure that element is removed from the audit record
-                oCopyOfEventData.RemoveElement("EOSB");
+                oEncryptedData.RemoveElement("EOSB");
                 // Update the EventData
-                oCopyOfTransactionParameters.PutStructuredBuffer("EventData", oCopyOfEventData);
+                oCopyOfTransactionParameters.PutString("EncryptedEventData", oEncryptedData.GetBase64SerializedBuffer());
                 this->RegisterResearcherEosb();
             }
         }
@@ -593,22 +592,26 @@ bool __thiscall RootOfTrustCore::InitializeVirtualMachine(void)
 {
     __DebugFunction();
     
-    // Make sure we are thread safe
-    const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
+    bool fSuccess = false;
     
-    return false;
-}
+    try
+    {
+        // Make sure we are thread safe
+        const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
+        // Make sure all of the parameters are proper
+        if ((0 < m_strDataOwnerAccessToken.size())&&(0 < m_strVirtualMachineIdentifier.size())&&(0 < m_strDigitalContractIdentifier.size())&&(0 < m_strIpAddressOfVirtualMachine.size()))
+        {
+            ::RegisterVirtualMachineWithSailWebApiPortal(m_strDataOwnerAccessToken, m_strVirtualMachineIdentifier, m_strDigitalContractIdentifier, m_strIpAddressOfVirtualMachine);
+            fSuccess = true;
+        }
+    }
+    
+    catch(...)
+    {
+        
+    }
 
-/********************************************************************************************/
-
-bool __thiscall RootOfTrustCore::InitializeDataset(void)
-{
-    __DebugFunction();
-    
-    // Make sure we are thread safe
-    const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
-    
-    return false;
+    return fSuccess;
 }
 
 /********************************************************************************************/
@@ -617,10 +620,26 @@ bool __thiscall RootOfTrustCore::RegisterDataOwnerEosb(void)
 {
     __DebugFunction();
     
-    // Make sure we are thread safe
-    const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
+    bool fSuccess = false;
     
-    return false;
+    try
+    {
+        // Make sure we are thread safe
+        const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
+        // Make sure all of the parameters are proper
+        if ((0 < m_strDataOwnerAccessToken.size())&&(0 < m_strVirtualMachineIdentifier.size()))
+        {
+            m_strDataOrganizationAuditEventParentBranchNodeIdentifier = ::RegisterVirtualMachineDataOwner(m_strDataOwnerAccessToken, m_strVirtualMachineIdentifier);
+            fSuccess = true;
+        }
+    }
+        
+    catch(...)
+    {
+        
+    }
+
+    return fSuccess;
 }
 
 /********************************************************************************************/
@@ -629,8 +648,24 @@ bool __thiscall RootOfTrustCore::RegisterResearcherEosb(void)
 {
     __DebugFunction();
     
-    // Make sure we are thread safe
-    const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
+    bool fSuccess = false;
     
-    return false;
+    try
+    {
+        // Make sure we are thread safe
+        const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
+        // Make sure all of the parameters are proper
+        if ((0 < m_strResearcherEosb.size())&&(0 < m_strVirtualMachineIdentifier.size()))
+        {
+            m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier = ::RegisterVirtualMachineResearcher(m_strResearcherEosb, m_strVirtualMachineIdentifier);
+            fSuccess = true;
+        }
+    }
+        
+    catch(...)
+    {
+        
+    }
+
+    return fSuccess;
 }

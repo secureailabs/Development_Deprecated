@@ -295,7 +295,7 @@ bool __stdcall TransmitAuditEventsToSailWebApiPortal(
                               "\n            \"EventGuid\": \""+ oEvent.GetString("EventGuid") +"\","
                               "\n            \"EventType\": "+ std::to_string(oEvent.GetQword("EventType")) +","
                               "\n            \"Timestamp\": "+ std::to_string(oEvent.GetUnsignedInt64("Timestamp")) +","
-                              "\n            \"SequenceNumber\": "+ stlEvents.at(unIndex) +","
+                              "\n            \"SequenceNumber\": "+ std::to_string(oEvent.GetUnsignedInt32("SequenceNumber")) +","
                               "\n            \"EncryptedEventData\": \""+ oEvent.GetString("EncryptedEventData") +"\"";
                 if ((unNumberOfEvents - 1) != unIndex)
                 {   
@@ -530,7 +530,8 @@ StructuredBuffer __stdcall GetDigitalContract(
 std::string __stdcall RegisterVirtualMachineWithSailWebApiPortal(
     _in const std::string & c_strEosb,
     _in const std::string & c_strVirtualMachineIdentifier,
-    _in const StructuredBuffer & c_oVirtualMachineInformation
+    _in const std::string & c_strDigitalContractIdentifier,
+    _in const std::string & c_strIpAddress
     )
 {
     __DebugFunction();
@@ -547,10 +548,10 @@ std::string __stdcall RegisterVirtualMachineWithSailWebApiPortal(
             TlsNode * poTlsNode = ::TlsConnectToNetworkSocket(gs_strIpAddressOfWebPortalGateway.c_str(), gs_unPortAddressOfWebPortalGateway);
             // Build the HTTP request string
             std::string strContent = "{\n    \"IEosb\": \""+ c_strEosb +"\","
-                                    "\n    \"DigitalContractGuid\": \""+ c_oVirtualMachineInformation.GetString("DigitalContractGuid") +"\","
+                                    "\n    \"DigitalContractGuid\": \""+ c_strDigitalContractIdentifier +"\","
                                     "\n    \"VirtualMachineGuid\": \""+ c_strVirtualMachineIdentifier +"\","
                                     "\n    \"HeartbeatBroadcastTime\": "+ std::to_string(::GetEpochTimeInSeconds()) +","
-                                    "\n    \"IPAddress\": \""+ c_oVirtualMachineInformation.GetString("IPAddress") +"\""
+                                    "\n    \"IPAddress\": \""+ c_strIpAddress +"\""
                                     "\n}";
             std::string strHttpRegisterRequest = "POST /SAIL/VirtualMachineManager/RegisterVM HTTP/1.1\r\n"
                                             "Content-Type: application/json\r\n"

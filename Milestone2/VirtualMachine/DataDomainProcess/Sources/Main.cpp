@@ -68,6 +68,10 @@ static void __cdecl InitDataConnector(
                 poThreadManager->CreateThread(nullptr, InitializeResearchProcess, (void *) poSocket);
             }
         }
+        
+        StructuredBuffer oEventData;
+        oEventData.PutBoolean("Success", true);
+        c_oRootOfTrustNode.RecordAuditEvent("PING", 0x1111, 0x05, oEventData);
     }
     while (false == oStatusMonitor.IsTerminating());
     

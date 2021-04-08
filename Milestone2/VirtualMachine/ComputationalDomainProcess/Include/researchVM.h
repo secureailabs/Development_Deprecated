@@ -16,7 +16,7 @@
 #include "Object.h"
 #include "RootOfTrustNode.h"
 #include "Socket.h"
-#include "SocketServer.h"
+#include "TlsServer.h"
 #include "StructuredBuffer.h"
 #include "utils.h"
 
@@ -42,7 +42,7 @@ class ComputationVM : public Object
     
         void __thiscall SocketListen(void);
         void __thiscall HandleConnection(
-            _in Socket * poSocket
+            _in TlsNode * poSocket
             );
 
         void __thiscall HandleConnect
@@ -137,7 +137,7 @@ class ComputationVM : public Object
         // Private data members
         
         JobEngine m_oEngine;
-        SocketServer m_oSocketServer;
+        TlsServer m_oTlsServer;
         std::map<std::string, std::unique_ptr<FunctionNode>> m_stlFNMap;
         std::string m_strVirtualMachineIdentifier;
         std::string m_strEOSB;

@@ -648,7 +648,7 @@ void __thiscall ComputationVM::HandlePushFN(
 void __thiscall ComputationVM::Halt(void)
 {
     __DebugFunction();
-    m_fStop = true;
+    //m_fStop = true;
 }
 
 void __thiscall ComputationVM::SaveFN(

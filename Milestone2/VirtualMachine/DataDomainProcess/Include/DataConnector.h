@@ -14,6 +14,7 @@
 
 #include "CoreTypes.h"
 #include "Object.h"
+#include "RootOfTrustNode.h"
 #include "Socket.h"
 #include "StructuredBuffer.h"
 
@@ -45,7 +46,8 @@ class DataConnector
         ~DataConnector(void);
 
         bool __thiscall LoadAndVerify(
-            _in const std::vector<Byte> c_stlDataset
+            _in const std::vector<Byte> c_stlDataset,
+            _in RootOfTrustNode * poRootOfTrustNode
             );
         void __thiscall HandleRequestsUntilClose(
             _in Socket * poSocket
@@ -70,6 +72,7 @@ class DataConnector
             ) const;
 
         // Private data members
+        RootOfTrustNode * m_poRootOfTrustNode;
         StructuredBuffer * m_oDataSetMetaDataStructuredBuffer;
         std::vector<StructuredBuffer> m_stlTableMetaData;
         std::vector<std::vector<std::vector<std::string>>> m_stlTableData;

@@ -126,16 +126,22 @@ void __thiscall RootOfTrustNode::RecordAuditEvent(
 {
     __DebugFunction();
     try
-    {
-        // Construct the transaction packet
+    {   // Construct the transaction packet
         StructuredBuffer oTransactionData;
-        oTransactionData.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+        StructuredBuffer oEncryptedEventData = c_oEventData;
+        Guid oEventGuid;
+        // Internal elements only. These will be deleted before to transmitting the audit event
         oTransactionData.PutGuid("DomainIdentifier", m_oDomainIdentifier);
         oTransactionData.PutDword("Transaction", 0x00000009);
-        oTransactionData.PutString("EventName", c_szEventName);
         oTransactionData.PutWord("TargetChannelsBitMask", wTargetChannelsBitMask);
+        // Persistent properties of audit event
+        oTransactionData.PutGuid("EventGuid", oEventGuid);
         oTransactionData.PutDword("EventType", dwEventType);
-        oTransactionData.PutStructuredBuffer("EventData", c_oEventData);
+        oTransactionData.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+        // Make sure that the encrypted data contains the EventName property
+        oEncryptedEventData.PutString("EventName", c_szEventName);
+        // Add the encrypted event data to the audit event
+        oTransactionData.PutStructuredBuffer("EncryptedEventData", oEncryptedEventData);
         // Send the transaction
         Socket * poSocket = ::ConnectToUnixDomainSocket(m_strRootOfTrustIpcPath.c_str());
         StructuredBuffer oTransactionResponse(::PutIpcTransactionAndGetResponse(poSocket, oTransactionData));

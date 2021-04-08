@@ -599,9 +599,13 @@ extern "C" __declspec(dllexport) bool __cdecl UploadInstallationPackageToVirtual
         do
         {
             stlResponse = ::RestApiCall(c_szIpAddressOfVirtualMachine, 9090, "POST", "/UploadData", c_szBase64EncodedInstallationPackage, true, stlHeaders);
-            unLoopCounter -= 1;
-            ::Sleep(5000);
-        } while ((0 <= unLoopCounter) && (0 == stlResponse.size()));
+            if (0 == stlResponse.size())
+            {
+                unLoopCounter -= 1;
+                ::Sleep(5000);
+            }
+        }
+        while ((0 <= unLoopCounter) && (0 == stlResponse.size()));
 
         fSuccess = true;
     }
@@ -686,9 +690,13 @@ extern "C" __declspec(dllexport) bool __cdecl UploadInitializationParametersToVi
         do
         {
             stlResponse = ::RestApiCall(c_szIpAddressOfVirtualMachine, 6800, "POST", "/SAIL/InitializationParameters", oInitializationParameters.GetBase64SerializedBuffer(), true, stlHeaders);
-            unLoopCounter -= 1;
-            ::Sleep(5000);
-        } while((0 <= unLoopCounter) && (0 == stlResponse.size()));
+            if (0 == stlResponse.size())
+            {
+                unLoopCounter -= 1;
+                ::Sleep(5000);
+            }
+        }
+        while((0 <= unLoopCounter) && (0 == stlResponse.size()));
         fSuccess = true;
     }
 

@@ -66,8 +66,8 @@ class RootOfTrustCore : public Object
         bool m_fIsInitialized;
         bool m_fIsRunning;
 
-        std::string m_strDataOwnerImpostorEosb;
-        std::string m_strResearcherImpostorEosb;
+        std::string m_strDataOwnerAccessToken;
+        std::string m_strResearcherEosb;
 
         std::string m_strNameOfVirtualMachine;
         std::string m_strIpAddressOfVirtualMachine;

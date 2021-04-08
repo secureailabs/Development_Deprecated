@@ -752,51 +752,48 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
     // Check if the Eosb is an imposter Eosb
     // Register Vm if it is an imposter Eosb
     Dword dwStatus = 204;
-    if (eIEosb == oUserInfo.GetQword("AccessRights"))
-    {
-        // Register the Virtual Machine 
-        // Make a Tls connection with the database portal
-        TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-        // Create a request to register the virtual machine information in the database
-        StructuredBuffer oRequest;
-        oRequest.PutString("PluginName", "DatabaseManager");
-        oRequest.PutString("Verb", "POST");
-        oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterVirtualMachine");
-        oRequest.PutString("VirtualMachineGuid", strVmGuid);
-        oRequest.PutString("DigitalContractGuid", strDcGuid);
-        oRequest.PutUnsignedInt64("RegistrationTime", ::GetEpochTimeInSeconds());
-        oRequest.PutUnsignedInt64("HeartbeatBroadcastTime", c_oRequest.GetUnsignedInt64("HeartbeatBroadcastTime"));
-        oRequest.PutString("IPAddress", c_oRequest.GetString("IPAddress"));
-        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-        // Send request packet
-        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+    // Register the Virtual Machine 
+    // Make a Tls connection with the database portal
+    TlsNode * poTlsNode = nullptr;
+    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+    // Create a request to register the virtual machine information in the database
+    StructuredBuffer oRequest;
+    oRequest.PutString("PluginName", "DatabaseManager");
+    oRequest.PutString("Verb", "POST");
+    oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterVirtualMachine");
+    oRequest.PutString("VirtualMachineGuid", strVmGuid);
+    oRequest.PutString("DigitalContractGuid", strDcGuid);
+    oRequest.PutUnsignedInt64("RegistrationTime", ::GetEpochTimeInSeconds());
+    oRequest.PutUnsignedInt64("HeartbeatBroadcastTime", c_oRequest.GetUnsignedInt64("HeartbeatBroadcastTime"));
+    oRequest.PutString("IPAddress", c_oRequest.GetString("IPAddress"));
+    std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+    // Send request packet
+    poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
 
-        // Read header and body of the response
-        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
-        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
-        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+    // Read header and body of the response
+    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+    std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
 
-        // Check if DatabaseManager registered the virtual machine or not
-        StructuredBuffer oDatabaseResponse(stlResponse);
-        if (404 != oDatabaseResponse.GetDword("Status"))
-        {    
-            // Call CryptographicManager plugin to get the VMEOSB
-            StructuredBuffer oUpdateEosbRequest;
-            oUpdateEosbRequest.PutDword("TransactionType", 0x00000005);
-            oUpdateEosbRequest.PutBuffer("Eosb", stlEosb);
-            oUpdateEosbRequest.PutQword("AccessRights", eVmEosb); 
-            Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-            StructuredBuffer oUpdatedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oUpdateEosbRequest));
-            // Throw base exception if transaction was unsuccessful
-            _ThrowBaseExceptionIf(((0 == oUpdatedEosb.GetSerializedBufferRawDataSizeInBytes())&&(200 != oUpdatedEosb.GetDword("Status"))), "Error updating the Eosb", nullptr);
-            oResponse.PutBuffer("VmEosb", oUpdatedEosb.GetBuffer("UpdatedEosb"));
-            dwStatus = 201;
-        }
+    // Check if DatabaseManager registered the virtual machine or not
+    StructuredBuffer oDatabaseResponse(stlResponse);
+    if (404 != oDatabaseResponse.GetDword("Status"))
+    {    
+        // Call CryptographicManager plugin to get the VMEOSB
+        StructuredBuffer oUpdateEosbRequest;
+        oUpdateEosbRequest.PutDword("TransactionType", 0x00000005);
+        oUpdateEosbRequest.PutBuffer("Eosb", stlEosb);
+        oUpdateEosbRequest.PutQword("AccessRights", eVmEosb); 
+        Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+        StructuredBuffer oUpdatedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oUpdateEosbRequest));
+        // Throw base exception if transaction was unsuccessful
+        _ThrowBaseExceptionIf(((0 == oUpdatedEosb.GetSerializedBufferRawDataSizeInBytes())&&(200 != oUpdatedEosb.GetDword("Status"))), "Error updating the Eosb", nullptr);
+        oResponse.PutBuffer("VmEosb", oUpdatedEosb.GetBuffer("UpdatedEosb"));
+        dwStatus = 201;
     }
-
+        
     oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();

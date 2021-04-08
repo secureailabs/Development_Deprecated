@@ -23,12 +23,10 @@
 
 /********************************************************************************************/
 
-class Frontend : public Object
-{
+class Frontend{
 
     private:
-        std::map<std::string, std::string> m_stlConnectionMap;
-        std::map<std::string, Word> m_stlPortMap;
+        std::map<std::string, std::shared_ptr<Socket>> m_stlConnectionMap;
         std::map<std::string, std::unique_ptr<FunctionNode>> m_stlFNTable;
         bool m_fStop;
 

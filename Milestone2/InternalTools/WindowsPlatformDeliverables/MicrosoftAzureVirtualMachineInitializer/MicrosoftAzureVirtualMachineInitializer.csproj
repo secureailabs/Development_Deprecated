@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <ApplicationIcon>Properties\SAIL Icon.ico</ApplicationIcon>
@@ -20,9 +20,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Update="SailWebApiPortalExceptionsDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
     <Compile Update="MicrosoftAzureLoginDialog - Copy.Designer.cs">
       <DependentUpon>MicrosoftAzureLoginDialog.Designer.cs</DependentUpon>
     </Compile>

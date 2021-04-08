@@ -12,10 +12,10 @@
 #include "CoreTypes.h"
 #include "researchVM.h"
 #include "DataConnector.h"
+#include "DebugLibrary.h"
 #include "SocketClient.h"
 #include "StatusMonitor.h"
 #include "StructuredBuffer.h"
-#include "TlsTransactionHelperFunctions.h"
 #include "IpcTransactionHelperFunctions.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
@@ -53,7 +53,7 @@ ComputationVM::ComputationVM(
     _in size_t nMaxProcess,
     _in RootOfTrustNode & oRootOfTrustNode
     )
-    : m_oEngine(nMaxProcess), m_oTlsServer(wPortIdentifier), m_oRootOfTrustNode(oRootOfTrustNode)
+    : m_oEngine(nMaxProcess), m_oSocketServer(wPortIdentifier), m_oRootOfTrustNode(oRootOfTrustNode)
 {
     __DebugFunction();
 
@@ -92,7 +92,7 @@ void __thiscall ComputationVM::Initialize(void)
 {
     __DebugFunction();
 
-    std::vector<std::thread> stlThreadPool;
+	std::vector<std::thread> stlThreadPool;
 
 	stlThreadPool.push_back(std::thread(&ComputationVM::SocketListen, this));
 	stlThreadPool.push_back(std::thread(&JobEngine::Dispatch, &m_oEngine));
@@ -119,21 +119,10 @@ void ComputationVM::SocketListen(void)
 
     while (false == oStatusMonitor.IsTerminating())
     {
-        try 
+        if (true == m_oSocketServer.WaitForConnection(1000))
         {
-            if (true == m_oTlsServer.WaitForConnection(1000))
-            {
-                TlsNode*  poNewConnection = m_oTlsServer.Accept();
-                _ThrowIfNull(poNewConnection, "Handle computationVM connection request retures a null pointer.", nullptr);
-                this->HandleConnection(poNewConnection);
-            }
-        }
-        catch(const BaseException & oBaseException)
-        {
-            StructuredBuffer oResponseStructuredBuffer;
-            std::cout<<oBaseException.GetExceptionMessage()<<std::endl;
-            oResponseStructuredBuffer.PutString("Status", "Fail");
-            oResponseStructuredBuffer.PutString("Error", oBaseException.GetExceptionMessage());
+            Socket * poNewConnection = m_oSocketServer.Accept();
+            this->HandleConnection(poNewConnection);
         }
     }
 }
@@ -148,63 +137,62 @@ void ComputationVM::SocketListen(void)
  ********************************************************************************************/
 
 void ComputationVM::HandleConnection(
-    _in TlsNode*  poSocket
+    _in Socket * poSocket
     )
 {
     __DebugFunction();
 
     bool bConnectionState = true;
-    StructuredBuffer oResponseStructuredBuffer;
 
-    std::vector<Byte> stlContent = GetTlsTransaction(poSocket, 10*1000);
-    std::cout<<"Get tls transaction request: "<<stlContent.size()<<std::endl;
-    if(0<stlContent.size())
+    while (true == bConnectionState)
     {
-        StructuredBuffer oContent(stlContent);
-        StructuredBuffer oResponse;
-        
-        std::string strReply;
-        unsigned int nType = (unsigned int)oContent.GetInt8("Type");
-        std::cout<<"check type: "<<nType<<std::endl;
-
-        switch(nType)
+        std::vector<Byte> stlContent = GetIpcTransaction(poSocket);
+        if (0 < stlContent.size())
         {
-            //TODO: handle failure cases
-            case (unsigned int)eQUIT:
-                HandleQuit(oContent, oResponse);
-                bConnectionState =false;
-                Halt();
-                break;
-            case (unsigned int)eRUN:
-                HandleRun(oContent, oResponse);
-                break;
-            case (unsigned int)eCONNECT:
-                std::cout<<"handle vm connection"<<std::endl;
-                HandleConnect(oContent, oResponse);
-                break;
-            case (unsigned int)eINSPECT:
-                HandleInspect(oContent, oResponse);
-                break;
-            case (unsigned int)eGETTABLE:
-                HandleGetTable(oContent, oResponse);
-                break;
-            case (unsigned int)ePUSHDATA:
-                HandlePushData(oContent, oResponse);
-                break;
-            case (unsigned int)ePULLDATA:
-                HandlePullData(oContent, oResponse);
-                break;
-            case (unsigned int)eDELETEDATA:
-                HandleDeleteData(oContent, oResponse);
-                break;
-            case (unsigned int)ePUSHFN:
-                HandlePushFN(oContent, oResponse);
-                break;
-            default:
-                oResponse.PutBoolean("Status", false);
-                oResponse.PutString("Payload", "invalid request");
+			StructuredBuffer oContent(stlContent);
+			StructuredBuffer oResponse;
+
+			std::string strReply;
+			unsigned int nType = (unsigned int)oContent.GetInt8("Type");
+
+			switch(nType)
+			{
+				case (unsigned int) eCONNECT
+                :   this->HandleConnect(oContent, oResponse);
+					break;
+				case (unsigned int) eQUIT
+                :	this->HandleQuit(oContent, oResponse);
+                    bConnectionState = false;
+					break;
+				case (unsigned int) eRUN
+                :   this->HandleRun(oContent, oResponse);
+					break;
+				case (unsigned int) eINSPECT
+                :   this->HandleInspect(oContent, oResponse);
+					break;
+				case (unsigned int) eGETTABLE
+                :   this->HandleGetTable(oContent, oResponse);
+					break;
+				case (unsigned int) ePUSHDATA
+				:   this->HandlePushData(oContent, oResponse);
+					break;
+				case (unsigned int) ePULLDATA
+				:   this->HandlePullData(oContent, oResponse);
+					break;
+				case (unsigned int) eDELETEDATA
+				:   this->HandleDeleteData(oContent, oResponse);
+					break;
+				case (unsigned int) ePUSHFN
+				:   this->HandlePushFN(oContent, oResponse);
+					break;
+				default
+                :	oResponse.PutBoolean("Success", false);
+					oResponse.PutString("Reason", "Invalid transaction");
+                    break;
+			}
+
+			::PutIpcTransaction(poSocket, oResponse);
         }
-        PutTlsTransaction(poSocket, oResponse);
     }
 }
 
@@ -464,8 +452,6 @@ void __thiscall ComputationVM::SaveBuffer(
     std::vector<std::vector<Byte>> & stlVars
     )
 {
-    __DebugFunction();
-
     size_t nNumber = stlVars.size();
     for(size_t i =0; i<nNumber; i++)
     {
@@ -485,35 +471,20 @@ void __thiscall ComputationVM::LinkPassID(
     )
 {
     __DebugFunction();
-
+    
     size_t nNumber = stlPassIDs.size();
-
     std::vector<std::string> stlConfidentialInputIDs =  m_stlFNMap[strFunctionNodeIdentifier]->GetConfidentialInput();
-
-    try{
-        for(size_t i =0;i<nNumber;i++)
-        {
-            std::ofstream stlVarFile;
-            std::string strTarget = std::string("/tmp/"+stlPassIDs[i]);
-            std::string strLinkpath = std::string("/tmp/"+strJobIdentifier+stlConfidentialInputIDs[i]);
-            const char* target = strTarget.c_str();
-            const char* linkpath = strLinkpath.c_str();
-
-            while(access(target, F_OK)!=0)   
-            {
-                std::cout<<"filename:"<<target<<" linkdata waiting for file"<<std::endl;
-            }
-
-            int res = symlink(target, linkpath);
-            if(-1 == res)
-                _ThrowBaseException("Can not establish symbolic link", nullptr);
-        }
-    }
-    catch(const BaseException & oBaseException)
+    for (size_t i =0; i < nNumber; i++)
     {
-        std::cout<<oBaseException.GetExceptionMessage()<<std::endl;
+        std::string strTarget = std::string("/tmp/"+stlPassIDs[i]);
+        std::string strLinkpath = std::string("/tmp/"+strJobIdentifier+stlConfidentialInputIDs[i]);
+        const char * target = strTarget.c_str();
+        const char * linkpath = strLinkpath.c_str();
+        ::symlink(target, linkpath);
     }
 }
+
+/********************************************************************************************/
 
 void __thiscall ComputationVM::HandlePullData(
     _in StructuredBuffer & oContent,
@@ -552,6 +523,7 @@ void __thiscall ComputationVM::LoadDataToBuffer(
     )
 {
     __DebugFunction();
+    
     size_t nNumber = stlVarIDs.size();
     for (size_t i = 0; i < nNumber; i++)
     {
@@ -637,19 +609,7 @@ void __thiscall ComputationVM::HandlePushFN(
     m_oRootOfTrustNode.RecordAuditEvent("PUSH_FN", 0x1010, 0x01, oContent);
 }
 
-/********************************************************************************************
- *
- * @class ComputationVM
- * @function Halt
- * @brief Shutdown the server
- *
- ********************************************************************************************/
-
-void __thiscall ComputationVM::Halt(void)
-{
-    __DebugFunction();
-    //m_fStop = true;
-}
+/********************************************************************************************/
 
 void __thiscall ComputationVM::SaveFN(
     std::string & strFunctionNodeIdentifier,

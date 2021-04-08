@@ -294,20 +294,20 @@ namespace MicrosoftAzureVirtualMachineInitializer
             virtualMachineSpecification = virtualMachineSpecification.Replace("{{Username}}", m_VirtualMachineUsername);
             virtualMachineSpecification = virtualMachineSpecification.Replace("{{ComputerName}}", m_VirtualMachineComputerName);
             // Provision the virtual machine on Microsoft Azure and get it's IP address
-            //m_VirtualMachineIpAddress = MicrosoftAzureApiPortalInterop.ProvisionVirtualMachineAndWait(m_SubscriptionIdentifier, m_ResourceGroup, VirtualMachineIdentifier, publicIpSpecification, networkInterfaceSpecification, virtualMachineSpecification);
+            m_VirtualMachineIpAddress = MicrosoftAzureApiPortalInterop.ProvisionVirtualMachineAndWait(m_SubscriptionIdentifier, m_ResourceGroup, VirtualMachineIdentifier, publicIpSpecification, networkInterfaceSpecification, virtualMachineSpecification);
             m_VirtualMachineStatus = "Installing...";
             // Upload the binaries to the virtual machine
             byte[] installationPackage = System.IO.File.ReadAllBytes("SecureComputationalVirtualMachine.binaries");
             string installationPackageBase64Encoded = System.Convert.ToBase64String(installationPackage);
-            //if (true == SailWebApiPortalInterop.UploadInstallationPackageToVirtualMachine("52.242.93.221", installationPackageBase64Encoded))
-            //{
-            //        m_VirtualMachineStatus = "Initialization...";
-            //}
+            if (true == SailWebApiPortalInterop.UploadInstallationPackageToVirtualMachine(m_VirtualMachineIpAddress, installationPackageBase64Encoded))
+            {
+                    m_VirtualMachineStatus = "Initialization...";
+            }
             // Now we need to initialize the virtual machine
             string datasetBase64Encoded = System.Convert.ToBase64String(m_Dataset);
             uint sizeInBytes = (uint) datasetBase64Encoded.Length;
-            SailWebApiPortalInterop.UploadInitializationParametersToVirtualMachine("Some nice name for the virtual machine", "52.242.93.221", m_VirtualMachineIdentifier, m_ClusterIdentifier, m_DigitalContractIdentifier, m_DatasetIdentifier, m_RootOfTrustDomainIdentifier, m_ComputationalDomainIdentifier, m_DataConnectorDomainIdentifier, m_SailWebApiPortalIpAddress, datasetBase64Encoded);
-            m_VirtualMachineStatus = "Ready!";
+            SailWebApiPortalInterop.UploadInitializationParametersToVirtualMachine("Some nice name for the virtual machine", m_VirtualMachineIpAddress, m_VirtualMachineIdentifier, m_ClusterIdentifier, m_DigitalContractIdentifier, m_DatasetIdentifier, m_RootOfTrustDomainIdentifier, m_ComputationalDomainIdentifier, m_DataConnectorDomainIdentifier, m_SailWebApiPortalIpAddress, datasetBase64Encoded);
+            m_VirtualMachineStatus = "Ready...";
         }
 
         /// <summary>

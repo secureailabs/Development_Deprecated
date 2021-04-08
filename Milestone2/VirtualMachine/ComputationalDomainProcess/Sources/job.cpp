@@ -10,8 +10,6 @@
  ********************************************************************************************/
 
 #include "job.h"
-#include "DebugLibrary.h"
-#include "Exceptions.h"
 #include <Python.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -52,12 +50,7 @@ Job::Job
       m_stlConfidentialOutput(stlConfidentialOutput)
 
 {
-    __DebugFunction();
-}
-
-Job::~Job(void)
-{
-    __DebugFunction();
+    
 }
 
 /********************************************************************************************
@@ -284,18 +277,7 @@ void __thiscall PythonJob::JobRunFunctionNode(void)
     PySys_SetArgv(nArgLen, wszArgv);
     pFile = fopen(pCodeFileName.c_str(),"r+");
 
-    try
-    {
-        int res = PyRun_SimpleFile(pFile, pCodeFileName.c_str());
-        if(0 != res)
-        {
-            _ThrowBaseException("Python interpreter run job failed", nullptr);
-        }
-    }
-    catch(const BaseException & oBaseException)
-    {
-        std::cout<<oBaseException.GetExceptionMessage()<<std::endl;
-    }
+    PyRun_SimpleFile(pFile, pCodeFileName.c_str());
     //the cpython internal function to init, run and finalize a python interpreter
 
     fclose(pPyOutFile);

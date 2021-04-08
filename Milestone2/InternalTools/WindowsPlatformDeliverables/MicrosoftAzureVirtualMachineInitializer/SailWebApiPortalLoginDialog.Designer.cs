@@ -52,20 +52,20 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_UsernameLabel
             // 
             this.m_UsernameLabel.AutoSize = true;
-            this.m_UsernameLabel.Location = new System.Drawing.Point(144, 55);
+            this.m_UsernameLabel.Location = new System.Drawing.Point(206, 92);
             this.m_UsernameLabel.Margin = new System.Windows.Forms.Padding(1, 0, 1, 0);
             this.m_UsernameLabel.Name = "m_UsernameLabel";
-            this.m_UsernameLabel.Size = new System.Drawing.Size(60, 15);
+            this.m_UsernameLabel.Size = new System.Drawing.Size(91, 25);
             this.m_UsernameLabel.TabIndex = 0;
             this.m_UsernameLabel.Text = "Username";
             // 
             // m_PasswordLabel
             // 
             this.m_PasswordLabel.AutoSize = true;
-            this.m_PasswordLabel.Location = new System.Drawing.Point(147, 76);
+            this.m_PasswordLabel.Location = new System.Drawing.Point(210, 127);
             this.m_PasswordLabel.Margin = new System.Windows.Forms.Padding(1, 0, 1, 0);
             this.m_PasswordLabel.Name = "m_PasswordLabel";
-            this.m_PasswordLabel.Size = new System.Drawing.Size(57, 15);
+            this.m_PasswordLabel.Size = new System.Drawing.Size(87, 25);
             this.m_PasswordLabel.TabIndex = 1;
             this.m_PasswordLabel.Text = "Password";
             // 
@@ -73,41 +73,40 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.m_UsernameEditBox.BackColor = System.Drawing.SystemColors.Info;
             this.m_UsernameEditBox.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.m_UsernameEditBox.Location = new System.Drawing.Point(211, 55);
-            this.m_UsernameEditBox.Margin = new System.Windows.Forms.Padding(1);
+            this.m_UsernameEditBox.Location = new System.Drawing.Point(301, 92);
+            this.m_UsernameEditBox.Margin = new System.Windows.Forms.Padding(1, 2, 1, 2);
             this.m_UsernameEditBox.Name = "m_UsernameEditBox";
-            this.m_UsernameEditBox.Size = new System.Drawing.Size(264, 22);
+            this.m_UsernameEditBox.Size = new System.Drawing.Size(375, 29);
             this.m_UsernameEditBox.TabIndex = 2;
             // 
             // m_PasswordEditBox
             // 
             this.m_PasswordEditBox.BackColor = System.Drawing.SystemColors.Info;
             this.m_PasswordEditBox.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.m_PasswordEditBox.Location = new System.Drawing.Point(211, 76);
-            this.m_PasswordEditBox.Margin = new System.Windows.Forms.Padding(1);
+            this.m_PasswordEditBox.Location = new System.Drawing.Point(301, 127);
+            this.m_PasswordEditBox.Margin = new System.Windows.Forms.Padding(1, 2, 1, 2);
             this.m_PasswordEditBox.Name = "m_PasswordEditBox";
             this.m_PasswordEditBox.PasswordChar = '*';
-            this.m_PasswordEditBox.Size = new System.Drawing.Size(264, 22);
+            this.m_PasswordEditBox.Size = new System.Drawing.Size(375, 29);
             this.m_PasswordEditBox.TabIndex = 3;
             // 
             // m_InstructionsLabel
             // 
             this.m_InstructionsLabel.AutoSize = true;
             this.m_InstructionsLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.m_InstructionsLabel.Location = new System.Drawing.Point(209, 10);
+            this.m_InstructionsLabel.Location = new System.Drawing.Point(299, 17);
             this.m_InstructionsLabel.Margin = new System.Windows.Forms.Padding(1, 0, 1, 0);
             this.m_InstructionsLabel.Name = "m_InstructionsLabel";
-            this.m_InstructionsLabel.Size = new System.Drawing.Size(250, 15);
+            this.m_InstructionsLabel.Size = new System.Drawing.Size(386, 25);
             this.m_InstructionsLabel.TabIndex = 0;
             this.m_InstructionsLabel.Text = "Please enter your SAIL Web Api Credentials.";
             // 
             // m_LoginButton
             // 
-            this.m_LoginButton.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this.m_LoginButton.Location = new System.Drawing.Point(210, 101);
-            this.m_LoginButton.Margin = new System.Windows.Forms.Padding(1);
+            this.m_LoginButton.Location = new System.Drawing.Point(300, 168);
+            this.m_LoginButton.Margin = new System.Windows.Forms.Padding(1, 2, 1, 2);
             this.m_LoginButton.Name = "m_LoginButton";
-            this.m_LoginButton.Size = new System.Drawing.Size(69, 23);
+            this.m_LoginButton.Size = new System.Drawing.Size(99, 38);
             this.m_LoginButton.TabIndex = 4;
             this.m_LoginButton.Text = "&Login";
             this.m_LoginButton.UseVisualStyleBackColor = true;
@@ -115,11 +114,10 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             // m_CancelButton
             // 
-            this.m_CancelButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.m_CancelButton.Location = new System.Drawing.Point(281, 101);
-            this.m_CancelButton.Margin = new System.Windows.Forms.Padding(1);
+            this.m_CancelButton.Location = new System.Drawing.Point(401, 168);
+            this.m_CancelButton.Margin = new System.Windows.Forms.Padding(1, 2, 1, 2);
             this.m_CancelButton.Name = "m_CancelButton";
-            this.m_CancelButton.Size = new System.Drawing.Size(69, 23);
+            this.m_CancelButton.Size = new System.Drawing.Size(99, 38);
             this.m_CancelButton.TabIndex = 5;
             this.m_CancelButton.Text = "&Cancel";
             this.m_CancelButton.UseVisualStyleBackColor = true;
@@ -129,19 +127,19 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.m_IpAddressTextBox.BackColor = System.Drawing.SystemColors.Info;
             this.m_IpAddressTextBox.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.m_IpAddressTextBox.Location = new System.Drawing.Point(211, 33);
-            this.m_IpAddressTextBox.Margin = new System.Windows.Forms.Padding(1);
+            this.m_IpAddressTextBox.Location = new System.Drawing.Point(301, 55);
+            this.m_IpAddressTextBox.Margin = new System.Windows.Forms.Padding(1, 2, 1, 2);
             this.m_IpAddressTextBox.Name = "m_IpAddressTextBox";
-            this.m_IpAddressTextBox.Size = new System.Drawing.Size(264, 22);
+            this.m_IpAddressTextBox.Size = new System.Drawing.Size(375, 29);
             this.m_IpAddressTextBox.TabIndex = 1;
             // 
             // m_IpAddressLabel
             // 
             this.m_IpAddressLabel.AutoSize = true;
-            this.m_IpAddressLabel.Location = new System.Drawing.Point(140, 33);
+            this.m_IpAddressLabel.Location = new System.Drawing.Point(200, 55);
             this.m_IpAddressLabel.Margin = new System.Windows.Forms.Padding(1, 0, 1, 0);
             this.m_IpAddressLabel.Name = "m_IpAddressLabel";
-            this.m_IpAddressLabel.Size = new System.Drawing.Size(62, 15);
+            this.m_IpAddressLabel.Size = new System.Drawing.Size(97, 25);
             this.m_IpAddressLabel.TabIndex = 8;
             this.m_IpAddressLabel.Text = "IP Address";
             // 
@@ -149,10 +147,10 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.m_SailLogoPictureBox.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
             this.m_SailLogoPictureBox.Image = ((System.Drawing.Image)(resources.GetObject("m_SailLogoPictureBox.Image")));
-            this.m_SailLogoPictureBox.Location = new System.Drawing.Point(22, 21);
-            this.m_SailLogoPictureBox.Margin = new System.Windows.Forms.Padding(1);
+            this.m_SailLogoPictureBox.Location = new System.Drawing.Point(31, 35);
+            this.m_SailLogoPictureBox.Margin = new System.Windows.Forms.Padding(1, 2, 1, 2);
             this.m_SailLogoPictureBox.Name = "m_SailLogoPictureBox";
-            this.m_SailLogoPictureBox.Size = new System.Drawing.Size(100, 85);
+            this.m_SailLogoPictureBox.Size = new System.Drawing.Size(143, 142);
             this.m_SailLogoPictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.m_SailLogoPictureBox.TabIndex = 9;
             this.m_SailLogoPictureBox.TabStop = false;
@@ -164,10 +162,11 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_StatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.m_CopyrightStripStatusLabel,
             this.m_ExceptionsStripStatusLabel});
-            this.m_StatusStrip.Location = new System.Drawing.Point(0, 131);
+            this.m_StatusStrip.LayoutStyle = System.Windows.Forms.ToolStripLayoutStyle.HorizontalStackWithOverflow;
+            this.m_StatusStrip.Location = new System.Drawing.Point(0, 219);
             this.m_StatusStrip.Name = "m_StatusStrip";
-            this.m_StatusStrip.Padding = new System.Windows.Forms.Padding(1, 0, 6, 0);
-            this.m_StatusStrip.Size = new System.Drawing.Size(482, 17);
+            this.m_StatusStrip.Padding = new System.Windows.Forms.Padding(1, 0, 9, 0);
+            this.m_StatusStrip.Size = new System.Drawing.Size(689, 28);
             this.m_StatusStrip.TabIndex = 10;
             this.m_StatusStrip.Text = "statusStrip1";
             // 
@@ -176,12 +175,13 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_CopyrightStripStatusLabel.AutoSize = false;
             this.m_CopyrightStripStatusLabel.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.m_CopyrightStripStatusLabel.Name = "m_CopyrightStripStatusLabel";
-            this.m_CopyrightStripStatusLabel.Size = new System.Drawing.Size(530, 12);
+            this.m_CopyrightStripStatusLabel.Size = new System.Drawing.Size(530, 21);
             this.m_CopyrightStripStatusLabel.Text = "Copyright (C) 2021 Secure AI Labs, Inc.";
             this.m_CopyrightStripStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // m_ExceptionsStripStatusLabel
             // 
+            this.m_ExceptionsStripStatusLabel.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
             this.m_ExceptionsStripStatusLabel.AutoSize = false;
             this.m_ExceptionsStripStatusLabel.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.m_ExceptionsStripStatusLabel.ForeColor = System.Drawing.Color.Red;
@@ -189,7 +189,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_ExceptionsStripStatusLabel.IsLink = true;
             this.m_ExceptionsStripStatusLabel.LinkColor = System.Drawing.Color.Red;
             this.m_ExceptionsStripStatusLabel.Name = "m_ExceptionsStripStatusLabel";
-            this.m_ExceptionsStripStatusLabel.Size = new System.Drawing.Size(320, 12);
+            this.m_ExceptionsStripStatusLabel.Size = new System.Drawing.Size(320, 10);
             this.m_ExceptionsStripStatusLabel.Text = "Click here to view exceptions";
             this.m_ExceptionsStripStatusLabel.Click += new System.EventHandler(this.m_ExceptionsStripStatusLabel_Click);
             // 
@@ -201,10 +201,9 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // SailWebApiPortalLoginDialog
             // 
             this.AcceptButton = this.m_LoginButton;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.CancelButton = this.m_CancelButton;
-            this.ClientSize = new System.Drawing.Size(482, 148);
+            this.ClientSize = new System.Drawing.Size(689, 247);
             this.ControlBox = false;
             this.Controls.Add(this.m_StatusStrip);
             this.Controls.Add(this.m_SailLogoPictureBox);
@@ -220,7 +219,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.Margin = new System.Windows.Forms.Padding(1, 2, 1, 2);
+            this.Margin = new System.Windows.Forms.Padding(1, 3, 1, 3);
             this.Name = "SailWebApiPortalLoginDialog";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Ignite! a Microsoft Azure Initializer";

@@ -26,8 +26,6 @@
 #include <memory>
 #include <mutex>
 
-// This library is thread safe and is protected by a mutex
-static std::mutex gs_stlMutex;
 // SAIL Web Api Portal specific global data.
 static std::string gs_strIpAddressOfSailWebApiPortal;
 static unsigned int gs_unPortAddressOfSailWebApiPortal = 0;
@@ -123,8 +121,6 @@ extern "C" __declspec(dllexport) bool __cdecl SetIpAddress(
     {
         if (nullptr != c_szIpAddressOfSailWebApiPortal)
         {
-            // Make things thread safe
-            const std::lock_guard<std::mutex> lock(gs_stlMutex);
             // Reset the IP settings to the new values
             gs_strIpAddressOfSailWebApiPortal = c_szIpAddressOfSailWebApiPortal;
             gs_unPortAddressOfSailWebApiPortal = 6200;
@@ -143,8 +139,6 @@ extern "C" __declspec(dllexport) bool __cdecl SetIpAddress(
     {
         ::RegisterException(oBaseException, __func__, __LINE__);
 
-        // Make things thread safe
-        const std::lock_guard<std::mutex> lock(gs_stlMutex);
         // Reset global values to starting uninitialized values
         gs_strIpAddressOfSailWebApiPortal = "";
         gs_unPortAddressOfSailWebApiPortal = 0;
@@ -158,8 +152,6 @@ extern "C" __declspec(dllexport) bool __cdecl SetIpAddress(
     {
         ::RegisterUnknownException(__func__, __LINE__);
 
-        // Make things thread safe
-        const std::lock_guard<std::mutex> lock(gs_stlMutex);
         // Reset global values to starting uninitialized values
         gs_strIpAddressOfSailWebApiPortal = "";
         gs_unPortAddressOfSailWebApiPortal = 0;
@@ -189,8 +181,6 @@ extern "C" __declspec(dllexport) BSTR __cdecl GetIpAddress(void)
 
     try
     {
-        // Make things thread safe
-        const std::lock_guard<std::mutex> lock(gs_stlMutex);
         strIpAddress = gs_strIpAddressOfSailWebApiPortal;
     }
 
@@ -229,8 +219,6 @@ extern "C" __declspec(dllexport) bool __cdecl Login(
 
     try
     {
-        // Make things thread safe
-        const std::lock_guard<std::mutex> lock(gs_stlMutex);
         // Make sure we are not currently logged on
         _ThrowBaseExceptionIf((false == gs_strEosb.empty()), "Already logged in. Make sure to logout first.", nullptr);
         __DebugAssert(true == gs_strOrganizationIdentifier.empty());
@@ -267,9 +255,6 @@ extern "C" __declspec(dllexport) bool __cdecl Login(
 
     catch (BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
-
-        const std::lock_guard<std::mutex> lock(gs_stlMutex);
         gs_strEosb = "";
         gs_strOrganizationIdentifier = "";
         gs_strAuthenticatedUserIdentifier = "";
@@ -278,9 +263,6 @@ extern "C" __declspec(dllexport) bool __cdecl Login(
 
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
-
-        const std::lock_guard<std::mutex> lock(gs_stlMutex);
         gs_strEosb = "";
         gs_strOrganizationIdentifier = "";
         gs_strAuthenticatedUserIdentifier = "";
@@ -306,8 +288,6 @@ extern "C" __declspec(dllexport) bool __cdecl Logout(void)
 
     try
     {
-        // Make things thread safe
-        const std::lock_guard<std::mutex> lock(gs_stlMutex);
         // Check to make sure we are logged in before trying to logout
         _ThrowBaseExceptionIf((true == gs_strEosb.empty()), "Authentication is required...", nullptr);
         __DebugAssert(false == gs_strOrganizationIdentifier.empty());
@@ -351,8 +331,6 @@ extern "C" __declspec(dllexport) BSTR __cdecl GetSailWebApiPortalImpostorEosb(vo
 
     try
     {
-        // Make things thread safe
-        const std::lock_guard<std::mutex> lock(gs_stlMutex);
         // Check to make sure we are logged in before trying to transact
         _ThrowBaseExceptionIf((true == gs_strEosb.empty()), "Authentication is required...", nullptr);
         __DebugAssert(false == gs_strOrganizationIdentifier.empty());
@@ -402,8 +380,6 @@ extern "C" __declspec(dllexport) unsigned int __cdecl LoadDigitalContracts(void)
 
     try
     {
-        // Make things thread safe
-        const std::lock_guard<std::mutex> lock(gs_stlMutex);
         // Check to make sure we are logged in before trying to transact
         _ThrowBaseExceptionIf((true == gs_strEosb.empty()), "Authentication is required...", nullptr);
         __DebugAssert(false == gs_strOrganizationIdentifier.empty());
@@ -473,8 +449,6 @@ extern "C" __declspec(dllexport) BSTR __cdecl GetDigitalContractIdentifierAtInde
 
     try
     {
-        // Make things thread safe
-        const std::lock_guard<std::mutex> lock(gs_stlMutex);
         // Check to make sure we are logged in before trying to logout
         _ThrowBaseExceptionIf((true == gs_strEosb.empty()), "Authentication is required...", nullptr);
         __DebugAssert(false == gs_strOrganizationIdentifier.empty());
@@ -523,8 +497,6 @@ extern "C" __declspec(dllexport) BSTR __cdecl GetDigitalContractProperty(
 
     try
     {
-        // Make things thread safe
-        const std::lock_guard<std::mutex> lock(gs_stlMutex);
         // Check to make sure we are logged in before trying to logout
         _ThrowBaseExceptionIf((true == gs_strEosb.empty()), "Cannot logout if not logged in...", nullptr);
         __DebugAssert(false == gs_strOrganizationIdentifier.empty());
@@ -615,8 +587,6 @@ extern "C" __declspec(dllexport) bool __cdecl UploadInstallationPackageToVirtual
 
     try
     {
-        // Make things thread safe
-        const std::lock_guard<std::mutex> lock(gs_stlMutex);
         // Check to make sure we are logged in before trying to logout
         _ThrowBaseExceptionIf((true == gs_strEosb.empty()), "Authentication is required...", nullptr);
         __DebugAssert(false == gs_strOrganizationIdentifier.empty());
@@ -687,9 +657,6 @@ extern "C" __declspec(dllexport) bool __cdecl UploadInitializationParametersToVi
 
     try
     {
-        unsigned int unSizeInCharacters = ::strnlen_s(c_szBase64EncodedDataset, 2000000);
-        // Make things thread safe
-        const std::lock_guard<std::mutex> lock(gs_stlMutex);
         // Check to make sure we are logged in before trying to logout
         _ThrowBaseExceptionIf((true == gs_strEosb.empty()), "Authentication is required...", nullptr);
         __DebugAssert(false == gs_strOrganizationIdentifier.empty());

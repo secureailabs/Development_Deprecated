@@ -30,13 +30,13 @@ namespace SailAuditInterface
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.ListViewItem listViewItem3 = new System.Windows.Forms.ListViewItem(new string[] {
+            System.Windows.Forms.ListViewItem listViewItem1 = new System.Windows.Forms.ListViewItem(new string[] {
             "0",
             "September 30th, 2021",
             "22:22:22:2222",
             "PUSH_FN"}, -1);
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AuditEventsViewer));
-            System.Windows.Forms.ListViewItem listViewItem4 = new System.Windows.Forms.ListViewItem(new string[] {
+            System.Windows.Forms.ListViewItem listViewItem2 = new System.Windows.Forms.ListViewItem(new string[] {
             "9999/99/99 @ 99:99:99:9999 GMT",
             "PUSH_DATA",
             ""}, -1);
@@ -102,9 +102,9 @@ namespace SailAuditInterface
             // 
             this.m_RefreshButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.m_RefreshButton.DialogResult = System.Windows.Forms.DialogResult.Retry;
-            this.m_RefreshButton.Location = new System.Drawing.Point(16, 864);
+            this.m_RefreshButton.Location = new System.Drawing.Point(22, 302);
             this.m_RefreshButton.Name = "m_RefreshButton";
-            this.m_RefreshButton.Size = new System.Drawing.Size(148, 46);
+            this.m_RefreshButton.Size = new System.Drawing.Size(125, 27);
             this.m_RefreshButton.TabIndex = 6;
             this.m_RefreshButton.Text = "&Refresh";
             this.m_RefreshButton.UseVisualStyleBackColor = true;
@@ -116,9 +116,9 @@ namespace SailAuditInterface
             // 
             this.m_ExitButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.m_ExitButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.m_ExitButton.Location = new System.Drawing.Point(1324, 868);
+            this.m_ExitButton.Location = new System.Drawing.Point(834, 302);
             this.m_ExitButton.Name = "m_ExitButton";
-            this.m_ExitButton.Size = new System.Drawing.Size(148, 46);
+            this.m_ExitButton.Size = new System.Drawing.Size(125, 27);
             this.m_ExitButton.TabIndex = 9;
             this.m_ExitButton.Text = "E&xit";
             this.m_ExitButton.UseVisualStyleBackColor = true;
@@ -144,7 +144,7 @@ namespace SailAuditInterface
             this.m_EventTypeFiltersGroupBox.Controls.Add(this.m_ViewErrorsRadioButton);
             this.m_EventTypeFiltersGroupBox.Location = new System.Drawing.Point(6, 6);
             this.m_EventTypeFiltersGroupBox.Name = "m_EventTypeFiltersGroupBox";
-            this.m_EventTypeFiltersGroupBox.Size = new System.Drawing.Size(974, 194);
+            this.m_EventTypeFiltersGroupBox.Size = new System.Drawing.Size(587, 135);
             this.m_EventTypeFiltersGroupBox.TabIndex = 3;
             this.m_EventTypeFiltersGroupBox.TabStop = false;
             this.m_EventTypeFiltersGroupBox.Text = "Audit Event Type Filters";
@@ -152,10 +152,10 @@ namespace SailAuditInterface
             // m_ViewJobEngineActivityRadioButton
             // 
             this.m_ViewJobEngineActivityRadioButton.AutoSize = true;
-            this.m_ViewJobEngineActivityRadioButton.Location = new System.Drawing.Point(510, 110);
-            this.m_ViewJobEngineActivityRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewJobEngineActivityRadioButton.Location = new System.Drawing.Point(305, 73);
+            this.m_ViewJobEngineActivityRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewJobEngineActivityRadioButton.Name = "m_ViewJobEngineActivityRadioButton";
-            this.m_ViewJobEngineActivityRadioButton.Size = new System.Drawing.Size(186, 29);
+            this.m_ViewJobEngineActivityRadioButton.Size = new System.Drawing.Size(125, 19);
             this.m_ViewJobEngineActivityRadioButton.TabIndex = 15;
             this.m_ViewJobEngineActivityRadioButton.TabStop = true;
             this.m_ViewJobEngineActivityRadioButton.Text = "Job Engine Activity";
@@ -166,10 +166,10 @@ namespace SailAuditInterface
             // 
             this.m_ViewAllActivityRadioButton.AutoSize = true;
             this.m_ViewAllActivityRadioButton.Checked = true;
-            this.m_ViewAllActivityRadioButton.Location = new System.Drawing.Point(760, 147);
-            this.m_ViewAllActivityRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewAllActivityRadioButton.Location = new System.Drawing.Point(468, 98);
+            this.m_ViewAllActivityRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewAllActivityRadioButton.Name = "m_ViewAllActivityRadioButton";
-            this.m_ViewAllActivityRadioButton.Size = new System.Drawing.Size(112, 29);
+            this.m_ViewAllActivityRadioButton.Size = new System.Drawing.Size(75, 19);
             this.m_ViewAllActivityRadioButton.TabIndex = 14;
             this.m_ViewAllActivityRadioButton.TabStop = true;
             this.m_ViewAllActivityRadioButton.Text = "VIEW ALL";
@@ -179,10 +179,10 @@ namespace SailAuditInterface
             // m_ViewPullDataActivityRadioButton
             // 
             this.m_ViewPullDataActivityRadioButton.AutoSize = true;
-            this.m_ViewPullDataActivityRadioButton.Location = new System.Drawing.Point(760, 110);
-            this.m_ViewPullDataActivityRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewPullDataActivityRadioButton.Location = new System.Drawing.Point(468, 73);
+            this.m_ViewPullDataActivityRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewPullDataActivityRadioButton.Name = "m_ViewPullDataActivityRadioButton";
-            this.m_ViewPullDataActivityRadioButton.Size = new System.Drawing.Size(126, 29);
+            this.m_ViewPullDataActivityRadioButton.Size = new System.Drawing.Size(85, 19);
             this.m_ViewPullDataActivityRadioButton.TabIndex = 13;
             this.m_ViewPullDataActivityRadioButton.TabStop = true;
             this.m_ViewPullDataActivityRadioButton.Text = "PULL_DATA";
@@ -192,10 +192,10 @@ namespace SailAuditInterface
             // m_ViewPushDataActivityRadioButton
             // 
             this.m_ViewPushDataActivityRadioButton.AutoSize = true;
-            this.m_ViewPushDataActivityRadioButton.Location = new System.Drawing.Point(760, 72);
-            this.m_ViewPushDataActivityRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewPushDataActivityRadioButton.Location = new System.Drawing.Point(468, 48);
+            this.m_ViewPushDataActivityRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewPushDataActivityRadioButton.Name = "m_ViewPushDataActivityRadioButton";
-            this.m_ViewPushDataActivityRadioButton.Size = new System.Drawing.Size(133, 29);
+            this.m_ViewPushDataActivityRadioButton.Size = new System.Drawing.Size(88, 19);
             this.m_ViewPushDataActivityRadioButton.TabIndex = 12;
             this.m_ViewPushDataActivityRadioButton.TabStop = true;
             this.m_ViewPushDataActivityRadioButton.Text = "PUSH_DATA";
@@ -205,10 +205,10 @@ namespace SailAuditInterface
             // m_ViewPushFnActivityRadioButton
             // 
             this.m_ViewPushFnActivityRadioButton.AutoSize = true;
-            this.m_ViewPushFnActivityRadioButton.Location = new System.Drawing.Point(510, 147);
-            this.m_ViewPushFnActivityRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewPushFnActivityRadioButton.Location = new System.Drawing.Point(305, 98);
+            this.m_ViewPushFnActivityRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewPushFnActivityRadioButton.Name = "m_ViewPushFnActivityRadioButton";
-            this.m_ViewPushFnActivityRadioButton.Size = new System.Drawing.Size(111, 29);
+            this.m_ViewPushFnActivityRadioButton.Size = new System.Drawing.Size(75, 19);
             this.m_ViewPushFnActivityRadioButton.TabIndex = 11;
             this.m_ViewPushFnActivityRadioButton.TabStop = true;
             this.m_ViewPushFnActivityRadioButton.Text = "PUSH_FN";
@@ -218,10 +218,10 @@ namespace SailAuditInterface
             // m_ViewExecFnActivityRadioButton
             // 
             this.m_ViewExecFnActivityRadioButton.AutoSize = true;
-            this.m_ViewExecFnActivityRadioButton.Location = new System.Drawing.Point(760, 34);
-            this.m_ViewExecFnActivityRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewExecFnActivityRadioButton.Location = new System.Drawing.Point(468, 23);
+            this.m_ViewExecFnActivityRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewExecFnActivityRadioButton.Name = "m_ViewExecFnActivityRadioButton";
-            this.m_ViewExecFnActivityRadioButton.Size = new System.Drawing.Size(106, 29);
+            this.m_ViewExecFnActivityRadioButton.Size = new System.Drawing.Size(72, 19);
             this.m_ViewExecFnActivityRadioButton.TabIndex = 10;
             this.m_ViewExecFnActivityRadioButton.TabStop = true;
             this.m_ViewExecFnActivityRadioButton.Text = "EXEC_FN";
@@ -231,10 +231,10 @@ namespace SailAuditInterface
             // m_ViewDataConnectorActivityRadioButton
             // 
             this.m_ViewDataConnectorActivityRadioButton.AutoSize = true;
-            this.m_ViewDataConnectorActivityRadioButton.Location = new System.Drawing.Point(510, 72);
-            this.m_ViewDataConnectorActivityRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewDataConnectorActivityRadioButton.Location = new System.Drawing.Point(305, 48);
+            this.m_ViewDataConnectorActivityRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewDataConnectorActivityRadioButton.Name = "m_ViewDataConnectorActivityRadioButton";
-            this.m_ViewDataConnectorActivityRadioButton.Size = new System.Drawing.Size(224, 29);
+            this.m_ViewDataConnectorActivityRadioButton.Size = new System.Drawing.Size(151, 19);
             this.m_ViewDataConnectorActivityRadioButton.TabIndex = 9;
             this.m_ViewDataConnectorActivityRadioButton.TabStop = true;
             this.m_ViewDataConnectorActivityRadioButton.Text = "Data Connector Activity";
@@ -244,10 +244,10 @@ namespace SailAuditInterface
             // m_ViewVmActivityRadioButton
             // 
             this.m_ViewVmActivityRadioButton.AutoSize = true;
-            this.m_ViewVmActivityRadioButton.Location = new System.Drawing.Point(510, 34);
-            this.m_ViewVmActivityRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewVmActivityRadioButton.Location = new System.Drawing.Point(305, 23);
+            this.m_ViewVmActivityRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewVmActivityRadioButton.Name = "m_ViewVmActivityRadioButton";
-            this.m_ViewVmActivityRadioButton.Size = new System.Drawing.Size(127, 29);
+            this.m_ViewVmActivityRadioButton.Size = new System.Drawing.Size(86, 19);
             this.m_ViewVmActivityRadioButton.TabIndex = 8;
             this.m_ViewVmActivityRadioButton.TabStop = true;
             this.m_ViewVmActivityRadioButton.Text = "VM Activity";
@@ -257,10 +257,10 @@ namespace SailAuditInterface
             // m_ViewDatasetActivityRadioButton
             // 
             this.m_ViewDatasetActivityRadioButton.AutoSize = true;
-            this.m_ViewDatasetActivityRadioButton.Location = new System.Drawing.Point(208, 147);
-            this.m_ViewDatasetActivityRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewDatasetActivityRadioButton.Location = new System.Drawing.Point(126, 98);
+            this.m_ViewDatasetActivityRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewDatasetActivityRadioButton.Name = "m_ViewDatasetActivityRadioButton";
-            this.m_ViewDatasetActivityRadioButton.Size = new System.Drawing.Size(160, 29);
+            this.m_ViewDatasetActivityRadioButton.Size = new System.Drawing.Size(107, 19);
             this.m_ViewDatasetActivityRadioButton.TabIndex = 7;
             this.m_ViewDatasetActivityRadioButton.TabStop = true;
             this.m_ViewDatasetActivityRadioButton.Text = "Dataset Activity";
@@ -270,10 +270,10 @@ namespace SailAuditInterface
             // m_ViewDigitalContractActivityRadioButton
             // 
             this.m_ViewDigitalContractActivityRadioButton.AutoSize = true;
-            this.m_ViewDigitalContractActivityRadioButton.Location = new System.Drawing.Point(208, 110);
-            this.m_ViewDigitalContractActivityRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewDigitalContractActivityRadioButton.Location = new System.Drawing.Point(126, 73);
+            this.m_ViewDigitalContractActivityRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewDigitalContractActivityRadioButton.Name = "m_ViewDigitalContractActivityRadioButton";
-            this.m_ViewDigitalContractActivityRadioButton.Size = new System.Drawing.Size(223, 29);
+            this.m_ViewDigitalContractActivityRadioButton.Size = new System.Drawing.Size(151, 19);
             this.m_ViewDigitalContractActivityRadioButton.TabIndex = 6;
             this.m_ViewDigitalContractActivityRadioButton.TabStop = true;
             this.m_ViewDigitalContractActivityRadioButton.Text = "Digital Contract Activity";
@@ -283,10 +283,10 @@ namespace SailAuditInterface
             // m_ViewAuditLogAccessesActivityRadioButton
             // 
             this.m_ViewAuditLogAccessesActivityRadioButton.AutoSize = true;
-            this.m_ViewAuditLogAccessesActivityRadioButton.Location = new System.Drawing.Point(208, 72);
-            this.m_ViewAuditLogAccessesActivityRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewAuditLogAccessesActivityRadioButton.Location = new System.Drawing.Point(126, 48);
+            this.m_ViewAuditLogAccessesActivityRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewAuditLogAccessesActivityRadioButton.Name = "m_ViewAuditLogAccessesActivityRadioButton";
-            this.m_ViewAuditLogAccessesActivityRadioButton.Size = new System.Drawing.Size(190, 29);
+            this.m_ViewAuditLogAccessesActivityRadioButton.Size = new System.Drawing.Size(127, 19);
             this.m_ViewAuditLogAccessesActivityRadioButton.TabIndex = 5;
             this.m_ViewAuditLogAccessesActivityRadioButton.TabStop = true;
             this.m_ViewAuditLogAccessesActivityRadioButton.Text = "Audit Log Accesses";
@@ -296,10 +296,10 @@ namespace SailAuditInterface
             // m_ViewUserOrganizationActivityRadioButton
             // 
             this.m_ViewUserOrganizationActivityRadioButton.AutoSize = true;
-            this.m_ViewUserOrganizationActivityRadioButton.Location = new System.Drawing.Point(208, 34);
-            this.m_ViewUserOrganizationActivityRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewUserOrganizationActivityRadioButton.Location = new System.Drawing.Point(126, 23);
+            this.m_ViewUserOrganizationActivityRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewUserOrganizationActivityRadioButton.Name = "m_ViewUserOrganizationActivityRadioButton";
-            this.m_ViewUserOrganizationActivityRadioButton.Size = new System.Drawing.Size(244, 29);
+            this.m_ViewUserOrganizationActivityRadioButton.Size = new System.Drawing.Size(164, 19);
             this.m_ViewUserOrganizationActivityRadioButton.TabIndex = 4;
             this.m_ViewUserOrganizationActivityRadioButton.TabStop = true;
             this.m_ViewUserOrganizationActivityRadioButton.Text = "User/Organization Activity";
@@ -309,10 +309,10 @@ namespace SailAuditInterface
             // m_ViewAccessesRadioButton
             // 
             this.m_ViewAccessesRadioButton.AutoSize = true;
-            this.m_ViewAccessesRadioButton.Location = new System.Drawing.Point(16, 147);
-            this.m_ViewAccessesRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewAccessesRadioButton.Location = new System.Drawing.Point(16, 98);
+            this.m_ViewAccessesRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewAccessesRadioButton.Name = "m_ViewAccessesRadioButton";
-            this.m_ViewAccessesRadioButton.Size = new System.Drawing.Size(107, 29);
+            this.m_ViewAccessesRadioButton.Size = new System.Drawing.Size(72, 19);
             this.m_ViewAccessesRadioButton.TabIndex = 3;
             this.m_ViewAccessesRadioButton.TabStop = true;
             this.m_ViewAccessesRadioButton.Text = "Accesses";
@@ -322,10 +322,10 @@ namespace SailAuditInterface
             // m_ViewInformationalRadioButton
             // 
             this.m_ViewInformationalRadioButton.AutoSize = true;
-            this.m_ViewInformationalRadioButton.Location = new System.Drawing.Point(16, 110);
-            this.m_ViewInformationalRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewInformationalRadioButton.Location = new System.Drawing.Point(16, 73);
+            this.m_ViewInformationalRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewInformationalRadioButton.Name = "m_ViewInformationalRadioButton";
-            this.m_ViewInformationalRadioButton.Size = new System.Drawing.Size(144, 29);
+            this.m_ViewInformationalRadioButton.Size = new System.Drawing.Size(97, 19);
             this.m_ViewInformationalRadioButton.TabIndex = 2;
             this.m_ViewInformationalRadioButton.TabStop = true;
             this.m_ViewInformationalRadioButton.Text = "Informational";
@@ -335,10 +335,10 @@ namespace SailAuditInterface
             // m_ViewWarningsRadioButton
             // 
             this.m_ViewWarningsRadioButton.AutoSize = true;
-            this.m_ViewWarningsRadioButton.Location = new System.Drawing.Point(16, 72);
-            this.m_ViewWarningsRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewWarningsRadioButton.Location = new System.Drawing.Point(16, 48);
+            this.m_ViewWarningsRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewWarningsRadioButton.Name = "m_ViewWarningsRadioButton";
-            this.m_ViewWarningsRadioButton.Size = new System.Drawing.Size(103, 29);
+            this.m_ViewWarningsRadioButton.Size = new System.Drawing.Size(70, 19);
             this.m_ViewWarningsRadioButton.TabIndex = 1;
             this.m_ViewWarningsRadioButton.TabStop = true;
             this.m_ViewWarningsRadioButton.Text = "Warning";
@@ -348,10 +348,10 @@ namespace SailAuditInterface
             // m_ViewErrorsRadioButton
             // 
             this.m_ViewErrorsRadioButton.AutoSize = true;
-            this.m_ViewErrorsRadioButton.Location = new System.Drawing.Point(16, 34);
-            this.m_ViewErrorsRadioButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ViewErrorsRadioButton.Location = new System.Drawing.Point(16, 23);
+            this.m_ViewErrorsRadioButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ViewErrorsRadioButton.Name = "m_ViewErrorsRadioButton";
-            this.m_ViewErrorsRadioButton.Size = new System.Drawing.Size(83, 29);
+            this.m_ViewErrorsRadioButton.Size = new System.Drawing.Size(55, 19);
             this.m_ViewErrorsRadioButton.TabIndex = 0;
             this.m_ViewErrorsRadioButton.TabStop = true;
             this.m_ViewErrorsRadioButton.Text = "Errors";
@@ -363,7 +363,7 @@ namespace SailAuditInterface
             this.m_BackButton.Font = new System.Drawing.Font("Calibri", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.m_BackButton.Location = new System.Drawing.Point(8, 8);
             this.m_BackButton.Name = "m_BackButton";
-            this.m_BackButton.Size = new System.Drawing.Size(75, 38);
+            this.m_BackButton.Size = new System.Drawing.Size(75, 24);
             this.m_BackButton.TabIndex = 4;
             this.m_BackButton.Text = "<<";
             this.m_BackButton.UseVisualStyleBackColor = true;
@@ -381,7 +381,7 @@ namespace SailAuditInterface
             this.m_CurrentBranchNodeTextBox.Location = new System.Drawing.Point(87, 9);
             this.m_CurrentBranchNodeTextBox.Name = "m_CurrentBranchNodeTextBox";
             this.m_CurrentBranchNodeTextBox.ReadOnly = true;
-            this.m_CurrentBranchNodeTextBox.Size = new System.Drawing.Size(1446, 30);
+            this.m_CurrentBranchNodeTextBox.Size = new System.Drawing.Size(846, 23);
             this.m_CurrentBranchNodeTextBox.TabIndex = 5;
             this.m_CurrentBranchNodeTextBox.TabStop = false;
             // 
@@ -400,13 +400,13 @@ namespace SailAuditInterface
             this.m_AuditEventsListView.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.Nonclickable;
             this.m_AuditEventsListView.HideSelection = false;
             this.m_AuditEventsListView.Items.AddRange(new System.Windows.Forms.ListViewItem[] {
-            listViewItem3});
+            listViewItem1});
             this.m_AuditEventsListView.LabelWrap = false;
-            this.m_AuditEventsListView.Location = new System.Drawing.Point(6, 50);
+            this.m_AuditEventsListView.Location = new System.Drawing.Point(6, 38);
             this.m_AuditEventsListView.MultiSelect = false;
             this.m_AuditEventsListView.Name = "m_AuditEventsListView";
             this.m_AuditEventsListView.ShowGroups = false;
-            this.m_AuditEventsListView.Size = new System.Drawing.Size(956, 778);
+            this.m_AuditEventsListView.Size = new System.Drawing.Size(635, 212);
             this.m_AuditEventsListView.TabIndex = 5;
             this.m_AuditEventsListView.UseCompatibleStateImageBehavior = false;
             this.m_AuditEventsListView.View = System.Windows.Forms.View.Details;
@@ -446,12 +446,12 @@ namespace SailAuditInterface
             this.m_AuditEventPropertiesTextBox.ContextMenuStrip = this.m_TreeViewContextMenu;
             this.m_AuditEventPropertiesTextBox.Cursor = System.Windows.Forms.Cursors.Default;
             this.m_AuditEventPropertiesTextBox.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.m_AuditEventPropertiesTextBox.Location = new System.Drawing.Point(972, 50);
+            this.m_AuditEventPropertiesTextBox.Location = new System.Drawing.Point(647, 38);
             this.m_AuditEventPropertiesTextBox.Multiline = true;
             this.m_AuditEventPropertiesTextBox.Name = "m_AuditEventPropertiesTextBox";
             this.m_AuditEventPropertiesTextBox.ReadOnly = true;
             this.m_AuditEventPropertiesTextBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.m_AuditEventPropertiesTextBox.Size = new System.Drawing.Size(560, 778);
+            this.m_AuditEventPropertiesTextBox.Size = new System.Drawing.Size(286, 212);
             this.m_AuditEventPropertiesTextBox.TabIndex = 7;
             this.m_AuditEventPropertiesTextBox.TabStop = false;
             this.m_AuditEventPropertiesTextBox.Text = resources.GetString("m_AuditEventPropertiesTextBox.Text");
@@ -466,19 +466,19 @@ namespace SailAuditInterface
             this.m_CopyCurrentAuditEventPropertiesToolStripMenuItem,
             this.m_ViewAdditionalDataDetailsToolStripMenuItem});
             this.m_TreeViewContextMenu.Name = "m_TreeViewContextMenu";
-            this.m_TreeViewContextMenu.Size = new System.Drawing.Size(309, 68);
+            this.m_TreeViewContextMenu.Size = new System.Drawing.Size(223, 48);
             // 
             // m_CopyCurrentAuditEventPropertiesToolStripMenuItem
             // 
             this.m_CopyCurrentAuditEventPropertiesToolStripMenuItem.Name = "m_CopyCurrentAuditEventPropertiesToolStripMenuItem";
-            this.m_CopyCurrentAuditEventPropertiesToolStripMenuItem.Size = new System.Drawing.Size(308, 32);
+            this.m_CopyCurrentAuditEventPropertiesToolStripMenuItem.Size = new System.Drawing.Size(222, 22);
             this.m_CopyCurrentAuditEventPropertiesToolStripMenuItem.Text = "Copy Properties";
             this.m_CopyCurrentAuditEventPropertiesToolStripMenuItem.Click += new System.EventHandler(this.m_CopyCurrentAuditEventPropertiesToolStripMenuItem_Click);
             // 
             // m_ViewAdditionalDataDetailsToolStripMenuItem
             // 
             this.m_ViewAdditionalDataDetailsToolStripMenuItem.Name = "m_ViewAdditionalDataDetailsToolStripMenuItem";
-            this.m_ViewAdditionalDataDetailsToolStripMenuItem.Size = new System.Drawing.Size(308, 32);
+            this.m_ViewAdditionalDataDetailsToolStripMenuItem.Size = new System.Drawing.Size(222, 22);
             this.m_ViewAdditionalDataDetailsToolStripMenuItem.Text = "View Additional Data Details";
             this.m_ViewAdditionalDataDetailsToolStripMenuItem.Click += new System.EventHandler(this.m_ViewAdditionalDataDetailsToolStripMenuItem_Click);
             // 
@@ -490,21 +490,21 @@ namespace SailAuditInterface
             this.m_DateTimeFiltersGroupBox.Controls.Add(this.m_StartTimeLabel);
             this.m_DateTimeFiltersGroupBox.Controls.Add(this.m_LatestDateTimePicker);
             this.m_DateTimeFiltersGroupBox.Controls.Add(this.m_EarliestDateTimePicker);
-            this.m_DateTimeFiltersGroupBox.Location = new System.Drawing.Point(987, 8);
-            this.m_DateTimeFiltersGroupBox.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_DateTimeFiltersGroupBox.Location = new System.Drawing.Point(600, 8);
+            this.m_DateTimeFiltersGroupBox.Margin = new System.Windows.Forms.Padding(4);
             this.m_DateTimeFiltersGroupBox.Name = "m_DateTimeFiltersGroupBox";
-            this.m_DateTimeFiltersGroupBox.Padding = new System.Windows.Forms.Padding(4, 4, 4, 4);
-            this.m_DateTimeFiltersGroupBox.Size = new System.Drawing.Size(456, 192);
+            this.m_DateTimeFiltersGroupBox.Padding = new System.Windows.Forms.Padding(4);
+            this.m_DateTimeFiltersGroupBox.Size = new System.Drawing.Size(330, 133);
             this.m_DateTimeFiltersGroupBox.TabIndex = 11;
             this.m_DateTimeFiltersGroupBox.TabStop = false;
             this.m_DateTimeFiltersGroupBox.Text = "Data/Time Filtering";
             // 
             // m_ResetLatestDateTimePickerButton
             // 
-            this.m_ResetLatestDateTimePickerButton.Location = new System.Drawing.Point(314, 134);
-            this.m_ResetLatestDateTimePickerButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ResetLatestDateTimePickerButton.Location = new System.Drawing.Point(200, 87);
+            this.m_ResetLatestDateTimePickerButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ResetLatestDateTimePickerButton.Name = "m_ResetLatestDateTimePickerButton";
-            this.m_ResetLatestDateTimePickerButton.Size = new System.Drawing.Size(112, 34);
+            this.m_ResetLatestDateTimePickerButton.Size = new System.Drawing.Size(112, 23);
             this.m_ResetLatestDateTimePickerButton.TabIndex = 5;
             this.m_ResetLatestDateTimePickerButton.Text = "Reset";
             this.m_ResetLatestDateTimePickerButton.UseVisualStyleBackColor = true;
@@ -512,10 +512,10 @@ namespace SailAuditInterface
             // 
             // m_ResetEarliestDateTimePickerButton
             // 
-            this.m_ResetEarliestDateTimePickerButton.Location = new System.Drawing.Point(314, 60);
-            this.m_ResetEarliestDateTimePickerButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_ResetEarliestDateTimePickerButton.Location = new System.Drawing.Point(200, 41);
+            this.m_ResetEarliestDateTimePickerButton.Margin = new System.Windows.Forms.Padding(4);
             this.m_ResetEarliestDateTimePickerButton.Name = "m_ResetEarliestDateTimePickerButton";
-            this.m_ResetEarliestDateTimePickerButton.Size = new System.Drawing.Size(112, 34);
+            this.m_ResetEarliestDateTimePickerButton.Size = new System.Drawing.Size(112, 23);
             this.m_ResetEarliestDateTimePickerButton.TabIndex = 4;
             this.m_ResetEarliestDateTimePickerButton.Text = "Reset";
             this.m_ResetEarliestDateTimePickerButton.UseVisualStyleBackColor = true;
@@ -524,20 +524,20 @@ namespace SailAuditInterface
             // m_LatestDateTimePickerLabel
             // 
             this.m_LatestDateTimePickerLabel.AutoSize = true;
-            this.m_LatestDateTimePickerLabel.Location = new System.Drawing.Point(22, 106);
+            this.m_LatestDateTimePickerLabel.Location = new System.Drawing.Point(21, 68);
             this.m_LatestDateTimePickerLabel.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.m_LatestDateTimePickerLabel.Name = "m_LatestDateTimePickerLabel";
-            this.m_LatestDateTimePickerLabel.Size = new System.Drawing.Size(58, 25);
+            this.m_LatestDateTimePickerLabel.Size = new System.Drawing.Size(38, 15);
             this.m_LatestDateTimePickerLabel.TabIndex = 3;
             this.m_LatestDateTimePickerLabel.Text = "Latest";
             // 
             // m_StartTimeLabel
             // 
             this.m_StartTimeLabel.AutoSize = true;
-            this.m_StartTimeLabel.Location = new System.Drawing.Point(22, 33);
+            this.m_StartTimeLabel.Location = new System.Drawing.Point(21, 23);
             this.m_StartTimeLabel.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.m_StartTimeLabel.Name = "m_StartTimeLabel";
-            this.m_StartTimeLabel.Size = new System.Drawing.Size(67, 25);
+            this.m_StartTimeLabel.Size = new System.Drawing.Size(44, 15);
             this.m_StartTimeLabel.TabIndex = 2;
             this.m_StartTimeLabel.Text = "Earliest";
             // 
@@ -545,10 +545,10 @@ namespace SailAuditInterface
             // 
             this.m_LatestDateTimePicker.CustomFormat = " yyyy/mm/dd @ HH:mm UTC";
             this.m_LatestDateTimePicker.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
-            this.m_LatestDateTimePicker.Location = new System.Drawing.Point(21, 134);
-            this.m_LatestDateTimePicker.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_LatestDateTimePicker.Location = new System.Drawing.Point(21, 85);
+            this.m_LatestDateTimePicker.Margin = new System.Windows.Forms.Padding(4);
             this.m_LatestDateTimePicker.Name = "m_LatestDateTimePicker";
-            this.m_LatestDateTimePicker.Size = new System.Drawing.Size(280, 31);
+            this.m_LatestDateTimePicker.Size = new System.Drawing.Size(171, 23);
             this.m_LatestDateTimePicker.TabIndex = 1;
             this.m_LatestDateTimePicker.ValueChanged += new System.EventHandler(this.m_LatestDateTimePicker_ValueChanged);
             // 
@@ -557,10 +557,10 @@ namespace SailAuditInterface
             this.m_EarliestDateTimePicker.Checked = false;
             this.m_EarliestDateTimePicker.CustomFormat = " yyyy/mm/dd @ HH:mm UTC";
             this.m_EarliestDateTimePicker.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
-            this.m_EarliestDateTimePicker.Location = new System.Drawing.Point(21, 60);
-            this.m_EarliestDateTimePicker.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_EarliestDateTimePicker.Location = new System.Drawing.Point(21, 41);
+            this.m_EarliestDateTimePicker.Margin = new System.Windows.Forms.Padding(4);
             this.m_EarliestDateTimePicker.Name = "m_EarliestDateTimePicker";
-            this.m_EarliestDateTimePicker.Size = new System.Drawing.Size(280, 31);
+            this.m_EarliestDateTimePicker.Size = new System.Drawing.Size(171, 23);
             this.m_EarliestDateTimePicker.TabIndex = 0;
             this.m_EarliestDateTimePicker.ValueChanged += new System.EventHandler(this.m_EarliestDateTimePicker_ValueChanged);
             // 
@@ -574,7 +574,7 @@ namespace SailAuditInterface
             this.m_AuditEventViewTabControl.Location = new System.Drawing.Point(12, 12);
             this.m_AuditEventViewTabControl.Name = "m_AuditEventViewTabControl";
             this.m_AuditEventViewTabControl.SelectedIndex = 0;
-            this.m_AuditEventViewTabControl.Size = new System.Drawing.Size(1464, 850);
+            this.m_AuditEventViewTabControl.Size = new System.Drawing.Size(947, 284);
             this.m_AuditEventViewTabControl.TabIndex = 12;
             this.m_AuditEventViewTabControl.SelectedIndexChanged += new System.EventHandler(this.m_AuditEventViewTabControl_SelectedIndexChanged);
             // 
@@ -585,10 +585,10 @@ namespace SailAuditInterface
             this.m_TreeViewTabPage.Controls.Add(this.m_BackButton);
             this.m_TreeViewTabPage.Controls.Add(this.m_AuditEventsListView);
             this.m_TreeViewTabPage.Controls.Add(this.m_AuditEventPropertiesTextBox);
-            this.m_TreeViewTabPage.Location = new System.Drawing.Point(4, 34);
+            this.m_TreeViewTabPage.Location = new System.Drawing.Point(4, 24);
             this.m_TreeViewTabPage.Name = "m_TreeViewTabPage";
-            this.m_TreeViewTabPage.Padding = new System.Windows.Forms.Padding(3, 3, 3, 3);
-            this.m_TreeViewTabPage.Size = new System.Drawing.Size(1456, 812);
+            this.m_TreeViewTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.m_TreeViewTabPage.Size = new System.Drawing.Size(939, 256);
             this.m_TreeViewTabPage.TabIndex = 0;
             this.m_TreeViewTabPage.Text = "Tree View Browsing";
             // 
@@ -598,10 +598,10 @@ namespace SailAuditInterface
             this.m_FlatViewTabPage.Controls.Add(this.m_FlatViewListView);
             this.m_FlatViewTabPage.Controls.Add(this.m_EventTypeFiltersGroupBox);
             this.m_FlatViewTabPage.Controls.Add(this.m_DateTimeFiltersGroupBox);
-            this.m_FlatViewTabPage.Location = new System.Drawing.Point(4, 34);
+            this.m_FlatViewTabPage.Location = new System.Drawing.Point(4, 24);
             this.m_FlatViewTabPage.Name = "m_FlatViewTabPage";
-            this.m_FlatViewTabPage.Padding = new System.Windows.Forms.Padding(3, 3, 3, 3);
-            this.m_FlatViewTabPage.Size = new System.Drawing.Size(1456, 812);
+            this.m_FlatViewTabPage.Padding = new System.Windows.Forms.Padding(3);
+            this.m_FlatViewTabPage.Size = new System.Drawing.Size(939, 256);
             this.m_FlatViewTabPage.TabIndex = 1;
             this.m_FlatViewTabPage.Text = "Flat View Filtered Browsing";
             this.m_FlatViewTabPage.UseVisualStyleBackColor = true;
@@ -613,13 +613,13 @@ namespace SailAuditInterface
             | System.Windows.Forms.AnchorStyles.Right)));
             this.m_FlatViewPropertiesTextBox.BackColor = System.Drawing.SystemColors.Info;
             this.m_FlatViewPropertiesTextBox.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.m_FlatViewPropertiesTextBox.Location = new System.Drawing.Point(752, 208);
-            this.m_FlatViewPropertiesTextBox.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.m_FlatViewPropertiesTextBox.Location = new System.Drawing.Point(503, 149);
+            this.m_FlatViewPropertiesTextBox.Margin = new System.Windows.Forms.Padding(4);
             this.m_FlatViewPropertiesTextBox.MaxLength = 65535;
             this.m_FlatViewPropertiesTextBox.Multiline = true;
             this.m_FlatViewPropertiesTextBox.Name = "m_FlatViewPropertiesTextBox";
             this.m_FlatViewPropertiesTextBox.ReadOnly = true;
-            this.m_FlatViewPropertiesTextBox.Size = new System.Drawing.Size(691, 578);
+            this.m_FlatViewPropertiesTextBox.Size = new System.Drawing.Size(427, 100);
             this.m_FlatViewPropertiesTextBox.TabIndex = 13;
             this.m_FlatViewPropertiesTextBox.WordWrap = false;
             // 
@@ -635,12 +635,12 @@ namespace SailAuditInterface
             this.m_FlatViewListView.FullRowSelect = true;
             this.m_FlatViewListView.HideSelection = false;
             this.m_FlatViewListView.Items.AddRange(new System.Windows.Forms.ListViewItem[] {
-            listViewItem4});
-            this.m_FlatViewListView.Location = new System.Drawing.Point(9, 208);
-            this.m_FlatViewListView.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            listViewItem2});
+            this.m_FlatViewListView.Location = new System.Drawing.Point(9, 148);
+            this.m_FlatViewListView.Margin = new System.Windows.Forms.Padding(4);
             this.m_FlatViewListView.MultiSelect = false;
             this.m_FlatViewListView.Name = "m_FlatViewListView";
-            this.m_FlatViewListView.Size = new System.Drawing.Size(732, 578);
+            this.m_FlatViewListView.Size = new System.Drawing.Size(486, 103);
             this.m_FlatViewListView.Sorting = System.Windows.Forms.SortOrder.Descending;
             this.m_FlatViewListView.TabIndex = 12;
             this.m_FlatViewListView.UseCompatibleStateImageBehavior = false;
@@ -666,10 +666,10 @@ namespace SailAuditInterface
             this.m_TimeStripStatusLabel,
             this.m_MessageStripStatusLabel,
             this.m_ErrorStripStatusLabel});
-            this.m_StatusStrip.Location = new System.Drawing.Point(0, 930);
+            this.m_StatusStrip.Location = new System.Drawing.Point(0, 332);
             this.m_StatusStrip.Name = "m_StatusStrip";
             this.m_StatusStrip.Padding = new System.Windows.Forms.Padding(2, 0, 14, 0);
-            this.m_StatusStrip.Size = new System.Drawing.Size(1488, 22);
+            this.m_StatusStrip.Size = new System.Drawing.Size(971, 22);
             this.m_StatusStrip.TabIndex = 13;
             // 
             // m_TimeStripStatusLabel
@@ -677,7 +677,7 @@ namespace SailAuditInterface
             this.m_TimeStripStatusLabel.AutoSize = false;
             this.m_TimeStripStatusLabel.ForeColor = System.Drawing.Color.Green;
             this.m_TimeStripStatusLabel.Name = "m_TimeStripStatusLabel";
-            this.m_TimeStripStatusLabel.Size = new System.Drawing.Size(300, 15);
+            this.m_TimeStripStatusLabel.Size = new System.Drawing.Size(300, 17);
             this.m_TimeStripStatusLabel.Text = "September 22nd, 2021 @ 22:22:22 GMT";
             this.m_TimeStripStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
@@ -686,7 +686,7 @@ namespace SailAuditInterface
             this.m_MessageStripStatusLabel.AutoSize = false;
             this.m_MessageStripStatusLabel.ForeColor = System.Drawing.SystemColors.HotTrack;
             this.m_MessageStripStatusLabel.Name = "m_MessageStripStatusLabel";
-            this.m_MessageStripStatusLabel.Size = new System.Drawing.Size(450, 15);
+            this.m_MessageStripStatusLabel.Size = new System.Drawing.Size(450, 17);
             this.m_MessageStripStatusLabel.Text = "Right click to select context menu!";
             this.m_MessageStripStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
@@ -698,7 +698,7 @@ namespace SailAuditInterface
             this.m_ErrorStripStatusLabel.IsLink = true;
             this.m_ErrorStripStatusLabel.LinkColor = System.Drawing.Color.Red;
             this.m_ErrorStripStatusLabel.Name = "m_ErrorStripStatusLabel";
-            this.m_ErrorStripStatusLabel.Size = new System.Drawing.Size(200, 15);
+            this.m_ErrorStripStatusLabel.Size = new System.Drawing.Size(200, 17);
             this.m_ErrorStripStatusLabel.Text = "Click to view Exceptions!";
             this.m_ErrorStripStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.m_ErrorStripStatusLabel.Click += new System.EventHandler(this.m_ErrorStripStatusLabel_Click);
@@ -711,11 +711,10 @@ namespace SailAuditInterface
             // AuditEventsViewer
             // 
             this.AcceptButton = this.m_RefreshButton;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(144F, 144F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.BackColor = System.Drawing.SystemColors.Control;
             this.CancelButton = this.m_ExitButton;
-            this.ClientSize = new System.Drawing.Size(1488, 952);
+            this.ClientSize = new System.Drawing.Size(971, 354);
             this.Controls.Add(this.m_StatusStrip);
             this.Controls.Add(this.m_AuditEventViewTabControl);
             this.Controls.Add(this.m_ExitButton);
@@ -724,7 +723,7 @@ namespace SailAuditInterface
             this.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
-            this.MinimumSize = new System.Drawing.Size(1501, 530);
+            this.MinimumSize = new System.Drawing.Size(987, 393);
             this.Name = "AuditEventsViewer";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "SAIL Audit Viewer";

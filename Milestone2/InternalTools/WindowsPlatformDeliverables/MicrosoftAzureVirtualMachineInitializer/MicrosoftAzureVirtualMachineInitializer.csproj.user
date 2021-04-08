@@ -1,22 +1,22 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Compile Update="VirtualMachineProvisionerDialog.cs">
+    <Compile Update="ExceptionsDialog.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="ManualSettingsDialog.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Update="SailWebApiPortalLoginDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Update="MicrosoftAzureExceptionsDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
     <Compile Update="MicrosoftAzureLoginDialog.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="SailWebApiPortalLoginDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="StartupDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="VirtualMachineProvisionerDialog.cs">
       <SubType>Form</SubType>
     </Compile>
   </ItemGroup>

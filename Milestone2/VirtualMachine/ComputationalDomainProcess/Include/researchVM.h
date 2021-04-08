@@ -10,10 +10,6 @@
 
 #pragma once
 
-#include "StructuredBuffer.h"
-#include "TlsServer.h"
-#include "RootOfTrustNode.h"
-#include "Socket.h"
 #include "engine.h"
 #include "function_node.h"
 #include "job.h"
@@ -46,7 +42,7 @@ class ComputationVM : public Object
     
         void __thiscall SocketListen(void);
         void __thiscall HandleConnection(
-            _in TlsNode * poSocket
+            _in Socket * poSocket
             );
 
         void __thiscall HandleConnect
@@ -141,7 +137,7 @@ class ComputationVM : public Object
         // Private data members
         
         JobEngine m_oEngine;
-        TlsServer m_oTlsServer;
+        SocketServer m_oSocketServer;
         std::map<std::string, std::unique_ptr<FunctionNode>> m_stlFNMap;
         std::string m_strVirtualMachineIdentifier;
         std::string m_strEOSB;

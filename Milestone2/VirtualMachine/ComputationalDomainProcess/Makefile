@@ -23,14 +23,12 @@ INCLUDE+=-I$(shell realpath ../SharedComponents/Include)
 INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
 INCLUDE+=-I$(shell realpath ../../EndPointTools/ResearcherInterface/Utils/Include)
 INCLUDE+=-I$(shell realpath ../DataDomainProcess/Include)
-INCLUDE+=-I$(shell realpath ../../EndPointTools/RestPortalTester/Sources)
 
 # Add the new source directory here
 SRCDIRS+=$(shell realpath ./Sources)
 SRCDIRS+=$(shell realpath ../SharedComponents/Sources)
 SRCDIRS+=$(shell realpath ../../EndPointTools/ResearcherInterface/Utils/Sources)
 SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
-SRCDIRS+=-I$(shell realpath ../../EndPointTools/RestPortalTester/Sources)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))

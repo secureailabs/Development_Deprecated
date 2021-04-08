@@ -18,6 +18,9 @@
 #include <sys/types.h>
 #include <thread>
 
+
+#define PYENTRANCE "/usr/local/lib/python3.8/site-packages/scripts/main.py"
+
 /********************************************************************************************/
 
 enum JobStatus
@@ -31,7 +34,7 @@ enum JobStatus
 
 /********************************************************************************************/
 
-class Job : public Object
+class Job
 {
     public:
     Job
@@ -43,7 +46,6 @@ class Job : public Object
         _in std::vector<std::string>& stlConfidentialInputNode,
         _in std::vector<std::string>& stlConfidentialOutputNode
 	);
-    ~Job(void);
 
 	JobStatus& __thiscall GetStatus(void);
 	void __thiscall SetStatus(JobStatus);

@@ -19,6 +19,7 @@
 #include "IpcTransactionHelperFunctions.h"
 #include "HttpRequestParser.h"
 #include "JsonValue.h"
+#include <exception>
 #include <iostream>
 #include <vector>
 #include <cstdlib>
@@ -69,10 +70,19 @@ bool ParseFirstLine(
     {
         _ThrowBaseException("ERROR: Invalid request.", nullptr);
     }
-    _ThrowBaseExceptionIf(("200" != strStatus), "Transaction returned with error code:", strStatus);
+    _ThrowBaseExceptionIf(("200" != strStatus), "Transaction returned with error code.", nullptr);
 
     return fSuccess;
 }
+
+/********************************************************************************************
+ *
+ * @function GetResponseBody
+ * @brief Parse and return response body
+ * @param[in] c_strRequestData response data
+ * @return Serialized response body
+ *
+ ********************************************************************************************/
 
 std::vector<Byte> GetResponseBody(
     _in const std::string & c_strRequestData,
@@ -84,7 +94,7 @@ std::vector<Byte> GetResponseBody(
     std::vector<Byte> stlSerializedResponse;
 
     // Check http code
-    bool fSuccess = ParseFirstLine(c_strRequestData);
+    bool fSuccess = ::ParseFirstLine(c_strRequestData);
     // Parse Header of the Rest Request
     HttpRequestParser oParser;
     fSuccess = oParser.ParseResponse(c_strRequestData);
@@ -96,7 +106,7 @@ std::vector<Byte> GetResponseBody(
         if (0 < unContentLength)
         {
             // Read request content
-            std::vector<Byte> stlBodyData = poTlsNode->Read(unContentLength, 100);
+            std::vector<Byte> stlBodyData = poTlsNode->Read(unContentLength, 2000);
             _ThrowBaseExceptionIf((0 == stlBodyData.size()), "Dead Packet.", nullptr);
             std::string strRequestBody = std::string(stlBodyData.begin(), stlBodyData.end());
 
@@ -120,14 +130,16 @@ std::vector<Byte> GetResponseBody(
     return stlSerializedResponse;
 }
 
+/********************************************************************************************/
+
 std::string Login(
     _in const std::string & c_strEmail,
     _in const std::string & c_strUserPassword
     )
 {
     __DebugFunction();
-    __DebugAssert(0 != c_strEmail.length());
-    __DebugAssert(0 != c_strUserPassword.length());
+    __DebugAssert(0 < c_strEmail.size());
+    __DebugAssert(0 < c_strUserPassword.size());
 
     std::string strEosb;
 
@@ -135,11 +147,11 @@ std::string Login(
     {
         bool fSuccess = false;
         TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
+        poTlsNode = ::TlsConnectToNetworkSocket("132.34.4.23", 6200);
 
         std::string strHttpLoginRequest = "POST /SAIL/AuthenticationManager/User/Login?Email="+ c_strEmail +"&Password="+ c_strUserPassword +" HTTP/1.1\r\n"
                                         "Accept: */*\r\n"
-                                        "Host: localhost:6200\r\n"
+                                        "Host: 132.34.4.23:6200\r\n"
                                         "Connection: keep-alive\r\n"
                                         "Content-Length: 0\r\n"
                                         "\r\n";
@@ -151,14 +163,23 @@ std::string Login(
         bool fIsEndOfHeader = false;
         std::vector<Byte> stlHeaderData;
         while (false == fIsEndOfHeader)
-        {
-            stlHeaderData.push_back(poTlsNode->Read(1, 100).at(0));
-            if (4 <= stlHeaderData.size())
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 20000);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
             {
-                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
                 {
-                    fIsEndOfHeader = true;
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
                 }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
             }
         }
         _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
@@ -171,8 +192,8 @@ std::string Login(
     }
     catch(BaseException oBaseException)
     {
-        //ShowErrorMessage("Login Failed!");
-        std::cout<<"Login Failed"<<std::endl;
+        //::ShowErrorMessage("Login Failed!");
+        std::cout<<"Login Failed!"<<std::endl;
     }
 
     return strEosb;

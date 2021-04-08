@@ -37,9 +37,10 @@ namespace SailAuditInterface
             // 
             // m_CloseExceptionsDialogButton
             // 
-            this.m_CloseExceptionsDialogButton.Location = new System.Drawing.Point(792, 444);
+            this.m_CloseExceptionsDialogButton.Location = new System.Drawing.Point(1188, 666);
+            this.m_CloseExceptionsDialogButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.m_CloseExceptionsDialogButton.Name = "m_CloseExceptionsDialogButton";
-            this.m_CloseExceptionsDialogButton.Size = new System.Drawing.Size(129, 32);
+            this.m_CloseExceptionsDialogButton.Size = new System.Drawing.Size(194, 48);
             this.m_CloseExceptionsDialogButton.TabIndex = 1;
             this.m_CloseExceptionsDialogButton.Text = "Close";
             this.m_CloseExceptionsDialogButton.UseVisualStyleBackColor = true;
@@ -47,9 +48,10 @@ namespace SailAuditInterface
             // 
             // m_ClearExceptionsButton
             // 
-            this.m_ClearExceptionsButton.Location = new System.Drawing.Point(13, 444);
+            this.m_ClearExceptionsButton.Location = new System.Drawing.Point(20, 666);
+            this.m_ClearExceptionsButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.m_ClearExceptionsButton.Name = "m_ClearExceptionsButton";
-            this.m_ClearExceptionsButton.Size = new System.Drawing.Size(166, 32);
+            this.m_ClearExceptionsButton.Size = new System.Drawing.Size(249, 48);
             this.m_ClearExceptionsButton.TabIndex = 2;
             this.m_ClearExceptionsButton.Text = "Clear Exceptions";
             this.m_ClearExceptionsButton.UseVisualStyleBackColor = true;
@@ -64,17 +66,17 @@ namespace SailAuditInterface
             this.m_ExceptionsListBox.FormattingEnabled = true;
             this.m_ExceptionsListBox.HorizontalScrollbar = true;
             this.m_ExceptionsListBox.IntegralHeight = false;
-            this.m_ExceptionsListBox.ItemHeight = 14;
-            this.m_ExceptionsListBox.Location = new System.Drawing.Point(12, 12);
+            this.m_ExceptionsListBox.ItemHeight = 22;
+            this.m_ExceptionsListBox.Location = new System.Drawing.Point(18, 18);
+            this.m_ExceptionsListBox.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.m_ExceptionsListBox.Name = "m_ExceptionsListBox";
-            this.m_ExceptionsListBox.Size = new System.Drawing.Size(909, 424);
+            this.m_ExceptionsListBox.Size = new System.Drawing.Size(1362, 634);
             this.m_ExceptionsListBox.TabIndex = 3;
             // 
             // ExceptionsDialog
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.ClientSize = new System.Drawing.Size(933, 485);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
+            this.ClientSize = new System.Drawing.Size(1400, 728);
             this.ControlBox = false;
             this.Controls.Add(this.m_ExceptionsListBox);
             this.Controls.Add(this.m_ClearExceptionsButton);
@@ -82,6 +84,7 @@ namespace SailAuditInterface
             this.DoubleBuffered = true;
             this.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.Name = "ExceptionsDialog";
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;

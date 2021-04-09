@@ -10,6 +10,9 @@
 
 #pragma once
 
+#include "CryptoUtils.h"
+#include "DateAndTime.h"
+#include "64BitHashes.h"
 #include "DebugLibrary.h"
 #include "EntityTypes.h"
 #include "Exceptions.h"
@@ -17,15 +20,36 @@
 #include "PluginDictionary.h"
 #include "RestFrameworkSharedFunctions.h"
 #include "StructuredBuffer.h"
-#include "UserAccount.h"
+#include "Utils.h"
 
-#include <mongocxx/pool.hpp>
 #include <pthread.h>
 #include <string.h>
+#include <mongocxx/pool.hpp>
+#include <bsoncxx/json.hpp>
+#include <bsoncxx/types.hpp>
+#include <mongocxx/instance.hpp>
+#include <mongocxx/stdx.hpp>
+#include <mongocxx/uri.hpp>
+#include <mongocxx/client.hpp>
+#include <mongocxx/client_session.hpp>
+#include <mongocxx/cursor.hpp>
+#include <mongocxx/exception/logic_error.hpp>
+#include <mongocxx/exception/operation_exception.hpp>
+#include <bsoncxx/builder/stream/helpers.hpp>
+#include <bsoncxx/builder/stream/document.hpp>
+#include <bsoncxx/builder/stream/array.hpp>
 
 #include <iostream>
 #include <map>
 #include <vector>
+
+using bsoncxx::type;
+using bsoncxx::builder::stream::close_array;
+using bsoncxx::builder::stream::close_document;
+using bsoncxx::builder::stream::document;
+using bsoncxx::builder::stream::finalize;
+using bsoncxx::builder::stream::open_array;
+using bsoncxx::builder::stream::open_document;
 
 /********************************************************************************************/
 
@@ -194,7 +218,6 @@ class DatabaseManager : public Object
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;
         uint64_t m_unNextAvailableIdentifier;
         PluginDictionary m_oDictionary;
-        std::vector<UserAccount *> m_stlUserAccounts;
         std::unique_ptr<mongocxx::pool> m_poMongoPool;
 };
 

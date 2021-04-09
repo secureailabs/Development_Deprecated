@@ -382,7 +382,8 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     // TODO: Remove this resource in the future or figure out how the Initializer is going to get the IEosb
     StructuredBuffer oGetIEosb;
     oGetIEosb.PutStructuredBuffer("Eosb", oEosb);
-    // Get the IEosb 
+    // Takes in an EOSB and sends back an imposter EOSB (IEOSB)
+    // IEOSB has restricted rights and thus minimizes security risks when initializing and logging onto VM's
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/GetIEosb", oGetIEosb);
 
     // Generate the ephemeral Keys and keep rotating them every 20 minutes and at a time keep only the

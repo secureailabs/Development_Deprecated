@@ -114,8 +114,6 @@ VirtualMachineManager::VirtualMachineManager(void)
     m_sMutex = PTHREAD_MUTEX_INITIALIZER;
     m_unNextAvailableIdentifier = 0;
     m_fTerminationSignalEncountered = false;
-
-    this->InitializeUserAccounts();
 }
 
 /********************************************************************************************
@@ -148,16 +146,6 @@ VirtualMachineManager::VirtualMachineManager(
 VirtualMachineManager::~VirtualMachineManager(void)
 {
     __DebugFunction();
-
-    for (VmInstance * oVmInstance : m_stlVmInstances)
-    {
-        delete oVmInstance;
-    }
-
-    for (UserAccount * oUserAccount : m_stlUserAccounts)
-    {
-        delete oUserAccount;
-    }
 
 }
 
@@ -227,28 +215,6 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetDictionarySerializedBuffe
     __DebugFunction();
 
     return m_oDictionary.GetSerializedDictionary();
-}
-
-/********************************************************************************************
- *
- * @class VirtualMachineManager
- * @function InitializeUserAccounts
- * @brief Insert user data
- *
- ********************************************************************************************/
-
-void __thiscall VirtualMachineManager::InitializeUserAccounts(void)
-{
-    __DebugFunction();
-
-    m_stlUserAccounts.push_back(new UserAccount("{FEB1CAE7-0F10-4185-A1F2-DE71B85DBD25}", "johnsnow", "John Snow", "jsnow@example.com", "HBO", "1234567890", 999, 0x7));
-    m_stlUserAccounts.push_back(new UserAccount("{C1F45EF0-AB47-4799-9407-CA8A40CAC159}", "aryastark", "Arya Stark", "astark@example.com", "HBO", "1234567890", 888, 0x2));
-    m_stlUserAccounts.push_back(new UserAccount("{0A83BCF5-2845-4437-AEBE-E02DFB349BAB}", "belle", "Belle", "belle@example.com", "Walt Disney", "1234567890", 777, 0x1));
-    m_stlUserAccounts.push_back(new UserAccount("{64E4FAC3-63C9-4844-BF82-1581F9C750CE}", "gaston", "Gaston", "gaston@example.com", "Walt Disney", "1234567890", 666, 0x6));
-    m_stlUserAccounts.push_back(new UserAccount("{F732CA9C-217E-4E3D-BF25-E2425B480556}", "hermoinegranger", "Hermoine Granger", "hgranger@example.com", "Universal Studios", "1234567890", 555, 0x5));
-    m_stlUserAccounts.push_back(new UserAccount("{F3FBE722-1A42-4052-8815-0ABDDB3F2841}", "harrypotter", "Harry Potter", "hpotter@example.com", "Universal Studios", "1234567890", 444, 0x4));
-    m_stlUserAccounts.push_back(new UserAccount("{2B9C3814-79D4-456B-B64A-ED79F69373D3}", "antman", "Ant man", "antman@example.com", "Marvel Cinematic Universe", "1234567890", 333, 0x7));
-    m_stlUserAccounts.push_back(new UserAccount("{B40E1F9C-C100-46B3-BD7F-C80EB1351794}", "spiderman", "Spider man", "spiderman@example.com", "Marvel Cinematic Universe", "1234567890", 222, 0x6));
 }
 
 /********************************************************************************************
@@ -441,53 +407,9 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetListOfRunningVmInstances(
 {
     __DebugFunction();
     // TODO: Fetch VMInstances records from the database
-    // TODO: Replace call to abstract class UserAccount::IsDatasetAdmin() with call to AccountDatabase plugin
-    //       and get TypeOfUser associated with strUserUuid
+    // TODO: Check if user is a DatasetAdmin
 
     StructuredBuffer oResponse;
-
-    // Take in full IEOSB of Researcher or DatasetAdmin
-    StructuredBuffer oEosb(c_oRequest.GetBuffer("Eosb"));
-    std::string strUserUuid = oEosb.GetString("UserUuid");
-    bool fIsImposter = oEosb.GetBoolean("IsImposter");
-    _ThrowBaseExceptionIf((false == fIsImposter), "Imposter EOSB needed to get the list of running VMs.", nullptr);
-
-    // Verify that the user's TypeOfAccount is "Researcher or ""Dataset Admin"
-    bool fFound = false;
-    for (unsigned int unIndex = 0; ((false == fFound) && (unIndex < m_stlUserAccounts.size())); ++unIndex)
-    {
-        if (strUserUuid == m_stlUserAccounts[unIndex]->GetUserUuid())
-        {
-            if ((true == m_stlUserAccounts[unIndex]->IsResearcher()) || (true == m_stlUserAccounts[unIndex]->IsDatasetAdmin()))
-            {
-                fFound = true;
-            }
-            else
-            {
-                _ThrowBaseException("Error: User is not authorized for this transaction", nullptr);
-            }
-        }
-    }
-
-    _ThrowBaseExceptionIf((false == fFound), "Error: User not found", nullptr);
-
-    // Generate a StructuredBuffer containing all running VMs information associated with the smart contract
-    VmInstance * oVmInstance;
-    ::pthread_mutex_lock(&m_sMutex);
-    for (unsigned int unIndex = 0 ; unIndex < m_stlVmInstances.size(); ++unIndex)
-    {
-        // TODO: Add an if statement and add check for VMs associated with the smart contract
-        oVmInstance = m_stlVmInstances[unIndex];
-        StructuredBuffer oVmInstanceMetadata;
-        oVmInstanceMetadata.PutString("VmIpAddress", oVmInstance->GetVmInstanceIpAddress());
-        oVmInstanceMetadata.PutWord("VmPortNumber", oVmInstance->GetVmInstancePortNumber());
-        oVmInstanceMetadata.PutBoolean("VmStatus", oVmInstance->GetVmInstanceStatus());
-        oVmInstanceMetadata.PutQword("VmRegistrationDate", oVmInstance->GetVmInstanceRegistrationDate());
-        oVmInstanceMetadata.PutQword("VmUpTime", oVmInstance->GetVmInstanceUpTime());
-        oResponse.PutStructuredBuffer(oVmInstance->GetVmInstanceUuid().c_str(), oVmInstanceMetadata);
-
-    }
-    ::pthread_mutex_unlock(&m_sMutex);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -508,55 +430,8 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetVmHeartBeat(
 {
     __DebugFunction();
     // TODO: Fetch VmInstances records from the database
-    // TODO: Replace call to abstract class UserAccount::IsDatasetAdmin() with call to AccountDatabase plugin
-    //       and get TypeOfUser associated with strUserUuid
 
     StructuredBuffer oResponse;
-
-    // Take in full IEOSB of Researcher or DatasetAdmin
-    StructuredBuffer oEosb(c_oRequest.GetBuffer("Eosb"));
-    std::string strUserUuid = oEosb.GetString("UserUuid");
-    bool fIsImposter = oEosb.GetBoolean("IsImposter");
-    _ThrowBaseExceptionIf((false == fIsImposter), "Imposter EOSB needed to get status of a VM.", nullptr);
-
-    // Verify that the user's TypeOfAccount is "Dataset Admin"
-    bool fFound = false;
-    for (unsigned int unIndex = 0; ((false == fFound) && (unIndex < m_stlUserAccounts.size())); ++unIndex)
-    {
-        if (strUserUuid == m_stlUserAccounts[unIndex]->GetUserUuid())
-        {
-            if (true == m_stlUserAccounts[unIndex]->IsDatasetAdmin())
-            {
-                fFound = true;
-            }
-            else
-            {
-                _ThrowBaseException("Error: User is not authorized for this transaction", nullptr);
-            }
-        }
-    }
-
-    _ThrowBaseExceptionIf((false == fFound), "Error: User not found", nullptr);
-
-    // Get the VM UUID
-    std::string strVmUuid = c_oRequest.GetString("VmInstanceUuid");
-    // Find the VM and send back status of the VM
-    fFound = false;
-    bool fVmStatus = false;
-    ::pthread_mutex_lock(&m_sMutex);
-    for (unsigned int unIndex = 0 ; ((false == fFound) && (unIndex < m_stlVmInstances.size())); ++unIndex)
-    {
-        if (strVmUuid == m_stlVmInstances[unIndex]->GetVmInstanceUuid())
-        {
-            fVmStatus = m_stlVmInstances[unIndex]->GetVmInstanceStatus();
-            fFound = true;
-        }
-    }
-    ::pthread_mutex_unlock(&m_sMutex);
-
-    _ThrowBaseExceptionIf((false == fFound), "ERROR: VmInstance not found.", nullptr);
-
-    oResponse.PutBoolean("VmStatus", fVmStatus);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -749,8 +624,8 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
     StructuredBuffer oEosbRequest;
     oEosbRequest.PutBuffer("Eosb", stlEosb);
     StructuredBuffer oUserInfo(this->GetUserInfo(oEosbRequest));
-    // Check if the Eosb is an imposter Eosb
-    // Register Vm if it is an imposter Eosb
+    // TODO: Check if the Eosb is an imposter Eosb
+    // TODO: Add a check and Register Vm only if it is an imposter Eosb
     Dword dwStatus = 204;
     // Register the Virtual Machine 
     // Make a Tls connection with the database portal

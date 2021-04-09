@@ -20,8 +20,6 @@
 #include "Socket.h"
 #include "SocketServer.h"
 #include "ThreadManager.h"
-#include "DigitalContract.h"
-#include "UserAccount.h"
 
 #include <pthread.h>
 #include <string.h>
@@ -133,8 +131,6 @@ class DigitalContractDatabase : public Object
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;
         uint64_t m_unNextAvailableIdentifier;
         PluginDictionary m_oDictionary;
-        std::vector<DigitalContract *> m_stlDigitalContracts;
-        std::vector<UserAccount *> m_stlUserAccounts;
         bool m_fTerminationSignalEncountered;
 };
 

@@ -62,17 +62,7 @@ extern std::vector<Byte> GetBasicUserInformation(
 extern std::string GetIEosb(
     _in const std::string & c_strEosb
     );
-
-extern std::string RegisterRootEvent(
-    _in const std::string & c_strEncodedEosb,
-    _in const std::string & c_strOrganizationGuid
-    );
-extern bool RegisterBranchEvent(
-    _in const std::string & c_strEncodedEosb,
-    _in const std::string & c_strParentGuid,
-    _in const std::string & c_strOrganizationGuid,
-    _in const std::string & c_strDcGuid
-    );
+    
 extern bool RegisterLeafEvents(
     _in const std::string & c_strEncodedEosb,
     _in const std::string & c_strParentGuid

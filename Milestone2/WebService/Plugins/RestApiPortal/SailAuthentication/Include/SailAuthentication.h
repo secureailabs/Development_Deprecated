@@ -17,7 +17,6 @@
 #include "PluginDictionary.h"
 #include "RestFrameworkSharedFunctions.h"
 #include "StructuredBuffer.h"
-#include "UserAccount.h"
 
 #include <pthread.h>
 #include <string.h>
@@ -48,9 +47,6 @@ class SailAuthentication : public Object
         Qword __thiscall GetVersion(void) const throw();
         std::vector<Byte> __thiscall GetDictionarySerializedBuffer(void) const throw();
 
-        // Initialize User Accounts
-        void __thiscall InitializeUserAccounts(void);
-
         // Method used to initializes data members including the plugin's dictionary
         void __thiscall InitializePlugin(void);
 
@@ -77,11 +73,6 @@ class SailAuthentication : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
-        // Take in a full EOSB and return an Imposter EOSB
-        std::vector<Byte> __thiscall GetImposterEOSB(
-            _in const StructuredBuffer & c_oRequest
-            );
-
         // Take in a full EOSB, call Cryptographic plugin and fetches user guid and organization guid
         std::vector<Byte> __thiscall GetBasicUserInformation(
             _in const StructuredBuffer & c_oRequest
@@ -102,7 +93,6 @@ class SailAuthentication : public Object
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;
         uint64_t m_unNextAvailableIdentifier;
         PluginDictionary m_oDictionary;
-        std::vector<UserAccount *> m_stlUserAccounts;
 };
 
 /********************************************************************************************/

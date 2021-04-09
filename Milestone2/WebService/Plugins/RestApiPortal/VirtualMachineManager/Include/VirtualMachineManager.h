@@ -17,8 +17,6 @@
 #include "PluginDictionary.h"
 #include "RestFrameworkSharedFunctions.h"
 #include "StructuredBuffer.h"
-#include "VmInstance.h"
-#include "UserAccount.h"
 
 #include <pthread.h>
 #include <string.h>
@@ -44,9 +42,6 @@ class VirtualMachineManager : public Object
         const char * __thiscall GetUuid(void) const throw();
         Qword __thiscall GetVersion(void) const throw();
         std::vector<Byte> __thiscall GetDictionarySerializedBuffer(void) const throw();
-
-        // Initialize User Accounts
-        void __thiscall InitializeUserAccounts(void);
 
         // Method used to initializes data members including the plugin's dictionary
         void __thiscall InitializePlugin(void);
@@ -120,8 +115,6 @@ class VirtualMachineManager : public Object
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;
         uint64_t m_unNextAvailableIdentifier;
         PluginDictionary m_oDictionary;
-        std::vector<VmInstance *> m_stlVmInstances;
-        std::vector<UserAccount *> m_stlUserAccounts;
         bool m_fTerminationSignalEncountered;
 };
 

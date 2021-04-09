@@ -111,8 +111,6 @@ SailAuthentication::SailAuthentication(void)
 
     m_sMutex = PTHREAD_MUTEX_INITIALIZER;
     m_unNextAvailableIdentifier = 0;
-
-    this->InitializeUserAccounts();
 }
 
 /********************************************************************************************
@@ -145,11 +143,6 @@ SailAuthentication::SailAuthentication(
 SailAuthentication::~SailAuthentication(void)
 {
     __DebugFunction();
-
-    for (UserAccount * oUserAccount : m_stlUserAccounts)
-    {
-        delete oUserAccount;
-    }
 }
 
 /********************************************************************************************
@@ -223,28 +216,6 @@ std::vector<Byte> __thiscall SailAuthentication::GetDictionarySerializedBuffer(v
 /********************************************************************************************
  *
  * @class SailAuthentication
- * @function InitializeUserAccounts
- * @brief Insert user data
- *
- ********************************************************************************************/
-
-void __thiscall SailAuthentication::InitializeUserAccounts(void)
-{
-    __DebugFunction();
-
-    m_stlUserAccounts.push_back(new UserAccount("{FEB1CAE7-0F10-4185-A1F2-DE71B85DBD25}", "johnsnow", "sailpassword", "HBO"));
-    m_stlUserAccounts.push_back(new UserAccount("{C1F45EF0-AB47-4799-9407-CA8A40CAC159}", "aryastark", "sailpassword", "HBO"));
-    m_stlUserAccounts.push_back(new UserAccount("{0A83BCF5-2845-4437-AEBE-E02DFB349BAB}", "belle", "sailpassword", "Walt Disney"));
-    m_stlUserAccounts.push_back(new UserAccount("{64E4FAC3-63C9-4844-BF82-1581F9C750CE}", "gaston", "sailpassword", "Walt Disney"));
-    m_stlUserAccounts.push_back(new UserAccount("{F732CA9C-217E-4E3D-BF25-E2425B480556}", "hermoinegranger", "sailpassword", "Universal Studios"));
-    m_stlUserAccounts.push_back(new UserAccount("{F3FBE722-1A42-4052-8815-0ABDDB3F2841}", "harrypotter", "sailpassword", "Universal Studios"));
-    m_stlUserAccounts.push_back(new UserAccount("{2B9C3814-79D4-456B-B64A-ED79F69373D3}", "antman", "sailpassword", "Marvel Cinematic Universe"));
-    m_stlUserAccounts.push_back(new UserAccount("{B40E1F9C-C100-46B3-BD7F-C80EB1351794}", "spiderman", "sailpassword", "Marvel Cinematic Universe"));
-}
-
-/********************************************************************************************
- *
- * @class SailAuthentication
  * @function InitializePlugin
  * @brief Initializer that initializes the plugin's dictionary
  *
@@ -289,10 +260,6 @@ void __thiscall SailAuthentication::InitializePlugin(void)
     // Verifies user credentials and starts an authenticated session with SAIL SaaS
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuthenticationManager/User/Login", oLoginParameters);
 
-    // Takes in an EOSB and sends back an imposter EOSB (IEOSB)
-    // IEOSB has restricted rights and thus minimizes security risks when initializing and logging onto VM's
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuthenticationManager/User/IEOSB", oGetImposterParameters);
-
     // Take in a full EOSB, call Cryptographic plugin and fetches user guid and organization guid
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AuthenticationManager/GetBasicUserInformation", oGetBasicUserInformationParameters);
 
@@ -336,10 +303,6 @@ uint64_t __thiscall SailAuthentication::SubmitRequest(
         if ("/SAIL/AuthenticationManager/User/Login" == strResource)
         {
             stlResponseBuffer = this->AuthenticateUserCredentails(c_oRequestStructuredBuffer);
-        }
-        else if ("/SAIL/AuthenticationManager/User/IEOSB" == strResource)
-        {
-            stlResponseBuffer = this->GetImposterEOSB(c_oRequestStructuredBuffer);
         }
     }
     else if ("GET" == strVerb)
@@ -476,51 +439,6 @@ std::vector<Byte> __thiscall SailAuthentication::AuthenticateUserCredentails(
     }
 
     return oResponse.GetSerializedBuffer();
-}
-
-/********************************************************************************************
- *
- * @class SailAuthentication
- * @function GetImposterEOSB
- * @brief Take in a full EOSB and mark it as an imposter EOSB
- * @param[in] c_oRequest contains the request body
- * @throw BaseException Error StructuredBuffer element not found
- * @returns Marked Imposter EOSB
- *
- ********************************************************************************************/
-
-std::vector<Byte> __thiscall SailAuthentication::GetImposterEOSB(
-    _in const StructuredBuffer & c_oRequest
-    )
-{
-    __DebugFunction();
-
-    StructuredBuffer oIEosb;
-
-    // TODO: Add a call to CryptographicManager to authenticate Eosb
-    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
-    Byte * pbCurrentByte = (Byte *) stlEosb.data();
-    __DebugAssert(nullptr != pbCurrentByte);
-
-    _ThrowBaseExceptionIf((0xE62110021B65A123 != *((Qword *) pbCurrentByte)), "Invalid serialization format: Expected [HEADER] = 0xE62110021B65A123 but got 0x%08X", *((Qword *) pbCurrentByte));
-    pbCurrentByte += sizeof(Qword);
-    uint32_t unSsbSizeInBytes = *((uint32_t *) pbCurrentByte);
-    pbCurrentByte += sizeof(uint32_t);
-    StructuredBuffer oSsb(pbCurrentByte, unSsbSizeInBytes);
-
-    // Mark the Imposter EOSB
-    if (0x4 == oSsb.GetQword("AccessRights"))
-    {
-        // Replace AccessRights = 0x4 with AccessRights = 0x2, where 0x2 means the EOSB is an Imposter EOSB
-        oSsb.PutQword("AccessRights", 0x2);
-        ::memcpy((void *) pbCurrentByte, (const void *) oSsb.GetSerializedBufferRawDataPtr(), oSsb.GetSerializedBufferRawDataSizeInBytes());
-    }
-
-    pbCurrentByte += unSsbSizeInBytes;
-    _ThrowBaseExceptionIf((0x321A56B12991126E != *((Qword *) pbCurrentByte)), "Invalid serialization format: Expected [HEADER] = 0x321A56B12991126E but got 0x%08X", *((Qword *) pbCurrentByte));
-    oIEosb.PutBuffer("Eosb", stlEosb);
-
-    return oIEosb.GetSerializedBuffer();
 }
 
 /********************************************************************************************

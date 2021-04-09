@@ -7,6 +7,46 @@ namespace MicrosoftAzureVirtualMachineInitializer
     public class MicrosoftAzureVirtualMachine
     {
         /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="clusterIdentifier"></param>
+        /// <param name="digitalContractIdentifier"></param>
+        /// <param name="datasetIdentifier"></param>
+        /// <param name="ipAddress"></param>
+        /// <param name=""></param>
+        public MicrosoftAzureVirtualMachine(
+            string clusterIdentifier,
+            string digitalContractIdentifier,
+            string datasetIdentifier,
+            string datasetFilename,
+            string sailWebApiPortalIpAddress,
+            string ipAddress
+            )
+        {
+            // First we try to load the dataset since
+            if (false == System.IO.File.Exists(datasetFilename))
+            {
+                throw new InvalidOperationException("Data file does not exist");
+            }
+
+            m_DatasetFilename = datasetFilename;
+            m_Dataset = System.IO.File.ReadAllBytes(datasetFilename);
+            m_DatasetIdentifier = datasetIdentifier;
+            m_VirtualMachineIdentifier = System.Guid.NewGuid().ToString("D").ToUpper();
+            m_ClusterIdentifier = clusterIdentifier;
+            m_RootOfTrustDomainIdentifier = System.Guid.NewGuid().ToString("B").ToUpper();
+            m_ComputationalDomainIdentifier = System.Guid.NewGuid().ToString("B").ToUpper();
+            m_DataConnectorDomainIdentifier = System.Guid.NewGuid().ToString("B").ToUpper();
+            m_DigitalContractIdentifier = digitalContractIdentifier.ToUpper();
+            m_VirtualMachineIpAddress = ipAddress;
+            m_SailWebApiPortalIpAddress = sailWebApiPortalIpAddress;
+            m_VirtualMachineStatus = "Not Started";
+            m_VirtualMachineUsername = "saildeveloper";
+            m_VirtualMachinePassword = "Iw2btin2AC+beRl&dir!";
+            m_VirtualMachineComputerName = "SailSecureVm";
+        }
+
+        /// <summary>
         /// Default constructor
         /// </summary>
         public MicrosoftAzureVirtualMachine(
@@ -268,7 +308,6 @@ namespace MicrosoftAzureVirtualMachineInitializer
         public void ProvisionAndInitialize()
         {
             m_VirtualMachineStatus = "Starting...";
-            m_VirtualMachineIpAddress = "000.000.000.000";
             m_ProvisionAndInitializationThread = new System.Threading.Thread(this.ProvisionAndInitializeThread);
             m_ProvisionAndInitializationThread.Start();
         }
@@ -278,34 +317,42 @@ namespace MicrosoftAzureVirtualMachineInitializer
         /// </summary>
         private void ProvisionAndInitializeThread()
         {
-            // Create a public ip address
-            string publicIpSpecification = this.FillTemplate(Properties.Resources.PublicIpJson.ToString());
-            string networkInterfaceSpecification = this.FillTemplate(Properties.Resources.NetworkInterfaceJson.ToString());
-            string virtualMachineSpecification = this.FillTemplate(Properties.Resources.VirtualMachineFromImageJson.ToString());
-            // Do some specification substitutions ups that are above and beyond the FillTemplate() substitutions
-            publicIpSpecification = publicIpSpecification.Replace("{{DnsLabel}}", ("sail" + m_VirtualMachineIdentifier).ToLower());
-            networkInterfaceSpecification = networkInterfaceSpecification.Replace("{{Name}}", (m_VirtualMachineIdentifier + "-nic").ToLower());
-            networkInterfaceSpecification = networkInterfaceSpecification.Replace("{{IpAddressId}}", (m_VirtualMachineIdentifier + "-ip").ToLower());
-            virtualMachineSpecification = virtualMachineSpecification.Replace("{{OsDiskName}}", (m_VirtualMachineIdentifier + "-disk").ToLower());
-            virtualMachineSpecification = virtualMachineSpecification.Replace("{{NetworkInterface}}", (m_VirtualMachineIdentifier + "-nic").ToLower());
-            virtualMachineSpecification = virtualMachineSpecification.Replace("{{ImageName}}", m_BaseMachineName);
-            virtualMachineSpecification = virtualMachineSpecification.Replace("{{VmSize}}", m_VirtualMachineSize);
-            virtualMachineSpecification = virtualMachineSpecification.Replace("{{Password}}", m_VirtualMachinePassword);
-            virtualMachineSpecification = virtualMachineSpecification.Replace("{{Username}}", m_VirtualMachineUsername);
-            virtualMachineSpecification = virtualMachineSpecification.Replace("{{ComputerName}}", m_VirtualMachineComputerName);
-            // Provision the virtual machine on Microsoft Azure and get it's IP address
-            m_VirtualMachineIpAddress = MicrosoftAzureApiPortalInterop.ProvisionVirtualMachineAndWait(m_SubscriptionIdentifier, m_ResourceGroup, VirtualMachineIdentifier, publicIpSpecification, networkInterfaceSpecification, virtualMachineSpecification);
-            m_VirtualMachineStatus = "Installing...";
-            // Upload the binaries to the virtual machine
-            byte[] installationPackage = System.IO.File.ReadAllBytes("SecureComputationalVirtualMachine.binaries");
-            string installationPackageBase64Encoded = System.Convert.ToBase64String(installationPackage);
-            if (true == SailWebApiPortalInterop.UploadInstallationPackageToVirtualMachine(m_VirtualMachineIpAddress, installationPackageBase64Encoded))
+            // Create a virtual machine in azure
+            if ("000.000.000.000" == m_VirtualMachineIpAddress)
             {
+                // Create a public ip address
+                string publicIpSpecification = this.FillTemplate(Properties.Resources.PublicIpJson.ToString());
+                string networkInterfaceSpecification = this.FillTemplate(Properties.Resources.NetworkInterfaceJson.ToString());
+                string virtualMachineSpecification = this.FillTemplate(Properties.Resources.VirtualMachineFromImageJson.ToString());
+                // Do some specification substitutions ups that are above and beyond the FillTemplate() substitutions
+                publicIpSpecification = publicIpSpecification.Replace("{{DnsLabel}}", ("sail" + m_VirtualMachineIdentifier).ToLower());
+                networkInterfaceSpecification = networkInterfaceSpecification.Replace("{{Name}}", (m_VirtualMachineIdentifier + "-nic").ToLower());
+                networkInterfaceSpecification = networkInterfaceSpecification.Replace("{{IpAddressId}}", (m_VirtualMachineIdentifier + "-ip").ToLower());
+                virtualMachineSpecification = virtualMachineSpecification.Replace("{{OsDiskName}}", (m_VirtualMachineIdentifier + "-disk").ToLower());
+                virtualMachineSpecification = virtualMachineSpecification.Replace("{{NetworkInterface}}", (m_VirtualMachineIdentifier + "-nic").ToLower());
+                virtualMachineSpecification = virtualMachineSpecification.Replace("{{ImageName}}", m_BaseMachineName);
+                virtualMachineSpecification = virtualMachineSpecification.Replace("{{VmSize}}", m_VirtualMachineSize);
+                virtualMachineSpecification = virtualMachineSpecification.Replace("{{Password}}", m_VirtualMachinePassword);
+                virtualMachineSpecification = virtualMachineSpecification.Replace("{{Username}}", m_VirtualMachineUsername);
+                virtualMachineSpecification = virtualMachineSpecification.Replace("{{ComputerName}}", m_VirtualMachineComputerName);
+                // Provision the virtual machine on Microsoft Azure and get it's IP address
+                m_VirtualMachineIpAddress = MicrosoftAzureApiPortalInterop.ProvisionVirtualMachineAndWait(m_SubscriptionIdentifier, m_ResourceGroup, VirtualMachineIdentifier, publicIpSpecification, networkInterfaceSpecification, virtualMachineSpecification);
+                m_VirtualMachineStatus = "Installing...";
+                // Upload the binaries to the virtual machine
+                byte[] installationPackage = System.IO.File.ReadAllBytes("SecureComputationalVirtualMachine.binaries");
+                string installationPackageBase64Encoded = System.Convert.ToBase64String(installationPackage);
+                if (true == SailWebApiPortalInterop.UploadInstallationPackageToVirtualMachine(m_VirtualMachineIpAddress, installationPackageBase64Encoded))
+                {
                     m_VirtualMachineStatus = "Initialization...";
+                }
+                System.Threading.Thread.Sleep(10);
+            }
+            else
+            {
+                m_VirtualMachineStatus = "Initialization...";
             }
             // Now we need to initialize the virtual machine
             string datasetBase64Encoded = System.Convert.ToBase64String(m_Dataset);
-            uint sizeInBytes = (uint) datasetBase64Encoded.Length;
             SailWebApiPortalInterop.UploadInitializationParametersToVirtualMachine("Some nice name for the virtual machine", m_VirtualMachineIpAddress, m_VirtualMachineIdentifier, m_ClusterIdentifier, m_DigitalContractIdentifier, m_DatasetIdentifier, m_RootOfTrustDomainIdentifier, m_ComputationalDomainIdentifier, m_DataConnectorDomainIdentifier, m_SailWebApiPortalIpAddress, datasetBase64Encoded);
             m_VirtualMachineStatus = "Ready...";
         }

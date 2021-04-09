@@ -43,17 +43,21 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_WebPortalVirtualMachineConfigurationGroupBox = new System.Windows.Forms.GroupBox();
             this.m_WebPortalGroupBox = new System.Windows.Forms.Label();
             this.m_StartWebPortalVirtualMachineButton = new System.Windows.Forms.Button();
+            this.m_InitializerOnlyGroupBox = new System.Windows.Forms.GroupBox();
+            this.m_InitializerOnlyLabel = new System.Windows.Forms.Label();
+            this.m_InitializerButton = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.m_StatusStrip.SuspendLayout();
             this.m_SecureVirtualMachineGroupBox.SuspendLayout();
             this.m_WebPortalVirtualMachineConfigurationGroupBox.SuspendLayout();
+            this.m_InitializerOnlyGroupBox.SuspendLayout();
             this.SuspendLayout();
             // 
             // pictureBox1
             // 
             this.pictureBox1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
             this.pictureBox1.Image = ((System.Drawing.Image)(resources.GetObject("pictureBox1.Image")));
-            this.pictureBox1.Location = new System.Drawing.Point(23, 85);
+            this.pictureBox1.Location = new System.Drawing.Point(23, 174);
             this.pictureBox1.Name = "pictureBox1";
             this.pictureBox1.Size = new System.Drawing.Size(240, 240);
             this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
@@ -64,7 +68,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.m_ProductLabel.AutoSize = true;
             this.m_ProductLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point);
-            this.m_ProductLabel.Location = new System.Drawing.Point(23, 328);
+            this.m_ProductLabel.Location = new System.Drawing.Point(23, 417);
             this.m_ProductLabel.Name = "m_ProductLabel";
             this.m_ProductLabel.Size = new System.Drawing.Size(239, 84);
             this.m_ProductLabel.TabIndex = 1;
@@ -78,9 +82,9 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_StatusStrip.ImageScalingSize = new System.Drawing.Size(24, 24);
             this.m_StatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.m_CopyrightStripStatusLabel});
-            this.m_StatusStrip.Location = new System.Drawing.Point(0, 555);
+            this.m_StatusStrip.Location = new System.Drawing.Point(0, 682);
             this.m_StatusStrip.Name = "m_StatusStrip";
-            this.m_StatusStrip.Size = new System.Drawing.Size(869, 28);
+            this.m_StatusStrip.Size = new System.Drawing.Size(839, 28);
             this.m_StatusStrip.TabIndex = 2;
             this.m_StatusStrip.Text = "statusStrip1";
             // 
@@ -94,7 +98,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_LoadFromConfigurationButton
             // 
             this.m_LoadFromConfigurationButton.AutoSize = true;
-            this.m_LoadFromConfigurationButton.Location = new System.Drawing.Point(133, 203);
+            this.m_LoadFromConfigurationButton.Location = new System.Drawing.Point(133, 195);
             this.m_LoadFromConfigurationButton.Name = "m_LoadFromConfigurationButton";
             this.m_LoadFromConfigurationButton.Size = new System.Drawing.Size(294, 42);
             this.m_LoadFromConfigurationButton.TabIndex = 3;
@@ -105,7 +109,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_ManuallyConfigureButton
             // 
             this.m_ManuallyConfigureButton.AutoSize = true;
-            this.m_ManuallyConfigureButton.Location = new System.Drawing.Point(133, 253);
+            this.m_ManuallyConfigureButton.Location = new System.Drawing.Point(133, 245);
             this.m_ManuallyConfigureButton.Name = "m_ManuallyConfigureButton";
             this.m_ManuallyConfigureButton.Size = new System.Drawing.Size(294, 42);
             this.m_ManuallyConfigureButton.TabIndex = 4;
@@ -116,7 +120,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_CloseButton
             // 
             this.m_CloseButton.AutoSize = true;
-            this.m_CloseButton.Location = new System.Drawing.Point(401, 503);
+            this.m_CloseButton.Location = new System.Drawing.Point(401, 629);
             this.m_CloseButton.Name = "m_CloseButton";
             this.m_CloseButton.Size = new System.Drawing.Size(294, 42);
             this.m_CloseButton.TabIndex = 5;
@@ -128,7 +132,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.m_InstructionsLabel.AutoSize = true;
             this.m_InstructionsLabel.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.m_InstructionsLabel.Location = new System.Drawing.Point(11, 37);
+            this.m_InstructionsLabel.Location = new System.Drawing.Point(11, 30);
             this.m_InstructionsLabel.Name = "m_InstructionsLabel";
             this.m_InstructionsLabel.Size = new System.Drawing.Size(538, 150);
             this.m_InstructionsLabel.TabIndex = 6;
@@ -147,7 +151,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_SecureVirtualMachineGroupBox.Controls.Add(this.m_ManuallyConfigureButton);
             this.m_SecureVirtualMachineGroupBox.Location = new System.Drawing.Point(269, 2);
             this.m_SecureVirtualMachineGroupBox.Name = "m_SecureVirtualMachineGroupBox";
-            this.m_SecureVirtualMachineGroupBox.Size = new System.Drawing.Size(554, 318);
+            this.m_SecureVirtualMachineGroupBox.Size = new System.Drawing.Size(554, 298);
             this.m_SecureVirtualMachineGroupBox.TabIndex = 7;
             this.m_SecureVirtualMachineGroupBox.TabStop = false;
             this.m_SecureVirtualMachineGroupBox.Text = "Secure Computational Virtual Machine Configuration";
@@ -156,9 +160,9 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.m_WebPortalVirtualMachineConfigurationGroupBox.Controls.Add(this.m_WebPortalGroupBox);
             this.m_WebPortalVirtualMachineConfigurationGroupBox.Controls.Add(this.m_StartWebPortalVirtualMachineButton);
-            this.m_WebPortalVirtualMachineConfigurationGroupBox.Location = new System.Drawing.Point(269, 327);
+            this.m_WebPortalVirtualMachineConfigurationGroupBox.Location = new System.Drawing.Point(269, 306);
             this.m_WebPortalVirtualMachineConfigurationGroupBox.Name = "m_WebPortalVirtualMachineConfigurationGroupBox";
-            this.m_WebPortalVirtualMachineConfigurationGroupBox.Size = new System.Drawing.Size(554, 158);
+            this.m_WebPortalVirtualMachineConfigurationGroupBox.Size = new System.Drawing.Size(554, 149);
             this.m_WebPortalVirtualMachineConfigurationGroupBox.TabIndex = 8;
             this.m_WebPortalVirtualMachineConfigurationGroupBox.TabStop = false;
             this.m_WebPortalVirtualMachineConfigurationGroupBox.Text = "Web Portal Virtual Machine Instantiation";
@@ -167,7 +171,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.m_WebPortalGroupBox.AutoSize = true;
             this.m_WebPortalGroupBox.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.m_WebPortalGroupBox.Location = new System.Drawing.Point(19, 32);
+            this.m_WebPortalGroupBox.Location = new System.Drawing.Point(18, 32);
             this.m_WebPortalGroupBox.Name = "m_WebPortalGroupBox";
             this.m_WebPortalGroupBox.Size = new System.Drawing.Size(524, 50);
             this.m_WebPortalGroupBox.TabIndex = 8;
@@ -178,7 +182,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_StartWebPortalVirtualMachineButton
             // 
             this.m_StartWebPortalVirtualMachineButton.AutoSize = true;
-            this.m_StartWebPortalVirtualMachineButton.Location = new System.Drawing.Point(133, 98);
+            this.m_StartWebPortalVirtualMachineButton.Location = new System.Drawing.Point(133, 92);
             this.m_StartWebPortalVirtualMachineButton.Name = "m_StartWebPortalVirtualMachineButton";
             this.m_StartWebPortalVirtualMachineButton.Size = new System.Drawing.Size(294, 42);
             this.m_StartWebPortalVirtualMachineButton.TabIndex = 7;
@@ -186,12 +190,46 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_StartWebPortalVirtualMachineButton.UseVisualStyleBackColor = true;
             this.m_StartWebPortalVirtualMachineButton.Click += new System.EventHandler(this.m_StartWebPortalVirtualMachineButton_Click);
             // 
+            // m_InitializerOnlyGroupBox
+            // 
+            this.m_InitializerOnlyGroupBox.Controls.Add(this.m_InitializerButton);
+            this.m_InitializerOnlyGroupBox.Controls.Add(this.m_InitializerOnlyLabel);
+            this.m_InitializerOnlyGroupBox.Location = new System.Drawing.Point(269, 461);
+            this.m_InitializerOnlyGroupBox.Name = "m_InitializerOnlyGroupBox";
+            this.m_InitializerOnlyGroupBox.Size = new System.Drawing.Size(554, 156);
+            this.m_InitializerOnlyGroupBox.TabIndex = 9;
+            this.m_InitializerOnlyGroupBox.TabStop = false;
+            this.m_InitializerOnlyGroupBox.Text = "Initialize Existing Virtual Machine";
+            // 
+            // m_InitializerOnlyLabel
+            // 
+            this.m_InitializerOnlyLabel.AutoSize = true;
+            this.m_InitializerOnlyLabel.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.m_InitializerOnlyLabel.Location = new System.Drawing.Point(40, 38);
+            this.m_InitializerOnlyLabel.Name = "m_InitializerOnlyLabel";
+            this.m_InitializerOnlyLabel.Size = new System.Drawing.Size(480, 50);
+            this.m_InitializerOnlyLabel.TabIndex = 0;
+            this.m_InitializerOnlyLabel.Text = "Initialize an existing virtual machine already running the\r\nRootOfTrust process. " +
+    "This is doe debug purposes.";
+            this.m_InitializerOnlyLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
+            // m_InitializerButton
+            // 
+            this.m_InitializerButton.Location = new System.Drawing.Point(133, 99);
+            this.m_InitializerButton.Name = "m_InitializerButton";
+            this.m_InitializerButton.Size = new System.Drawing.Size(294, 42);
+            this.m_InitializerButton.TabIndex = 1;
+            this.m_InitializerButton.Text = "Initialize!";
+            this.m_InitializerButton.UseVisualStyleBackColor = true;
+            this.m_InitializerButton.Click += new System.EventHandler(this.m_InitializerButton_Click);
+            // 
             // StartupDialog
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.CancelButton = this.m_CloseButton;
-            this.ClientSize = new System.Drawing.Size(869, 583);
+            this.ClientSize = new System.Drawing.Size(839, 710);
             this.ControlBox = false;
+            this.Controls.Add(this.m_InitializerOnlyGroupBox);
             this.Controls.Add(this.m_WebPortalVirtualMachineConfigurationGroupBox);
             this.Controls.Add(this.m_SecureVirtualMachineGroupBox);
             this.Controls.Add(this.m_StatusStrip);
@@ -199,9 +237,10 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.Controls.Add(this.m_ProductLabel);
             this.Controls.Add(this.pictureBox1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "StartupDialog";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Microsoft Azure Initializer";
+            this.Text = "Gimlet!";
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.m_StatusStrip.ResumeLayout(false);
             this.m_StatusStrip.PerformLayout();
@@ -209,6 +248,8 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_SecureVirtualMachineGroupBox.PerformLayout();
             this.m_WebPortalVirtualMachineConfigurationGroupBox.ResumeLayout(false);
             this.m_WebPortalVirtualMachineConfigurationGroupBox.PerformLayout();
+            this.m_InitializerOnlyGroupBox.ResumeLayout(false);
+            this.m_InitializerOnlyGroupBox.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -229,5 +270,8 @@ namespace MicrosoftAzureVirtualMachineInitializer
         private System.Windows.Forms.GroupBox m_WebPortalVirtualMachineConfigurationGroupBox;
         private System.Windows.Forms.Label m_WebPortalGroupBox;
         private System.Windows.Forms.Button m_StartWebPortalVirtualMachineButton;
+        private System.Windows.Forms.GroupBox m_InitializerOnlyGroupBox;
+        private System.Windows.Forms.Button m_InitializerButton;
+        private System.Windows.Forms.Label m_InitializerOnlyLabel;
     }
 }

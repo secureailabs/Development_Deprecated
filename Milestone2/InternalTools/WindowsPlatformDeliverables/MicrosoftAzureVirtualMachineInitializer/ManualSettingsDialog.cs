@@ -33,6 +33,10 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // Load default settings from the registry of they exist
             Microsoft.Win32.RegistryKey registryKey = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"SOFTWARE\SAIL");
             string[] registryKeyValues = registryKey.GetValueNames();
+            if (true == registryKeyValues.Contains("DefaultDatasetFilename"))
+            {
+                m_DatasetFilenameTextBox.Text = registryKey.GetValue("DefaultDatasetFilename").ToString();
+            }
             if (true == registryKeyValues.Contains("DefaultMicrosoftAzureSubscriptionIdentifier"))
             {
                 m_SubscriptionIdentifierTextBox.Text = registryKey.GetValue("DefaultMicrosoftAzureSubscriptionIdentifier").ToString();
@@ -189,6 +193,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // Persist some of the settings to the registry to make it easier to restart the
             // application later.
             RegistryKey registryKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\SAIL");
+            registryKey.SetValue("DefaultDatasetFilename", m_DatasetFilenameTextBox.Text);
             registryKey.SetValue("DefaultMicrosoftAzureSubscriptionIdentifier", m_SubscriptionIdentifierTextBox.Text);
             registryKey.SetValue("DefaultMicrosoftAzureResourceGroup", m_ResourceGroupTextBox.Text);
             registryKey.SetValue("DefaultMicrosoftAzureLocation", m_LocationTextBox.Text);
@@ -240,7 +245,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
         {
             if (true == System.IO.File.Exists(m_DatasetFilenameTextBox.Text))
             {
-                if (0 < m_DigitalContractsComboBox.SelectedItem.ToString().Length)
+                if ((null != m_DigitalContractsComboBox.SelectedItem) && (0 < m_DigitalContractsComboBox.SelectedItem.ToString().Length))
                 {
                     m_NextButton.Enabled = true;
                 }

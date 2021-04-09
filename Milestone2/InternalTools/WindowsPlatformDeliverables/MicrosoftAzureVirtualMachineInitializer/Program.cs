@@ -25,23 +25,31 @@ namespace MicrosoftAzureVirtualMachineInitializer
                 if (DialogResult.OK == microsoftAzureLoginDialog.ShowDialog())
                 {
                     StartupDialog startupDialog = new StartupDialog();
-                    DialogResult startupDialogResult = startupDialog.ShowDialog();
-                    // Configure the InitializerSettings in one of two ways
-                    InitializerSettings initializerSettings = null;
-                    switch (startupDialogResult)
+                    if (DialogResult.OK == startupDialog.ShowDialog())
                     {
-                        case DialogResult.Yes   // Load from configuration file
-                        :   initializerSettings = new InitializerSettings(startupDialog.SettingsFilename);
-                            break;
-                        case DialogResult.OK    // Configure manually
-                        :   initializerSettings = new InitializerSettings();
-                            break;
-                    }
-                    // Are we ready to provision and initialize
-                    if ((null != initializerSettings)&&(true == initializerSettings.IsConfigured))
-                    {
-                        VirtualMachineProvisionerDialog virtualMachineProvisionerDialog = new VirtualMachineProvisionerDialog(ref initializerSettings);
-                        virtualMachineProvisionerDialog.ShowDialog();
+                        // Configure the InitializerSettings in one of two ways
+                        InitializerSettings initializerSettings = null;
+                        switch (startupDialog.DialogResultValue)
+                        {
+                            case 1   // Load from configuration file
+                            :
+                                initializerSettings = new InitializerSettings(startupDialog.SettingsFilename);
+                                break;
+                            case 2    // Configure manually
+                            :
+                                initializerSettings = new InitializerSettings(false);
+                                break;
+                            case 3    // Initialize Only
+                            :
+                                initializerSettings = new InitializerSettings(true);
+                                break;
+                        }
+                        // Are we ready to provision and initialize
+                        if ((null != initializerSettings) && (true == initializerSettings.IsConfigured))
+                        {
+                            VirtualMachineProvisionerDialog virtualMachineProvisionerDialog = new VirtualMachineProvisionerDialog(ref initializerSettings);
+                            virtualMachineProvisionerDialog.ShowDialog();
+                        }
                     }
                 }
             }

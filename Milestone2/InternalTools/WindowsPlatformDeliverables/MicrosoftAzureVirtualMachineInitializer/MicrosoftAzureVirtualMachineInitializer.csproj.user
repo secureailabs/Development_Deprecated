@@ -4,6 +4,9 @@
     <Compile Update="ExceptionsDialog.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="InitializerOnlySettingsDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="ManualSettingsDialog.cs">
       <SubType>Form</SubType>
     </Compile>

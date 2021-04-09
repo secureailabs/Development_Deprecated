@@ -127,7 +127,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_HelpStripStatusLabel,
             this.m_ExceptionsToolStripStatusLabel});
             this.m_StatusStrip.LayoutStyle = System.Windows.Forms.ToolStripLayoutStyle.HorizontalStackWithOverflow;
-            this.m_StatusStrip.Location = new System.Drawing.Point(0, 482);
+            this.m_StatusStrip.Location = new System.Drawing.Point(0, 454);
             this.m_StatusStrip.Name = "m_StatusStrip";
             this.m_StatusStrip.Size = new System.Drawing.Size(1014, 29);
             this.m_StatusStrip.TabIndex = 6;
@@ -159,7 +159,6 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_ExceptionsToolStripStatusLabel.Size = new System.Drawing.Size(300, 22);
             this.m_ExceptionsToolStripStatusLabel.Text = "Click here to view exceptions";
             this.m_ExceptionsToolStripStatusLabel.Click += new System.EventHandler(this.m_ExceptionsToolStripStatusLabel_Click);
-
             // 
             // m_VirtualMachineCountLabel
             // 
@@ -184,7 +183,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.m_NextButton.DialogResult = System.Windows.Forms.DialogResult.OK;
             this.m_NextButton.Enabled = false;
-            this.m_NextButton.Location = new System.Drawing.Point(344, 411);
+            this.m_NextButton.Location = new System.Drawing.Point(344, 398);
             this.m_NextButton.Name = "m_NextButton";
             this.m_NextButton.Size = new System.Drawing.Size(150, 44);
             this.m_NextButton.TabIndex = 3;
@@ -195,7 +194,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_PreviousButton
             // 
             this.m_PreviousButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.m_PreviousButton.Location = new System.Drawing.Point(520, 411);
+            this.m_PreviousButton.Location = new System.Drawing.Point(520, 398);
             this.m_PreviousButton.Name = "m_PreviousButton";
             this.m_PreviousButton.Size = new System.Drawing.Size(150, 44);
             this.m_PreviousButton.TabIndex = 4;
@@ -363,7 +362,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.AcceptButton = this.m_NextButton;
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
-            this.ClientSize = new System.Drawing.Size(1014, 511);
+            this.ClientSize = new System.Drawing.Size(1014, 483);
             this.ControlBox = false;
             this.Controls.Add(this.m_VirtualMachineSizeLabel);
             this.Controls.Add(this.m_BaseMachineNameLabel);
@@ -394,7 +393,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "ManualSettingsDialog";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Manual Virtual Machine And Microsoft Azure Configuration";
+            this.Text = "Gimlet!";
             this.m_StatusStrip.ResumeLayout(false);
             this.m_StatusStrip.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.m_SailLogoPictureBox)).EndInit();

@@ -1,11 +1,11 @@
 {
   "runtimeTarget": {
-    "name": ".NETCoreApp,Version=v3.0",
+    "name": ".NETCoreApp,Version=v5.0",
     "signature": ""
   },
   "compilationOptions": {},
   "targets": {
-    ".NETCoreApp,Version=v3.0": {
+    ".NETCoreApp,Version=v5.0": {
       "MicrosoftAzureVirtualMachineInitializer/1.0.0": {
         "runtime": {
           "MicrosoftAzureVirtualMachineInitializer.dll": {}

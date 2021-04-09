@@ -16,6 +16,19 @@ namespace MicrosoftAzureVirtualMachineInitializer
         public StartupDialog()
         {
             InitializeComponent();
+
+            m_DialogResult = 0;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public uint DialogResultValue
+        {
+            get
+            {
+                return m_DialogResult;
+            }
         }
 
         /// <summary>
@@ -42,7 +55,8 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.Hide();
             if (DialogResult.OK == m_OpenSettingsFileDialog.ShowDialog(this))
             {
-                this.DialogResult = DialogResult.Yes;
+                m_DialogResult = 1;
+                this.DialogResult = DialogResult.OK;
                 this.Close();
             }
             else
@@ -61,7 +75,9 @@ namespace MicrosoftAzureVirtualMachineInitializer
             EventArgs e
             )
         {
+            m_DialogResult = 2;
             this.DialogResult = DialogResult.OK;
+            this.Close();
         }
 
         /// <summary>
@@ -82,10 +98,27 @@ namespace MicrosoftAzureVirtualMachineInitializer
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
+        private void m_InitializerButton_Click(
+            object sender,
+            EventArgs e
+            )
+        {
+            m_DialogResult = 3;
+            this.DialogResult = DialogResult.OK;
+            this.Close();
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void m_CloseButton_Click(object sender, EventArgs e)
         {
             this.DialogResult = DialogResult.Cancel;
             this.Close();
         }
+
+        private uint m_DialogResult;
     }
 }

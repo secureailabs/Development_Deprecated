@@ -10,23 +10,43 @@ namespace MicrosoftAzureVirtualMachineInitializer
         /// Constructor used when instantiating InitializerSettings for
         /// manual configuration
         /// </summary>
-        public InitializerSettings()
+        public InitializerSettings(
+            bool initializerOnly
+            )
         {
             m_ListOfVirtualMachines = new Dictionary<uint, MicrosoftAzureVirtualMachine>();
-            ManualSettingsDialog manualSettingsDialog = new ManualSettingsDialog();
-            if (System.Windows.Forms.DialogResult.OK == manualSettingsDialog.ShowDialog())
+            if (false == initializerOnly)
             {
-                string clusterIdentifier = System.Guid.NewGuid().ToString("B").ToUpper();
-                string datasetIdentifier = SailWebApiPortalInterop.GetDigitalContractProperty(manualSettingsDialog.DigitalContractIdentifier, "DatasetGuid");
-                for (uint index = 0; index < manualSettingsDialog.VirtualMachineCount; index++)
+                ManualSettingsDialog manualSettingsDialog = new ManualSettingsDialog();
+                if (System.Windows.Forms.DialogResult.OK == manualSettingsDialog.ShowDialog())
                 {
-                    m_ListOfVirtualMachines.Add(index, new MicrosoftAzureVirtualMachine(clusterIdentifier, manualSettingsDialog.DigitalContractIdentifier, datasetIdentifier, manualSettingsDialog.DatasetFilename, SailWebApiPortalInterop.GetIpAddress(), manualSettingsDialog.AzureSubscriptionIdentifier, manualSettingsDialog.AzureResourceGroup, manualSettingsDialog.AzureLocation, manualSettingsDialog.AzureVirtualNetwork, manualSettingsDialog.AzureNetworkSecurityGroup, manualSettingsDialog.AzureBaseMachineName, manualSettingsDialog.AzureVirtualMachineSize));
+                    string clusterIdentifier = System.Guid.NewGuid().ToString("B").ToUpper();
+                    string datasetIdentifier = SailWebApiPortalInterop.GetDigitalContractProperty(manualSettingsDialog.DigitalContractIdentifier, "DatasetGuid");
+                    for (uint index = 0; index < manualSettingsDialog.VirtualMachineCount; index++)
+                    {
+                        m_ListOfVirtualMachines.Add(index, new MicrosoftAzureVirtualMachine(clusterIdentifier, manualSettingsDialog.DigitalContractIdentifier, datasetIdentifier, manualSettingsDialog.DatasetFilename, SailWebApiPortalInterop.GetIpAddress(), manualSettingsDialog.AzureSubscriptionIdentifier, manualSettingsDialog.AzureResourceGroup, manualSettingsDialog.AzureLocation, manualSettingsDialog.AzureVirtualNetwork, manualSettingsDialog.AzureNetworkSecurityGroup, manualSettingsDialog.AzureBaseMachineName, manualSettingsDialog.AzureVirtualMachineSize));
+                    }
+                    m_IsConfigured = true;
                 }
-                m_IsConfigured = true;
+                else
+                {
+                    m_IsConfigured = false;
+                }
             }
             else
             {
-                m_IsConfigured = false;
+                InitializerOnlySettingsDialog initializerOnlySettingsDialog = new InitializerOnlySettingsDialog();
+                if (System.Windows.Forms.DialogResult.OK == initializerOnlySettingsDialog.ShowDialog())
+                {
+                    string clusterIdentifier = System.Guid.NewGuid().ToString("B").ToUpper();
+                    string datasetIdentifier = SailWebApiPortalInterop.GetDigitalContractProperty(initializerOnlySettingsDialog.DigitalContractIdentifier, "DatasetGuid");
+                    m_ListOfVirtualMachines.Add(0, new MicrosoftAzureVirtualMachine(clusterIdentifier, initializerOnlySettingsDialog.DigitalContractIdentifier, datasetIdentifier, initializerOnlySettingsDialog.DatasetFilename, SailWebApiPortalInterop.GetIpAddress(), initializerOnlySettingsDialog.IpAddress));
+                    m_IsConfigured = true;
+                }
+                else
+                {
+                    m_IsConfigured = false;
+                }
             }
         }
 

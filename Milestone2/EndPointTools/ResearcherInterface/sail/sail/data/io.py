@@ -1,4 +1,5 @@
 from ..core import connect, newguid, pushdata, pulldata, pushfn, execjob, registerfn
+import numpy as np
 
 class DataFrameGroup:
     def __init__(self, vms, workplace):
@@ -31,10 +32,14 @@ class DataFrameGroup:
         fndict['astype']=registerfn("fn_astype.py", 1, 1, 0, 1)[0]
         fndict['apply']=registerfn("fn_apply.py", 1, 1, 0, 1)[0]
         fndict['apply_and_change'] = registerfn("fn_apply_and_change.py", 2, 1, 0, 1)[0]
+        fndict['apply_and_append'] = registerfn("fn_apply_and_append.py", 2, 1, 0, 1)[0]
         fndict['value_counts'] = registerfn("fn_value_counts.py", 1, 1, 1, 0)[0]
         fndict['get_Dmat'] = registerfn("fn_getDmatrix.py", 0, 2, 0, 1)[0]
         fndict['dtypes'] = registerfn("fn_dtypes.py", 0, 1, 1, 0)[0]
         fndict['to_numpy'] = registerfn("fn_tonumpy.py", 0, 1, 0, 1)[0]
+        fndict['private_get'] = registerfn("fn_private_get.py", 1, 1, 1, 0)[0]
+        fndict['droprow'] = registerfn("fn_droprow.py", 1, 1, 0, 1)[0]
+        fndict['pearson'] = registerfn("fn_pearson.py", 4, 1, 3, 0)[0]
         return fndict
 
     def initvms(self):
@@ -91,18 +96,19 @@ class DataFrameGroup:
             execjob(self.vms[i], self.fns['std_trans'], jobid)
             result = pulldata(self.vms[i], jobid, self.fns['std_trans'], self.workspace)
             
-    def norm_transform(self, col_id, minval, maxval):
+    def norm_transform(self, col_id, df):
+        minval, maxval = self.limit(col_id, df)
         for i in range(len(self.vms)):
             jobid = newguid()
-            pushdata(self.vms[i], jobid, self.fns['norm_trans'], [col_id, minval, maxval], [self.df[i]], self.workspace)
+            pushdata(self.vms[i], jobid, self.fns['norm_trans'], [col_id, minval, maxval], [df[i]], self.workspace)
             execjob(self.vms[i], self.fns['norm_trans'], jobid)
             result = pulldata(self.vms[i], jobid, self.fns['norm_trans'], self.workspace)
                 
-    def mean(self, col_id):
+    def mean(self, col_id, df):
         meanlist = []
         for i in range(len(self.vms)):
             jobid = newguid()
-            pushdata(self.vms[i], jobid, self.fns['mean'], [col_id], [self.df[i]], self.workspace)
+            pushdata(self.vms[i], jobid, self.fns['mean'], [col_id], [df[i]], self.workspace)
             execjob(self.vms[i], self.fns['mean'], jobid)
             result = pulldata(self.vms[i], jobid, self.fns['mean'], self.workspace)
             meanlist.append(result[0][0])
@@ -116,11 +122,11 @@ class DataFrameGroup:
         
         return mean
     
-    def standard_deviation(self, col_id, mean):
+    def standard_deviation(self, col_id, mean, df):
         sumdevlist = []
         for i in range(len(self.vms)):
             jobid = newguid()
-            pushdata(self.vms[i], jobid, self.fns['std'], [col_id, mean], [self.df[i]], self.workspace)
+            pushdata(self.vms[i], jobid, self.fns['std'], [col_id, mean], [df[i]], self.workspace)
             execjob(self.vms[i], self.fns['std'], jobid)
             result = pulldata(self.vms[i], jobid, self.fns['std'], self.workspace)
             sumdevlist.append(result[0][0])
@@ -132,17 +138,17 @@ class DataFrameGroup:
         stddev = (sumdev/sumelement)**0.5
         return stddev
     
-    def limit(self, col_id):
+    def limit(self, col_id, df):
         minlist = []
         maxlist = []
         for i in range(len(self.vms)):
             jobid = newguid()
-            pushdata(self.vms[i], jobid, self.fns['min'], [col_id], [self.df[i]], self.workspace)
+            pushdata(self.vms[i], jobid, self.fns['min'], [col_id], [df[i]], self.workspace)
             execjob(self.vms[i], self.fns['min'], jobid)
             result = pulldata(self.vms[i], jobid, self.fns['min'], self.workspace)
             minlist.append(result[0][0])
             jobid = newguid()
-            pushdata(self.vms[i], jobid, self.fns['max'], [col_id], [self.df[i]], self.workspace)
+            pushdata(self.vms[i], jobid, self.fns['max'], [col_id], [df[i]], self.workspace)
             execjob(self.vms[i], self.fns['max'], jobid)
             result = pulldata(self.vms[i], jobid, self.fns['max'], self.workspace)
             maxlist.append(result[0][0])
@@ -218,6 +224,14 @@ class DataFrameGroup:
             result = pulldata(self.vms[i], jobid, self.fns['drop'], self.workspace)
             dfs.append(result[1][0])
         return dfs
+    
+    def droprow(self, vm, index, df):
+        jobid = newguid()
+        pushdata(vm, jobid, self.fns['droprow'], [index], [df], self.workspace)
+        execjob(vm, self.fns['droprow'], jobid)
+        result = pulldata(vm, jobid, self.fns['droprow'], self.workspace)
+        df = result[1][0]
+        return df
 
     def astype(self, mtype, df):
         dfs = []
@@ -243,9 +257,19 @@ class DataFrameGroup:
         dfs = []
         for i in range(len(self.vms)):
             jobid = newguid()
-            pushdata(self.vms[i], jobid, self.fns['apply'], [func[i], label[i]], [df[i]], self.workspace)
-            execjob(self.vms[i], self.fns['apply'], jobid)
-            result = pulldata(self.vms[i], jobid, self.fns['apply'], self.workspace)
+            pushdata(self.vms[i], jobid, self.fns['apply_and_change'], [func[i], label[i]], [df[i]], self.workspace)
+            execjob(self.vms[i], self.fns['apply_and_change'], jobid)
+            result = pulldata(self.vms[i], jobid, self.fns['apply_and_change'], self.workspace)
+            dfs.append(result[1][0])
+        return dfs
+
+    def apply_and_append(self, label, newlabel, df):
+        dfs = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            pushdata(self.vms[i], jobid, self.fns['apply_and_append'], [label[i], newlabel[i]], [df[i]], self.workspace)
+            execjob(self.vms[i], self.fns['apply_and_append'], jobid)
+            result = pulldata(self.vms[i], jobid, self.fns['apply_and_append'], self.workspace)
             dfs.append(result[1][0])
         return dfs
 
@@ -278,3 +302,40 @@ class DataFrameGroup:
             result = pulldata(self.vms[i], jobid, self.fns['to_numpy'], self.workspace)
             arr.append(result[1][0])
         return arr
+    
+    def private_intersect(self, vmid1, vmid2, df1, df2, col_id):
+        x=0
+        y=0
+
+        jobid = newguid()
+        pushdata(vmid1, jobid, self.fns['private_get'], [col_id], [df1], self.workspace)
+        execjob(vmid1, self.fns['private_get'], jobid)
+        result = pulldata(vmid1, jobid, self.fns['private_get'], self.workspace)
+        x=result[0][0]
+
+        jobid = newguid()
+        pushdata(vmid2, jobid, self.fns['private_get'], [col_id], [df2], self.workspace)
+        execjob(vmid2, self.fns['private_get'], jobid)
+        result = pulldata(vmid2, jobid, self.fns['private_get'], self.workspace)
+        y=result[0][0]
+
+        result1 = np.where(np.in1d(x, y))[0]
+        result2 = np.where(np.in1d(y, x))[0]
+        return [result1, result2]
+
+    def pearson_corr(self, xlabel, ylabel, df):
+        xmean = self.mean(xlabel, df)
+        ymean = self.mean(ylabel, df)
+
+        sumprod = 0
+        sumsx = 0
+        sumsy = 0
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            pushdata(self.vms[i], jobid, self.fns['pearson'], [xlabel, ylabel, xmean, ymean], [df[i]], self.workspace)
+            execjob(self.vms[i], self.fns['pearson'], jobid)
+            result = pulldata(self.vms[i], jobid, self.fns['pearson'], self.workspace)
+            sumprod+=result[0][0]
+            sumsx += result[0][1]
+            sumsy += result[0][2]
+        return sumprod/((sumsx*sumsy)**0.5)

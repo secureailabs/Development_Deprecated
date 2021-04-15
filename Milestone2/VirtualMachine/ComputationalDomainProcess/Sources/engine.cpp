@@ -20,7 +20,9 @@
 #include <unistd.h>
 #include <vector>
 #include <iostream>
+#include <fstream>
 #include <sstream>
+#include <stdio.h>
 
 /********************************************************************************************
  *
@@ -100,29 +102,38 @@ void __thiscall JobEngine::ProcessOneJob(void)
             //m_stlJobMap[strJob]->JobRunScript();
 
             //create a process to run the job
+
             pid_t nPid = fork();
 
             if(0==nPid)
             {
                 m_stlJobMap[strJob]->JobRunFunctionNode();
+                std::string strMarker = "/tmp/" + strJob + ".marker";
+                const char* fname = strMarker.c_str();
+                std::cout<<"create: "<<fname<<std::endl;
+                std::ofstream outfile (fname);
+                outfile << "marker" << std::endl;
+                outfile.close();
+                std::cout<<"create done "<<std::endl;
                 exit(0);
             }
 
             //the main process will create a thread to wait for the job to finish
-            else{
-            	int nStatus;
-            	waitpid(nPid, &nStatus, 0);
-            	std::cout<<"job done"<<std::endl;
-            	if(nStatus==0)
-            	{
-            	    m_stlJobMap[strJob]->SetStatus(eCompleted);
-            	    std::cout<<"job success"<<std::endl;
-            	}
-            	else
-            	{
-            	    //m_stlJobMap[strJob]->SetStatus(eFail);
-            	    std::cout<<"job fail"<<std::endl;
-            	}
+            else
+            {
+            	// int nStatus;
+            	// waitpid(nPid, &nStatus, 0);
+            	// std::cout<<"job done"<<std::endl;
+            	// if(nStatus==0)
+            	// {
+            	//     m_stlJobMap[strJob]->SetStatus(eCompleted);
+            	//     std::cout<<"job success"<<std::endl;
+            	// }
+            	// else
+            	// {
+            	//     //m_stlJobMap[strJob]->SetStatus(eCompleted);
+            	//     std::cout<<"job fail"<<std::endl;
+            	// }
             }
         }
     }

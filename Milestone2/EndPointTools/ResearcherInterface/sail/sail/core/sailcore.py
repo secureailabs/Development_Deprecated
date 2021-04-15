@@ -48,7 +48,7 @@ def spawnvms(numberOfVMs):
         vms.append(vm)
     return vms
 
-def connectToVMs(config):
+def configVMs(config):
     f = open(config, 'r')
     ips = []
     usernames = []

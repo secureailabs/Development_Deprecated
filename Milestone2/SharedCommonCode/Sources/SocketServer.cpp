@@ -33,22 +33,18 @@
  *    no facility that enables developers to bind a network socket to a specific adapter
  *
  ********************************************************************************************/
-
 SocketServer::SocketServer(
     _in Word wPortIdentifier
     )
     : m_nSocketDescriptor(-1), m_nPollingFileDescriptor(-1)
 {
     __DebugFunction();
-
     // In this version of the constructor, we are using a standard network socket. As such,
     // we will be using a sockaddr_in structure to set things up
     struct sockaddr_in oSocketAddress;
-    
     // Create the base network (standard) socket
     m_nSocketDescriptor = ::socket(AF_INET, SOCK_STREAM, 0);
     _ThrowBaseExceptionIf((-1 == m_nSocketDescriptor), "socket() failed with errno = %d", errno);
-
     // Setup some socket options that make the address reusable. This deals with the kernel
     // not releasing sockets fast enough when they are closed.
     int nReuseAddress = 1;
@@ -60,20 +56,16 @@ SocketServer::SocketServer(
     oSocketAddress.sin_family = AF_INET;
     oSocketAddress.sin_addr.s_addr = INADDR_ANY;
     oSocketAddress.sin_port = htons(wPortIdentifier);
-
     // Bind the socket. This binds the socket to all network adapters
     nReturnCode = ::bind(m_nSocketDescriptor, (struct sockaddr *) &oSocketAddress, sizeof(oSocketAddress));
     _ThrowBaseExceptionIf((-1 == nReturnCode), "bind() failed with errno = %d", errno);
-
     // Make sure the socket listens for incoming connection requests
     nReturnCode = ::listen(m_nSocketDescriptor, 300);
     _ThrowBaseExceptionIf((-1 == nReturnCode), "listen() failed with errno = %d", errno);
-
     // Initialize epoll stuff
     struct epoll_event sEvent;
     m_nPollingFileDescriptor = ::epoll_create1(0);
     _ThrowBaseExceptionIf((-1 == m_nPollingFileDescriptor), "epoll_create1() failed with errno = %d", errno);
-
     // The sockets are all blocking sockets, but we use epoll to check whenever we try to
     // accept something. This will prevent the code from blocking when accept() is called
     sEvent.events = EPOLLIN;
@@ -81,7 +73,6 @@ SocketServer::SocketServer(
     int nReturnValue = ::epoll_ctl(m_nPollingFileDescriptor, EPOLL_CTL_ADD, m_nSocketDescriptor, &sEvent);
     _ThrowBaseExceptionIf((0 != nReturnValue), "epoll_ctl() failed with errno = %d", errno);
 }
-
 /********************************************************************************************
  *
  * @class SocketServer
@@ -91,7 +82,6 @@ SocketServer::SocketServer(
  * @throw BaseException If the network socket fails to be initialized properly
  *
  ********************************************************************************************/
-
 SocketServer::SocketServer(
     _in const char * c_szSocketServerAddress
     )
@@ -99,15 +89,12 @@ SocketServer::SocketServer(
 {
     __DebugFunction();
     __DebugAssert(nullptr != c_szSocketServerAddress);
-
     // In this version of the constructor, we are using a Unix domain socket. As such,
     // we will be using a sockaddr_un structure to set things up
     struct sockaddr_un oSocketAddress;
-    
     // Create the base socket, which is a UNIX socket
     m_nSocketDescriptor = ::socket(AF_UNIX, SOCK_STREAM, 0);
     _ThrowBaseExceptionIf((-1 == m_nSocketDescriptor), "socket() failed with errno = %d", errno);
-
     // Setup some socket options that make the address reusable. This deals with the kernel
     // not releasing sockets fast enough when they are closed.
     int nReuseAddress = 1;
@@ -118,23 +105,18 @@ SocketServer::SocketServer(
     ::memset(&oSocketAddress, 0, sizeof(oSocketAddress));
     oSocketAddress.sun_family = AF_UNIX;
     ::strncpy(oSocketAddress.sun_path, c_szSocketServerAddress, (sizeof(oSocketAddress.sun_path) - 1));
-
     // Make sure that any existing linkage in the system is deleted before binding
     ::unlink(c_szSocketServerAddress);
     nReturnCode = ::bind(m_nSocketDescriptor, (struct sockaddr *) &oSocketAddress, sizeof(oSocketAddress));
     _ThrowBaseExceptionIf((-1 == nReturnCode), "bind() failed with errno = %d", errno);
-
     m_strUnixDomainAddress = c_szSocketServerAddress;
-    
     // Make sure the socket listens for incoming connection requests
     nReturnCode = ::listen(m_nSocketDescriptor, 300);
     _ThrowBaseExceptionIf((-1 == nReturnCode), "listen() failed with errno = %d", errno);
-
     // Initialize epoll stuff
     struct epoll_event sEvent;
     m_nPollingFileDescriptor = ::epoll_create1(0);
     _ThrowBaseExceptionIf((-1 == m_nPollingFileDescriptor), "epoll_create1() failed with errno = %d", errno);
-
     // The sockets are all blocking sockets, but we use epoll to check whenever we try to
     // read something.
     sEvent.events = EPOLLIN;

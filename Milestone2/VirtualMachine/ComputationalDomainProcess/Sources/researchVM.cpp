@@ -59,6 +59,9 @@ ComputationVM::ComputationVM(
 
     m_strVirtualMachineIdentifier = Guid().ToString(eRaw);
     
+    std::cout<<"init vm"<<std::endl;
+    std::cout<<m_strVirtualMachineIdentifier<<std::endl;
+    
     StructuredBuffer oEventData;
     oEventData.PutBoolean("Success", true);
     oEventData.PutGuid("ComputationalDomainIdentifier", m_oRootOfTrustNode.GetDomainIdentifier());
@@ -66,6 +69,7 @@ ComputationVM::ComputationVM(
     oEventData.PutString("Python Version", "python3.8");
     oEventData.PutString("OS Version", "Ubuntu 20.04");
     m_oRootOfTrustNode.RecordAuditEvent("COMPUTATIONAL_PROCESS_START", 0x1111, 0x05, oEventData);
+    std::cout<<"init vm done"<<std::endl;
 }
 
 /********************************************************************************************/
@@ -123,7 +127,7 @@ void ComputationVM::SocketListen(void)
         {
             if (true == m_oTlsServer.WaitForConnection(1000))
             {
-                TlsNode*  poNewConnection = m_oTlsServer.Accept();
+                TlsNode* poNewConnection = m_oTlsServer.Accept();
                 _ThrowIfNull(poNewConnection, "Handle computationVM connection request retures a null pointer.", nullptr);
                 this->HandleConnection(poNewConnection);
             }
@@ -224,8 +228,11 @@ void __thiscall ComputationVM::HandleConnect(
     __DebugFunction();
 
     bool fSuccess = true;
-        
+    
+    std::cout<<"connect vm"<<std::endl;
     __DebugAssert(true == oContent.IsElementPresent("EOSB", ANSI_CHARACTER_STRING_VALUE_TYPE));
+    std::cout<<"present eosb"<<std::endl;
+    std::cout<<oContent.GetString("EOSB")<<std::endl;
     
     oResponse.PutString("VMID", m_strVirtualMachineIdentifier);
     oResponse.PutBoolean("Success", fSuccess);
@@ -237,6 +244,7 @@ void __thiscall ComputationVM::HandleConnect(
     oEventData.PutString("OrchestratorVersion", "1.0.0");
     oEventData.PutString("EOSB", oContent.GetString("EOSB"));
     m_oRootOfTrustNode.RecordAuditEvent("CONNECT_SUCCESS", 0x1111, 0x04, oEventData);
+    std::cout<<"connect vm done"<<std::endl;
 }
 
 /********************************************************************************************
@@ -488,7 +496,7 @@ void __thiscall ComputationVM::LinkPassID(
 
             while(access(target, F_OK)!=0)   
             {
-                std::cout<<"filename:"<<target<<" linkdata waiting for file"<<std::endl;
+                //std::cout<<"filename:"<<target<<" linkdata waiting for file"<<std::endl;
             }
 
             int res = symlink(target, linkpath);
@@ -542,10 +550,18 @@ void __thiscall ComputationVM::LoadDataToBuffer(
     size_t nNumber = stlVarIDs.size();
     for (size_t i = 0; i < nNumber; i++)
     {
-        while ((0 != access(std::string("/tmp/"+strJobIdentifier+stlVarIDs[i]).c_str(), F_OK))||(eCompleted != m_oEngine.PeekStatus(strJobIdentifier)))
+        // while ((0 != access(std::string("/tmp/"+strJobIdentifier+stlVarIDs[i]).c_str(), F_OK))||(eCompleted != m_oEngine.PeekStatus(strJobIdentifier)))
+        // {
+        //     //std::cout<<"filename:"<<"/tmp/"+strJobIdentifier+stlVarIDs[i]<<" waiting for file"<<std::endl;
+        // }
+        std::cout<<"filename:"<<"/tmp/"+strJobID+stlVarIDs[i]<<" waiting for file"<<std::endl;
+        std::string strMarker = "/tmp/" + strJobID + ".marker";
+        const char* fname = strMarker.c_str();
+        while (0 != access(fname, F_OK))
         {
-            //std::cout<<"filename:"<<"/tmp/"+strJobIdentifier+stlVarIDs[i]<<" waiting for file"<<std::endl;
+            //std::cout<<"filename:"<<"/tmp/"+strJobID+stlVarIDs[i]<<" waiting for file"<<std::endl;
         }
+        std::cout<<"file obtained"<<std::endl;
 
         std::ifstream stlVarFile;
         stlVarFile.open(std::string("/tmp/"+strJobIdentifier+stlVarIDs[i]).c_str(), std::ios::out | std::ios::binary);

@@ -49,6 +49,12 @@ SocketServer::SocketServer(
     m_nSocketDescriptor = ::socket(AF_INET, SOCK_STREAM, 0);
     _ThrowBaseExceptionIf((-1 == m_nSocketDescriptor), "socket() failed with errno = %d", errno);
 
+    // Setup some socket options that make the address reusable. This deals with the kernel
+    // not releasing sockets fast enough when they are closed.
+    int nReuseAddress = 1;
+    int nReturnCode = ::setsockopt(m_nSocketDescriptor, SOL_SOCKET, SO_REUSEADDR, (const Byte *) &nReuseAddress, sizeof(nReuseAddress));
+    nReturnCode = ::setsockopt(m_nSocketDescriptor, SOL_SOCKET, SO_REUSEPORT, (const Byte *) &nReuseAddress, sizeof(nReuseAddress));
+    
     // Initialize the socket address structure
     ::memset(&oSocketAddress, 0, sizeof(oSocketAddress));
     oSocketAddress.sin_family = AF_INET;
@@ -56,11 +62,11 @@ SocketServer::SocketServer(
     oSocketAddress.sin_port = htons(wPortIdentifier);
 
     // Bind the socket. This binds the socket to all network adapters
-    int nReturnCode = ::bind(m_nSocketDescriptor, (struct sockaddr *) &oSocketAddress, sizeof(oSocketAddress));
+    nReturnCode = ::bind(m_nSocketDescriptor, (struct sockaddr *) &oSocketAddress, sizeof(oSocketAddress));
     _ThrowBaseExceptionIf((-1 == nReturnCode), "bind() failed with errno = %d", errno);
 
     // Make sure the socket listens for incoming connection requests
-    nReturnCode = ::listen(m_nSocketDescriptor, 10);
+    nReturnCode = ::listen(m_nSocketDescriptor, 300);
     _ThrowBaseExceptionIf((-1 == nReturnCode), "listen() failed with errno = %d", errno);
 
     // Initialize epoll stuff
@@ -102,6 +108,12 @@ SocketServer::SocketServer(
     m_nSocketDescriptor = ::socket(AF_UNIX, SOCK_STREAM, 0);
     _ThrowBaseExceptionIf((-1 == m_nSocketDescriptor), "socket() failed with errno = %d", errno);
 
+    // Setup some socket options that make the address reusable. This deals with the kernel
+    // not releasing sockets fast enough when they are closed.
+    int nReuseAddress = 1;
+    int nReturnCode = ::setsockopt(m_nSocketDescriptor, SOL_SOCKET, SO_REUSEADDR, (const Byte *) &nReuseAddress, sizeof(nReuseAddress));
+    nReturnCode = ::setsockopt(m_nSocketDescriptor, SOL_SOCKET, SO_REUSEPORT, (const Byte *) &nReuseAddress, sizeof(nReuseAddress));
+    
     // Initialize the socket address structure
     ::memset(&oSocketAddress, 0, sizeof(oSocketAddress));
     oSocketAddress.sun_family = AF_UNIX;
@@ -109,13 +121,13 @@ SocketServer::SocketServer(
 
     // Make sure that any existing linkage in the system is deleted before binding
     ::unlink(c_szSocketServerAddress);
-    int nReturnCode = ::bind(m_nSocketDescriptor, (struct sockaddr *) &oSocketAddress, sizeof(oSocketAddress));
+    nReturnCode = ::bind(m_nSocketDescriptor, (struct sockaddr *) &oSocketAddress, sizeof(oSocketAddress));
     _ThrowBaseExceptionIf((-1 == nReturnCode), "bind() failed with errno = %d", errno);
 
     m_strUnixDomainAddress = c_szSocketServerAddress;
     
     // Make sure the socket listens for incoming connection requests
-    nReturnCode = ::listen(m_nSocketDescriptor, 10);
+    nReturnCode = ::listen(m_nSocketDescriptor, 300);
     _ThrowBaseExceptionIf((-1 == nReturnCode), "listen() failed with errno = %d", errno);
 
     // Initialize epoll stuff

@@ -60,7 +60,13 @@ class RootOfTrustCore : public Object
         bool __thiscall InitializeDataset(void);
         bool __thiscall RegisterDataOwnerEosb(void);
         bool __thiscall RegisterResearcherEosb(void);
-        
+        void __thiscall RecordInternalAuditEvent(
+            _in const char * c_szEventName,
+            _in Word wTargetChannelsBitMask,
+            _in Dword dwEventType,
+            _in const StructuredBuffer & c_oEventData
+            );
+            
         // Private data members
         
         bool m_fIsInitialized;

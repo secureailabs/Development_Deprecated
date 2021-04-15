@@ -130,7 +130,7 @@ void __thiscall RootOfTrustNode::RecordAuditEvent(
     try
     {   // Construct the transaction packet
         StructuredBuffer oTransactionData;
-        StructuredBuffer oEncryptedEventData = c_oEventData;
+        StructuredBuffer oEncryptedEventData(c_oEventData.GetBase64SerializedBuffer().c_str());
         Guid oEventGuid;
         // Internal elements only. These will be deleted before to transmitting the audit event
         oTransactionData.PutGuid("DomainIdentifier", m_oDomainIdentifier);

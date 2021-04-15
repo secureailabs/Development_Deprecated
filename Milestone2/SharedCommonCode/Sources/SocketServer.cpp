@@ -50,6 +50,7 @@ SocketServer::SocketServer(
     int nReuseAddress = 1;
     int nReturnCode = ::setsockopt(m_nSocketDescriptor, SOL_SOCKET, SO_REUSEADDR, (const Byte *) &nReuseAddress, sizeof(nReuseAddress));
     nReturnCode = ::setsockopt(m_nSocketDescriptor, SOL_SOCKET, SO_REUSEPORT, (const Byte *) &nReuseAddress, sizeof(nReuseAddress));
+    
     // Initialize the socket address structure
     ::memset(&oSocketAddress, 0, sizeof(oSocketAddress));
     oSocketAddress.sin_family = AF_INET;
@@ -99,6 +100,7 @@ SocketServer::SocketServer(
     int nReuseAddress = 1;
     int nReturnCode = ::setsockopt(m_nSocketDescriptor, SOL_SOCKET, SO_REUSEADDR, (const Byte *) &nReuseAddress, sizeof(nReuseAddress));
     nReturnCode = ::setsockopt(m_nSocketDescriptor, SOL_SOCKET, SO_REUSEPORT, (const Byte *) &nReuseAddress, sizeof(nReuseAddress));
+    
     // Initialize the socket address structure
     ::memset(&oSocketAddress, 0, sizeof(oSocketAddress));
     oSocketAddress.sun_family = AF_UNIX;

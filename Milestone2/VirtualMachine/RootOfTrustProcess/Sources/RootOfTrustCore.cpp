@@ -11,6 +11,7 @@
 #include "64BitHashes.h"
 #include "ApiCallHelpers.h"
 #include "Base64Encoder.h"
+#include "DateAndTime.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
 #include "ExceptionRegister.h"
@@ -43,6 +44,7 @@ RootOfTrustTransactionPacket;
 static SmartMemoryAllocator gs_oMemoryAllocator;
 
 /********************************************************************************************/
+
 
 static void * RootOfTrustIpcListenerThread(
     _in void * pParameter
@@ -123,6 +125,7 @@ static void * RootOfTrustAuditEventDispatcherThread(
     __DebugFunction();
     __DebugAssert(nullptr != pParameter);
     
+    std::cout << __func__ << std::endl;
     
     try
     {
@@ -256,10 +259,12 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
 {
     __DebugFunction();
     
-    unsigned int unDataOrganizationSequenceNumber = 0;
-    unsigned int unResearcherOrganizationSequenceNumber = 0;
+    std::cout << __func__ << std::endl;
+    
+    bool fIsShutdown = false;
+    bool fIsShuttingDown = false;
     StatusMonitor oStatusMonitor("void __thiscall RootOfTrustCore::AuditEventDispatcher(void)");
-    while (false == oStatusMonitor.IsTerminating())
+    while (false == fIsShutdown)
     {
         try
         {
@@ -323,9 +328,29 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
             ::RegisterUnknownException(__func__, __LINE__);
         }
         
+        // This must appear before the check to oStatusMonitor.IsTerminating()
+        if (true == fIsShuttingDown)
+        {
+            fIsShutdown = true;
+        }
+        
+        // Check to see if we are terminating
+        if ((false == fIsShuttingDown)&&(true == oStatusMonitor.IsTerminating()))
+        {
+            fIsShuttingDown = true;
+            StructuredBuffer oEventData;
+            oEventData.PutString("IpAddressOfSecureVirtualMachine", m_strIpAddressOfVirtualMachine);
+            oEventData.PutString("VirtualMachineIdentifier", m_strClusterIdentifier);
+            oEventData.PutString("ClusterIdentifier", m_strClusterIdentifier);
+            this->RecordInternalAuditEvent("VM_SHUTDOWN", 0x1111, 0x05, oEventData);
+        }
+        
         // Put this thread to sleep for 5 seconds
         ::sleep(5);
     }
+    
+    // On the way out, the AuditEventDispatcher will send out one last event, the VM_SHUTDOWN event
+    
 }
 
 /********************************************************************************************/
@@ -335,14 +360,14 @@ void __thiscall RootOfTrustCore::RunIpcListener(void)
     __DebugFunction();
     __DebugAssert(true == m_fIsInitialized);
     
-    ThreadManager * poThreadManager = ThreadManager::GetInstance();
+    std::cout << __func__ << std::endl;
     
+    ThreadManager * poThreadManager = ThreadManager::GetInstance();
     if (false == m_fIsRunning)
     {
         m_fIsRunning = true;
         _ThrowBaseExceptionIf((0xFFFFFFFFFFFFFFFF == poThreadManager->CreateThread("RootOfTrustCodeGroup", RootOfTrustAuditEventDispatcherThread, (void *) this)), "Failed to start the audit event dispacher thread", nullptr);
         _ThrowBaseExceptionIf((0xFFFFFFFFFFFFFFFF == poThreadManager->CreateThread("RootOfTrustCodeGroup", RootOfTrustIpcListenerThread, (void *) this)), "Failed to start the Root of Trust Listener Thread", nullptr);
-
     }
     else
     {
@@ -352,17 +377,55 @@ void __thiscall RootOfTrustCore::RunIpcListener(void)
         unsigned int unNumberOfLoops = 0;
         unsigned int unNumberOfSuccessfulTransactions = 0;
         unsigned int unNumberOfFailedTransactions = 0;
-        
         while (false == oStatusMonitor.IsTerminating())
         {
+            std::string strDataOwnerAccessToken = m_strDataOwnerAccessToken;;
+            std::string strResearcherEosb = m_strResearcherEosb;
+            std::string strDataOrganizationAuditEventParentBranchNodeIdentifier = m_strDataOrganizationAuditEventParentBranchNodeIdentifier;
+            std::string strResearcherOrganizationAuditEventParentBranchNodeIdentifier = m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier;
+            std::string strNameOfVirtualMachine = m_strNameOfVirtualMachine;
+            std::string strIpAddressOfVirtualMachine = m_strIpAddressOfVirtualMachine;
+            std::string strVirtualMachineIdentifier = m_strVirtualMachineIdentifier;
+            std::string strClusterIdentifier = m_strClusterIdentifier;
+            std::string strDigitalContractIdentifier = m_strDigitalContractIdentifier;
+            std::string strDatasetIdentifier = m_strDatasetIdentifier;
+            std::string strRootOfTrustDomainIdentifier = m_strRootOfTrustDomainIdentifier;
             std::string strComputationalDomainIdentifier = m_strComputationalDomainIdentifier;
+            std::string strDataConnectorDomainIdentifier = m_strDataConnectorDomainIdentifier;
+            std::string strSailWebApiPortalIpAddress = m_strSailWebApiPortalIpAddress;
+            std::string strDataOwnerOrganizationIdentifier = m_strDataOwnerOrganizationIdentifier;
+            std::string strDataOwnerUserIdentifier = m_strDataOwnerUserIdentifier;
+            std::string strRootOfTrustIpcPath = m_strRootOfTrustIpcPath;
+            std::string strComputationalDomainIpcPath = m_strComputationalDomainIpcPath;
+            std::string strDataDomainIpcPath = m_strDataDomainIpcPath;
+            bool fIsInitialized = m_fIsInitialized;
+            bool fIsRunning = m_fIsRunning;
             // We wait for a connection
             if (true == poIpcServer->WaitForConnection(1000))
             {
                 // BUGBUG: We are cheating here because there is a memory corruption issue when WaitForConnection()
                 // get calls, the m_strComputationalDomainIdentifier gets corrupted.
+                m_strDataOwnerAccessToken = strDataOwnerAccessToken;;
+                m_strResearcherEosb = strResearcherEosb;
+                m_strDataOrganizationAuditEventParentBranchNodeIdentifier = strDataOrganizationAuditEventParentBranchNodeIdentifier;
+                m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier = strResearcherOrganizationAuditEventParentBranchNodeIdentifier;
+                m_strNameOfVirtualMachine = strNameOfVirtualMachine;
+                m_strIpAddressOfVirtualMachine = strIpAddressOfVirtualMachine;
+                m_strVirtualMachineIdentifier = strVirtualMachineIdentifier;
+                m_strClusterIdentifier = strClusterIdentifier;
+                m_strDigitalContractIdentifier = strDigitalContractIdentifier;
+                m_strDatasetIdentifier = strDatasetIdentifier;
+                m_strRootOfTrustDomainIdentifier = strRootOfTrustDomainIdentifier;
                 m_strComputationalDomainIdentifier = strComputationalDomainIdentifier;
-                
+                m_strDataConnectorDomainIdentifier = strDataConnectorDomainIdentifier;
+                m_strSailWebApiPortalIpAddress = strSailWebApiPortalIpAddress;
+                m_strDataOwnerOrganizationIdentifier = strDataOwnerOrganizationIdentifier;
+                m_strDataOwnerUserIdentifier = strDataOwnerUserIdentifier;
+                m_strRootOfTrustIpcPath = strRootOfTrustIpcPath;
+                m_strComputationalDomainIpcPath = strComputationalDomainIpcPath;
+                m_strDataDomainIpcPath = strDataDomainIpcPath;
+                m_fIsInitialized = fIsInitialized;
+                m_fIsRunning = fIsRunning;
                 // Get the socket for the waiting connection
                 Socket * poSocket = poIpcServer->Accept();
                 if (nullptr != poSocket)
@@ -371,14 +434,12 @@ void __thiscall RootOfTrustCore::RunIpcListener(void)
                     // of spawning a new thread
                     RootOfTrustTransactionPacket * poRootOfTrustTransactionPacket = (RootOfTrustTransactionPacket *) gs_oMemoryAllocator.Allocate(sizeof(RootOfTrustTransactionPacket), true);
                     _ThrowOutOfMemoryExceptionIfNull(poIpcServer);
-                    
                     // Initialize the RootOfTrustTransactionPacket structure
                     poRootOfTrustTransactionPacket->poRootOfTrustCore = this;
                     poRootOfTrustTransactionPacket->poSocket = poSocket;
                     // If we fail to create the thread, then we fail to process the transaction
                     // and this is impossibly BAD. We need to throw an exception. This will
                     // terminate the RunIpcListener thread and exit.
-                    
                     if (0xFFFFFFFFFFFFFFFF == poThreadManager->CreateThread("RootOfTrustCodeGroup", RootOfTrustTransactionHandlerThread, (void *) poRootOfTrustTransactionPacket))
                     {
                         unNumberOfFailedTransactions++;
@@ -390,21 +451,17 @@ void __thiscall RootOfTrustCore::RunIpcListener(void)
                     }
                 }
             }
-            
             unNumberOfLoops++;
             //oStatusMonitor.UpdateStatus("unNumberOfLoops = %d, unNumberOfSuccessfulTransactions = %d, unNumberOfFailedTransactions = %d", unNumberOfLoops, unNumberOfSuccessfulTransactions, unNumberOfFailedTransactions);
         }
-        
         // Close out the IPC server for the RootOfTrust
         poIpcServer->Release();
-
         // Wait for all of the slave threads to terminate before exiting the dedicated Ipc
         // listener thread
         poThreadManager->JoinThreadGroup("RootOfTrustCodeGroup");
         m_fIsRunning = false;
     }
 }
-
 /********************************************************************************************/
 
 void __thiscall RootOfTrustCore::HandleIncomingTransaction(
@@ -413,10 +470,12 @@ void __thiscall RootOfTrustCore::HandleIncomingTransaction(
 {
     __DebugFunction();
     __DebugAssert(nullptr != poSocket);
+
+    std::cout << __func__ << std::endl;
     
     StructuredBuffer oTransactionParameters(::GetIpcTransaction(poSocket));
     std::vector<Byte> stlSerializedResponse;
-    
+
     // By default, ALL incoming transactions must have, at least, a DomainIdentifier
     // as well as a Transaction identifier
     Guid oOriginatingDomainIdentifier = oTransactionParameters.GetGuid("DomainIdentifier");
@@ -495,11 +554,16 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactRecordAuditEvent(
     )
 {
     __DebugFunction();
-
+    
     StructuredBuffer oResponseBuffer;
     
     try
     {
+        std::cout << __func__ << std::endl;
+        static unsigned int s_unResearcherAuditEventSequenceNumber = 0;
+        static unsigned int s_unDataOwnerAuditEventSequenceNumber = 0;
+        static unsigned int s_unThirdPartyAuditorAuditEventSequenceNumber = 0;
+        static unsigned int s_unSailAuditEventSequenceNumber = 0;
         StructuredBuffer oCopyOfTransactionParameters(c_oTransactionParameters);
         // Make a copy of the target channels
         Word wTargetChannelsBitMask = oCopyOfTransactionParameters.GetWord("TargetChannelsBitMask");
@@ -528,18 +592,26 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactRecordAuditEvent(
         const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
         if (0x1000 == (0x1000 & wTargetChannelsBitMask)) // Third Party Auditor Channel
         {
+            unsigned int unSequenceNumber = ::__sync_fetch_and_add((int *) &s_unThirdPartyAuditorAuditEventSequenceNumber, 1);
+            oCopyOfTransactionParameters.PutUnsignedInt32("SequenceNumber", unSequenceNumber);
             m_stlIndependentAuditorOrganizationAuditEventQueue.push(oCopyOfTransactionParameters.GetBase64SerializedBuffer());
         }
         if (0x0100 == (0x0100 & wTargetChannelsBitMask)) // Data Organization Channel
         {
+            unsigned int unSequenceNumber = ::__sync_fetch_and_add((int *) &s_unDataOwnerAuditEventSequenceNumber, 1);
+            oCopyOfTransactionParameters.PutUnsignedInt32("SequenceNumber", unSequenceNumber);
             m_stlDataOrganizationAuditEventQueue.push(oCopyOfTransactionParameters.GetBase64SerializedBuffer());
         }
         if (0x0010 == (0x0010 & wTargetChannelsBitMask)) // Research Organization Channel
         {
+            unsigned int unSequenceNumber = ::__sync_fetch_and_add((int *) &s_unResearcherAuditEventSequenceNumber, 1);
+            oCopyOfTransactionParameters.PutUnsignedInt32("SequenceNumber", unSequenceNumber);
             m_stlResearchOrganizationAuditEventQueue.push(oCopyOfTransactionParameters.GetBase64SerializedBuffer());
         }
         if (0x0001 == (0x0001 & wTargetChannelsBitMask)) // Sail Organization Channel
         {
+            unsigned int unSequenceNumber = ::__sync_fetch_and_add((int *) &s_unSailAuditEventSequenceNumber, 1);
+            oCopyOfTransactionParameters.PutUnsignedInt32("SequenceNumber", unSequenceNumber);
             m_stlSailOrganizationAuditEventQueue.push(oCopyOfTransactionParameters.GetBase64SerializedBuffer());
         }
     }
@@ -564,19 +636,36 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactRecordAuditEvent(
 bool __thiscall RootOfTrustCore::InitializeVirtualMachine(void)
 {
     __DebugFunction();
-    
+
     bool fSuccess = false;
-    
+
     try
     {
-        // Make sure we are thread safe
-        const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
-        // Make sure all of the parameters are proper
-        if ((0 < m_strDataOwnerAccessToken.size())&&(0 < m_strVirtualMachineIdentifier.size())&&(0 < m_strDigitalContractIdentifier.size())&&(0 < m_strIpAddressOfVirtualMachine.size()))
+        std::cout << __func__ << std::endl;
+        // First we generate an audit event which marks the start of the virtual machine
+        StructuredBuffer oEventData;
+        oEventData.PutString("PythonIntepreterVersion", "v3.8");
+        oEventData.PutString("SecureVirtualMachineVersion", "0.1.37");
+        oEventData.PutString("IpAddressOfSecureVirtualMachine", m_strIpAddressOfVirtualMachine);
+        oEventData.PutString("VirtualMachineIdentifier", m_strClusterIdentifier);
+        oEventData.PutString("ClusterIdentifier", m_strClusterIdentifier);
+        this->RecordInternalAuditEvent("VM_INITIALIZE", 0x1111, 0x05, oEventData);
         {
-            m_strVirtualMachineEosb = ::RegisterVirtualMachineWithSailWebApiPortal(m_strDataOwnerAccessToken, m_strVirtualMachineIdentifier, m_strDigitalContractIdentifier, m_strIpAddressOfVirtualMachine);
-            fSuccess = true;
+            // Make sure we are thread safe
+            const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
+            // Make sure all of the parameters are proper
+            if ((0 < m_strDataOwnerAccessToken.size())&&(0 < m_strVirtualMachineIdentifier.size())&&(0 < m_strDigitalContractIdentifier.size())&&(0 < m_strIpAddressOfVirtualMachine.size()))
+            {
+                m_strVirtualMachineEosb = ::RegisterVirtualMachineWithSailWebApiPortal(m_strDataOwnerAccessToken, m_strVirtualMachineIdentifier, m_strDigitalContractIdentifier, m_strIpAddressOfVirtualMachine);
+                fSuccess = true;
+            }
         }
+        // Now, we generate an event to recognize the digital contract initialization
+        oEventData.Clear();
+        oEventData.PutString("DigitalContractIdentifier", m_strDigitalContractIdentifier);
+        oEventData.PutString("VirtualMachineIdentifier", m_strClusterIdentifier);
+        oEventData.PutString("ClusterIdentifier", m_strClusterIdentifier);
+        this->RecordInternalAuditEvent("DC_INITIALIZE", 0x1111, 0x05, oEventData);
     }
     
     catch (BaseException oException)
@@ -602,6 +691,7 @@ bool __thiscall RootOfTrustCore::RegisterDataOwnerEosb(void)
     
     try
     {
+        std::cout << __func__ << std::endl;
         // Make sure we are thread safe
         const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
         // Make sure all of the parameters are proper
@@ -635,6 +725,7 @@ bool __thiscall RootOfTrustCore::RegisterResearcherEosb(void)
     
     try
     {
+        std::cout << __func__ << std::endl;
         // Make sure we are thread safe
         const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
         // Make sure all of the parameters are proper
@@ -656,4 +747,51 @@ bool __thiscall RootOfTrustCore::RegisterResearcherEosb(void)
     }
 
     return fSuccess;
+}
+
+/********************************************************************************************/
+
+void __thiscall RootOfTrustCore::RecordInternalAuditEvent(
+    _in const char * c_szEventName,
+    _in Word wTargetChannelsBitMask,
+    _in Dword dwEventType,
+    _in const StructuredBuffer & c_oEventData
+    )
+{
+    __DebugFunction();
+    
+    try
+    {   
+        std::cout << __func__ << std::endl;
+        // Construct the transaction packet
+        Guid oRootOfTrustDomainIdentifier(m_strRootOfTrustDomainIdentifier.c_str());
+        Guid oEventGuid;
+        StructuredBuffer oTransactionData;
+        StructuredBuffer oEncryptedEventData = c_oEventData;
+        // Internal elements only. These will be deleted before to transmitting the audit event
+        oTransactionData.PutGuid("DomainIdentifier", oRootOfTrustDomainIdentifier);
+        oTransactionData.PutDword("Transaction", 0x00000009);
+        oTransactionData.PutWord("TargetChannelsBitMask", wTargetChannelsBitMask);
+        // Persistent properties of audit event
+        oTransactionData.PutString("EventGuid", oEventGuid.ToString(eHyphensAndCurlyBraces));
+        oTransactionData.PutQword("EventType", dwEventType);
+        oTransactionData.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+        // Make sure that the encrypted data contains the EventName property
+        oEncryptedEventData.PutString("EventName", c_szEventName);
+        // Add the encrypted event data to the audit event
+        oTransactionData.PutString("EncryptedEventData", oEncryptedEventData.GetBase64SerializedBuffer());
+        // Send the transaction
+        
+        this->TransactRecordAuditEvent(oRootOfTrustDomainIdentifier, oTransactionData);
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
 }

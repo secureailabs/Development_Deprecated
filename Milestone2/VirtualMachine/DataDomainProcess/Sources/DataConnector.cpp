@@ -81,10 +81,10 @@ DataConnector::~DataConnector(void)
 {
     __DebugFunction();
 
-    if (nullptr != m_oDataSetMetaDataStructuredBuffer)
+    if (nullptr != m_poDataSetMetaDataStructuredBuffer)
     {
-        m_oDataSetMetaDataStructuredBuffer->Release();
-        m_oDataSetMetaDataStructuredBuffer = nullptr;
+        m_poDataSetMetaDataStructuredBuffer->Release();
+        m_poDataSetMetaDataStructuredBuffer = nullptr;
     }
 }
 
@@ -137,16 +137,16 @@ bool __thiscall DataConnector::LoadAndVerify(
     stlDatasetFile.seekg(unMetaDataOffset);
     std::vector<Byte> stlMetaDataStructuredBuffer(m_unMetaDataSizeInBytes);
     stlDatasetFile.read((char *)stlMetaDataStructuredBuffer.data(), m_unMetaDataSizeInBytes);
-    m_oDataSetMetaDataStructuredBuffer = new StructuredBuffer(stlMetaDataStructuredBuffer);
-    int32_t nNumberOfTables = m_oDataSetMetaDataStructuredBuffer->GetInt32("NumberTables");
+    m_poDataSetMetaDataStructuredBuffer = new StructuredBuffer(stlMetaDataStructuredBuffer);
+    int32_t nNumberOfTables = m_poDataSetMetaDataStructuredBuffer->GetInt32("NumberTables");
 
     // Convert the metadata offset Byte buffer to uin64_t vector
-    std::vector<Byte> stlTableMetadataOffsetBuffer = m_oDataSetMetaDataStructuredBuffer->GetBuffer("OffsetTables");
+    std::vector<Byte> stlTableMetadataOffsetBuffer = m_poDataSetMetaDataStructuredBuffer->GetBuffer("OffsetTables");
     std::vector<uint64_t> stlTableMetadataOffsetArray(nNumberOfTables);
     ::memcpy(stlTableMetadataOffsetArray.data(), stlTableMetadataOffsetBuffer.data(), stlTableMetadataOffsetBuffer.size());
 
     // Convert the metadata size Byte buffer to uin64_t vector
-    std::vector<Byte> stlTableMetadataSizeBuffer = m_oDataSetMetaDataStructuredBuffer->GetBuffer("SizeTables");
+    std::vector<Byte> stlTableMetadataSizeBuffer = m_poDataSetMetaDataStructuredBuffer->GetBuffer("SizeTables");
     std::vector<uint64_t> stlTableMetadataSizeArray(nNumberOfTables);
     ::memcpy(stlTableMetadataSizeArray.data(), stlTableMetadataSizeBuffer.data(), stlTableMetadataSizeBuffer.size());
 
@@ -187,6 +187,8 @@ bool __thiscall DataConnector::LoadAndVerify(
 
     StructuredBuffer oEventData;
     oEventData.PutBoolean("Success", true);
+    oEventData.PutStructuredBuffer("DatasetHeaderData", oHeaderStructuredBuffer);
+    oEventData.PutStructuredBuffer("DatasetMetadata", *m_poDataSetMetaDataStructuredBuffer);
     m_poRootOfTrustNode->RecordAuditEvent("LOAD_DATASET", 0x1111, 0x05, oEventData);
         
     return true;
@@ -297,7 +299,7 @@ void __thiscall DataConnector::HandleRequestsUntilClose(
                     else if (eGetDatasetMetadata == requestType)
                     {
                         oDataResponse.PutBoolean("Status", true);
-                        oDataResponse.PutStructuredBuffer("ResponseData", *m_oDataSetMetaDataStructuredBuffer);
+                        oDataResponse.PutStructuredBuffer("ResponseData", *m_poDataSetMetaDataStructuredBuffer);
                         
                         m_poRootOfTrustNode->RecordAuditEvent("DATASET_GET_METADATA", 0x1100, 0x01, oDataResponse);
                     }
@@ -383,7 +385,7 @@ StructuredBuffer __thiscall DataConnector::GetTableRowRange(
     StructuredBuffer oResponseStructuredBuffer;
     std::string strResponseString;
 
-    if ((m_oDataSetMetaDataStructuredBuffer->GetInt32("NumberTables") <= unTableID) || (m_stlTableMetaData[unTableID].GetInt32("NumberRows") <= unEndRowNumber) || (unStartRowNumber > unEndRowNumber))
+    if ((m_poDataSetMetaDataStructuredBuffer->GetInt32("NumberTables") <= unTableID) || (m_stlTableMetaData[unTableID].GetInt32("NumberRows") <= unEndRowNumber) || (unStartRowNumber > unEndRowNumber))
     {
         oResponseStructuredBuffer.PutBoolean("Status", false);
         oResponseStructuredBuffer.PutString("ResponseString", "Out of Bounds Request");
@@ -434,7 +436,7 @@ StructuredBuffer __thiscall DataConnector::GetTableColumnRange(
     StructuredBuffer oResponseStructuredBuffer;
     std::string strResponseString;
 
-    if ((m_oDataSetMetaDataStructuredBuffer->GetInt32("NumberTables") <= unTableID) || (m_stlTableMetaData[unTableID].GetInt32("NumberColumns") <= unEndColumnNumber) || (unStartColumnNumber > unEndColumnNumber))
+    if ((m_poDataSetMetaDataStructuredBuffer->GetInt32("NumberTables") <= unTableID) || (m_stlTableMetaData[unTableID].GetInt32("NumberColumns") <= unEndColumnNumber) || (unStartColumnNumber > unEndColumnNumber))
     {
         oResponseStructuredBuffer.PutBoolean("Status", false);
         oResponseStructuredBuffer.PutString("ResponseString", "Out of Bounds Request");

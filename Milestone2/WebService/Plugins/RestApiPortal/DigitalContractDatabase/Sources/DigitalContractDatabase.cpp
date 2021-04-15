@@ -268,17 +268,6 @@ DigitalContractDatabase::DigitalContractDatabase(
 DigitalContractDatabase::~DigitalContractDatabase(void)
 {
     __DebugFunction();
-
-    for (DigitalContract * oDigitalContract : m_stlDigitalContracts)
-    {
-        delete oDigitalContract;
-    }
-
-    for (UserAccount * oUserAccount : m_stlUserAccounts)
-    {
-        delete oUserAccount;
-    }
-
 }
 
 /********************************************************************************************

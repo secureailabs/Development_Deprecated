@@ -351,54 +351,14 @@ void __thiscall AuditLogManager::InitializePlugin(void)
 {
     __DebugFunction();
 
-    // Add parameters for registering non-leaf events
+    // Add parameters for registering leaf events
     // Name, ElementType, and Range (if exists) are used by RestFrameworkRuntimeData::RunThread to vet request parameters.
     // Required parameters are marked by setting IsRequired to true
     // Otherwise the parameter is optional
-    StructuredBuffer oRegisterNonLeafEvents;
+    StructuredBuffer oRegisterLeafEvents;
     StructuredBuffer oEosb;
     oEosb.PutByte("ElementType", BUFFER_VALUE_TYPE);
     oEosb.PutBoolean("IsRequired", true);
-    oRegisterNonLeafEvents.PutStructuredBuffer("Eosb", oEosb);
-    StructuredBuffer oMetadata;
-    oMetadata.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
-    oMetadata.PutBoolean("IsRequired", true);
-    StructuredBuffer oEventGuid;
-    oEventGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
-    oEventGuid.PutBoolean("IsRequired", true);
-    oMetadata.PutStructuredBuffer("EventGuid", oEventGuid);
-    StructuredBuffer oParentGuid;
-    oParentGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
-    oParentGuid.PutBoolean("IsRequired", true);
-    oMetadata.PutStructuredBuffer("ParentGuid", oParentGuid);
-    StructuredBuffer oOrganizationGuid;
-    oOrganizationGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
-    oOrganizationGuid.PutBoolean("IsRequired", true);
-    oMetadata.PutStructuredBuffer("OrganizationGuid", oOrganizationGuid);
-    StructuredBuffer oEventType;
-    oEventType.PutByte("ElementType", QWORD_VALUE_TYPE);
-    oEventType.PutBoolean("IsRequired", true);
-    oMetadata.PutStructuredBuffer("EventType", oEventType);
-    StructuredBuffer oTimestamp;
-    oTimestamp.PutByte("ElementType", UINT64_VALUE_TYPE);
-    oTimestamp.PutBoolean("IsRequired", true);
-    oMetadata.PutStructuredBuffer("Timestamp", oTimestamp);
-    StructuredBuffer oPlainTextMetadata;
-    oPlainTextMetadata.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
-    oPlainTextMetadata.PutBoolean("IsRequired", true);
-    StructuredBuffer oBranchType;
-    oBranchType.PutByte("ElementType", DWORD_VALUE_TYPE);
-    oBranchType.PutBoolean("IsRequired", false);
-    oPlainTextMetadata.PutStructuredBuffer("BranchType", oBranchType);
-    StructuredBuffer oGuidOfDcOrVm;
-    oGuidOfDcOrVm.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
-    oGuidOfDcOrVm.PutBoolean("IsRequired", true);
-    oPlainTextMetadata.PutStructuredBuffer("GuidOfDcOrVm", oGuidOfDcOrVm);
-    oMetadata.PutStructuredBuffer("PlainTextEventData", oPlainTextMetadata);
-    oRegisterNonLeafEvents.PutStructuredBuffer("NonLeafEvent", oMetadata);
-
-    // Add parameters for registering leaf events
-    StructuredBuffer oRegisterLeafEvents;
     oRegisterLeafEvents.PutStructuredBuffer("Eosb", oEosb);
     StructuredBuffer oIdentifierOfParentNode;
     oIdentifierOfParentNode.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
@@ -413,6 +373,9 @@ void __thiscall AuditLogManager::InitializePlugin(void)
     StructuredBuffer oGetListOfEvents;
     oGetListOfEvents.PutStructuredBuffer("Eosb", oEosb);
     oGetListOfEvents.PutStructuredBuffer("ParentGuid", oIdentifierOfParentNode);
+    StructuredBuffer oOrganizationGuid;
+    oOrganizationGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oOrganizationGuid.PutBoolean("IsRequired", true);
     oGetListOfEvents.PutStructuredBuffer("OrganizationGuid", oOrganizationGuid);
     // Add optional filter parameters for fetching list of events
     StructuredBuffer oFilters;
@@ -443,9 +406,6 @@ void __thiscall AuditLogManager::InitializePlugin(void)
     oTypeOfEvents.PutBoolean("IsRequired", false);
     oFilters.PutStructuredBuffer("TypeOfEvents", oTypeOfEvents);
     oGetListOfEvents.PutStructuredBuffer("Filters", oFilters);
-
-    // Takes in an EOSB and registers a root/branch node
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuditLogManager/Events", oRegisterNonLeafEvents);
 
     // Takes in a EOSB and registers leaf events
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuditLogManager/LeafEvents", oRegisterLeafEvents);
@@ -577,10 +537,6 @@ uint64_t __thiscall AuditLogManager::SubmitRequest(
     // Route to the requested resource
     if ("POST" == strVerb)
     {
-        if ("/SAIL/AuditLogManager/Events" == strResource)
-        {
-            stlResponseBuffer = this->AddNonLeafEvent(c_oRequestStructuredBuffer);
-        }
         if ("/SAIL/AuditLogManager/LeafEvents" == strResource)
         {
             stlResponseBuffer = this->AddLeafEvent(c_oRequestStructuredBuffer);

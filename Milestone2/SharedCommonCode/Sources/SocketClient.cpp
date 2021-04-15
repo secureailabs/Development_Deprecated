@@ -45,6 +45,7 @@ Socket * __stdcall ConnectToUnixDomainSocket(
     int nReuseAddress = 1;
     int nReturnCode = ::setsockopt(nSocketDescriptor, SOL_SOCKET, SO_REUSEADDR, (const Byte *) &nReuseAddress, sizeof(nReuseAddress));
     nReturnCode = ::setsockopt(nSocketDescriptor, SOL_SOCKET, SO_REUSEPORT, (const Byte *) &nReuseAddress, sizeof(nReuseAddress));
+    
     // Initialize the socket address structure
     ::memset(&sSocketAddress, 0, sizeof(sSocketAddress));
     sSocketAddress.sun_family = AF_UNIX;
@@ -80,6 +81,7 @@ Socket * __stdcall ConnectToNetworkSocket(
     int nReuseAddress = 1;
     int nReturnCode = ::setsockopt(nSocketDescriptor, SOL_SOCKET, SO_REUSEADDR, (const Byte *) &nReuseAddress, sizeof(nReuseAddress));
     nReturnCode = ::setsockopt(nSocketDescriptor, SOL_SOCKET, SO_REUSEPORT, (const Byte *) &nReuseAddress, sizeof(nReuseAddress));
+    
     // Initialize the socket address structure
     ::memset(&sSocketAddress, 0, sizeof(sSocketAddress));
     sSocketAddress.sin_family = AF_INET;
@@ -87,8 +89,10 @@ Socket * __stdcall ConnectToNetworkSocket(
     std::cout << "ConnectToNetworkSocket(" << c_strTargetIpAddress << "," << wPortIdentifier << ");" << std::endl;
     nReturnCode = ::inet_pton(AF_INET, c_strTargetIpAddress.c_str(), &(sSocketAddress.sin_addr));
     _ThrowBaseExceptionIf((1 != nReturnCode), "inet_pton() failed with errno = %d", errno);
+
     // Now we can try to connect
     nReturnCode = ::connect(nSocketDescriptor, (struct sockaddr *) &sSocketAddress, sizeof(sSocketAddress));
     _ThrowBaseExceptionIf((0 != nReturnCode), "connect() failed with errno = %d", errno);
+
     return new Socket(nSocketDescriptor);
 }

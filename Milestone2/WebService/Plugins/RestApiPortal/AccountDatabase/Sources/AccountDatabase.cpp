@@ -269,12 +269,6 @@ AccountDatabase::AccountDatabase(
 AccountDatabase::~AccountDatabase(void)
 {
     __DebugFunction();
-
-    for (UserAccount * oUserAccount : m_stlUserAccounts)
-    {
-        delete oUserAccount;
-    }
-
 }
 
 /********************************************************************************************

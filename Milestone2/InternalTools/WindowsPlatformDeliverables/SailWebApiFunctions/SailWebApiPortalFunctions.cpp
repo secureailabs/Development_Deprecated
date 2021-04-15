@@ -655,7 +655,7 @@ extern "C" __declspec(dllexport) bool __cdecl UploadInitializationParametersToVi
     __DebugFunction();
 
     // [DllImport("SailWebApiPortalFunctions.dll", CallingConvention = CallingConvention.Cdecl )]
-    // static extern public bool UploadInitializationParametersToVirtualMachine(string nameOfVirtualMachine, string ipAddressOfVirtualMachine, string virtualMachineIdentifier, string clusterIdentifier, string digitalContractIdentifier, string datasetIdentifier, string rootOfTrustDomainIdentifier, string computationalDomainIdentifier, string dataConnectorDomainIdentifier, string ipAddressOfSailWebApiPortal, string base64EncodedDataset);
+    // static extern public bool UploadInitializationParametersToVirtualMachine(string nameOfVirtualMachine, string ipAddressOfVirtualMachine, string virtualMachineIdentifier, string clusterIdentifier, string digitalContractIdentifier, string datasetIdentifier, string rootOfTrustDomainIdentifier, string computationalDomainIdentifier, string dataConnectorDomainIdentifier, string ipAddressOfSailWebApiPortal, string base64EncodedDataset, string importorEosb);
     
     bool fSuccess = false;
 
@@ -685,18 +685,7 @@ extern "C" __declspec(dllexport) bool __cdecl UploadInitializationParametersToVi
         oInitializationParameters.PutString("DataOwnerUserIdentifier", gs_strAuthenticatedUserIdentifier);
         // Now we blast out the transaction
         std::vector<std::string> stlHeaders;
-        unsigned int unLoopCounter = 24;
-        std::vector<Byte> stlResponse;
-        do
-        {
-            stlResponse = ::RestApiCall(c_szIpAddressOfVirtualMachine, 6800, "POST", "/SAIL/InitializationParameters", oInitializationParameters.GetBase64SerializedBuffer(), true, stlHeaders);
-            if (0 == stlResponse.size())
-            {
-                unLoopCounter -= 1;
-                ::Sleep(5000);
-            }
-        }
-        while((0 <= unLoopCounter) && (0 == stlResponse.size()));
+        std::vector<Byte> stlResponse = ::RestApiCall(c_szIpAddressOfVirtualMachine, 6800, "POST", "/SAIL/InitializationParameters", oInitializationParameters.GetBase64SerializedBuffer(), true, stlHeaders);
         fSuccess = true;
     }
 
@@ -766,4 +755,4 @@ extern "C" __declspec(dllexport) BSTR __cdecl GetNextException(void)
     }
 
     return ::ConvertToBSTR(strException);
-}
+}   

@@ -43,7 +43,8 @@ static void * __stdcall StartThread(
     ThreadParameters * poThreadParameters = ((ThreadParameters *) poVoidThreadParameters);
     TlsNode * poTlsNode = poThreadParameters->m_poTlsNode;
     RestFrameworkRuntimeData * poRestFrameworkRuntimeData = poThreadParameters->m_poRestFrameworkRuntimeData;
-    poRestFrameworkRuntimeData->RunThread((TlsNode *) poTlsNode->GetRef());
+    poRestFrameworkRuntimeData->RunThread((TlsNode *) poTlsNode);
+    poTlsNode->Release();
 
     poRestFrameworkRuntimeData->m_oSmartMemoryAllocator.Deallocate(poVoidThreadParameters);
 

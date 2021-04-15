@@ -152,7 +152,7 @@ void ComputationVM::SocketListen(void)
  ********************************************************************************************/
 
 void ComputationVM::HandleConnection(
-    _in TlsNode*  poSocket
+    _in TlsNode *  poSocket
     )
 {
     __DebugFunction();

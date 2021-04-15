@@ -20,7 +20,6 @@
 #include "Socket.h"
 #include "SocketServer.h"
 #include "ThreadManager.h"
-#include "UserAccount.h"
 
 #include <pthread.h>
 #include <string.h>
@@ -144,7 +143,6 @@ class AccountDatabase : public Object
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;
         uint64_t m_unNextAvailableIdentifier;
         PluginDictionary m_oDictionary;
-        std::vector<UserAccount *> m_stlUserAccounts;
         bool m_fTerminationSignalEncountered;
 };
 

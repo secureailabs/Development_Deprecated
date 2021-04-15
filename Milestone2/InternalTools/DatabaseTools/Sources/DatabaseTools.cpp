@@ -81,7 +81,7 @@ void __thiscall DatabaseTools::InitializeMembers(void)
     m_stlOrganizations.push_back(OrganizationInformation{"Mercy General Hospital", "Los Angeles", "Nick Adams", "System Administrator", "nadams@mghl.com", "000-000-0000", "Nora Helmer", "Network Engineer", "nhelmer@mghl.com", "000-000-0000"});
     // Add super admins information
     m_stlAdmins.push_back(UserInformation{"lbart@igr.com", "Lily Bart", "System Administrator", "000-000-0000", eAdmin});
-    m_stlAdmins.push_back(UserInformation{"nadams@mgh.com", "Nick Adams", "System Administrator", "000-000-0000", eAdmin});
+    m_stlAdmins.push_back(UserInformation{"nadams@mghl.com", "Nick Adams", "System Administrator", "000-000-0000", eAdmin});
     // Add other users information
     m_stlUsers.push_back(UserInformation{"iarcher@igr.com", "Isabel Archer", "Security Expert", "000-000-0000", eOrganizationUser});
     m_stlUsers.push_back(UserInformation{"abede@igr.com", "Adam Bede", "Supply Generator", "000-000-0000", eOrganizationUser});

@@ -272,7 +272,7 @@ bool __thiscall Guid::operator == (
 
     catch (BaseException oException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oException, __func__, __LINE__);
     }
     
     catch(...)
@@ -334,7 +334,7 @@ bool __thiscall Guid::operator != (
 
     catch (BaseException oException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oException, __func__, __LINE__);
     }
     
     catch(...)

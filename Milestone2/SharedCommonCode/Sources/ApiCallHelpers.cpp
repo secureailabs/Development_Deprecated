@@ -181,6 +181,8 @@ std::string __stdcall LoginToSailWebApiPortal(
     _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Invalid Packet.", nullptr);
     std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
     std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+    // Release poTlsNode
+    poTlsNode->Release();
     StructuredBuffer oResponse(stlSerializedResponse);
     _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Failed REST Response", nullptr);
     strEosb = oResponse.GetString("Eosb");
@@ -240,6 +242,8 @@ StructuredBuffer __stdcall GetSailWebApiPortalBasicUserInformation(
             std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
             std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
             _ThrowBaseExceptionIf((0 == stlSerializedResponse.size()), "Invalid Packet.", nullptr);
+            // Release poTlsNode
+            poTlsNode->Release();
             StructuredBuffer oResponse(stlSerializedResponse);
             _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Failed REST Response", nullptr);
             oBasicUserInformation.PutString("OrganizationGuid", oResponse.GetString("OrganizationGuid"));
@@ -352,6 +356,8 @@ bool __stdcall TransmitAuditEventsToSailWebApiPortal(
             _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Invalid Packet.", nullptr);
             std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
             std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+            // Release poTlsNode
+            poTlsNode->Release();
             StructuredBuffer oResponse(stlSerializedResponse);
             _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Failed REST Response", nullptr);
             fSuccess = true;
@@ -426,6 +432,8 @@ StructuredBuffer __stdcall GetListOfDigitalContracts(
             _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Invalid Packet.", nullptr);
             std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
             std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+            // Release poTlsNode
+            poTlsNode->Release();
             StructuredBuffer oResponse(stlSerializedResponse);
             _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Failed REST Response", nullptr);
             oListOfDigitalContracts.PutStructuredBuffer("ListOfDigitalContracts", oResponse.GetStructuredBuffer("DigitalContracts"));
@@ -508,6 +516,8 @@ StructuredBuffer __stdcall GetDigitalContract(
             _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Invalid Packet.", nullptr);
             std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
             std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+            // Release poTlsNode
+            poTlsNode->Release();
             StructuredBuffer oResponse(stlSerializedResponse);
             _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting list of digital contracts.", nullptr);
             oDigitalContract.PutStructuredBuffer("DigitalContract", oResponse.GetStructuredBuffer("DigitalContract"));
@@ -596,6 +606,8 @@ std::string __stdcall RegisterVirtualMachineWithSailWebApiPortal(
             _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
             std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
             std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+            // Release poTlsNode
+            poTlsNode->Release();
             StructuredBuffer oResponse(stlSerializedResponse);
             std::cout << oResponse.ToString() << std::endl;
             _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
@@ -676,6 +688,8 @@ std::string __stdcall RegisterVirtualMachineDataOwner(
             _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
             std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
             std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+            // Release poTlsNode
+            poTlsNode->Release();
             StructuredBuffer oResponse(stlSerializedResponse);
             _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
             strVirtualMachineAuditEventBranchNodeIdentifier = oResponse.GetString("VmEventGuid");
@@ -754,6 +768,8 @@ std::string RegisterVirtualMachineResearcher(
             _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
             std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
             std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+            // Release poTlsNode
+            poTlsNode->Release();
             StructuredBuffer oResponse(stlSerializedResponse);
             _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
             strVirtualMachineAuditEventBranchNodeIdentifier = oResponse.GetString("VmEventGuid");

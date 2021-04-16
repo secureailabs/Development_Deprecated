@@ -634,8 +634,9 @@ std::vector<Byte> __thiscall AuditLogManager::GetUserInfo(
 
     // Call CryptographicManager plugin to get the decrypted eosb
     bool fSuccess = false;
-    Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+    Socket * poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
     StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+    poIpcCryptographicManager->Release();
     if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
     {
         StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
@@ -693,7 +694,9 @@ std::vector<Byte> __thiscall AuditLogManager::AddNonLeafEvent(
     unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
     std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
     _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-
+    // Make sure to release the poTlsNode
+    poTlsNode->Release();
+    
     Dword dwStatus = 204;
     // Check if DatabaseManager registered the events or not
     StructuredBuffer oDatabaseResponse(stlResponse);
@@ -753,7 +756,9 @@ std::vector<Byte> __thiscall AuditLogManager::AddLeafEvent(
         unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
         std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-
+        // Make sure to release the poTlsNode
+        poTlsNode->Release();
+        
         // Check if DatabaseManager registered the events or not
         StructuredBuffer oResponse(stlResponse);
         if (200 == oResponse.GetDword("Status"))
@@ -807,7 +812,9 @@ std::vector<Byte> __thiscall AuditLogManager::GetListOfEvents(
     unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
     std::vector<Byte> stlResponse= poTlsNode->Read(unResponseDataSizeInBytes, 2000);
     _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-
+    // Make sure to release the poTlsNode
+    poTlsNode->Release();
+        
     Dword dwStatus = 204;
     StructuredBuffer oResponse(stlResponse);
     if (200 == oResponse.GetDword("Status"))
@@ -860,7 +867,9 @@ std::vector<Byte> __thiscall AuditLogManager::DigitalContractBranchExists(
     unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
     std::vector<Byte> stlResponse= poTlsNode->Read(unResponseDataSizeInBytes, 2000);
     _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-
+    // Make sure to release the poTlsNode
+    poTlsNode->Release();
+    
     Dword dwStatus = 204;
     StructuredBuffer oResponse(stlResponse);
     if (200 == oResponse.GetDword("Status"))

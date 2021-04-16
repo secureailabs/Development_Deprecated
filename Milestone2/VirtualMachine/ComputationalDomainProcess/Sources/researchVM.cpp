@@ -130,6 +130,7 @@ void ComputationVM::SocketListen(void)
                 TlsNode* poNewConnection = m_oTlsServer.Accept();
                 _ThrowIfNull(poNewConnection, "Handle computationVM connection request retures a null pointer.", nullptr);
                 this->HandleConnection(poNewConnection);
+                poNewConnection->Release();
             }
         }
         catch(const BaseException & oBaseException)

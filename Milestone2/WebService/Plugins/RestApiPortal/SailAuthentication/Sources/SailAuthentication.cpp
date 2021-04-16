@@ -415,16 +415,17 @@ std::vector<Byte> __thiscall SailAuthentication::AuthenticateUserCredentails(
     StructuredBuffer oCredentials;
     oCredentials.PutDword("TransactionType", 0x00000001);
     oCredentials.PutString("Passphrase", strPassphrase);
-    Socket * poIpcAccountManager =  ::ConnectToUnixDomainSocket("/tmp/{0BE996BF-6966-41EB-B211-2D63C9908289}");
+    Socket * poIpcAccountManager = ::ConnectToUnixDomainSocket("/tmp/{0BE996BF-6966-41EB-B211-2D63C9908289}");
     StructuredBuffer oAccountRecords(::PutIpcTransactionAndGetResponse(poIpcAccountManager, oCredentials));
-
+    poIpcAccountManager->Release();
     // Call CryptographicManager plugin to get the Eosb
     if ((0 < oAccountRecords.GetSerializedBufferRawDataSizeInBytes())&&(404 != oAccountRecords.GetDword("Status")) )
     {
         oAccountRecords.PutDword("TransactionType", 0x00000001);
         oAccountRecords.PutString("Passphrase", ::Base64HashOfEmailPassword(strEmail, strPassword));
-        Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+        Socket * poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
         std::vector<Byte> stlEosb = ::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oAccountRecords);
+        poIpcCryptographicManager->Release();
         if (0 < stlEosb.size())
         {
             fSuccess = true;
@@ -468,8 +469,9 @@ std::vector<Byte> __thiscall SailAuthentication::GetBasicUserInformation(
 
     // Call CryptographicManager plugin to get the decrypted eosb
     bool fSuccess = false;
-    Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+    Socket * poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
     StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+    poIpcCryptographicManager->Release();
     if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
     {
         StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
@@ -516,8 +518,9 @@ std::vector<Byte> __thiscall SailAuthentication::GetRemoteAttestationCertificate
     oRemoteAttestationCertificate.PutBuffer("MessageDigest", stlNonce);
 
     // Call CryptographicManager plugin to get the digital signature blob
-    Socket * poIpcCryptographicManager =  ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+    Socket * poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
     StructuredBuffer oPluginResponse(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oRemoteAttestationCertificate));
+    poIpcCryptographicManager->Release();
     if ((0 < oPluginResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oPluginResponse.GetDword("Status")))
     {
         // Add digital signature and public key to the response
@@ -574,7 +577,9 @@ std::vector<Byte> __thiscall SailAuthentication::ResetDatabase(
     unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
     std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
     _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-
+    // Make sure to release the poTlsNode
+    poTlsNode->Release();
+        
     StructuredBuffer oDatabaseResponse(stlResponse);
     if (404 != oDatabaseResponse.GetDword("Status"))
     {

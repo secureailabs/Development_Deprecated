@@ -81,8 +81,8 @@ std::vector<Byte> GetPayload(
 
     std::string strStartOfValue = strLineWithKey.substr(strLineWithKey.find(": ")+2);
     unsigned int unSizeOfPayload = std::stoi(strStartOfValue.c_str());
-
     std::vector<Byte> stlFileToDownload = poTlsNode->Read(unSizeOfPayload, unMillisecondTimeout);
+    stlFileToDownload.push_back(0);
     std::vector stlResponseDecodedBuffer = ::Base64Decode((char *)stlFileToDownload.data());
     return stlResponseDecodedBuffer;
 }

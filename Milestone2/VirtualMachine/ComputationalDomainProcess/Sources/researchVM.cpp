@@ -366,6 +366,8 @@ std::string __thiscall ComputationVM::RetrieveDatasets(void)
     oRequest.PutUnsignedInt32("TableID", 0);
 
     std::vector<Byte> stlResponse = ::PutIpcTransactionAndGetResponse(poSocket, oRequest);
+    // Release the socket
+    poSocket->Release();
     std::string strResponse;
 
     if (0 < stlResponse.size())
@@ -488,7 +490,6 @@ void __thiscall ComputationVM::LinkPassID(
     try{
         for(size_t i =0;i<nNumber;i++)
         {
-            std::ofstream stlVarFile;
             std::string strTarget = std::string("/tmp/"+stlPassIDs[i]);
             std::string strLinkpath = std::string("/tmp/"+strJobIdentifier+stlConfidentialInputIDs[i]);
             const char* target = strTarget.c_str();

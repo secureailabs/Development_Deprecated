@@ -60,6 +60,7 @@ static void * __stdcall StartIpcServerThread(
         AccountDatabase * poAccountDatabase = ::GetAccountDatabase();
         poAccountDatabase->RunIpcServer(poIpcServerParameters->poIpcServer, poIpcServerParameters->poThreadManager);
     }
+    
     catch (BaseException oException)
     {
         std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
@@ -104,15 +105,15 @@ static void * __stdcall StartIpcThread(
 {
     __DebugFunction();
     __DebugAssert(nullptr != poVoidThreadParameter);
-
+    
     Socket * poIpcSocket = (Socket *) poVoidThreadParameter;
-    __DebugAssert(nullptr != poIpcSocket);
 
     try
     {
         AccountDatabase * poAccountDatabase = ::GetAccountDatabase();
         poAccountDatabase->HandleIpcRequest(poIpcSocket);
     }
+    
     catch (BaseException oException)
     {
         std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl

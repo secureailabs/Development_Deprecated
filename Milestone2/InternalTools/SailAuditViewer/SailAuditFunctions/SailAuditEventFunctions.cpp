@@ -382,10 +382,7 @@ extern "C" __declspec(dllexport) void __cdecl ReloadLoadAllAuditEvents(
                         std::string strBase64EncryptedAuditEventData = oObjectBlob.GetString("EncryptedEventData");
                         StructuredBuffer oEncryptedAuditEventData(strBase64EncryptedAuditEventData.c_str());
                         oReconstructedAuditEvent.PutString("AuditEventType", oEncryptedAuditEventData.GetString("EventName"));
-                        if (true == oEncryptedAuditEventData.IsElementPresent("EventData", INDEXED_BUFFER_VALUE_TYPE))
-                        {
-                            oReconstructedAuditEvent.PutString("AdditionalEventData", oEncryptedAuditEventData.GetStructuredBuffer("EventData").GetBase64SerializedBuffer());
-                        }
+                        oReconstructedAuditEvent.PutString("AdditionalEventData", strBase64EncryptedAuditEventData);
                     }
 
                     // Now we check to make sure ALL of the required elements are within the oReconstructedAuditEvent

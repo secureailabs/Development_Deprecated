@@ -830,7 +830,9 @@ namespace SailAuditInterface
         {
             uint sequenceNumber = uint.Parse(m_AuditEventsListView.SelectedItems[0].Text);
             string auditEventIdentifier = ApiInterop.GetDesignatedAuditEventIdentifierBySequenceNumber(sequenceNumber);
-            Clipboard.SetText(ApiInterop.GetAuditEventAdditionalDataDetails(auditEventIdentifier));
+            PropertyView propertyView = new PropertyView();
+            propertyView.Property = ApiInterop.GetAuditEventAdditionalDataDetails(auditEventIdentifier);
+            propertyView.ShowDialog();
         }
 
         /// <summary>

@@ -143,7 +143,7 @@ std::string __stdcall LoginToSailWebApiPortal(
     std::string strEosb;
 
     // There is no sense trying to login if the incoming parameters are invalid
-    _ThrowBaseExceptionIf(((0 < c_strUsername.size())&&(0 < c_strPassword.size())), "Invalid parameters.", nullptr);
+    _ThrowBaseExceptionIf(((0 == c_strUsername.size())&&(0 == c_strPassword.size())), "Invalid parameters.", nullptr);
     // Connect to the Web API Portal Gateway
     TlsNode * poTlsNode = ::TlsConnectToNetworkSocket(gs_strIpAddressOfWebPortalGateway.c_str(), gs_unPortAddressOfWebPortalGateway);
     // Build the HTTP request string

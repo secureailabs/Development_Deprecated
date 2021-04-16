@@ -454,10 +454,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddLeafEvent(
         oObject.PutQword("EventType", (Qword) oEvent.GetFloat64("EventType"));
         oObject.PutUnsignedInt64("Timestamp", (uint64_t) oEvent.GetFloat64("Timestamp"));
         oObject.PutUnsignedInt32("SequenceNumber", (uint32_t) oEvent.GetFloat64("SequenceNumber"));
-        // Decode string first and then initialize a vector from it
-        std::string strDecodedEventData = ::Base64Decode(oEvent.GetString("EncryptedEventData"));
-        std::vector<Byte> stlEventData(strDecodedEventData.begin(), strDecodedEventData.end());
-        oObject.PutBuffer("EncryptedEventData", stlEventData);
+        oObject.PutString("EncryptedEventData", oEvent.GetString("EncryptedEventData"));
         // Create a binary blob to be inserted in the document
         bsoncxx::types::b_binary oObjectBlob
         {

@@ -361,11 +361,8 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
         }
         
         // Put this thread to sleep for 5 seconds
-        ::sleep(5);
+        ::sleep(30);
     }
-    
-    // On the way out, the AuditEventDispatcher will send out one last event, the VM_SHUTDOWN event
-    
 }
 
 /********************************************************************************************/
@@ -394,69 +391,9 @@ void __thiscall RootOfTrustCore::RunIpcListener(void)
         unsigned int unNumberOfFailedTransactions = 0;
         while (false == oStatusMonitor.IsTerminating())
         {
-            /*gs_stlAuditEventsMutex.lock();
-            bool fIsInitialized = gs_fIsInitialized;
-            bool fIsRunning = gs_fIsRunning;
-            std::string strDataOwnerAccessToken = gs_strDataOwnerAccessToken;;
-            std::string strResearcherEosb = gs_strResearcherEosb;
-            std::string strVirtualMachineEosb = gs_strVirtualMachineEosb;
-            std::string strNameOfVirtualMachine = gs_strNameOfVirtualMachine;
-            std::string strIpAddressOfVirtualMachine = gs_strIpAddressOfVirtualMachine;
-            std::string strVirtualMachineIdentifier = gs_strVirtualMachineIdentifier;
-            std::string strClusterIdentifier = gs_strClusterIdentifier;
-            std::string strDigitalContractIdentifier = gs_strDigitalContractIdentifier;
-            std::string strDatasetIdentifier = gs_strDatasetIdentifier;
-            std::string strRootOfTrustDomainIdentifier = gs_strRootOfTrustDomainIdentifier;
-            std::string strComputationalDomainIdentifier = gs_strComputationalDomainIdentifier;
-            std::string strDataConnectorDomainIdentifier = gs_strDataConnectorDomainIdentifier;
-            std::string strSailWebApiPortalIpAddress = gs_strSailWebApiPortalIpAddress;
-            std::string strDataOwnerOrganizationIdentifier = gs_strDataOwnerOrganizationIdentifier;
-            std::string strDataOwnerUserIdentifier = gs_strDataOwnerUserIdentifier;
-            std::vector<Byte> stlDataset = gs_stlDataset;
-            std::string strRootOfTrustIpcPath = gs_strRootOfTrustIpcPath;
-            std::string strComputationalDomainIpcPath = gs_strComputationalDomainIpcPath;
-            std::string strDataDomainIpcPath = gs_strDataDomainIpcPath;
-            std::string strDataOrganizationAuditEventParentBranchNodeIdentifier = gs_strDataOrganizationAuditEventParentBranchNodeIdentifier;
-            std::string strResearcherOrganizationAuditEventParentBranchNodeIdentifier = gs_strResearcherOrganizationAuditEventParentBranchNodeIdentifier;
-            //std::queue<std::string> stlResearchOrganizationAuditEventQueue;
-            //stlResearchOrganizationAuditEventQueue.swap(gs_stlResearchOrganizationAuditEventQueue);
-            //std::queue<std::string> stlDataOrganizationAuditEventQueue;
-            //stlDataOrganizationAuditEventQueue.swap(gs_stlDataOrganizationAuditEventQueue);
-            gs_stlAuditEventsMutex.unlock();*/
-
             // We wait for a connection
             if (true == poIpcServer->WaitForConnection(1000))
             {
-                // BUGBUG: We are cheating here because there is a memory corruption issue when WaitForConnection()
-                // get calls, the gs_strComputationalDomainIdentifier gets corrupted.
-                /*gs_stlAuditEventsMutex.lock();
-                gs_fIsInitialized = fIsInitialized;
-                gs_fIsRunning = fIsRunning;
-                gs_strDataOwnerAccessToken = strDataOwnerAccessToken;;
-                gs_strResearcherEosb = strResearcherEosb;
-                gs_strVirtualMachineEosb = strVirtualMachineEosb;
-                gs_strNameOfVirtualMachine = strNameOfVirtualMachine;
-                gs_strIpAddressOfVirtualMachine = strIpAddressOfVirtualMachine;
-                gs_strVirtualMachineIdentifier = strVirtualMachineIdentifier;
-                gs_strClusterIdentifier = strClusterIdentifier;
-                gs_strDigitalContractIdentifier = strDigitalContractIdentifier;
-                gs_strDatasetIdentifier = strDatasetIdentifier;
-                gs_strRootOfTrustDomainIdentifier = strRootOfTrustDomainIdentifier;
-                gs_strComputationalDomainIdentifier = strComputationalDomainIdentifier;
-                gs_strDataConnectorDomainIdentifier = strDataConnectorDomainIdentifier;
-                gs_strSailWebApiPortalIpAddress = strSailWebApiPortalIpAddress;
-                gs_strDataOwnerOrganizationIdentifier = strDataOwnerOrganizationIdentifier;
-                gs_strDataOwnerUserIdentifier = strDataOwnerUserIdentifier;
-                gs_stlDataset = stlDataset;
-                gs_strRootOfTrustIpcPath = strRootOfTrustIpcPath;
-                gs_strComputationalDomainIpcPath = strComputationalDomainIpcPath;
-                gs_strDataDomainIpcPath = strDataDomainIpcPath;
-                gs_strDataOrganizationAuditEventParentBranchNodeIdentifier = strDataOrganizationAuditEventParentBranchNodeIdentifier;
-                gs_strResearcherOrganizationAuditEventParentBranchNodeIdentifier = strResearcherOrganizationAuditEventParentBranchNodeIdentifier;
-                //gs_stlResearchOrganizationAuditEventQueue.swap(stlResearchOrganizationAuditEventQueue);
-                //gs_stlDataOrganizationAuditEventQueue.swap(stlDataOrganizationAuditEventQueue);
-                gs_stlAuditEventsMutex.unlock();*/
-                // Get the socket for the waiting connection
                 Socket * poSocket = poIpcServer->Accept();
                 if (nullptr != poSocket)
                 {

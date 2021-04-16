@@ -554,8 +554,8 @@ void __thiscall ComputationVM::LoadDataToBuffer(
         // {
         //     //std::cout<<"filename:"<<"/tmp/"+strJobIdentifier+stlVarIDs[i]<<" waiting for file"<<std::endl;
         // }
-        std::cout<<"filename:"<<"/tmp/"+strJobID+stlVarIDs[i]<<" waiting for file"<<std::endl;
-        std::string strMarker = "/tmp/" + strJobID + ".marker";
+        std::cout<<"filename:"<<"/tmp/"+strJobIdentifier+stlVarIDs[i]<<" waiting for file"<<std::endl;
+        std::string strMarker = "/tmp/" + strJobIdentifier + ".marker";
         const char* fname = strMarker.c_str();
         while (0 != access(fname, F_OK))
         {

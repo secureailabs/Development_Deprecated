@@ -67,39 +67,4 @@ class RootOfTrustCore : public Object
             _in Dword dwEventType,
             _in const StructuredBuffer & c_oEventData
             );
-            
-        // Private data members
-        
-        bool m_fIsInitialized;
-        bool m_fIsRunning;
-
-        std::string m_strDataOwnerAccessToken;
-        std::string m_strResearcherEosb;
-        std::string m_strVirtualMachineEosb;
-
-        std::string m_strNameOfVirtualMachine;
-        std::string m_strIpAddressOfVirtualMachine;
-        std::string m_strVirtualMachineIdentifier;
-        std::string m_strClusterIdentifier;
-        std::string m_strDigitalContractIdentifier;
-        std::string m_strDatasetIdentifier;
-        std::string m_strRootOfTrustDomainIdentifier;
-        std::string m_strComputationalDomainIdentifier;
-        std::string m_strDataConnectorDomainIdentifier;
-        std::string m_strSailWebApiPortalIpAddress;
-        std::string m_strDataOwnerOrganizationIdentifier;
-        std::string m_strDataOwnerUserIdentifier;
-        std::vector<Byte> m_stlDataset;
-    
-        std::string m_strRootOfTrustIpcPath;
-        std::string m_strComputationalDomainIpcPath;
-        std::string m_strDataDomainIpcPath;
-        
-        std::mutex m_stlAuditEventsMutex;
-        std::string m_strDataOrganizationAuditEventParentBranchNodeIdentifier;
-        std::string m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier;
-        std::queue<std::string> m_stlResearchOrganizationAuditEventQueue;
-        std::queue<std::string> m_stlDataOrganizationAuditEventQueue;
-        std::queue<std::string> m_stlIndependentAuditorOrganizationAuditEventQueue;
-        std::queue<std::string> m_stlSailOrganizationAuditEventQueue;
 };

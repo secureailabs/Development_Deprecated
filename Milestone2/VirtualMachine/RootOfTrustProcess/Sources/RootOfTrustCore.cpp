@@ -42,6 +42,38 @@ RootOfTrustTransactionPacket;
 // Global smart memory allocator that is used to allocate and deallocate RootOfTrustTransactionPacket
 // memory blocks
 static SmartMemoryAllocator gs_oMemoryAllocator;
+static std::mutex gs_stlAuditEventsMutex;
+static bool gs_fIsInitialized;
+static bool gs_fIsRunning;
+
+static std::string gs_strDataOwnerAccessToken;
+static std::string gs_strResearcherEosb;
+static std::string gs_strVirtualMachineEosb;
+
+static std::string gs_strNameOfVirtualMachine;
+static std::string gs_strIpAddressOfVirtualMachine;
+static std::string gs_strVirtualMachineIdentifier;
+static std::string gs_strClusterIdentifier;
+static std::string gs_strDigitalContractIdentifier;
+static std::string gs_strDatasetIdentifier;
+static std::string gs_strRootOfTrustDomainIdentifier;
+static std::string gs_strComputationalDomainIdentifier;
+static std::string gs_strDataConnectorDomainIdentifier;
+static std::string gs_strSailWebApiPortalIpAddress;
+static std::string gs_strDataOwnerOrganizationIdentifier;
+static std::string gs_strDataOwnerUserIdentifier;
+static std::vector<Byte> gs_stlDataset;
+
+static std::string gs_strRootOfTrustIpcPath;
+static std::string gs_strComputationalDomainIpcPath;
+static std::string gs_strDataDomainIpcPath;
+        
+static std::string gs_strDataOrganizationAuditEventParentBranchNodeIdentifier;
+static std::string gs_strResearcherOrganizationAuditEventParentBranchNodeIdentifier;
+static std::queue<std::string> gs_stlResearchOrganizationAuditEventQueue;
+static std::queue<std::string> gs_stlDataOrganizationAuditEventQueue;
+static std::queue<std::string> gs_stlIndependentAuditorOrganizationAuditEventQueue;
+static std::queue<std::string> gs_stlSailOrganizationAuditEventQueue;
 
 /********************************************************************************************/
 
@@ -150,35 +182,36 @@ static void * RootOfTrustAuditEventDispatcherThread(
 RootOfTrustCore::RootOfTrustCore(
     _in const std::vector<Byte> & c_stlSerializedInitializationParameters
     )
-    : m_fIsInitialized(false), m_fIsRunning(false)
 {
     __DebugFunction();
     
     StructuredBuffer oInitializationData(c_stlSerializedInitializationParameters);
     
-    m_strNameOfVirtualMachine = oInitializationData.GetString("NameOfVirtualMachine");
-    m_strIpAddressOfVirtualMachine = oInitializationData.GetString("IpAddressOfVirtualMachine");
-    m_strVirtualMachineIdentifier = oInitializationData.GetString("VirtualMachineIdentifier");
-    m_strClusterIdentifier = oInitializationData.GetString("ClusterIdentifier");
-    m_strDigitalContractIdentifier = oInitializationData.GetString("DigitalContractIdentifier");
-    m_strDatasetIdentifier = oInitializationData.GetString("DatasetIdentifier");
-    m_strRootOfTrustDomainIdentifier = oInitializationData.GetString("RootOfTrustDomainIdentifier");
-    m_strComputationalDomainIdentifier = oInitializationData.GetString("ComputationalDomainIdentifier");
-    m_strDataConnectorDomainIdentifier = oInitializationData.GetString("DataConnectorDomainIdentifier");
-    m_strSailWebApiPortalIpAddress = oInitializationData.GetString("SailWebApiPortalIpAddress");
-    m_strDataOwnerAccessToken = oInitializationData.GetString("DataOwnerAccessToken");
-    m_strDataOwnerOrganizationIdentifier = oInitializationData.GetString("DataOwnerOrganizationIdentifier");
-    m_strDataOwnerUserIdentifier = oInitializationData.GetString("DataOwnerUserIdentifier");
+    gs_fIsInitialized = false;
+    gs_fIsRunning = false;
+    gs_strNameOfVirtualMachine = oInitializationData.GetString("NameOfVirtualMachine");
+    gs_strIpAddressOfVirtualMachine = oInitializationData.GetString("IpAddressOfVirtualMachine");
+    gs_strVirtualMachineIdentifier = oInitializationData.GetString("VirtualMachineIdentifier");
+    gs_strClusterIdentifier = oInitializationData.GetString("ClusterIdentifier");
+    gs_strDigitalContractIdentifier = oInitializationData.GetString("DigitalContractIdentifier");
+    gs_strDatasetIdentifier = oInitializationData.GetString("DatasetIdentifier");
+    gs_strRootOfTrustDomainIdentifier = oInitializationData.GetString("RootOfTrustDomainIdentifier");
+    gs_strComputationalDomainIdentifier = oInitializationData.GetString("ComputationalDomainIdentifier");
+    gs_strDataConnectorDomainIdentifier = oInitializationData.GetString("DataConnectorDomainIdentifier");
+    gs_strSailWebApiPortalIpAddress = oInitializationData.GetString("SailWebApiPortalIpAddress");
+    gs_strDataOwnerAccessToken = oInitializationData.GetString("DataOwnerAccessToken");
+    gs_strDataOwnerOrganizationIdentifier = oInitializationData.GetString("DataOwnerOrganizationIdentifier");
+    gs_strDataOwnerUserIdentifier = oInitializationData.GetString("DataOwnerUserIdentifier");
     std::string strBase64EncodedSerializedDataset = oInitializationData.GetString("Base64EncodedDataset");    
-    m_stlDataset = ::Base64Decode(strBase64EncodedSerializedDataset.c_str());
+    gs_stlDataset = ::Base64Decode(strBase64EncodedSerializedDataset.c_str());
     
-    m_strRootOfTrustIpcPath = Guid().ToString(eRaw);
-    m_strComputationalDomainIpcPath = Guid().ToString(eRaw);
-    m_strDataDomainIpcPath = Guid().ToString(eRaw);
+    gs_strRootOfTrustIpcPath = Guid().ToString(eRaw);
+    gs_strComputationalDomainIpcPath = Guid().ToString(eRaw);
+    gs_strDataDomainIpcPath = Guid().ToString(eRaw);
 
-    m_fIsInitialized = true;
+    gs_fIsInitialized = true;
     
-    ::SetIpAddressOfSailWebApiPortalGateway(m_strSailWebApiPortalIpAddress, 6200);
+    ::SetIpAddressOfSailWebApiPortalGateway(gs_strSailWebApiPortalIpAddress, 6200);
     
     this->InitializeVirtualMachine();
     this->RegisterDataOwnerEosb();
@@ -191,37 +224,6 @@ RootOfTrustCore::RootOfTrustCore(
     )
 {
     __DebugFunction();
-    
-    if (true == c_oRootOfTrust.m_fIsInitialized)
-    {
-        m_strDataOwnerAccessToken = c_oRootOfTrust.m_strDataOwnerAccessToken;;
-        m_strResearcherEosb = c_oRootOfTrust.m_strResearcherEosb;
-        
-        m_strDataOrganizationAuditEventParentBranchNodeIdentifier = c_oRootOfTrust.m_strDataOrganizationAuditEventParentBranchNodeIdentifier;
-        m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier = c_oRootOfTrust.m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier;
-        
-        m_strNameOfVirtualMachine = c_oRootOfTrust.m_strNameOfVirtualMachine;
-        m_strIpAddressOfVirtualMachine = c_oRootOfTrust.m_strIpAddressOfVirtualMachine;
-        m_strVirtualMachineIdentifier = c_oRootOfTrust.m_strVirtualMachineIdentifier;
-        m_strClusterIdentifier = c_oRootOfTrust.m_strClusterIdentifier;
-        m_strDigitalContractIdentifier = c_oRootOfTrust.m_strDigitalContractIdentifier;
-        m_strDatasetIdentifier = c_oRootOfTrust.m_strDatasetIdentifier;
-        m_strRootOfTrustDomainIdentifier = c_oRootOfTrust.m_strRootOfTrustDomainIdentifier;
-        m_strComputationalDomainIdentifier = c_oRootOfTrust.m_strComputationalDomainIdentifier;
-        m_strDataConnectorDomainIdentifier = c_oRootOfTrust.m_strDataConnectorDomainIdentifier;
-        m_strSailWebApiPortalIpAddress = c_oRootOfTrust.m_strSailWebApiPortalIpAddress;
-        m_strDataOwnerOrganizationIdentifier = c_oRootOfTrust.m_strDataOwnerOrganizationIdentifier;
-        m_strDataOwnerUserIdentifier = c_oRootOfTrust.m_strDataOwnerUserIdentifier;
-        m_stlDataset = c_oRootOfTrust.m_stlDataset;    
-        
-        m_strRootOfTrustIpcPath = c_oRootOfTrust.m_strRootOfTrustIpcPath;
-        m_strComputationalDomainIpcPath = c_oRootOfTrust.m_strComputationalDomainIpcPath;
-        m_strDataDomainIpcPath = c_oRootOfTrust.m_strDataDomainIpcPath;
-
-        m_fIsInitialized = true;
-        // By default, this new instance of RootOfTrustCore is NOT running it's own thread
-        m_fIsRunning = false;
-    }
 }        
         
 /********************************************************************************************/
@@ -238,9 +240,19 @@ RootOfTrustCore::~RootOfTrustCore(void)
 Guid __thiscall RootOfTrustCore::GetDataDomainIdentifier(void) const throw()
 {
     __DebugFunction();
-    __DebugAssert(true == m_fIsInitialized);
+    __DebugAssert(true == gs_fIsInitialized);
     
-    return Guid(m_strDataConnectorDomainIdentifier.c_str());
+    return Guid(gs_strDataConnectorDomainIdentifier.c_str());
+}
+
+/********************************************************************************************/
+
+Guid __thiscall RootOfTrustCore::GetComputationalDomainIdentifier(void) const throw()
+{
+    __DebugFunction();
+    __DebugAssert(true == gs_fIsInitialized);
+    
+    return Guid(gs_strComputationalDomainIdentifier.c_str());
 }
 
 /********************************************************************************************/
@@ -248,9 +260,9 @@ Guid __thiscall RootOfTrustCore::GetDataDomainIdentifier(void) const throw()
 std::string __thiscall RootOfTrustCore::GetRootOfTrustIpcPath(void) const throw()
 {
     __DebugFunction();
-    __DebugAssert(true == m_fIsInitialized);
+    __DebugAssert(true == gs_fIsInitialized);
     
-    return m_strRootOfTrustIpcPath;
+    return gs_strRootOfTrustIpcPath;
 }
 
 /********************************************************************************************/
@@ -268,52 +280,55 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
     {
         try
         {
-            const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
-            // We use a intermediate StructuredBuffer to store all of the new audit events
-            bool fTransmitAuditEvents = false;
+            const std::lock_guard<std::mutex> lock(gs_stlAuditEventsMutex);
             
             // Handle lingering events within the data organization audit event queue
-            if ((0 < m_strDataOwnerAccessToken.size())&&(0 < m_strDataOrganizationAuditEventParentBranchNodeIdentifier.size()))
+            if ((0 < gs_strDataOwnerAccessToken.size())&&(0 < gs_strDataOrganizationAuditEventParentBranchNodeIdentifier.size()))
             {
+                bool fTransmitAuditEvents = false;
                 StructuredBuffer oAuditEventsToTransmit;
                 unsigned int unElementIndex = 0;
-                while (0 < m_stlDataOrganizationAuditEventQueue.size())
+                while (0 < gs_stlDataOrganizationAuditEventQueue.size())
                 {
                     fTransmitAuditEvents = true;
-                    StructuredBuffer oNewAuditEvent(m_stlDataOrganizationAuditEventQueue.front().c_str());
-                    m_stlDataOrganizationAuditEventQueue.pop();
-                    oAuditEventsToTransmit.PutStructuredBuffer(std::to_string(unElementIndex++).c_str(), oNewAuditEvent);
                     std::cout << "Transmitting an audit event (DOO)" << std::endl;
+                    std::cout << gs_stlDataOrganizationAuditEventQueue.front() << std::endl;
+                    StructuredBuffer oNewAuditEvent(gs_stlDataOrganizationAuditEventQueue.front().c_str());
+                    gs_stlDataOrganizationAuditEventQueue.pop();
+                    oAuditEventsToTransmit.PutStructuredBuffer(std::to_string(unElementIndex++).c_str(), oNewAuditEvent);
+                    
                 }
                 
                 if (true == fTransmitAuditEvents)
                 {    
-                    __DebugAssert(0 < m_strDataOwnerAccessToken.size());
-                    __DebugAssert(0 < m_strDataOrganizationAuditEventParentBranchNodeIdentifier.size());
+                    __DebugAssert(0 < gs_strDataOwnerAccessToken.size());
+                    __DebugAssert(0 < gs_strDataOrganizationAuditEventParentBranchNodeIdentifier.size());
                     
-                    ::TransmitAuditEventsToSailWebApiPortal(m_strDataOwnerAccessToken, m_strDataOrganizationAuditEventParentBranchNodeIdentifier, oAuditEventsToTransmit);
+                    ::TransmitAuditEventsToSailWebApiPortal(gs_strDataOwnerAccessToken, gs_strDataOrganizationAuditEventParentBranchNodeIdentifier, oAuditEventsToTransmit);
                 }
             }
             
-            if ((0 < m_strResearcherEosb.size())&&(0 < m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier.size()))
+            if ((0 < gs_strResearcherEosb.size())&&(0 < gs_strResearcherOrganizationAuditEventParentBranchNodeIdentifier.size()))
             {
+                bool fTransmitAuditEvents = false;
                 StructuredBuffer oAuditEventsToTransmit;
                 unsigned int unElementIndex = 0;
-                while (0 < m_stlResearchOrganizationAuditEventQueue.size())
+                while (0 < gs_stlResearchOrganizationAuditEventQueue.size())
                 {
-                    fTransmitAuditEvents = true;
-                    StructuredBuffer oNewAuditEvent(m_stlResearchOrganizationAuditEventQueue.front().c_str());
-                    m_stlResearchOrganizationAuditEventQueue.pop();
-                    oAuditEventsToTransmit.PutStructuredBuffer(std::to_string(unElementIndex++).c_str(), oNewAuditEvent);
                     std::cout << "Transmitting an audit event (RO)" << std::endl;
+                    fTransmitAuditEvents = true;
+                    std::cout << gs_stlResearchOrganizationAuditEventQueue.front() << std::endl;
+                    StructuredBuffer oNewAuditEvent(gs_stlResearchOrganizationAuditEventQueue.front().c_str());
+                    gs_stlResearchOrganizationAuditEventQueue.pop();
+                    oAuditEventsToTransmit.PutStructuredBuffer(std::to_string(unElementIndex++).c_str(), oNewAuditEvent);
                 }
 
                 if (true == fTransmitAuditEvents)
                 {    
-                    __DebugAssert(0 < m_strResearcherEosb.size());
-                    __DebugAssert(0 < m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier.size());
+                    __DebugAssert(0 < gs_strResearcherEosb.size());
+                    __DebugAssert(0 < gs_strResearcherOrganizationAuditEventParentBranchNodeIdentifier.size());
                     
-                    ::TransmitAuditEventsToSailWebApiPortal(m_strResearcherEosb, m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier, oAuditEventsToTransmit);
+                    ::TransmitAuditEventsToSailWebApiPortal(gs_strResearcherEosb, gs_strResearcherOrganizationAuditEventParentBranchNodeIdentifier, oAuditEventsToTransmit);
                 }
             }
         }
@@ -339,9 +354,9 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
         {
             fIsShuttingDown = true;
             StructuredBuffer oEventData;
-            oEventData.PutString("IpAddressOfSecureVirtualMachine", m_strIpAddressOfVirtualMachine);
-            oEventData.PutString("VirtualMachineIdentifier", m_strClusterIdentifier);
-            oEventData.PutString("ClusterIdentifier", m_strClusterIdentifier);
+            oEventData.PutString("IpAddressOfSecureVirtualMachine", gs_strIpAddressOfVirtualMachine);
+            oEventData.PutString("VirtualMachineIdentifier", gs_strClusterIdentifier);
+            oEventData.PutString("ClusterIdentifier", gs_strClusterIdentifier);
             this->RecordInternalAuditEvent("VM_SHUTDOWN", 0x1111, 0x05, oEventData);
         }
         
@@ -358,74 +373,89 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
 void __thiscall RootOfTrustCore::RunIpcListener(void)
 {
     __DebugFunction();
-    __DebugAssert(true == m_fIsInitialized);
+    __DebugAssert(true == gs_fIsInitialized);
     
     std::cout << __func__ << std::endl;
     
     ThreadManager * poThreadManager = ThreadManager::GetInstance();
-    if (false == m_fIsRunning)
+    if (false == gs_fIsRunning)
     {
-        m_fIsRunning = true;
+        gs_fIsRunning = true;
         _ThrowBaseExceptionIf((0xFFFFFFFFFFFFFFFF == poThreadManager->CreateThread("RootOfTrustCodeGroup", RootOfTrustAuditEventDispatcherThread, (void *) this)), "Failed to start the audit event dispacher thread", nullptr);
         _ThrowBaseExceptionIf((0xFFFFFFFFFFFFFFFF == poThreadManager->CreateThread("RootOfTrustCodeGroup", RootOfTrustIpcListenerThread, (void *) this)), "Failed to start the Root of Trust Listener Thread", nullptr);
     }
     else
     {
         StatusMonitor oStatusMonitor("void __thiscall RootOfTrustCore::RunIpcListener(void)");
-        SocketServer * poIpcServer = new SocketServer(m_strRootOfTrustIpcPath.c_str());
+        SocketServer * poIpcServer = new SocketServer(gs_strRootOfTrustIpcPath.c_str());
         _ThrowOutOfMemoryExceptionIfNull(poIpcServer);
         unsigned int unNumberOfLoops = 0;
         unsigned int unNumberOfSuccessfulTransactions = 0;
         unsigned int unNumberOfFailedTransactions = 0;
         while (false == oStatusMonitor.IsTerminating())
         {
-            std::string strDataOwnerAccessToken = m_strDataOwnerAccessToken;;
-            std::string strResearcherEosb = m_strResearcherEosb;
-            std::string strDataOrganizationAuditEventParentBranchNodeIdentifier = m_strDataOrganizationAuditEventParentBranchNodeIdentifier;
-            std::string strResearcherOrganizationAuditEventParentBranchNodeIdentifier = m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier;
-            std::string strNameOfVirtualMachine = m_strNameOfVirtualMachine;
-            std::string strIpAddressOfVirtualMachine = m_strIpAddressOfVirtualMachine;
-            std::string strVirtualMachineIdentifier = m_strVirtualMachineIdentifier;
-            std::string strClusterIdentifier = m_strClusterIdentifier;
-            std::string strDigitalContractIdentifier = m_strDigitalContractIdentifier;
-            std::string strDatasetIdentifier = m_strDatasetIdentifier;
-            std::string strRootOfTrustDomainIdentifier = m_strRootOfTrustDomainIdentifier;
-            std::string strComputationalDomainIdentifier = m_strComputationalDomainIdentifier;
-            std::string strDataConnectorDomainIdentifier = m_strDataConnectorDomainIdentifier;
-            std::string strSailWebApiPortalIpAddress = m_strSailWebApiPortalIpAddress;
-            std::string strDataOwnerOrganizationIdentifier = m_strDataOwnerOrganizationIdentifier;
-            std::string strDataOwnerUserIdentifier = m_strDataOwnerUserIdentifier;
-            std::string strRootOfTrustIpcPath = m_strRootOfTrustIpcPath;
-            std::string strComputationalDomainIpcPath = m_strComputationalDomainIpcPath;
-            std::string strDataDomainIpcPath = m_strDataDomainIpcPath;
-            bool fIsInitialized = m_fIsInitialized;
-            bool fIsRunning = m_fIsRunning;
+            /*gs_stlAuditEventsMutex.lock();
+            bool fIsInitialized = gs_fIsInitialized;
+            bool fIsRunning = gs_fIsRunning;
+            std::string strDataOwnerAccessToken = gs_strDataOwnerAccessToken;;
+            std::string strResearcherEosb = gs_strResearcherEosb;
+            std::string strVirtualMachineEosb = gs_strVirtualMachineEosb;
+            std::string strNameOfVirtualMachine = gs_strNameOfVirtualMachine;
+            std::string strIpAddressOfVirtualMachine = gs_strIpAddressOfVirtualMachine;
+            std::string strVirtualMachineIdentifier = gs_strVirtualMachineIdentifier;
+            std::string strClusterIdentifier = gs_strClusterIdentifier;
+            std::string strDigitalContractIdentifier = gs_strDigitalContractIdentifier;
+            std::string strDatasetIdentifier = gs_strDatasetIdentifier;
+            std::string strRootOfTrustDomainIdentifier = gs_strRootOfTrustDomainIdentifier;
+            std::string strComputationalDomainIdentifier = gs_strComputationalDomainIdentifier;
+            std::string strDataConnectorDomainIdentifier = gs_strDataConnectorDomainIdentifier;
+            std::string strSailWebApiPortalIpAddress = gs_strSailWebApiPortalIpAddress;
+            std::string strDataOwnerOrganizationIdentifier = gs_strDataOwnerOrganizationIdentifier;
+            std::string strDataOwnerUserIdentifier = gs_strDataOwnerUserIdentifier;
+            std::vector<Byte> stlDataset = gs_stlDataset;
+            std::string strRootOfTrustIpcPath = gs_strRootOfTrustIpcPath;
+            std::string strComputationalDomainIpcPath = gs_strComputationalDomainIpcPath;
+            std::string strDataDomainIpcPath = gs_strDataDomainIpcPath;
+            std::string strDataOrganizationAuditEventParentBranchNodeIdentifier = gs_strDataOrganizationAuditEventParentBranchNodeIdentifier;
+            std::string strResearcherOrganizationAuditEventParentBranchNodeIdentifier = gs_strResearcherOrganizationAuditEventParentBranchNodeIdentifier;
+            //std::queue<std::string> stlResearchOrganizationAuditEventQueue;
+            //stlResearchOrganizationAuditEventQueue.swap(gs_stlResearchOrganizationAuditEventQueue);
+            //std::queue<std::string> stlDataOrganizationAuditEventQueue;
+            //stlDataOrganizationAuditEventQueue.swap(gs_stlDataOrganizationAuditEventQueue);
+            gs_stlAuditEventsMutex.unlock();*/
+
             // We wait for a connection
             if (true == poIpcServer->WaitForConnection(1000))
             {
                 // BUGBUG: We are cheating here because there is a memory corruption issue when WaitForConnection()
-                // get calls, the m_strComputationalDomainIdentifier gets corrupted.
-                m_strDataOwnerAccessToken = strDataOwnerAccessToken;;
-                m_strResearcherEosb = strResearcherEosb;
-                m_strDataOrganizationAuditEventParentBranchNodeIdentifier = strDataOrganizationAuditEventParentBranchNodeIdentifier;
-                m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier = strResearcherOrganizationAuditEventParentBranchNodeIdentifier;
-                m_strNameOfVirtualMachine = strNameOfVirtualMachine;
-                m_strIpAddressOfVirtualMachine = strIpAddressOfVirtualMachine;
-                m_strVirtualMachineIdentifier = strVirtualMachineIdentifier;
-                m_strClusterIdentifier = strClusterIdentifier;
-                m_strDigitalContractIdentifier = strDigitalContractIdentifier;
-                m_strDatasetIdentifier = strDatasetIdentifier;
-                m_strRootOfTrustDomainIdentifier = strRootOfTrustDomainIdentifier;
-                m_strComputationalDomainIdentifier = strComputationalDomainIdentifier;
-                m_strDataConnectorDomainIdentifier = strDataConnectorDomainIdentifier;
-                m_strSailWebApiPortalIpAddress = strSailWebApiPortalIpAddress;
-                m_strDataOwnerOrganizationIdentifier = strDataOwnerOrganizationIdentifier;
-                m_strDataOwnerUserIdentifier = strDataOwnerUserIdentifier;
-                m_strRootOfTrustIpcPath = strRootOfTrustIpcPath;
-                m_strComputationalDomainIpcPath = strComputationalDomainIpcPath;
-                m_strDataDomainIpcPath = strDataDomainIpcPath;
-                m_fIsInitialized = fIsInitialized;
-                m_fIsRunning = fIsRunning;
+                // get calls, the gs_strComputationalDomainIdentifier gets corrupted.
+                /*gs_stlAuditEventsMutex.lock();
+                gs_fIsInitialized = fIsInitialized;
+                gs_fIsRunning = fIsRunning;
+                gs_strDataOwnerAccessToken = strDataOwnerAccessToken;;
+                gs_strResearcherEosb = strResearcherEosb;
+                gs_strVirtualMachineEosb = strVirtualMachineEosb;
+                gs_strNameOfVirtualMachine = strNameOfVirtualMachine;
+                gs_strIpAddressOfVirtualMachine = strIpAddressOfVirtualMachine;
+                gs_strVirtualMachineIdentifier = strVirtualMachineIdentifier;
+                gs_strClusterIdentifier = strClusterIdentifier;
+                gs_strDigitalContractIdentifier = strDigitalContractIdentifier;
+                gs_strDatasetIdentifier = strDatasetIdentifier;
+                gs_strRootOfTrustDomainIdentifier = strRootOfTrustDomainIdentifier;
+                gs_strComputationalDomainIdentifier = strComputationalDomainIdentifier;
+                gs_strDataConnectorDomainIdentifier = strDataConnectorDomainIdentifier;
+                gs_strSailWebApiPortalIpAddress = strSailWebApiPortalIpAddress;
+                gs_strDataOwnerOrganizationIdentifier = strDataOwnerOrganizationIdentifier;
+                gs_strDataOwnerUserIdentifier = strDataOwnerUserIdentifier;
+                gs_stlDataset = stlDataset;
+                gs_strRootOfTrustIpcPath = strRootOfTrustIpcPath;
+                gs_strComputationalDomainIpcPath = strComputationalDomainIpcPath;
+                gs_strDataDomainIpcPath = strDataDomainIpcPath;
+                gs_strDataOrganizationAuditEventParentBranchNodeIdentifier = strDataOrganizationAuditEventParentBranchNodeIdentifier;
+                gs_strResearcherOrganizationAuditEventParentBranchNodeIdentifier = strResearcherOrganizationAuditEventParentBranchNodeIdentifier;
+                //gs_stlResearchOrganizationAuditEventQueue.swap(stlResearchOrganizationAuditEventQueue);
+                //gs_stlDataOrganizationAuditEventQueue.swap(stlDataOrganizationAuditEventQueue);
+                gs_stlAuditEventsMutex.unlock();*/
                 // Get the socket for the waiting connection
                 Socket * poSocket = poIpcServer->Accept();
                 if (nullptr != poSocket)
@@ -459,7 +489,7 @@ void __thiscall RootOfTrustCore::RunIpcListener(void)
         // Wait for all of the slave threads to terminate before exiting the dedicated Ipc
         // listener thread
         poThreadManager->JoinThreadGroup("RootOfTrustCodeGroup");
-        m_fIsRunning = false;
+        gs_fIsRunning = false;
     }
 }
 /********************************************************************************************/
@@ -520,10 +550,10 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactGetDataSet(
     
     try
     {
-        if (c_oOriginatingDomainIdentifier == Guid(m_strDataConnectorDomainIdentifier.c_str()))
+        if (c_oOriginatingDomainIdentifier == Guid(gs_strDataConnectorDomainIdentifier.c_str()))
         {
             oResponseBuffer.PutBoolean("Success", true);
-            oResponseBuffer.PutBuffer("Dataset", m_stlDataset);
+            oResponseBuffer.PutBuffer("Dataset", gs_stlDataset);
         }
         else
         {
@@ -574,45 +604,44 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactRecordAuditEvent(
         oCopyOfTransactionParameters.RemoveElement("TargetChannelsBitMask");
         // There is ONE special case where we need to detect CONNECT_SUCCESS so that we
         // can register the EOSB of the researcher
-        if (c_oOriginatingDomainIdentifier == m_strComputationalDomainIdentifier.c_str())
+        Guid computationalDomainIdentifier(gs_strComputationalDomainIdentifier.c_str());
+        std::cout << "c_oOriginatingDomainIdentifier = " << c_oOriginatingDomainIdentifier.ToString(eHyphensAndCurlyBraces) << std::endl;
+        std::cout << "computationalDomainIdentifier = " << computationalDomainIdentifier.ToString(eHyphensAndCurlyBraces) << std::endl;
+        if (c_oOriginatingDomainIdentifier == computationalDomainIdentifier)
         {
             StructuredBuffer oEncryptedData(oCopyOfTransactionParameters.GetString("EncryptedEventData").c_str());
             std::string eventName = oEncryptedData.GetString("EventName");
             if (eventName == "CONNECT_SUCCESS")
             {
-                m_strResearcherEosb = oEncryptedData.GetString("EOSB");
-                // Make sure that element is removed from the audit record
-                oEncryptedData.RemoveElement("EOSB");
-                // Update the EventData
-                oCopyOfTransactionParameters.PutString("EncryptedEventData", oEncryptedData.GetBase64SerializedBuffer());
+                gs_strResearcherEosb = oEncryptedData.GetString("EOSB");
                 this->RegisterResearcherEosb();
             }
         }
         
-        const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
+        const std::lock_guard<std::mutex> lock(gs_stlAuditEventsMutex);
         if (0x1000 == (0x1000 & wTargetChannelsBitMask)) // Third Party Auditor Channel
         {
             unsigned int unSequenceNumber = ::__sync_fetch_and_add((int *) &s_unThirdPartyAuditorAuditEventSequenceNumber, 1);
-            oCopyOfTransactionParameters.PutUnsignedInt32("SequenceNumber", unSequenceNumber);
-            m_stlIndependentAuditorOrganizationAuditEventQueue.push(oCopyOfTransactionParameters.GetBase64SerializedBuffer());
+            //oCopyOfTransactionParameters.PutUnsignedInt32("SequenceNumber", unSequenceNumber);
+            //gs_stlIndependentAuditorOrganizationAuditEventQueue.push(oCopyOfTransactionParameters.GetBase64SerializedBuffer());
         }
         if (0x0100 == (0x0100 & wTargetChannelsBitMask)) // Data Organization Channel
         {
             unsigned int unSequenceNumber = ::__sync_fetch_and_add((int *) &s_unDataOwnerAuditEventSequenceNumber, 1);
             oCopyOfTransactionParameters.PutUnsignedInt32("SequenceNumber", unSequenceNumber);
-            m_stlDataOrganizationAuditEventQueue.push(oCopyOfTransactionParameters.GetBase64SerializedBuffer());
+            gs_stlDataOrganizationAuditEventQueue.push(oCopyOfTransactionParameters.GetBase64SerializedBuffer());
         }
         if (0x0010 == (0x0010 & wTargetChannelsBitMask)) // Research Organization Channel
         {
             unsigned int unSequenceNumber = ::__sync_fetch_and_add((int *) &s_unResearcherAuditEventSequenceNumber, 1);
             oCopyOfTransactionParameters.PutUnsignedInt32("SequenceNumber", unSequenceNumber);
-            m_stlResearchOrganizationAuditEventQueue.push(oCopyOfTransactionParameters.GetBase64SerializedBuffer());
+            gs_stlResearchOrganizationAuditEventQueue.push(oCopyOfTransactionParameters.GetBase64SerializedBuffer());
         }
         if (0x0001 == (0x0001 & wTargetChannelsBitMask)) // Sail Organization Channel
         {
             unsigned int unSequenceNumber = ::__sync_fetch_and_add((int *) &s_unSailAuditEventSequenceNumber, 1);
-            oCopyOfTransactionParameters.PutUnsignedInt32("SequenceNumber", unSequenceNumber);
-            m_stlSailOrganizationAuditEventQueue.push(oCopyOfTransactionParameters.GetBase64SerializedBuffer());
+            //oCopyOfTransactionParameters.PutUnsignedInt32("SequenceNumber", unSequenceNumber);
+            //gs_stlSailOrganizationAuditEventQueue.push(oCopyOfTransactionParameters.GetBase64SerializedBuffer());
         }
     }
     
@@ -646,25 +675,25 @@ bool __thiscall RootOfTrustCore::InitializeVirtualMachine(void)
         StructuredBuffer oEventData;
         oEventData.PutString("PythonIntepreterVersion", "v3.8");
         oEventData.PutString("SecureVirtualMachineVersion", "0.1.37");
-        oEventData.PutString("IpAddressOfSecureVirtualMachine", m_strIpAddressOfVirtualMachine);
-        oEventData.PutString("VirtualMachineIdentifier", m_strClusterIdentifier);
-        oEventData.PutString("ClusterIdentifier", m_strClusterIdentifier);
+        oEventData.PutString("IpAddressOfSecureVirtualMachine", gs_strIpAddressOfVirtualMachine);
+        oEventData.PutString("VirtualMachineIdentifier", gs_strClusterIdentifier);
+        oEventData.PutString("ClusterIdentifier", gs_strClusterIdentifier);
         this->RecordInternalAuditEvent("VM_INITIALIZE", 0x1111, 0x05, oEventData);
         {
             // Make sure we are thread safe
-            const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
+            const std::lock_guard<std::mutex> lock(gs_stlAuditEventsMutex);
             // Make sure all of the parameters are proper
-            if ((0 < m_strDataOwnerAccessToken.size())&&(0 < m_strVirtualMachineIdentifier.size())&&(0 < m_strDigitalContractIdentifier.size())&&(0 < m_strIpAddressOfVirtualMachine.size()))
+            if ((0 < gs_strDataOwnerAccessToken.size())&&(0 < gs_strVirtualMachineIdentifier.size())&&(0 < gs_strDigitalContractIdentifier.size())&&(0 < gs_strIpAddressOfVirtualMachine.size()))
             {
-                m_strVirtualMachineEosb = ::RegisterVirtualMachineWithSailWebApiPortal(m_strDataOwnerAccessToken, m_strVirtualMachineIdentifier, m_strDigitalContractIdentifier, m_strIpAddressOfVirtualMachine);
+                gs_strVirtualMachineEosb = ::RegisterVirtualMachineWithSailWebApiPortal(gs_strDataOwnerAccessToken, gs_strVirtualMachineIdentifier, gs_strDigitalContractIdentifier, gs_strIpAddressOfVirtualMachine);
                 fSuccess = true;
             }
         }
         // Now, we generate an event to recognize the digital contract initialization
         oEventData.Clear();
-        oEventData.PutString("DigitalContractIdentifier", m_strDigitalContractIdentifier);
-        oEventData.PutString("VirtualMachineIdentifier", m_strClusterIdentifier);
-        oEventData.PutString("ClusterIdentifier", m_strClusterIdentifier);
+        oEventData.PutString("DigitalContractIdentifier", gs_strDigitalContractIdentifier);
+        oEventData.PutString("VirtualMachineIdentifier", gs_strClusterIdentifier);
+        oEventData.PutString("ClusterIdentifier", gs_strClusterIdentifier);
         this->RecordInternalAuditEvent("DC_INITIALIZE", 0x1111, 0x05, oEventData);
     }
     
@@ -693,11 +722,11 @@ bool __thiscall RootOfTrustCore::RegisterDataOwnerEosb(void)
     {
         std::cout << __func__ << std::endl;
         // Make sure we are thread safe
-        const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
+        const std::lock_guard<std::mutex> lock(gs_stlAuditEventsMutex);
         // Make sure all of the parameters are proper
-        if ((0 < m_strDataOwnerAccessToken.size())&&(0 < m_strVirtualMachineIdentifier.size()))
+        if ((0 < gs_strDataOwnerAccessToken.size())&&(0 < gs_strVirtualMachineIdentifier.size()))
         {
-            m_strDataOrganizationAuditEventParentBranchNodeIdentifier = ::RegisterVirtualMachineDataOwner(m_strDataOwnerAccessToken, m_strVirtualMachineIdentifier);
+            gs_strDataOrganizationAuditEventParentBranchNodeIdentifier = ::RegisterVirtualMachineDataOwner(gs_strDataOwnerAccessToken, gs_strVirtualMachineIdentifier);
             fSuccess = true;
         }
     }
@@ -727,11 +756,11 @@ bool __thiscall RootOfTrustCore::RegisterResearcherEosb(void)
     {
         std::cout << __func__ << std::endl;
         // Make sure we are thread safe
-        const std::lock_guard<std::mutex> lock(m_stlAuditEventsMutex);
+        const std::lock_guard<std::mutex> lock(gs_stlAuditEventsMutex);
         // Make sure all of the parameters are proper
-        if ((0 < m_strResearcherEosb.size())&&(0 < m_strVirtualMachineIdentifier.size()))
+        if ((0 < gs_strResearcherEosb.size())&&(0 < gs_strVirtualMachineIdentifier.size()))
         {
-            m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier = ::RegisterVirtualMachineResearcher(m_strResearcherEosb, m_strVirtualMachineIdentifier);
+            gs_strResearcherOrganizationAuditEventParentBranchNodeIdentifier = ::RegisterVirtualMachineResearcher(gs_strResearcherEosb, gs_strVirtualMachineIdentifier);
             fSuccess = true;
         }
     }
@@ -764,7 +793,7 @@ void __thiscall RootOfTrustCore::RecordInternalAuditEvent(
     {   
         std::cout << __func__ << std::endl;
         // Construct the transaction packet
-        Guid oRootOfTrustDomainIdentifier(m_strRootOfTrustDomainIdentifier.c_str());
+        Guid oRootOfTrustDomainIdentifier(gs_strRootOfTrustDomainIdentifier.c_str());
         Guid oEventGuid;
         StructuredBuffer oTransactionData;
         StructuredBuffer oEncryptedEventData = c_oEventData;

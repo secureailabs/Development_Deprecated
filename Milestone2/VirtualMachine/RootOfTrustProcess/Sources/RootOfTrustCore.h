@@ -35,6 +35,7 @@ class RootOfTrustCore : public Object
         virtual ~RootOfTrustCore(void);
         
         Guid __thiscall GetDataDomainIdentifier(void) const throw();
+        Guid __thiscall GetComputationalDomainIdentifier(void) const throw();
         std::string __thiscall GetRootOfTrustIpcPath(void) const throw();
         
         void __thiscall AuditEventDispatcher(void);
@@ -97,8 +98,8 @@ class RootOfTrustCore : public Object
         std::mutex m_stlAuditEventsMutex;
         std::string m_strDataOrganizationAuditEventParentBranchNodeIdentifier;
         std::string m_strResearcherOrganizationAuditEventParentBranchNodeIdentifier;
-        std::queue<std::string> m_stlDataOrganizationAuditEventQueue;
         std::queue<std::string> m_stlResearchOrganizationAuditEventQueue;
+        std::queue<std::string> m_stlDataOrganizationAuditEventQueue;
         std::queue<std::string> m_stlIndependentAuditorOrganizationAuditEventQueue;
         std::queue<std::string> m_stlSailOrganizationAuditEventQueue;
 };

@@ -88,7 +88,8 @@ static RootOfTrustCore __stdcall RunInitializerProcess(void)
 
 static void __stdcall RunProcess(
     _in const char * c_szProcessName,
-    _in const RootOfTrustCore & c_oRootOfTrustCore
+    _in const RootOfTrustCore & c_oRootOfTrustCore,
+    _in const Guid & c_oDomainIdentifier
     )
 {
     __DebugFunction();
@@ -128,7 +129,7 @@ static void __stdcall RunProcess(
         // 1. Domain identifier of the process (either Computational or Data domain)
         // 2. The Ipc path to the RootOfTrustProcess
         StructuredBuffer oInitializationData;
-        oInitializationData.PutGuid("YourDomainIdentifier", c_oRootOfTrustCore.GetDataDomainIdentifier());
+        oInitializationData.PutGuid("YourDomainIdentifier", c_oDomainIdentifier);
         oInitializationData.PutString("RootOfTrustIpcPath", c_oRootOfTrustCore.GetRootOfTrustIpcPath());
         // Write the initialization data to the socket and wait for a response
         StructuredBuffer oResponse(::PutIpcTransactionAndGetResponse(poSocket, oInitializationData));
@@ -171,12 +172,12 @@ int __cdecl main(
         // DataConnector process. The Data Connector process will end up connecting
         // to the root of trust engine and query it for all the information that it needs
         // to initialize itself
-        ::RunProcess("DataDomainProcess", oRootOfTrustCore);
+        ::RunProcess("DataDomainProcess", oRootOfTrustCore, oRootOfTrustCore.GetDataDomainIdentifier());
         // Once the DataConnector process is running, we need to spin up the
         // the computation process. The computation process will end up connecting
         // to the root of trust engine and query it for all the information that it needs
         // to initialize itself
-        ::RunProcess("ComputationalDomainProcess", oRootOfTrustCore);
+        ::RunProcess("ComputationalDomainProcess", oRootOfTrustCore, oRootOfTrustCore.GetComputationalDomainIdentifier());
         // Make sure to wait for all things 'RootOfTrust' to terminate before exiting
         // the try...catch block since doing so will destroy the RootOfTrust core object
         oRootOfTrustCore.WaitForTermination();

@@ -488,7 +488,6 @@ void __thiscall ComputationVM::LinkPassID(
     try{
         for(size_t i =0;i<nNumber;i++)
         {
-            std::ofstream stlVarFile;
             std::string strTarget = std::string("/tmp/"+stlPassIDs[i]);
             std::string strLinkpath = std::string("/tmp/"+strJobIdentifier+stlConfidentialInputIDs[i]);
             const char* target = strTarget.c_str();

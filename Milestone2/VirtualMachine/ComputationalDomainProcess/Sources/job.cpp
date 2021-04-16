@@ -88,6 +88,9 @@ const std::string __thiscall Job::GetOutput(void)
     stlBuf<<"OUTPUT: "<<stlIn.rdbuf()<<std::endl;
     stlBuf<<"ERROR: "<<stlError.rdbuf()<<std::endl;
 
+    stlIn.close();
+    stlError.close();
+
     return stlBuf.str();
 }
 

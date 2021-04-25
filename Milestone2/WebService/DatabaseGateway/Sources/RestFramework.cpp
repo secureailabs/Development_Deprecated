@@ -9,6 +9,7 @@
  ********************************************************************************************/
 
 #include "RestFramework.h"
+#include "ExceptionRegister.h"
 
 /********************************************************************************************/
 
@@ -223,15 +224,13 @@ void __thiscall RestFramework::RunServer(void)
                 }
             }
         }
-
         catch (BaseException oException)
         {
-            // TODO
+            ::RegisterException(oException, __func__, __LINE__);
         }
-
         catch (...)
         {
-            // TODO
+            ::RegisterUnknownException(__func__, __LINE__);
         }
     }
 
@@ -256,22 +255,33 @@ void __thiscall RestFramework::LoadPlugins(
 
     void * pPluginHandle;
 
-    for (const auto & itrFileEntry : std::experimental::filesystem::directory_iterator(c_strPluginFolderPath))
+    try 
     {
-        if (".so" == itrFileEntry.path().extension())
+        for (const auto & itrFileEntry : std::experimental::filesystem::directory_iterator(c_strPluginFolderPath))
         {
-            pPluginHandle = ::dlopen(itrFileEntry.path().string().c_str(), RTLD_NOW);
+            if (".so" == itrFileEntry.path().extension())
+            {
+                pPluginHandle = ::dlopen(itrFileEntry.path().string().c_str(), RTLD_NOW);
 
-            if (nullptr == pPluginHandle)
-            {
-                __DebugError("%s", "Error: Library file could not be open.");
-            }
-            else
-            {
-                InitializePluginFn fnInitializePlugin = (InitializePluginFn) ::dlsym(pPluginHandle, "InitializePlugin");
-                fnInitializePlugin(::RegisterPlugin);
-                m_stlPluginHandles.push_back(pPluginHandle);
+                if (nullptr == pPluginHandle)
+                {
+                    __DebugError("%s", "Error: Library file could not be open.");
+                }
+                else
+                {
+                    InitializePluginFn fnInitializePlugin = (InitializePluginFn) ::dlsym(pPluginHandle, "InitializePlugin");
+                    fnInitializePlugin(::RegisterPlugin);
+                    m_stlPluginHandles.push_back(pPluginHandle);
+                }
             }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 }

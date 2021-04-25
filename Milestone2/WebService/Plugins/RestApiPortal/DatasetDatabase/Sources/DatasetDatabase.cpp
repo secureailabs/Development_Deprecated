@@ -386,7 +386,7 @@ std::vector<Byte> __thiscall DatasetDatabase::GetListOfSubmittedDatasets(
     _ThrowBaseExceptionIf((-1 == unUserIndex), "Error: User not found", nullptr);
 
     // Generate a StructuredBuffer containing all datasets submitted by users within the organization
-    Dword wStatus = 404;
+    Dword dwStatus = 404;
     Dataset * oDataset;
     ::pthread_mutex_lock(&m_sMutex);
     for (unsigned int unIndex = 0 ; unIndex < m_stlDatasets.size(); ++unIndex)
@@ -401,13 +401,13 @@ std::vector<Byte> __thiscall DatasetDatabase::GetListOfSubmittedDatasets(
             oDatasetMetadata.PutQword("DatasetSubmissionDate", oDataset->GetDatasetSubmissionDate());
             oResponse.PutStructuredBuffer(oDataset->GetDatasetUuid().c_str(), oDatasetMetadata);
 
-            wStatus = 200;
+            dwStatus = 200;
         }
     }
     ::pthread_mutex_unlock(&m_sMutex);
 
     // Send back transaction
-    oResponse.PutWord("Status", wStatus);
+    oResponse.PutWord("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -438,7 +438,7 @@ std::vector<Byte> __thiscall DatasetDatabase::GetListOfAvailableDatasets(
     _ThrowBaseExceptionIf((true == fIsImposter), "Imposter EOSB cannot be used to list available datasets.", nullptr);
 
     // Generate a StructuredBuffer containing all available datasets metadata
-    Dword wStatus = 404;
+    Dword dwStatus = 404;
     Dataset * oDataset;
     ::pthread_mutex_lock(&m_sMutex);
     for (unsigned int unIndex = 0 ; unIndex < m_stlDatasets.size(); ++unIndex)
@@ -450,12 +450,12 @@ std::vector<Byte> __thiscall DatasetDatabase::GetListOfAvailableDatasets(
         oDatasetMetadata.PutQword("DatasetSubmissionDate", oDataset->GetDatasetSubmissionDate());
         oResponse.PutStructuredBuffer(oDataset->GetDatasetUuid().c_str(), oDatasetMetadata);
 
-        wStatus = 200;
+        dwStatus = 200;
     }
     ::pthread_mutex_unlock(&m_sMutex);
 
     // Send back transaction
-    oResponse.PutWord("Status", wStatus);
+    oResponse.PutWord("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -581,20 +581,20 @@ std::vector<Byte> __thiscall DatasetDatabase::DeleteDataset(
     // Get the dataset UUID
     std::string strDatasetUuid = c_oRequest.GetString("DatasetUuid");
     // Find the dataset and Verify that the user is the dataset owner
-    Word wStatus = 404;
+    Word dwStatus = 404;
     ::pthread_mutex_lock(&m_sMutex);
-    for (unsigned int unIndex = 0 ; ((wStatus == 404) && (unIndex < m_stlDatasets.size())); ++unIndex)
+    for (unsigned int unIndex = 0 ; ((dwStatus == 404) && (unIndex < m_stlDatasets.size())); ++unIndex)
     {
         if ((strDatasetUuid == m_stlDatasets[unIndex]->GetDatasetUuid()) && (strUserUuid == m_stlDatasets[unIndex]->GetDatasetSubmittedBy()))
         {
             m_stlDatasets.erase(m_stlDatasets.begin() + unIndex);
-            wStatus = 200;
+            dwStatus = 200;
         }
     }
     ::pthread_mutex_unlock(&m_sMutex);
 
     // Send back status of the transaction
-    oResponse.PutWord("Status", wStatus);
+    oResponse.PutWord("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }

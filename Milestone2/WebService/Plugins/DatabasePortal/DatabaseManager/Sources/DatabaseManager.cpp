@@ -478,28 +478,42 @@ std::vector<Byte> __thiscall DatabaseManager::ResetDatabase(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 404;
-    // Each client and transaction can only be used in a single thread
-    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
-    // Access SailDatabase
-    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
 
-    oResponse.PutDword("Status", dwStatus);
-
-    mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
-    {
-        // Drop the database
-        oSailDatabase.drop();
-    };
-    // Create a session and start the transaction
-    mongocxx::client_session oSession = oClient->start_session();
     try 
     {
-        oSession.with_transaction(oCallback);
-        dwStatus = 200;
+        // Each client and transaction can only be used in a single thread
+        mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+        // Access SailDatabase
+        mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+
+        oResponse.PutDword("Status", dwStatus);
+
+        mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
+        {
+            // Drop the database
+            oSailDatabase.drop();
+        };
+        // Create a session and start the transaction
+        mongocxx::client_session oSession = oClient->start_session();
+        try 
+        {
+            oSession.with_transaction(oCallback);
+            dwStatus = 200;
+        }
+        catch (mongocxx::exception& e) 
+        {
+            std::cout << "Collection transaction exception: " << e.what() << std::endl;
+        }
     }
-    catch (mongocxx::exception& e) 
+    catch (BaseException oException)
     {
-        std::cout << "Collection transaction exception: " << e.what() << std::endl;
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
     }
 
     oResponse.PutDword("Status", dwStatus);

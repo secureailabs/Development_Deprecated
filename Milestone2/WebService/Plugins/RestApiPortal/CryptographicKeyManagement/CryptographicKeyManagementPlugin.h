@@ -11,6 +11,7 @@
 
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "Object.h"
 #include "PluginDictionary.h"
 #include "RestFrameworkSharedFunctions.h"

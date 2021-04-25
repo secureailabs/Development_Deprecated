@@ -652,32 +652,49 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetUserInfo(
 
     StructuredBuffer oResponse;
 
-    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+    Dword dwStatus = 404;
+    Socket * poIpcCryptographicManager = nullptr;
 
-    StructuredBuffer oDecryptEosbRequest;
-    oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
-    oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
+    try 
+    {
+        std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
 
-    // Call CryptographicManager plugin to get the decrypted eosb
-    bool fSuccess = false;
-    Socket * poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-    StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
-    poIpcCryptographicManager->Release();
-    if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
-    {
-        StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
-        oResponse.PutDword("Status", 200);
-        oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
-        oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
-        // TODO: get user access rights from the confidential record, for now it can't be decrypted
-        oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
-        fSuccess = true;
+        StructuredBuffer oDecryptEosbRequest;
+        oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
+        oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
+
+        // Call CryptographicManager plugin to get the decrypted eosb
+        poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+        poIpcCryptographicManager->Release();
+        if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
+        {
+            StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
+            oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
+            oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
+            // TODO: get user access rights from the confidential record, for now it can't be decrypted
+            oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
+            dwStatus = 200;
+        }
     }
-    // Add error code if transaction was unsuccessful
-    if (false == fSuccess)
+    catch (BaseException oException)
     {
-        oResponse.PutDword("Status", 404);
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
     }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poIpcCryptographicManager)
+    {
+        poIpcCryptographicManager->Release();
+    }
+
+    // Send back the status of the transaction
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -942,44 +959,63 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ListDigitalContracts(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 404;
-    // Get user information to check if the user is a digital contract admin or database admin
-    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-    if (200 == oUserInfo.GetDword("Status"))
+    TlsNode * poTlsNode = nullptr;
+    
+    try 
     {
-        // Make a Tls connection with the database portal
-        TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-        // Create a request to list all the digital contracts for the user organization in the database
-        StructuredBuffer oRequest;
-        oRequest.PutString("PluginName", "DatabaseManager");
-        oRequest.PutString("Verb", "GET");
-        oRequest.PutString("Resource", "/SAIL/DatabaseManager/ListDigitalContracts");
-        oRequest.PutString("UserOrganization", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
-        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-        // Send request packet
-        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
-
-        // Read header and body of the response
-        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-        // Make sure to release the poTlsNode
-        poTlsNode->Release();
-        
-        StructuredBuffer oDatabaseResponse(stlResponse);
-        if (404 != oDatabaseResponse.GetDword("Status"))
+        // Get user information to check if the user is a digital contract admin or database admin
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
         {
-            StructuredBuffer oDigitalContracts = oDatabaseResponse.GetStructuredBuffer("DigitalContracts");
-            for (std::string strDcGuid : oDigitalContracts.GetNamesOfElements())
+            // Make a Tls connection with the database portal
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to list all the digital contracts for the user organization in the database
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "GET");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/ListDigitalContracts");
+            oRequest.PutString("UserOrganization", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+            // Make sure to release the poTlsNode
+            poTlsNode->Release();
+            
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (404 != oDatabaseResponse.GetDword("Status"))
             {
-                StructuredBuffer oDeserializedDc = this->DeserializeDigitalContract(oDigitalContracts.GetStructuredBuffer(strDcGuid.c_str()).GetBuffer("DigitalContractBlob"));
-                oDigitalContracts.PutStructuredBuffer(strDcGuid.c_str(), oDeserializedDc);
+                StructuredBuffer oDigitalContracts = oDatabaseResponse.GetStructuredBuffer("DigitalContracts");
+                for (std::string strDcGuid : oDigitalContracts.GetNamesOfElements())
+                {
+                    StructuredBuffer oDeserializedDc = this->DeserializeDigitalContract(oDigitalContracts.GetStructuredBuffer(strDcGuid.c_str()).GetBuffer("DigitalContractBlob"));
+                    oDigitalContracts.PutStructuredBuffer(strDcGuid.c_str(), oDeserializedDc);
+                }
+                oResponse.PutStructuredBuffer("DigitalContracts", oDigitalContracts);
+                dwStatus = 200;
             }
-            dwStatus = 200;
-            oResponse.PutStructuredBuffer("DigitalContracts", oDigitalContracts);
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction
@@ -1008,44 +1044,63 @@ std::vector<Byte> __thiscall DigitalContractDatabase::PullDigitalContract(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 404;
-    // Get user information to check if the user is a digital contract admin or database admin
-    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-    if (200 == oUserInfo.GetDword("Status"))
-    {
-        // TODO: Add a check if the api has to be restricted
-        // Make a Tls connection with the database portal
-        TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-        // Create a request to get the digital contract information
-        StructuredBuffer oRequest;
-        oRequest.PutString("PluginName", "DatabaseManager");
-        oRequest.PutString("Verb", "GET");
-        oRequest.PutString("Resource", "/SAIL/DatabaseManager/PullDigitalContract");
-        oRequest.PutString("DigitalContractGuid", c_oRequest.GetString("DigitalContractGuid"));
-        oRequest.PutString("UserOrganization", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
-        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-        // Send request packet
-        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+    TlsNode * poTlsNode = nullptr;
 
-        // Read header and body of the response
-        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-        // Make sure to release the poTlsNode
-        poTlsNode->Release();
-        
-        StructuredBuffer oDatabaseResponse(stlResponse);
-        if (404 != oDatabaseResponse.GetDword("Status"))
+    try 
+    {
+        // Get user information to check if the user is a digital contract admin or database admin
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
         {
-            std::vector<Byte> stlDcBlob = oDatabaseResponse.GetStructuredBuffer("DigitalContract").GetBuffer("DigitalContractBlob");
-            // Deserialize the Digital contract blob and get the DC information structured buffer
-            oResponse.PutStructuredBuffer("DigitalContract", this->DeserializeDigitalContract(stlDcBlob));
-            oResponse.PutString("ResearcherOrganization", oDatabaseResponse.GetString("ResearcherOrganization"));
-            oResponse.PutString("DataOwnerOrganization", oDatabaseResponse.GetString("DataOwnerOrganization"));
-            dwStatus = 200;
+            // TODO: Add a check if the api has to be restricted
+            // Make a Tls connection with the database portal
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to get the digital contract information
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "GET");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/PullDigitalContract");
+            oRequest.PutString("DigitalContractGuid", c_oRequest.GetString("DigitalContractGuid"));
+            oRequest.PutString("UserOrganization", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+            // Make sure to release the poTlsNode
+            poTlsNode->Release();
+            
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (404 != oDatabaseResponse.GetDword("Status"))
+            {
+                std::vector<Byte> stlDcBlob = oDatabaseResponse.GetStructuredBuffer("DigitalContract").GetBuffer("DigitalContractBlob");
+                // Deserialize the Digital contract blob and get the DC information structured buffer
+                oResponse.PutStructuredBuffer("DigitalContract", this->DeserializeDigitalContract(stlDcBlob));
+                oResponse.PutString("ResearcherOrganization", oDatabaseResponse.GetString("ResearcherOrganization"));
+                oResponse.PutString("DataOwnerOrganization", oDatabaseResponse.GetString("DataOwnerOrganization"));
+                dwStatus = 200;
+            }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction
@@ -1076,61 +1131,80 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 204;
-    // Get User guid
-    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-    if (200 == oUserInfo.GetDword("Status"))
+    TlsNode * poTlsNode = nullptr;
+
+    try 
     {
-        // Create digital contract guid
-        std::string strDcGuid = Guid(eDigitalContract).ToString(eHyphensAndCurlyBraces);
-        // Get organization guid
-        std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
-        // Create Ssb containing Dc information
-        StructuredBuffer oSsb;
-        oSsb.PutString("Title", c_oRequest.GetString("Title"));
-        oSsb.PutString("VersionNumber", c_oRequest.GetString("VersionNumber"));
-        oSsb.PutString("DigitalContractGuid", strDcGuid);
-        oSsb.PutDword("ContractStage", eApplication);
-        oSsb.PutUnsignedInt64("SubscriptionDays", c_oRequest.GetUnsignedInt64("SubscriptionDays"));
-        oSsb.PutString("DatasetGuid", c_oRequest.GetString("DatasetGuid"));
-        oSsb.PutString("ROAuthorizedUser", oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces));
-        oSsb.PutString("LegalAgreement", c_oRequest.GetString("LegalAgreement"));
-        oSsb.PutUnsignedInt32("DatasetDRMMetadataSize", c_oRequest.GetUnsignedInt32("DatasetDRMMetadataSize"));
-        oSsb.PutStructuredBuffer("DatasetDRMMetadata", c_oRequest.GetStructuredBuffer("DatasetDRMMetadata"));
-        // Get digital contract blob
-        std::vector<Byte> stlDigitalContractBlob;
-        this->SerializeDigitalContract(oSsb, stlDigitalContractBlob);
-
-        // Make a Tls connection with the database portal
-        TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-        // Create a request to add a digital contract to the database
-        StructuredBuffer oRequest;
-        oRequest.PutString("PluginName", "DatabaseManager");
-        oRequest.PutString("Verb", "POST");
-        oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterDigitalContract");
-        oRequest.PutString("DigitalContractGuid", strDcGuid);
-        oRequest.PutString("ResearcherOrganization", strOrganizationGuid);
-        oRequest.PutString("DataOwnerOrganization", c_oRequest.GetString("DataOwnerOrganization"));
-        oRequest.PutBuffer("DigitalContractBlob", stlDigitalContractBlob);
-        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-        // Send request packet
-        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
-
-        // Read header and body of the response
-        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-        // Make sure to release the poTlsNode
-        poTlsNode->Release();
-        
-        // Check if DatabaseManager registered the user or not
-        StructuredBuffer oDatabaseResponse(stlResponse);
-        if (204 != oDatabaseResponse.GetDword("Status"))
+        // Get User guid
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
         {
-            dwStatus = 201;
+            // Create digital contract guid
+            std::string strDcGuid = Guid(eDigitalContract).ToString(eHyphensAndCurlyBraces);
+            // Get organization guid
+            std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
+            // Create Ssb containing Dc information
+            StructuredBuffer oSsb;
+            oSsb.PutString("Title", c_oRequest.GetString("Title"));
+            oSsb.PutString("VersionNumber", c_oRequest.GetString("VersionNumber"));
+            oSsb.PutString("DigitalContractGuid", strDcGuid);
+            oSsb.PutDword("ContractStage", eApplication);
+            oSsb.PutUnsignedInt64("SubscriptionDays", c_oRequest.GetUnsignedInt64("SubscriptionDays"));
+            oSsb.PutString("DatasetGuid", c_oRequest.GetString("DatasetGuid"));
+            oSsb.PutString("ROAuthorizedUser", oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces));
+            oSsb.PutString("LegalAgreement", c_oRequest.GetString("LegalAgreement"));
+            oSsb.PutUnsignedInt32("DatasetDRMMetadataSize", c_oRequest.GetUnsignedInt32("DatasetDRMMetadataSize"));
+            oSsb.PutStructuredBuffer("DatasetDRMMetadata", c_oRequest.GetStructuredBuffer("DatasetDRMMetadata"));
+            // Get digital contract blob
+            std::vector<Byte> stlDigitalContractBlob;
+            this->SerializeDigitalContract(oSsb, stlDigitalContractBlob);
+
+            // Make a Tls connection with the database portal
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to add a digital contract to the database
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "POST");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterDigitalContract");
+            oRequest.PutString("DigitalContractGuid", strDcGuid);
+            oRequest.PutString("ResearcherOrganization", strOrganizationGuid);
+            oRequest.PutString("DataOwnerOrganization", c_oRequest.GetString("DataOwnerOrganization"));
+            oRequest.PutBuffer("DigitalContractBlob", stlDigitalContractBlob);
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+            // Make sure to release the poTlsNode
+            poTlsNode->Release();
+            
+            // Check if DatabaseManager registered the user or not
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (204 != oDatabaseResponse.GetDword("Status"))
+            {
+                dwStatus = 201;
+            }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction
@@ -1159,82 +1233,101 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AcceptDigitalContract(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 204;
-    // Get digital contract guid
-    std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
-    // Get user information to check if the user has admin access rights
-    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-    if (200 == oUserInfo.GetDword("Status"))
-    {
-        if (eDatasetAdmin == oUserInfo.GetQword("AccessRights"))
-        {
-            // Step 1: Get the digital contract blob and update the structure
-            StructuredBuffer oDcBlob(this->PullDigitalContract(c_oRequest));
-            if (200 == oDcBlob.GetDword("Status"))
-            {
-                // Get user's organization guid
-                std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
-                if (oDcBlob.GetString("DataOwnerOrganization") == strOrganizationGuid)
-                {
-                    StructuredBuffer oSsb(oDcBlob.GetStructuredBuffer("DigitalContract"));
-                    if (eApplication == oSsb.GetDword("ContractStage"))
-                    {
-                        oSsb.PutDword("ContractStage", eApproval);
-                        oSsb.PutUnsignedInt64("RetentionTime", c_oRequest.GetUnsignedInt64("RetentionTime"));
-                        oSsb.PutString("DOOAuthorizedUser", oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces));
-                        oSsb.PutString("EulaAcceptedByDOOAuthorizedUser", c_oRequest.GetString("EULA"));
-                        oSsb.PutString("LegalAgreement", c_oRequest.GetString("LegalAgreement"));
-                        // Serialize the update digital contract blob
-                        std::vector<Byte> stlUpdatedSsb;
-                        this->SerializeDigitalContract(oSsb, stlUpdatedSsb);
-                        // Step 2: Call the database manager resource with the updated blob and update the database
-                        // Make a Tls connection with the database portal
-                        TlsNode * poTlsNode = nullptr;
-                        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-                        // Create a request to update a digital contract to the database
-                        StructuredBuffer oRequest;
-                        oRequest.PutString("PluginName", "DatabaseManager");
-                        oRequest.PutString("Verb", "PATCH");
-                        oRequest.PutString("Resource", "/SAIL/DatabaseManager/Update/DigitalContract");
-                        oRequest.PutString("DigitalContractGuid", strDcGuid);
-                        oRequest.PutBuffer("DigitalContractBlob", stlUpdatedSsb);
-                        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-                        // Send request packet
-                        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+    TlsNode * poTlsNode = nullptr;
 
-                        // Read header and body of the response
-                        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-                        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-                        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-                        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-                        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-                        // Make sure to release the poTlsNode
-                        poTlsNode->Release();
-        
-                        // Check if DatabaseManager updated the digital contract or not
-                        StructuredBuffer oDatabaseResponse(stlResponse);
-                        if (204 != oDatabaseResponse.GetDword("Status"))
+    try 
+    {
+        // Get digital contract guid
+        std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
+        // Get user information to check if the user has admin access rights
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eDatasetAdmin == oUserInfo.GetQword("AccessRights"))
+            {
+                // Step 1: Get the digital contract blob and update the structure
+                StructuredBuffer oDcBlob(this->PullDigitalContract(c_oRequest));
+                if (200 == oDcBlob.GetDword("Status"))
+                {
+                    // Get user's organization guid
+                    std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
+                    if (oDcBlob.GetString("DataOwnerOrganization") == strOrganizationGuid)
+                    {
+                        StructuredBuffer oSsb(oDcBlob.GetStructuredBuffer("DigitalContract"));
+                        if (eApplication == oSsb.GetDword("ContractStage"))
                         {
-                            dwStatus = 200;
-                            oResponse.PutString("Instructions", "Wait for activation.");
-                            // Create a DC branch event for DOO
-                            StructuredBuffer oEventInformation;
-                            oEventInformation.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
-                            oEventInformation.PutString("DigitalContractGuid", strDcGuid);
-                            oEventInformation.PutString("OrganizationGuid", strOrganizationGuid);
-                            StructuredBuffer oDcEvent(this->RegisterDcAuditEvent(oEventInformation));
-                            if ((0 < oDcEvent.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDcEvent.GetDword("Status")))
+                            oSsb.PutDword("ContractStage", eApproval);
+                            oSsb.PutUnsignedInt64("RetentionTime", c_oRequest.GetUnsignedInt64("RetentionTime"));
+                            oSsb.PutString("DOOAuthorizedUser", oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces));
+                            oSsb.PutString("EulaAcceptedByDOOAuthorizedUser", c_oRequest.GetString("EULA"));
+                            oSsb.PutString("LegalAgreement", c_oRequest.GetString("LegalAgreement"));
+                            // Serialize the update digital contract blob
+                            std::vector<Byte> stlUpdatedSsb;
+                            this->SerializeDigitalContract(oSsb, stlUpdatedSsb);
+                            // Step 2: Call the database manager resource with the updated blob and update the database
+                            // Make a Tls connection with the database portal
+                            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                            // Create a request to update a digital contract to the database
+                            StructuredBuffer oRequest;
+                            oRequest.PutString("PluginName", "DatabaseManager");
+                            oRequest.PutString("Verb", "PATCH");
+                            oRequest.PutString("Resource", "/SAIL/DatabaseManager/Update/DigitalContract");
+                            oRequest.PutString("DigitalContractGuid", strDcGuid);
+                            oRequest.PutBuffer("DigitalContractBlob", stlUpdatedSsb);
+                            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                            // Send request packet
+                            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                            // Read header and body of the response
+                            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                            // Make sure to release the poTlsNode
+                            poTlsNode->Release();
+            
+                            // Check if DatabaseManager updated the digital contract or not
+                            StructuredBuffer oDatabaseResponse(stlResponse);
+                            if (204 != oDatabaseResponse.GetDword("Status"))
                             {
-                                oResponse.PutDword("RootEventStatus", 201);
-                            }
-                            else
-                            {
-                                oResponse.PutDword("RootEventStatus", 204);
+                                dwStatus = 200;
+                                oResponse.PutString("Instructions", "Wait for activation.");
+                                // Create a DC branch event for DOO
+                                StructuredBuffer oEventInformation;
+                                oEventInformation.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
+                                oEventInformation.PutString("DigitalContractGuid", strDcGuid);
+                                oEventInformation.PutString("OrganizationGuid", strOrganizationGuid);
+                                StructuredBuffer oDcEvent(this->RegisterDcAuditEvent(oEventInformation));
+                                if ((0 < oDcEvent.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDcEvent.GetDword("Status")))
+                                {
+                                    oResponse.PutDword("RootEventStatus", 201);
+                                }
+                                else
+                                {
+                                    oResponse.PutDword("RootEventStatus", 204);
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction
@@ -1263,86 +1356,105 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ActivateDigitalContract(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 204;
-    // Get digital contract guid
-    std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
-    // Get user information to check if the user has admin access rights
-    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-    if (200 == oUserInfo.GetDword("Status"))
-    {
-        if (eDigitalContractAdmin == oUserInfo.GetQword("AccessRights"))
-        {
-            // Step 1: Get the digital contract blob and update the structure
-            StructuredBuffer oDcBlob(this->PullDigitalContract(c_oRequest));
-            if (200 == oDcBlob.GetDword("Status"))
-            {
-                // Get user's organization guid
-                std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
-                if (oDcBlob.GetString("ResearcherOrganization") == strOrganizationGuid)
-                {
-                    StructuredBuffer oSsb(oDcBlob.GetStructuredBuffer("DigitalContract"));
-                    if (eApproval == oSsb.GetDword("ContractStage"))
-                    {
-                        uint64_t unActivationTime = ::GetEpochTimeInSeconds();
-                        oSsb.PutUnsignedInt64("ActivationTime", unActivationTime);
-                        // Calculate expiration time
-                        uint64_t unSubscriptionDays = oSsb.GetUnsignedInt64("SubscriptionDays");
-                        uint64_t unExpirationTime = unActivationTime + (unSubscriptionDays * 24 * 60 * 60);
-                        oSsb.PutUnsignedInt64("ExpirationTime", unExpirationTime);
-                        oSsb.PutDword("ContractStage", eActive);
-                        oSsb.PutString("ROAuthorizedUser", oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces));
-                        oSsb.PutString("EulaAcceptedByROAuthorizedUser", c_oRequest.GetString("EULA"));
-                        // Serialize the update digital contract blob
-                        std::vector<Byte> stlUpdatedSsb;
-                        this->SerializeDigitalContract(oSsb, stlUpdatedSsb);
-                        // Step 2: Call the database manager resource with the updated blob and update the database
-                        // Make a Tls connection with the database portal
-                        TlsNode * poTlsNode = nullptr;
-                        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-                        // Create a request to update digital contract in the database
-                        StructuredBuffer oRequest;
-                        oRequest.PutString("PluginName", "DatabaseManager");
-                        oRequest.PutString("Verb", "PATCH");
-                        oRequest.PutString("Resource", "/SAIL/DatabaseManager/Update/DigitalContract");
-                        oRequest.PutString("DigitalContractGuid", strDcGuid);
-                        oRequest.PutBuffer("DigitalContractBlob", stlUpdatedSsb);
-                        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-                        // Send request packet
-                        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+    TlsNode * poTlsNode = nullptr;
 
-                        // Read header and body of the response
-                        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-                        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-                        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-                        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-                        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-                        // Make sure to release the poTlsNode
-                        poTlsNode->Release();
-                        
-                        // Check if DatabaseManager updated the digital contract or not
-                        StructuredBuffer oDatabaseResponse(stlResponse);
-                        if (204 != oDatabaseResponse.GetDword("Status"))
+    try 
+    {
+        // Get digital contract guid
+        std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
+        // Get user information to check if the user has admin access rights
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eDigitalContractAdmin == oUserInfo.GetQword("AccessRights"))
+            {
+                // Step 1: Get the digital contract blob and update the structure
+                StructuredBuffer oDcBlob(this->PullDigitalContract(c_oRequest));
+                if (200 == oDcBlob.GetDword("Status"))
+                {
+                    // Get user's organization guid
+                    std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
+                    if (oDcBlob.GetString("ResearcherOrganization") == strOrganizationGuid)
+                    {
+                        StructuredBuffer oSsb(oDcBlob.GetStructuredBuffer("DigitalContract"));
+                        if (eApproval == oSsb.GetDword("ContractStage"))
                         {
-                            dwStatus = 200;
-                            oResponse.PutString("Instructions", "Wait for VM activation.");
-                            // Create a DC branch event for RO
-                            StructuredBuffer oEventInformation;
-                            oEventInformation.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
-                            oEventInformation.PutString("DigitalContractGuid", strDcGuid);
-                            oEventInformation.PutString("OrganizationGuid", strOrganizationGuid);
-                            StructuredBuffer oDcEvent(this->RegisterDcAuditEvent(oEventInformation));
-                            if ((0 < oDcEvent.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDcEvent.GetDword("Status")))
+                            uint64_t unActivationTime = ::GetEpochTimeInSeconds();
+                            oSsb.PutUnsignedInt64("ActivationTime", unActivationTime);
+                            // Calculate expiration time
+                            uint64_t unSubscriptionDays = oSsb.GetUnsignedInt64("SubscriptionDays");
+                            uint64_t unExpirationTime = unActivationTime + (unSubscriptionDays * 24 * 60 * 60);
+                            oSsb.PutUnsignedInt64("ExpirationTime", unExpirationTime);
+                            oSsb.PutDword("ContractStage", eActive);
+                            oSsb.PutString("ROAuthorizedUser", oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces));
+                            oSsb.PutString("EulaAcceptedByROAuthorizedUser", c_oRequest.GetString("EULA"));
+                            // Serialize the update digital contract blob
+                            std::vector<Byte> stlUpdatedSsb;
+                            this->SerializeDigitalContract(oSsb, stlUpdatedSsb);
+                            // Step 2: Call the database manager resource with the updated blob and update the database
+                            // Make a Tls connection with the database portal
+                            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                            // Create a request to update digital contract in the database
+                            StructuredBuffer oRequest;
+                            oRequest.PutString("PluginName", "DatabaseManager");
+                            oRequest.PutString("Verb", "PATCH");
+                            oRequest.PutString("Resource", "/SAIL/DatabaseManager/Update/DigitalContract");
+                            oRequest.PutString("DigitalContractGuid", strDcGuid);
+                            oRequest.PutBuffer("DigitalContractBlob", stlUpdatedSsb);
+                            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                            // Send request packet
+                            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                            // Read header and body of the response
+                            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                            // Make sure to release the poTlsNode
+                            poTlsNode->Release();
+                            
+                            // Check if DatabaseManager updated the digital contract or not
+                            StructuredBuffer oDatabaseResponse(stlResponse);
+                            if (204 != oDatabaseResponse.GetDword("Status"))
                             {
-                                oResponse.PutDword("RootEventStatus", 201);
-                            }
-                            else
-                            {
-                                oResponse.PutDword("RootEventStatus", 204);
+                                dwStatus = 200;
+                                oResponse.PutString("Instructions", "Wait for VM activation.");
+                                // Create a DC branch event for RO
+                                StructuredBuffer oEventInformation;
+                                oEventInformation.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
+                                oEventInformation.PutString("DigitalContractGuid", strDcGuid);
+                                oEventInformation.PutString("OrganizationGuid", strOrganizationGuid);
+                                StructuredBuffer oDcEvent(this->RegisterDcAuditEvent(oEventInformation));
+                                if ((0 < oDcEvent.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDcEvent.GetDword("Status")))
+                                {
+                                    oResponse.PutDword("RootEventStatus", 201);
+                                }
+                                else
+                                {
+                                    oResponse.PutDword("RootEventStatus", 204);
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction
@@ -1371,52 +1483,72 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDcAuditEvent(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 204;
-    // Take in EOSB, DigitalContractGuid, VMGuid, and VM information
-    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
-    std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
-    std::string strOrganizationGuid = c_oRequest.GetString("OrganizationGuid");
+    Socket * poIpcAuditLogManager = nullptr;
 
-    // Get the root event guid for the user organization
-    StructuredBuffer oGetDcBranchEventRequest;
-    oGetDcBranchEventRequest.PutDword("TransactionType", 0x00000002);
-    oGetDcBranchEventRequest.PutString("ParentGuid", "{00000000-0000-0000-0000-000000000000}");
-    oGetDcBranchEventRequest.PutString("OrganizationGuid", strOrganizationGuid);
-    StructuredBuffer oFilters;
-    oGetDcBranchEventRequest.PutStructuredBuffer("Filters", oFilters);
-    // Call AuditLogManager plugin to get the guid of DC event log
-    std::string strDcEventGuid;
-    Socket * poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
-    StructuredBuffer oAuditLogResponse(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oGetDcBranchEventRequest));
-    poIpcAuditLogManager->Release();
-    if (200 == oAuditLogResponse.GetDword("Status"))
+    try
     {
-        StructuredBuffer oListOfEvents = oAuditLogResponse.GetStructuredBuffer("ListOfEvents");
-        if (0 < oListOfEvents.GetNamesOfElements().size())
+        // Take in EOSB, DigitalContractGuid, VMGuid, and VM information
+        std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+        std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
+        std::string strOrganizationGuid = c_oRequest.GetString("OrganizationGuid");
+
+        // Get the root event guid for the user organization
+        StructuredBuffer oGetDcBranchEventRequest;
+        oGetDcBranchEventRequest.PutDword("TransactionType", 0x00000002);
+        oGetDcBranchEventRequest.PutString("ParentGuid", "{00000000-0000-0000-0000-000000000000}");
+        oGetDcBranchEventRequest.PutString("OrganizationGuid", strOrganizationGuid);
+        StructuredBuffer oFilters;
+        oGetDcBranchEventRequest.PutStructuredBuffer("Filters", oFilters);
+        // Call AuditLogManager plugin to get the guid of DC event log
+        std::string strDcEventGuid;
+        poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
+        StructuredBuffer oAuditLogResponse(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oGetDcBranchEventRequest));
+        poIpcAuditLogManager->Release();
+        if (200 == oAuditLogResponse.GetDword("Status"))
         {
-            std::string strRootEventGuid = oListOfEvents.GetStructuredBuffer(oListOfEvents.GetNamesOfElements()[0].c_str()).GetGuid("EventGuid").ToString(eHyphensAndCurlyBraces);
-            // Create a DC branch event for DCGuid
-            StructuredBuffer oDcBranchEvent;
-            oDcBranchEvent.PutDword("TransactionType", 0x00000001);
-            oDcBranchEvent.PutBuffer("Eosb", stlEosb);
-            StructuredBuffer oDcMetadata;
-            strDcEventGuid = Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces);
-            oDcMetadata.PutString("EventGuid", strDcEventGuid);
-            oDcMetadata.PutString("ParentGuid", strRootEventGuid);
-            oDcMetadata.PutString("OrganizationGuid", strOrganizationGuid);
-            oDcMetadata.PutQword("EventType", 2); // where 2 is for non root event type
-            oDcMetadata.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
-            StructuredBuffer oPlainTextMetadata;
-            oPlainTextMetadata.PutDword("BranchType", 1); // where 1 is for for DC branch type
-            oPlainTextMetadata.PutString("GuidOfDcOrVm", strDcGuid);
-            oDcMetadata.PutStructuredBuffer("PlainTextEventData", oPlainTextMetadata);
-            oDcBranchEvent.PutStructuredBuffer("NonLeafEvent", oDcMetadata);
-            // Call AuditLogManager plugin to create a DC event log
-            poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
-            StructuredBuffer oDcEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oDcBranchEvent));
-            poIpcAuditLogManager->Release();
-            _ThrowBaseExceptionIf(((0 > oDcEventLog.GetSerializedBufferRawDataSizeInBytes())&&(201 != oDcEventLog.GetDword("Status"))), "Error creating DC branch event.", nullptr);
-            dwStatus = 201;
+            StructuredBuffer oListOfEvents = oAuditLogResponse.GetStructuredBuffer("ListOfEvents");
+            if (0 < oListOfEvents.GetNamesOfElements().size())
+            {
+                std::string strRootEventGuid = oListOfEvents.GetStructuredBuffer(oListOfEvents.GetNamesOfElements()[0].c_str()).GetGuid("EventGuid").ToString(eHyphensAndCurlyBraces);
+                // Create a DC branch event for DCGuid
+                StructuredBuffer oDcBranchEvent;
+                oDcBranchEvent.PutDword("TransactionType", 0x00000001);
+                oDcBranchEvent.PutBuffer("Eosb", stlEosb);
+                StructuredBuffer oDcMetadata;
+                strDcEventGuid = Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces);
+                oDcMetadata.PutString("EventGuid", strDcEventGuid);
+                oDcMetadata.PutString("ParentGuid", strRootEventGuid);
+                oDcMetadata.PutString("OrganizationGuid", strOrganizationGuid);
+                oDcMetadata.PutQword("EventType", 2); // where 2 is for non root event type
+                oDcMetadata.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+                StructuredBuffer oPlainTextMetadata;
+                oPlainTextMetadata.PutDword("BranchType", 1); // where 1 is for for DC branch type
+                oPlainTextMetadata.PutString("GuidOfDcOrVm", strDcGuid);
+                oDcMetadata.PutStructuredBuffer("PlainTextEventData", oPlainTextMetadata);
+                oDcBranchEvent.PutStructuredBuffer("NonLeafEvent", oDcMetadata);
+                // Call AuditLogManager plugin to create a DC event log
+                poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
+                StructuredBuffer oDcEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oDcBranchEvent));
+                poIpcAuditLogManager->Release();
+                _ThrowBaseExceptionIf(((0 > oDcEventLog.GetSerializedBufferRawDataSizeInBytes())&&(201 != oDcEventLog.GetDword("Status"))), "Error creating DC branch event.", nullptr);
+                dwStatus = 201;
+            }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poIpcAuditLogManager)
+    {
+        poIpcAuditLogManager->Release();
     }
 
     oResponse.PutDword("Status", dwStatus);

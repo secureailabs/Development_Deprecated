@@ -20,10 +20,13 @@ int main()
 
     try
     {
+        ::ClearScreen();
+
+        std::cout << "************************\n  SAIL DATABASE TOOL\n************************\n" << std::endl;
+        std::string strIpAddress = ::GetStringInput("IP address: ", 50, false, c_szValidInputCharacters);
+        unsigned int unPortNumber = std::stoul(::GetStringInput("Port number: ", 50, false, c_szValidInputCharacters));
         // Add webservices configuration
-        const char * c_szIpAddress = "127.0.0.1";
-        unsigned int unPort = 6200;
-        ::AddWebPortalConfiguration(c_szIpAddress, unPort);
+        ::AddWebPortalConfiguration(strIpAddress.c_str(), unPortNumber);
 
         // PING web services portal
         ::GetRemoteAttestationCertificate();

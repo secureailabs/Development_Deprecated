@@ -9,6 +9,7 @@
  ********************************************************************************************/
 
 #include "RestFrameworkRuntimeData.h"
+#include "ExceptionRegister.h"
 #include "HttpRequestParser.h"
 #include "JsonValue.h"
 #include "PluginVersion.h"
@@ -50,9 +51,14 @@ static void * __stdcall StartThread(
     TlsNode * poTlsNode = poThreadParameters->m_poTlsNode;
     RestFrameworkRuntimeData * poRestFrameworkRuntimeData = poThreadParameters->m_poRestFrameworkRuntimeData;
     poRestFrameworkRuntimeData->RunThread((TlsNode *) poTlsNode);
+    // Release the Tls Node
     poTlsNode->Release();
-
+    // Deallocate parameters
     poRestFrameworkRuntimeData->m_oSmartMemoryAllocator.Deallocate(poVoidThreadParameters);
+    // Delete the connection
+    poRestFrameworkRuntimeData->DeleteConnection();
+
+    ::pthread_exit(nullptr);
 
     return nullptr;
 }
@@ -310,38 +316,33 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
             std::string strResponseData(strResponseHeader);
             strResponseData += strResponseString;
             std::cout << "\n\nRest Response:\n\n" << strResponseData << std::endl;
-
             // Send back response data
             poTlsNode->Write((const Byte *) strResponseData.data(), strResponseData.size());
+            // Delete the JsonValue pointer
+            poResponseJson->Release();
         }
-        delete poRequestParameters;
+        // Delete the allocated parameters
+        poRequestParameters->Release();
+        oLocalSmartMemoryAllocator.Deallocate(pbSerializedResponseBuffer);
     }
-
     catch(BaseException oBaseException)
     {
-        std::cerr << oBaseException.GetExceptionMessage() << '\n';
+        ::RegisterException(oBaseException, __func__, __LINE__);
         // send back error message
         std::string strErrorMessage = "HTTP/1.1 404 NotFound\r\nConnection: close\r\n\r\n";
         std::cout << "\n\nRest Response:\n\n" << strErrorMessage << std::endl;
         // Send back error
         poTlsNode->Write((const Byte *) strErrorMessage.data(), strErrorMessage.size());
     }
-
     catch(...)
     {
-        throw;
-        Byte bErrorResponse[] = "Error while processing the request";
-        std::cerr << bErrorResponse << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
         // send back error message
         std::string strErrorMessage = "HTTP/1.1 500 InternalServerError\r\nConnection: close\r\n\r\n";
         std::cout << "\n\nRest Response:\n\n" << strErrorMessage << std::endl;
         // Send back error
         poTlsNode->Write((const Byte *) strErrorMessage.data(), strErrorMessage.size());
     }
-
-    this->DeleteConnection();
-
-    ::pthread_exit(nullptr);
 }
 
 /********************************************************************************************

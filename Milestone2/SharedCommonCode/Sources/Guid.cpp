@@ -93,8 +93,7 @@ Guid::Guid(
     m_stlRawData.resize(16);
     ::memcpy((void *) m_stlRawData.data(), (void *) &oUniqueIdentifier, 16);
     // Change Most significant 4 bits to eObjectType
-    m_stlRawData[0] &= ~(eObjectType << 4);
-    m_stlRawData[0] |= (eObjectType << 4);
+    m_stlRawData[0] = (m_stlRawData[0] & 0xF) | (eObjectType << 4);
     m_eObjectType = eObjectType;
 }
 

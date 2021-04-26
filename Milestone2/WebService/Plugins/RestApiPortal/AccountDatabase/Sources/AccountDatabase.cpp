@@ -768,68 +768,88 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserRecords(
 
     StructuredBuffer oAccountRecords;
 
-    // Calculate 64BitHash of the passphrase
-    std::string strPassphrase = c_oRequest.GetString("Passphrase");
-    Qword qw64BitHashPassphrase = ::Get64BitHashOfNullTerminatedString(strPassphrase.c_str(), false);
-
-    // Make a Tls connection with the database portal
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-    // Create a request to fetch Basic user record
-    StructuredBuffer oBasicRecordRequest;
-    oBasicRecordRequest.PutString("PluginName", "DatabaseManager");
-    oBasicRecordRequest.PutString("Verb", "GET");
-    oBasicRecordRequest.PutString("Resource", "/SAIL/DatabaseManager/BasicUser");
-    oBasicRecordRequest.PutQword("Passphrase", qw64BitHashPassphrase);
-    std::vector<Byte> stlBasicRecordRequest = ::CreateRequestPacket(oBasicRecordRequest);
-    // Send request packet
-    poTlsNode->Write(stlBasicRecordRequest.data(), (stlBasicRecordRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    std::vector<Byte> stlBasicUser = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
-    _ThrowBaseExceptionIf((0 == stlBasicUser.size()), "Dead Packet.", nullptr);
-    // Make sure to release the poTlsNode
-    poTlsNode->Release();
-    poTlsNode = nullptr;
-    
     Dword dwStatus = 404;
-    StructuredBuffer oBasicRecord(stlBasicUser);
-    if (404 != oBasicRecord.GetDword("Status"))
+    TlsNode * poTlsNode = nullptr;
+
+    try
     {
+        // Calculate 64BitHash of the passphrase
+        std::string strPassphrase = c_oRequest.GetString("Passphrase");
+        Qword qw64BitHashPassphrase = ::Get64BitHashOfNullTerminatedString(strPassphrase.c_str(), false);
+
         // Make a Tls connection with the database portal
         poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-        // Create a request to fetch Confidential user record
-        StructuredBuffer oConfidentialRecordRequest;
-        oConfidentialRecordRequest.PutString("PluginName", "DatabaseManager");
-        oConfidentialRecordRequest.PutString("Verb", "GET");
-        oConfidentialRecordRequest.PutString("Resource", "/SAIL/DatabaseManager/ConfidentialUser");
-        oConfidentialRecordRequest.PutString("UserUuid", oBasicRecord.GetStructuredBuffer("BasicUserRecord").GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces));
-        std::vector<Byte> stlConfidentialRecordRequest = ::CreateRequestPacket(oConfidentialRecordRequest);
+        // Create a request to fetch Basic user record
+        StructuredBuffer oBasicRecordRequest;
+        oBasicRecordRequest.PutString("PluginName", "DatabaseManager");
+        oBasicRecordRequest.PutString("Verb", "GET");
+        oBasicRecordRequest.PutString("Resource", "/SAIL/DatabaseManager/BasicUser");
+        oBasicRecordRequest.PutQword("Passphrase", qw64BitHashPassphrase);
+        std::vector<Byte> stlBasicRecordRequest = ::CreateRequestPacket(oBasicRecordRequest);
         // Send request packet
-        poTlsNode->Write(stlConfidentialRecordRequest.data(), (stlConfidentialRecordRequest.size()));
+        poTlsNode->Write(stlBasicRecordRequest.data(), (stlBasicRecordRequest.size()));
 
         // Read header and body of the response
-        stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
         _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-        unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-        std::vector<Byte> stlConfidentialUser = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
-        _ThrowBaseExceptionIf((0 == stlConfidentialUser.size()), "Dead Packet.", nullptr);
+        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+        std::vector<Byte> stlBasicUser = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+        _ThrowBaseExceptionIf((0 == stlBasicUser.size()), "Dead Packet.", nullptr);
         // Make sure to release the poTlsNode
         poTlsNode->Release();
-    
-        StructuredBuffer oConfidentialRecord(stlConfidentialUser);
-        if (404 != oConfidentialRecord.GetDword("Status"))
+        poTlsNode = nullptr;
+        
+        StructuredBuffer oBasicRecord(stlBasicUser);
+        if (404 != oBasicRecord.GetDword("Status"))
         {
-            // Add BasicUserRecord and ConfidentialOrganizationOrUserRecord
-            oAccountRecords.PutStructuredBuffer("BasicUserRecord", oBasicRecord.GetStructuredBuffer("BasicUserRecord"));
-            oAccountRecords.PutStructuredBuffer("ConfidentialOrganizationOrUserRecord", oConfidentialRecord.GetStructuredBuffer("ConfidentialOrganizationOrUserRecord"));
-            dwStatus = 201;
+            // Make a Tls connection with the database portal
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to fetch Confidential user record
+            StructuredBuffer oConfidentialRecordRequest;
+            oConfidentialRecordRequest.PutString("PluginName", "DatabaseManager");
+            oConfidentialRecordRequest.PutString("Verb", "GET");
+            oConfidentialRecordRequest.PutString("Resource", "/SAIL/DatabaseManager/ConfidentialUser");
+            oConfidentialRecordRequest.PutString("UserUuid", oBasicRecord.GetStructuredBuffer("BasicUserRecord").GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces));
+            std::vector<Byte> stlConfidentialRecordRequest = ::CreateRequestPacket(oConfidentialRecordRequest);
+            // Send request packet
+            poTlsNode->Write(stlConfidentialRecordRequest.data(), (stlConfidentialRecordRequest.size()));
+
+            // Read header and body of the response
+            stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlConfidentialUser = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+            _ThrowBaseExceptionIf((0 == stlConfidentialUser.size()), "Dead Packet.", nullptr);
+            // Make sure to release the poTlsNode
+            poTlsNode->Release();
+        
+            StructuredBuffer oConfidentialRecord(stlConfidentialUser);
+            if (404 != oConfidentialRecord.GetDword("Status"))
+            {
+                // Add BasicUserRecord and ConfidentialOrganizationOrUserRecord
+                oAccountRecords.PutStructuredBuffer("BasicUserRecord", oBasicRecord.GetStructuredBuffer("BasicUserRecord"));
+                oAccountRecords.PutStructuredBuffer("ConfidentialOrganizationOrUserRecord", oConfidentialRecord.GetStructuredBuffer("ConfidentialOrganizationOrUserRecord"));
+                dwStatus = 201;
+            }
         }
     }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oAccountRecords.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oAccountRecords.Clear();
+    }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    // Add transaction status to the response
     oAccountRecords.PutDword("Status", dwStatus);
     
     return oAccountRecords.GetSerializedBuffer();
@@ -854,32 +874,49 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserInfo(
 
     StructuredBuffer oResponse;
 
-    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+    Dword dwStatus = 404;
+    Socket * poIpcCryptographicManager = nullptr;
 
-    StructuredBuffer oDecryptEosbRequest;
-    oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
-    oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
+    try
+    {
+        std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
 
-    // Call CryptographicManager plugin to get the decrypted eosb
-    bool fSuccess = false;
-    Socket * poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-    StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
-    poIpcCryptographicManager->Release();
-    if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
-    {
-        StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
-        oResponse.PutDword("Status", 200);
-        oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
-        oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
-        // TODO: get user access rights from the confidential record, for now it can't be decrypted
-        oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
-        fSuccess = true;
+        StructuredBuffer oDecryptEosbRequest;
+        oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
+        oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
+
+        // Call CryptographicManager plugin to get the decrypted eosb
+        poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+        poIpcCryptographicManager->Release();
+        if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
+        {
+            StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
+            oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
+            oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
+            // TODO: get user access rights from the confidential record, for now it can't be decrypted
+            oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
+            dwStatus = 200;
+        }
     }
-    // Add error code if transaction was unsuccessful
-    if (false == fSuccess)
+    catch (BaseException oException)
     {
-        oResponse.PutDword("Status", 404);
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
     }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poIpcCryptographicManager)
+    {
+        poIpcCryptographicManager->Release();
+    }
+
+    // Add status code for the transaction
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -905,60 +942,78 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
 
     StructuredBuffer oResponse;
 
-    // Make a Tls connection with the database portal
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-    // Create a request to add a user to the database
-    StructuredBuffer oRequest;
-    oRequest.PutString("PluginName", "DatabaseManager");
-    oRequest.PutString("Verb", "POST");
-    oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterOrganization");
-    oRequest.PutStructuredBuffer("Request", c_oRequest);
-    std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-    // Send request packet
-    poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
-    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-    // Make sure to release the poTlsNode
-    poTlsNode->Release();
-    
     Dword dwStatus = 204;
-    // Check if DatabaseManager registered the user or not
-    StructuredBuffer oDatabaseResponse(stlResponse);
-    if (204 != oDatabaseResponse.GetDword("Status"))
+    TlsNode * poTlsNode = nullptr;
+
+    try
     {
-        dwStatus = 201;
-        // Create request to register a root node event for the organization
-        StructuredBuffer oRootEvent;
-        oRootEvent.PutDword("TransactionType", 0x00000001);
-        StructuredBuffer oMetadata;
-        oMetadata.PutString("EventGuid", Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces));
-        oMetadata.PutString("ParentGuid", "{00000000-0000-0000-0000-000000000000}");
-        oMetadata.PutString("OrganizationGuid", oDatabaseResponse.GetString("OrganizationGuid"));
-        oMetadata.PutQword("EventType", 1);    // 1 for Root event and 2 for Branch event type
-        oMetadata.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
-        oMetadata.PutStructuredBuffer("PlainTextEventData", StructuredBuffer());
-        oRootEvent.PutStructuredBuffer("NonLeafEvent", oMetadata);
-        // Call AuditLog plugin to register root node event
-        bool fSuccess = false;
-        Socket * poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
-        StructuredBuffer oStatus(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oRootEvent));
-        poIpcAuditLogManager->Release();
-        if ((0 < oStatus.GetSerializedBufferRawDataSizeInBytes())&&(201 == oStatus.GetDword("Status")))
+        // Make a Tls connection with the database portal
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        // Create a request to add a user to the database
+        StructuredBuffer oRequest;
+        oRequest.PutString("PluginName", "DatabaseManager");
+        oRequest.PutString("Verb", "POST");
+        oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterOrganization");
+        oRequest.PutStructuredBuffer("Request", c_oRequest);
+        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+        // Send request packet
+        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+        // Read header and body of the response
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+        // Make sure to release the poTlsNode
+        poTlsNode->Release();
+        
+        // Check if DatabaseManager registered the user or not
+        StructuredBuffer oDatabaseResponse(stlResponse);
+        if (204 != oDatabaseResponse.GetDword("Status"))
         {
-            oResponse.PutDword("RootEventStatus", 201);
-        }
-        else
-        {
-            oResponse.PutDword("RootEventStatus", 204);
+            dwStatus = 201;
+            // Create request to register a root node event for the organization
+            StructuredBuffer oRootEvent;
+            oRootEvent.PutDword("TransactionType", 0x00000001);
+            StructuredBuffer oMetadata;
+            oMetadata.PutString("EventGuid", Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces));
+            oMetadata.PutString("ParentGuid", "{00000000-0000-0000-0000-000000000000}");
+            oMetadata.PutString("OrganizationGuid", oDatabaseResponse.GetString("OrganizationGuid"));
+            oMetadata.PutQword("EventType", 1);    // 1 for Root event and 2 for Branch event type
+            oMetadata.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
+            oMetadata.PutStructuredBuffer("PlainTextEventData", StructuredBuffer());
+            oRootEvent.PutStructuredBuffer("NonLeafEvent", oMetadata);
+            // Call AuditLog plugin to register root node event
+            Socket * poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
+            StructuredBuffer oStatus(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oRootEvent));
+            poIpcAuditLogManager->Release();
+            if ((0 < oStatus.GetSerializedBufferRawDataSizeInBytes())&&(201 == oStatus.GetDword("Status")))
+            {
+                oResponse.PutDword("RootEventStatus", 201);
+            }
+            else
+            {
+                oResponse.PutDword("RootEventStatus", 204);
+            }
         }
     }
-    
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     // Send back status of the transaction
     oResponse.PutDword("Status", dwStatus);
 
@@ -988,41 +1043,60 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterUser(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 204;
-    // Get user information to check if the user has admin access rights
-    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-    if (200 == oUserInfo.GetDword("Status"))
-    {
-        if (eAdmin == oUserInfo.GetQword("AccessRights"))
-        {
-            // Make a Tls connection with the database portal
-            TlsNode * poTlsNode = nullptr;
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-            // Create a request to add a user to the database
-            StructuredBuffer oRequest;
-            oRequest.PutString("PluginName", "DatabaseManager");
-            oRequest.PutString("Verb", "POST");
-            oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterUser");
-            oRequest.PutStructuredBuffer("Request", c_oRequest);
-            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-            // Send request packet
-            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+    TlsNode * poTlsNode = nullptr;
 
-            // Read header and body of the response
-            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
-            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
-            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-            // Make sure to release the poTlsNode
-            poTlsNode->Release();
-            
-            // Check if DatabaseManager registered the user or not
-            StructuredBuffer oDatabaseResponse(stlResponse);
-            if (204 != oDatabaseResponse.GetDword("Status"))
+    try
+    {
+        // Get user information to check if the user has admin access rights
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eAdmin == oUserInfo.GetQword("AccessRights"))
             {
-                dwStatus = 201;
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to add a user to the database
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "POST");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterUser");
+                oRequest.PutStructuredBuffer("Request", c_oRequest);
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                
+                // Check if DatabaseManager registered the user or not
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (204 != oDatabaseResponse.GetDword("Status"))
+                {
+                    dwStatus = 201;
+                }
             }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction
@@ -1051,42 +1125,61 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 204;
-    // Get user information to check if the user has admin access rights
-    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-    if (200 == oUserInfo.GetDword("Status"))
-    {
-        if (eAdmin == oUserInfo.GetQword("AccessRights"))
-        {
-            // Make a Tls connection with the database portal
-            TlsNode * poTlsNode = nullptr;
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-            // Create a request to add a user to the database
-            StructuredBuffer oRequest;
-            oRequest.PutString("PluginName", "DatabaseManager");
-            oRequest.PutString("Verb", "PUT");
-            oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateUserRights");
-            oRequest.PutString("UserGuid", c_oRequest.GetString("UserGuid"));
-            oRequest.PutQword("AccessRights", c_oRequest.GetQword("AccessRights"));
-            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-            // Send request packet
-            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+    TlsNode * poTlsNode = nullptr;
 
-            // Read header and body of the response
-            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-            // Make sure to release the poTlsNode
-            poTlsNode->Release();
-            
-            // Check if DatabaseManager updated the user rights or not
-            StructuredBuffer oDatabaseResponse(stlResponse);
-            if (204 != oDatabaseResponse.GetDword("Status"))
+    try
+    {
+        // Get user information to check if the user has admin access rights
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eAdmin == oUserInfo.GetQword("AccessRights"))
             {
-                dwStatus = 200;
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to add a user to the database
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "PUT");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateUserRights");
+                oRequest.PutString("UserGuid", c_oRequest.GetString("UserGuid"));
+                oRequest.PutQword("AccessRights", c_oRequest.GetQword("AccessRights"));
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                
+                // Check if DatabaseManager updated the user rights or not
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (204 != oDatabaseResponse.GetDword("Status"))
+                {
+                    dwStatus = 200;
+                }
             }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction
@@ -1115,42 +1208,61 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateOrganizationInformation(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 204;
-    // Get user information to check if the user has admin access rights
-    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-    if (200 == oUserInfo.GetDword("Status"))
-    {
-        if (eAdmin == oUserInfo.GetQword("AccessRights"))
-        {
-            // Make a Tls connection with the database portal
-            TlsNode * poTlsNode = nullptr;
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-            // Create a request to add a user to the database
-            StructuredBuffer oRequest;
-            oRequest.PutString("PluginName", "DatabaseManager");
-            oRequest.PutString("Verb", "PUT");
-            oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateOrganizationInformation");
-            oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
-            oRequest.PutStructuredBuffer("OrganizationInformation", c_oRequest.GetStructuredBuffer("OrganizationInformation"));
-            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-            // Send request packet
-            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+    TlsNode * poTlsNode = nullptr;
 
-            // Read header and body of the response
-            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-            // Make sure to release the poTlsNode
-            poTlsNode->Release();
-    
-            // Check if DatabaseManager updated the organization information or not
-            StructuredBuffer oDatabaseResponse(stlResponse);
-            if (204 != oDatabaseResponse.GetDword("Status"))
+    try
+    {
+        // Get user information to check if the user has admin access rights
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eAdmin == oUserInfo.GetQword("AccessRights"))
             {
-                dwStatus = 200;
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to add a user to the database
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "PUT");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateOrganizationInformation");
+                oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
+                oRequest.PutStructuredBuffer("OrganizationInformation", c_oRequest.GetStructuredBuffer("OrganizationInformation"));
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+        
+                // Check if DatabaseManager updated the organization information or not
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (204 != oDatabaseResponse.GetDword("Status"))
+                {
+                    dwStatus = 200;
+                }
             }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction
@@ -1179,45 +1291,64 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 204;
-    // Get user information to check if the user has admin access rights or if the Eosb is associated with the userguid
-    std::string strUserGuid = c_oRequest.GetString("UserGuid");
-    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-    if (200 == oUserInfo.GetDword("Status"))
-    {
-        // TODO: add an or in the if statement to check if user is eAdmin
-        // For now, an admin can't change a user's information
-        if (strUserGuid == oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces))
-        {
-            // Make a Tls connection with the database portal
-            TlsNode * poTlsNode = nullptr;
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-            // Create a request to add a user to the database
-            StructuredBuffer oRequest;
-            oRequest.PutString("PluginName", "DatabaseManager");
-            oRequest.PutString("Verb", "PUT");
-            oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateUserInformation");
-            oRequest.PutString("UserGuid", c_oRequest.GetString("UserGuid"));
-            oRequest.PutStructuredBuffer("UserInformation", c_oRequest.GetStructuredBuffer("UserInformation"));
-            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-            // Send request packet
-            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+    TlsNode * poTlsNode = nullptr;
 
-            // Read header and body of the response
-            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-            // Make sure to release the poTlsNode
-            poTlsNode->Release();
-            
-            // Check if DatabaseManager updated the user information, excluding the access rights, or not
-            StructuredBuffer oDatabaseResponse(stlResponse);
-            if (204 != oDatabaseResponse.GetDword("Status"))
+    try
+    {
+        // Get user information to check if the user has admin access rights or if the Eosb is associated with the userguid
+        std::string strUserGuid = c_oRequest.GetString("UserGuid");
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            // TODO: add an or in the if statement to check if user is eAdmin
+            // For now, an admin can't change a user's information
+            if (strUserGuid == oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces))
             {
-                dwStatus = 200;
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to add a user to the database
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "PUT");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateUserInformation");
+                oRequest.PutString("UserGuid", c_oRequest.GetString("UserGuid"));
+                oRequest.PutStructuredBuffer("UserInformation", c_oRequest.GetStructuredBuffer("UserInformation"));
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                
+                // Check if DatabaseManager updated the user information, excluding the access rights, or not
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (204 != oDatabaseResponse.GetDword("Status"))
+                {
+                    dwStatus = 200;
+                }
             }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction
@@ -1246,41 +1377,60 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizations(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 404;
-    // TODO: Should be Sail admin
-    // For now: Get user information to check if the user has admin access rights
-    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-    if (200 == oUserInfo.GetDword("Status"))
-    {
-        if (eAdmin == oUserInfo.GetQword("AccessRights"))
-        {
-            // Make a Tls connection with the database portal
-            TlsNode * poTlsNode = nullptr;
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-            // Create a request to add a user to the database
-            StructuredBuffer oRequest;
-            oRequest.PutString("PluginName", "DatabaseManager");
-            oRequest.PutString("Verb", "GET");
-            oRequest.PutString("Resource", "/SAIL/DatabaseManager/Organizations");
-            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-            // Send request packet
-            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+    TlsNode * poTlsNode = nullptr;
 
-            // Read header and body of the response
-            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-            // Make sure to release the poTlsNode
-            poTlsNode->Release();
-            
-            StructuredBuffer oDatabaseResponse(stlResponse);
-            if (404 != oDatabaseResponse.GetDword("Status"))
+    try 
+    {
+        // TODO: Should be Sail admin
+        // For now: Get user information to check if the user has admin access rights
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eAdmin == oUserInfo.GetQword("AccessRights"))
             {
-                dwStatus = 200;
-                oResponse.PutStructuredBuffer("Organizations", oDatabaseResponse.GetStructuredBuffer("Organizations"));
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to add a user to the database
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "GET");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/Organizations");
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (404 != oDatabaseResponse.GetDword("Status"))
+                {
+                    dwStatus = 200;
+                    oResponse.PutStructuredBuffer("Organizations", oDatabaseResponse.GetStructuredBuffer("Organizations"));
+                }
             }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction
@@ -1309,41 +1459,60 @@ std::vector<Byte> __thiscall AccountDatabase::ListUsers(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 404;
-    // TODO: Should be Sail admin
-    // For now: Get user information to check if the user has admin access rights
-    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-    if (200 == oUserInfo.GetDword("Status"))
-    {
-        if (eAdmin == oUserInfo.GetQword("AccessRights"))
-        {
-            // Make a Tls connection with the database portal
-            TlsNode * poTlsNode = nullptr;
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-            // Create a request to add a user to the database
-            StructuredBuffer oRequest;
-            oRequest.PutString("PluginName", "DatabaseManager");
-            oRequest.PutString("Verb", "GET");
-            oRequest.PutString("Resource", "/SAIL/DatabaseManager/Users");
-            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-            // Send request packet
-            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+    TlsNode * poTlsNode = nullptr;
 
-            // Read header and body of the response
-            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-            // Make sure to release the poTlsNode
-            poTlsNode->Release();
-            
-            StructuredBuffer oDatabaseResponse(stlResponse);
-            if (404 != oDatabaseResponse.GetDword("Status"))
+    try 
+    {
+        // TODO: Should be Sail admin
+        // For now: Get user information to check if the user has admin access rights
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eAdmin == oUserInfo.GetQword("AccessRights"))
             {
-                dwStatus = 200;
-                oResponse.PutStructuredBuffer("Users", oDatabaseResponse.GetStructuredBuffer("Users"));
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to add a user to the database
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "GET");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/Users");
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (404 != oDatabaseResponse.GetDword("Status"))
+                {
+                    dwStatus = 200;
+                    oResponse.PutStructuredBuffer("Users", oDatabaseResponse.GetStructuredBuffer("Users"));
+                }
             }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction
@@ -1372,42 +1541,61 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizationUsers(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 404;
-    // Get user information to check if the user has admin access rights
-    // Todo: add an or statement and check if its a sail admin
-    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-    if (200 == oUserInfo.GetDword("Status"))
-    {
-        if (eAdmin == oUserInfo.GetQword("AccessRights"))
-        {
-            // Make a Tls connection with the database portal
-            TlsNode * poTlsNode = nullptr;
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-            // Create a request to add a user to the database
-            StructuredBuffer oRequest;
-            oRequest.PutString("PluginName", "DatabaseManager");
-            oRequest.PutString("Verb", "GET");
-            oRequest.PutString("Resource", "/SAIL/DatabaseManager/OrganizationUsers");
-            oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
-            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-            // Send request packet
-            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+    TlsNode * poTlsNode = nullptr;
 
-            // Read header and body of the response
-            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-            // Make sure to release the poTlsNode
-            poTlsNode->Release();
-            
-            StructuredBuffer oDatabaseResponse(stlResponse);
-            if (404 != oDatabaseResponse.GetDword("Status"))
+    try 
+    {
+        // Get user information to check if the user has admin access rights
+        // Todo: add an or statement and check if its a sail admin
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eAdmin == oUserInfo.GetQword("AccessRights"))
             {
-                dwStatus = 200;
-                oResponse.PutStructuredBuffer("OrganizationUsers", oDatabaseResponse.GetStructuredBuffer("OrganizationUsers"));
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to add a user to the database
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "GET");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/OrganizationUsers");
+                oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (404 != oDatabaseResponse.GetDword("Status"))
+                {
+                    dwStatus = 200;
+                    oResponse.PutStructuredBuffer("OrganizationUsers", oDatabaseResponse.GetStructuredBuffer("OrganizationUsers"));
+                }
             }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction
@@ -1436,42 +1624,61 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteUser(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 404;
-    // Get user information to check if the user has admin access rights
-    // Todo: add an or statement and check if its a sail admin
-    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-    if (200 == oUserInfo.GetDword("Status"))
-    {
-        if (eAdmin == oUserInfo.GetQword("AccessRights"))
-        {
-            // Make a Tls connection with the database portal
-            TlsNode * poTlsNode = nullptr;
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-            // Create a request to add a user to the database
-            StructuredBuffer oRequest;
-            oRequest.PutString("PluginName", "DatabaseManager");
-            oRequest.PutString("Verb", "DELETE");
-            oRequest.PutString("Resource", "/SAIL/DatabaseManager/DeleteUser");
-            oRequest.PutString("UserGuid", c_oRequest.GetString("UserGuid"));
-            oRequest.PutBoolean("IsHardDelete", c_oRequest.GetBoolean("IsHardDelete"));
-            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-            // Send request packet
-            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+    TlsNode * poTlsNode = nullptr;
 
-            // Read header and body of the response
-            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-            // Make sure to release the poTlsNode
-            poTlsNode->Release();
-            
-            StructuredBuffer oDatabaseResponse(stlResponse);
-            if (404 != oDatabaseResponse.GetDword("Status"))
+    try 
+    {
+        // Get user information to check if the user has admin access rights
+        // Todo: add an or statement and check if its a sail admin
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eAdmin == oUserInfo.GetQword("AccessRights"))
             {
-                dwStatus = 200;
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to add a user to the database
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "DELETE");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/DeleteUser");
+                oRequest.PutString("UserGuid", c_oRequest.GetString("UserGuid"));
+                oRequest.PutBoolean("IsHardDelete", c_oRequest.GetBoolean("IsHardDelete"));
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (404 != oDatabaseResponse.GetDword("Status"))
+                {
+                    dwStatus = 200;
+                }
             }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction
@@ -1500,42 +1707,61 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteOrganization(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 404;
-    // Get user information to check if the user has admin access rights
-    // Todo: add an or statement and check if its a sail admin
-    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-    if (200 == oUserInfo.GetDword("Status"))
-    {
-        if (eAdmin == oUserInfo.GetQword("AccessRights"))
-        {
-            // Make a Tls connection with the database portal
-            TlsNode * poTlsNode = nullptr;
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-            // Create a request to add a user to the database
-            StructuredBuffer oRequest;
-            oRequest.PutString("PluginName", "DatabaseManager");
-            oRequest.PutString("Verb", "DELETE");
-            oRequest.PutString("Resource", "/SAIL/DatabaseManager/DeleteOrganization");
-            oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
-            oRequest.PutBoolean("IsHardDelete", c_oRequest.GetBoolean("IsHardDelete"));
-            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-            // Send request packet
-            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+    TlsNode * poTlsNode = nullptr;
 
-            // Read header and body of the response
-            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-            // Make sure to release the poTlsNode
-            poTlsNode->Release();
-            
-            StructuredBuffer oDatabaseResponse(stlResponse);
-            if (404 != oDatabaseResponse.GetDword("Status"))
+    try 
+    {
+        // Get user information to check if the user has admin access rights
+        // Todo: add an or statement and check if its a sail admin
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eAdmin == oUserInfo.GetQword("AccessRights"))
             {
-                dwStatus = 200;
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to add a user to the database
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "DELETE");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/DeleteOrganization");
+                oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
+                oRequest.PutBoolean("IsHardDelete", c_oRequest.GetBoolean("IsHardDelete"));
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (404 != oDatabaseResponse.GetDword("Status"))
+                {
+                    dwStatus = 200;
+                }
             }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction

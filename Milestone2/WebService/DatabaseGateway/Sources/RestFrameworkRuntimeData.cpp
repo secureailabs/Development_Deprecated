@@ -9,6 +9,7 @@
  ********************************************************************************************/
 
 #include "RestFrameworkRuntimeData.h"
+#include "ExceptionRegister.h"
 
 /********************************************************************************************
  *
@@ -44,9 +45,14 @@ static void * __stdcall StartThread(
     TlsNode * poTlsNode = poThreadParameters->m_poTlsNode;
     RestFrameworkRuntimeData * poRestFrameworkRuntimeData = poThreadParameters->m_poRestFrameworkRuntimeData;
     poRestFrameworkRuntimeData->RunThread((TlsNode *) poTlsNode);
+    // Release the Tls Node
     poTlsNode->Release();
-
+    // Deallocate parameters
     poRestFrameworkRuntimeData->m_oSmartMemoryAllocator.Deallocate(poVoidThreadParameters);
+    // Delete the connection
+    poRestFrameworkRuntimeData->DeleteConnection();
+
+    ::pthread_exit(nullptr);
 
     return nullptr;
 }
@@ -263,11 +269,13 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
             // Send back response data
             poTlsNode->Write((const Byte *)stlSerializedBuffer.data(), stlSerializedBuffer.size());
         }
+        // Delete the allocated parameter
+        oLocalSmartMemoryAllocator.Deallocate(pbSerializedResponseBuffer);
     }
 
     catch(BaseException oBaseException)
     {
-        std::cerr << oBaseException.GetExceptionMessage() << '\n';
+        ::RegisterException(oBaseException, __func__, __LINE__);
         // send back error message
         unsigned int unErrorResponseSizeInBytes = sizeof(uint32_t) + strlen(oBaseException.GetExceptionMessage());
         std::vector<Byte> stlErrorMessage(unErrorResponseSizeInBytes);
@@ -280,9 +288,9 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
 
     catch(...)
     {
-        Byte bErrorResponse[] = "Error while processing the request";
-        std::cerr << bErrorResponse << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
         // send back error message
+        Byte bErrorResponse[] = "DatabaseGateway Error: processing the request failed.";
         unsigned int unErrorResponseSizeInBytes = sizeof(uint32_t) + sizeof(bErrorResponse);
         std::vector<Byte> stlErrorMessage(unErrorResponseSizeInBytes);
         Byte * pbErrorMessage = (Byte *) stlErrorMessage.data();
@@ -291,10 +299,6 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
         ::memcpy((void *) pbErrorMessage, (const void *) bErrorResponse, sizeof(bErrorResponse));
         poTlsNode->Write((const Byte *) stlErrorMessage.data(), stlErrorMessage.size());
     }
-
-    this->DeleteConnection();
-
-    ::pthread_exit(nullptr);
 }
 
 /********************************************************************************************

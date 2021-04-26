@@ -15,6 +15,7 @@
 #include "Exceptions.h"
 #include "Object.h"
 #include "PluginDictionary.h"
+#include "ExceptionRegister.h"
 #include "RestFrameworkSharedFunctions.h"
 #include "StructuredBuffer.h"
 #include "Socket.h"

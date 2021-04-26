@@ -12,6 +12,7 @@
 
 #include "DebugLibrary.h"
 #include "EntityTypes.h"
+#include "ExceptionRegister.h"
 #include "Exceptions.h"
 #include "Object.h"
 #include "PluginDictionary.h"

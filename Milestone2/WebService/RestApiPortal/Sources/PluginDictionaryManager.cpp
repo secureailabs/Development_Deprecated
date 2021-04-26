@@ -9,6 +9,7 @@
  ********************************************************************************************/
 
 #include "Exceptions.h"
+#include "ExceptionRegister.h"
 #include "PluginDictionaryManager.h"
 
 #include <string.h>
@@ -94,14 +95,13 @@ bool __thiscall PluginDictionaryManager::RegisterPlugin(
 
         fSuccess = true;
     }
-
-    catch (BaseException oBaseException)
+    catch (BaseException oException)
     {
+        ::RegisterException(oException, __func__, __LINE__);
     }
-
-    catch(...)
+    catch (...)
     {
-
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return fSuccess;

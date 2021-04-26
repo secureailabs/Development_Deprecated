@@ -46,13 +46,13 @@ extern "C" uint64_t SubmitRequest(
             *punSerializedResponseSizeInBytes = 0;
         }
     }
-
-    catch (BaseException oBaseException)
+    catch (BaseException oException)
     {
+        ::RegisterException(oException, __func__, __LINE__);
     }
-
     catch (...)
     {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return un64Identifier;
@@ -91,13 +91,13 @@ extern "C" bool GetResponse(
             fSuccess = poVirtualMachineManager->GetResponse(un64Identifier, pbSerializedResponseBuffer, unSerializedResponseBufferSizeInBytes);
         }
     }
-
-    catch (BaseException oBaseException)
+    catch (BaseException oException)
     {
+        ::RegisterException(oException, __func__, __LINE__);
     }
-
     catch (...)
     {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return fSuccess;
@@ -133,13 +133,13 @@ extern "C" bool __stdcall InitializePlugin(
         std::vector<Byte> stlDictionary = poVirtualMachineManager->GetDictionarySerializedBuffer();
         fSuccess = fnRegisterPluginFn(poVirtualMachineManager->GetName(), poVirtualMachineManager->GetUuid(), poVirtualMachineManager->GetVersion(), SubmitRequest, GetResponse, stlDictionary.data(), stlDictionary.size());
     }
-
-    catch (BaseException oBaseException)
+    catch (BaseException oException)
     {
+        ::RegisterException(oException, __func__, __LINE__);
     }
-
     catch (...)
     {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return fSuccess;
@@ -161,12 +161,12 @@ extern "C" void __stdcall ShutdownPlugin(void)
     {
         ::ShutdownVirtualMachineManager();
     }
-
-    catch (BaseException oBaseException)
+    catch (BaseException oException)
     {
+        ::RegisterException(oException, __func__, __LINE__);
     }
-
     catch (...)
     {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 }

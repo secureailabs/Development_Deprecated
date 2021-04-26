@@ -29,45 +29,61 @@ std::vector<Byte> __thiscall DatabaseManager::GetListOfEvents(
 
     StructuredBuffer oResponse;
 
-    StructuredBuffer oListOfEvents;
-    std::string strParentGuid = c_oRequest.GetString("ParentGuid");
-    std::string strOrganizationGuid = c_oRequest.GetString("OrganizationGuid");
-    StructuredBuffer oFilters(c_oRequest.GetStructuredBuffer("Filters"));
+    Dword dwStatus = 404;
 
-    // Each client and transaction can only be used in a single thread
-    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
-    // Access SailDatabase
-    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
-    // Get root event if parent guid is "{00000000-0000-0000-0000-000000000000}"
-    // Otherwise return all the child events for the given parent guid
-    if ("{00000000-0000-0000-0000-000000000000}" == strParentGuid)
+    try 
     {
-        bsoncxx::stdx::optional<bsoncxx::document::value> oAuditLogDocument = oSailDatabase["AuditLog"].find_one(document{} 
-                                                                                                            << "ParentGuid" << strParentGuid 
-                                                                                                            << "OrganizationGuid" << strOrganizationGuid
-                                                                                                            << finalize);
-        if (bsoncxx::stdx::nullopt != oAuditLogDocument)
+        StructuredBuffer oListOfEvents;
+        std::string strParentGuid = c_oRequest.GetString("ParentGuid");
+        std::string strOrganizationGuid = c_oRequest.GetString("OrganizationGuid");
+        StructuredBuffer oFilters(c_oRequest.GetStructuredBuffer("Filters"));
+
+        // Each client and transaction can only be used in a single thread
+        mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+        // Access SailDatabase
+        mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+        // Get root event if parent guid is "{00000000-0000-0000-0000-000000000000}"
+        // Otherwise return all the child events for the given parent guid
+        if ("{00000000-0000-0000-0000-000000000000}" == strParentGuid)
         {
-            this->GetEventObjectBlob(oSailDatabase, oFilters, oAuditLogDocument->view(), &oListOfEvents);
+            bsoncxx::stdx::optional<bsoncxx::document::value> oAuditLogDocument = oSailDatabase["AuditLog"].find_one(document{} 
+                                                                                                                << "ParentGuid" << strParentGuid 
+                                                                                                                << "OrganizationGuid" << strOrganizationGuid
+                                                                                                                << finalize);
+            if (bsoncxx::stdx::nullopt != oAuditLogDocument)
+            {
+                this->GetEventObjectBlob(oSailDatabase, oFilters, oAuditLogDocument->view(), &oListOfEvents);
+            }
         }
+        else 
+        {
+            // Fetch events from the AuditLog collection associated with a parent guid
+            mongocxx::cursor oAuditLogCursor = oSailDatabase["AuditLog"].find(document{} 
+                                                                                << "ParentGuid" << strParentGuid 
+                                                                                << "OrganizationGuid" << strOrganizationGuid
+                                                                                << finalize);
+            // Parse all returned documents, apply filters, and add to the structured buffer containing the list of events
+            for (auto&& oDocumentView : oAuditLogCursor)
+            {
+                this->GetEventObjectBlob(oSailDatabase, oFilters, oDocumentView, &oListOfEvents);
+            }
+        }
+        oResponse.PutStructuredBuffer("ListOfEvents", oListOfEvents);
+        dwStatus = 200;
     }
-    else 
+    catch (BaseException oException)
     {
-        // Fetch events from the AuditLog collection associated with a parent guid
-        mongocxx::cursor oAuditLogCursor = oSailDatabase["AuditLog"].find(document{} 
-                                                                            << "ParentGuid" << strParentGuid 
-                                                                            << "OrganizationGuid" << strOrganizationGuid
-                                                                            << finalize);
-        // Parse all returned documents, apply filters, and add to the structured buffer containing the list of events
-        for (auto&& oDocumentView : oAuditLogCursor)
-        {
-            this->GetEventObjectBlob(oSailDatabase, oFilters, oDocumentView, &oListOfEvents);
-        }
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
     }
 
     // Send back status of the transaction and list of events
-    oResponse.PutDword("Status", 200);
-    oResponse.PutStructuredBuffer("ListOfEvents", oListOfEvents);
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -294,106 +310,120 @@ std::vector<Byte> __thiscall DatabaseManager::AddNonLeafEvent(
 
     StructuredBuffer oResponse;
 
-    // Create guids for the documents
-    Guid oObjectGuid, oPlainTextObjectBlobGuid;
-    uint32_t unSequenceNumber, unNextSequenceNumber = 0;
-    StructuredBuffer oNonLeafEvent(c_oRequest.GetStructuredBuffer("NonLeafEvent"));
-    // Get parent event's next sequence number and use it to assign a sequence number to the branch event
-    StructuredBuffer oGetRoot;
-    oGetRoot.PutString("EventGuid", oNonLeafEvent.GetString("ParentGuid"));
-    oGetRoot.PutString("OrganizationGuid", oNonLeafEvent.GetString("OrganizationGuid"));
-    unSequenceNumber = this->GetNextSequenceNumber(oGetRoot);
-    if (-1 == unSequenceNumber)
-    {
-        unSequenceNumber = 0;
-    }
-
-    // Create an audit log event document
-    bsoncxx::document::value oEventDocumentValue = bsoncxx::builder::stream::document{}
-      << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
-      << "OrganizationGuid" << oNonLeafEvent.GetString("OrganizationGuid")
-      << "ParentGuid" << oNonLeafEvent.GetString("ParentGuid")
-      << "EventGuid" << oNonLeafEvent.GetString("EventGuid")
-      << "NextSequenceNumber" << (double) unNextSequenceNumber
-      << "IsLeaf" << false
-      << finalize;
-
-    // Create an object document
-    StructuredBuffer oObject;
-    oObject.PutString("EventGuid", oNonLeafEvent.GetString("EventGuid"));
-    oObject.PutString("ParentGuid", oNonLeafEvent.GetString("ParentGuid"));
-    oObject.PutString("OrganizationGuid", oNonLeafEvent.GetString("OrganizationGuid"));
-    oObject.PutQword("EventType", oNonLeafEvent.GetQword("EventType"));
-    oObject.PutUnsignedInt64("Timestamp", oNonLeafEvent.GetUnsignedInt64("Timestamp"));
-    oObject.PutUnsignedInt32("SequenceNumber", unSequenceNumber);
-    oObject.PutStructuredBuffer("PlainTextEventData", oNonLeafEvent.GetStructuredBuffer("PlainTextEventData"));
-    bsoncxx::types::b_binary oObjectBlob
-    {
-        bsoncxx::binary_sub_type::k_binary,
-        uint32_t(oObject.GetSerializedBufferRawDataSizeInBytes()),
-        oObject.GetSerializedBufferRawDataPtr()
-    };
-    bsoncxx::document::value oObjectDocumentValue = bsoncxx::builder::stream::document{}
-      << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
-      << "ObjectBlob" << oObjectBlob
-      << finalize;
-
-    // Create a plain text object document
-    bsoncxx::document::value oPlainTextObjectDocumentValue = bsoncxx::builder::stream::document{}
-      << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
-      << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
-      << "ObjectType" << eAuditEventBranchNode
-      << finalize;
-
-    // Each client and transaction can only be used in a single thread
-    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
-    // Access SailDatabase
-    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
-    // Access AuditLog collection
-    mongocxx::collection oAuditLogCollection = oSailDatabase["AuditLog"];
-    // Create a transaction callback
     Dword dwStatus = 204;
-    mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
+
+    try 
     {
-        // Insert document in the AuditLog collection
-        auto oResult = oAuditLogCollection.insert_one(*poSession, oEventDocumentValue.view());
-        if (!oResult) {
-            std::cout << "Error while writing to the database." << std::endl;
-        }
-        else
+        // Create guids for the documents
+        Guid oObjectGuid, oPlainTextObjectBlobGuid;
+        uint32_t unSequenceNumber, unNextSequenceNumber = 0;
+        StructuredBuffer oNonLeafEvent(c_oRequest.GetStructuredBuffer("NonLeafEvent"));
+        // Get parent event's next sequence number and use it to assign a sequence number to the branch event
+        StructuredBuffer oGetRoot;
+        oGetRoot.PutString("EventGuid", oNonLeafEvent.GetString("ParentGuid"));
+        oGetRoot.PutString("OrganizationGuid", oNonLeafEvent.GetString("OrganizationGuid"));
+        unSequenceNumber = this->GetNextSequenceNumber(oGetRoot);
+        if (-1 == unSequenceNumber)
         {
-            // Access Object collection
-            mongocxx::collection oObjectCollection = oSailDatabase["Object"];
-            // Insert document in the Object collection
-            oResult = oObjectCollection.insert_one(*poSession, oObjectDocumentValue.view());
+            unSequenceNumber = 0;
+        }
+
+        // Create an audit log event document
+        bsoncxx::document::value oEventDocumentValue = bsoncxx::builder::stream::document{}
+        << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
+        << "OrganizationGuid" << oNonLeafEvent.GetString("OrganizationGuid")
+        << "ParentGuid" << oNonLeafEvent.GetString("ParentGuid")
+        << "EventGuid" << oNonLeafEvent.GetString("EventGuid")
+        << "NextSequenceNumber" << (double) unNextSequenceNumber
+        << "IsLeaf" << false
+        << finalize;
+
+        // Create an object document
+        StructuredBuffer oObject;
+        oObject.PutString("EventGuid", oNonLeafEvent.GetString("EventGuid"));
+        oObject.PutString("ParentGuid", oNonLeafEvent.GetString("ParentGuid"));
+        oObject.PutString("OrganizationGuid", oNonLeafEvent.GetString("OrganizationGuid"));
+        oObject.PutQword("EventType", oNonLeafEvent.GetQword("EventType"));
+        oObject.PutUnsignedInt64("Timestamp", oNonLeafEvent.GetUnsignedInt64("Timestamp"));
+        oObject.PutUnsignedInt32("SequenceNumber", unSequenceNumber);
+        oObject.PutStructuredBuffer("PlainTextEventData", oNonLeafEvent.GetStructuredBuffer("PlainTextEventData"));
+        bsoncxx::types::b_binary oObjectBlob
+        {
+            bsoncxx::binary_sub_type::k_binary,
+            uint32_t(oObject.GetSerializedBufferRawDataSizeInBytes()),
+            oObject.GetSerializedBufferRawDataPtr()
+        };
+        bsoncxx::document::value oObjectDocumentValue = bsoncxx::builder::stream::document{}
+        << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
+        << "ObjectBlob" << oObjectBlob
+        << finalize;
+
+        // Create a plain text object document
+        bsoncxx::document::value oPlainTextObjectDocumentValue = bsoncxx::builder::stream::document{}
+        << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
+        << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
+        << "ObjectType" << eAuditEventBranchNode
+        << finalize;
+
+        // Each client and transaction can only be used in a single thread
+        mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+        // Access SailDatabase
+        mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+        // Access AuditLog collection
+        mongocxx::collection oAuditLogCollection = oSailDatabase["AuditLog"];
+        // Create a transaction callback
+        mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
+        {
+            // Insert document in the AuditLog collection
+            auto oResult = oAuditLogCollection.insert_one(*poSession, oEventDocumentValue.view());
             if (!oResult) {
                 std::cout << "Error while writing to the database." << std::endl;
             }
             else
             {
-                // Access PlainTextObjectBlob collection
-                mongocxx::collection oPlainTextObjectCollection = oSailDatabase["PlainTextObjectBlob"];
-                // Insert document in the PlainTextObjectBlob collection
-                oResult = oPlainTextObjectCollection.insert_one(*poSession, oPlainTextObjectDocumentValue.view());
+                // Access Object collection
+                mongocxx::collection oObjectCollection = oSailDatabase["Object"];
+                // Insert document in the Object collection
+                oResult = oObjectCollection.insert_one(*poSession, oObjectDocumentValue.view());
                 if (!oResult) {
                     std::cout << "Error while writing to the database." << std::endl;
                 }
                 else
                 {
-                    dwStatus = 200;
+                    // Access PlainTextObjectBlob collection
+                    mongocxx::collection oPlainTextObjectCollection = oSailDatabase["PlainTextObjectBlob"];
+                    // Insert document in the PlainTextObjectBlob collection
+                    oResult = oPlainTextObjectCollection.insert_one(*poSession, oPlainTextObjectDocumentValue.view());
+                    if (!oResult) {
+                        std::cout << "Error while writing to the database." << std::endl;
+                    }
+                    else
+                    {
+                        dwStatus = 200;
+                    }
                 }
             }
+        };
+        // Create a session and start the transaction
+        mongocxx::client_session oSession = oClient->start_session();
+        try 
+        {
+            oSession.with_transaction(oCallback);
         }
-    };
-    // Create a session and start the transaction
-    mongocxx::client_session oSession = oClient->start_session();
-    try 
-    {
-        oSession.with_transaction(oCallback);
+        catch (mongocxx::exception& e) 
+        {
+            std::cout << "Collection transaction exception: " << e.what() << std::endl;
+        }
     }
-    catch (mongocxx::exception& e) 
+    catch (BaseException oException)
     {
-        std::cout << "Collection transaction exception: " << e.what() << std::endl;
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
     }
 
     // Send back the status of the transaction
@@ -421,112 +451,123 @@ std::vector<Byte> __thiscall DatabaseManager::AddLeafEvent(
 
     StructuredBuffer oResponse;
 
-    // Get required parameters from the request
-    std::string strIdentifierOfParent = c_oRequest.GetString("ParentGuid");
-    StructuredBuffer oLeafEvents(c_oRequest.GetStructuredBuffer("LeafEvents"));
-    std::vector<std::string> stlEvents = oLeafEvents.GetNamesOfElements();
-    // Loop through the array of events, create document for each event, and add them to the relevant vector:
-    // stlEventDocuments: holds audit log documents
-    // stlObjectDocuments: holds object documents
-    // stlPlainTextObjectDocuments: holds plain text object documents
-    std::vector<bsoncxx::document::value> stlEventDocuments, stlObjectDocuments, stlPlainTextObjectDocuments;
-    for (unsigned int unIndex = 0; unIndex < stlEvents.size(); ++unIndex)
-    {
-        Guid oObjectGuid, oPlainTextObjectBlobGuid;
-
-        StructuredBuffer oEvent(oLeafEvents.GetStructuredBuffer(stlEvents[unIndex].c_str()));
-
-        // Create an audit log event document and add it to stlEventDocuments vector
-        stlEventDocuments.push_back(bsoncxx::builder::stream::document{}
-        << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
-        << "OrganizationGuid" << c_oRequest.GetString("OrganizationGuid")
-        << "ParentGuid" << strIdentifierOfParent
-        << "EventGuid" << oEvent.GetString("EventGuid")
-        << "IsLeaf" << true
-        << finalize);
-
-        // Create an object document and add it to stlObjectDocuments vector
-        // Parse and cast event parameters as json arrays are not parsed by rest portal
-        StructuredBuffer oObject;
-        oObject.PutString("EventGuid", oEvent.GetString("EventGuid"));
-        oObject.PutString("ParentGuid", strIdentifierOfParent);
-        // Convert number type parameters to the required data type 
-        oObject.PutQword("EventType", (Qword) oEvent.GetFloat64("EventType"));
-        oObject.PutUnsignedInt64("Timestamp", (uint64_t) oEvent.GetFloat64("Timestamp"));
-        oObject.PutUnsignedInt32("SequenceNumber", (uint32_t) oEvent.GetFloat64("SequenceNumber"));
-        // Decode string first and then initialize a vector from it
-        std::string strDecodedEventData = ::Base64Decode(oEvent.GetString("EncryptedEventData"));
-        std::vector<Byte> stlEventData(strDecodedEventData.begin(), strDecodedEventData.end());
-        oObject.PutBuffer("EncryptedEventData", stlEventData);
-        // Create a binary blob to be inserted in the document
-        bsoncxx::types::b_binary oObjectBlob
-        {
-            bsoncxx::binary_sub_type::k_binary,
-            uint32_t(oObject.GetSerializedBufferRawDataSizeInBytes()),
-            oObject.GetSerializedBufferRawDataPtr()
-        };
-        stlObjectDocuments.push_back(bsoncxx::builder::stream::document{}
-        << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
-        << "ObjectBlob" << oObjectBlob
-        << finalize);
-
-        // Create a plain text object document and add it to stlPlainTextObjectDocuments vector
-        stlPlainTextObjectDocuments.push_back(bsoncxx::builder::stream::document{}
-        << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
-        << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
-        << "ObjectType" << eAuditEventPlainTextLeafNode
-        << finalize);
-    }
-
-    // Each client and transaction can only be used in a single thread
-    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
-    // Access SailDatabase
-    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
-    // Access AuditLog collection
-    mongocxx::collection oAuditLogCollection = oSailDatabase["AuditLog"];
-    // Create a transaction callback
     Dword dwStatus = 204;
-    mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
+
+    try
     {
-        // Insert audit log documents in the AuditLog collection
-        auto oResult = oAuditLogCollection.insert_many(*poSession, stlEventDocuments);
-        if (!oResult) {
-            std::cout << "Error while writing to the database." << std::endl;
-        }
-        else
+        // Get required parameters from the request
+        std::string strIdentifierOfParent = c_oRequest.GetString("ParentGuid");
+        StructuredBuffer oLeafEvents(c_oRequest.GetStructuredBuffer("LeafEvents"));
+        std::vector<std::string> stlEvents = oLeafEvents.GetNamesOfElements();
+        // Loop through the array of events, create document for each event, and add them to the relevant vector:
+        // stlEventDocuments: holds audit log documents
+        // stlObjectDocuments: holds object documents
+        // stlPlainTextObjectDocuments: holds plain text object documents
+        std::vector<bsoncxx::document::value> stlEventDocuments, stlObjectDocuments, stlPlainTextObjectDocuments;
+        for (unsigned int unIndex = 0; unIndex < stlEvents.size(); ++unIndex)
         {
-            // Access Object collection
-            mongocxx::collection oObjectCollection = oSailDatabase["Object"];
-            // Insert object documents in the Object collection
-            oResult = oObjectCollection.insert_many(*poSession, stlObjectDocuments);
+            Guid oObjectGuid, oPlainTextObjectBlobGuid;
+
+            StructuredBuffer oEvent(oLeafEvents.GetStructuredBuffer(stlEvents[unIndex].c_str()));
+
+            // Create an audit log event document and add it to stlEventDocuments vector
+            stlEventDocuments.push_back(bsoncxx::builder::stream::document{}
+            << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
+            << "OrganizationGuid" << c_oRequest.GetString("OrganizationGuid")
+            << "ParentGuid" << strIdentifierOfParent
+            << "EventGuid" << oEvent.GetString("EventGuid")
+            << "IsLeaf" << true
+            << finalize);
+
+            // Create an object document and add it to stlObjectDocuments vector
+            // Parse and cast event parameters as json arrays are not parsed by rest portal
+            StructuredBuffer oObject;
+            oObject.PutString("EventGuid", oEvent.GetString("EventGuid"));
+            oObject.PutString("ParentGuid", strIdentifierOfParent);
+            // Convert number type parameters to the required data type 
+            oObject.PutQword("EventType", (Qword) oEvent.GetFloat64("EventType"));
+            oObject.PutUnsignedInt64("Timestamp", (uint64_t) oEvent.GetFloat64("Timestamp"));
+            oObject.PutUnsignedInt32("SequenceNumber", (uint32_t) oEvent.GetFloat64("SequenceNumber"));
+            oObject.PutString("EncryptedEventData", oEvent.GetString("EncryptedEventData"));
+            // Create a binary blob to be inserted in the document
+            bsoncxx::types::b_binary oObjectBlob
+            {
+                bsoncxx::binary_sub_type::k_binary,
+                uint32_t(oObject.GetSerializedBufferRawDataSizeInBytes()),
+                oObject.GetSerializedBufferRawDataPtr()
+            };
+            stlObjectDocuments.push_back(bsoncxx::builder::stream::document{}
+            << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
+            << "ObjectBlob" << oObjectBlob
+            << finalize);
+
+            // Create a plain text object document and add it to stlPlainTextObjectDocuments vector
+            stlPlainTextObjectDocuments.push_back(bsoncxx::builder::stream::document{}
+            << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
+            << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
+            << "ObjectType" << eAuditEventPlainTextLeafNode
+            << finalize);
+        }
+
+        // Each client and transaction can only be used in a single thread
+        mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+        // Access SailDatabase
+        mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+        // Access AuditLog collection
+        mongocxx::collection oAuditLogCollection = oSailDatabase["AuditLog"];
+        // Create a transaction callback
+        mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
+        {
+            // Insert audit log documents in the AuditLog collection
+            auto oResult = oAuditLogCollection.insert_many(*poSession, stlEventDocuments);
             if (!oResult) {
                 std::cout << "Error while writing to the database." << std::endl;
             }
             else
             {
-                // Access PlainTextObjectBlob collection
-                mongocxx::collection oPlainTextObjectCollection = oSailDatabase["PlainTextObjectBlob"];
-                // Insert plain text object blob documents in the PlainTextObjectBlob collection
-                oResult = oPlainTextObjectCollection.insert_many(*poSession, stlPlainTextObjectDocuments);
+                // Access Object collection
+                mongocxx::collection oObjectCollection = oSailDatabase["Object"];
+                // Insert object documents in the Object collection
+                oResult = oObjectCollection.insert_many(*poSession, stlObjectDocuments);
                 if (!oResult) {
                     std::cout << "Error while writing to the database." << std::endl;
                 }
                 else
                 {
-                    dwStatus = 200;
+                    // Access PlainTextObjectBlob collection
+                    mongocxx::collection oPlainTextObjectCollection = oSailDatabase["PlainTextObjectBlob"];
+                    // Insert plain text object blob documents in the PlainTextObjectBlob collection
+                    oResult = oPlainTextObjectCollection.insert_many(*poSession, stlPlainTextObjectDocuments);
+                    if (!oResult) {
+                        std::cout << "Error while writing to the database." << std::endl;
+                    }
+                    else
+                    {
+                        dwStatus = 200;
+                    }
                 }
             }
+        };
+        // Create a session and start the transaction
+        mongocxx::client_session oSession = oClient->start_session();
+        try 
+        {
+            oSession.with_transaction(oCallback);
         }
-    };
-    // Create a session and start the transaction
-    mongocxx::client_session oSession = oClient->start_session();
-    try 
-    {
-        oSession.with_transaction(oCallback);
+        catch (mongocxx::exception& e) 
+        {
+            std::cout << "Collection transaction exception: " << e.what() << std::endl;
+        }
     }
-    catch (mongocxx::exception& e) 
+    catch (BaseException oException)
     {
-        std::cout << "Collection transaction exception: " << e.what() << std::endl;
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
     }
 
     // Send back the status of the transaction

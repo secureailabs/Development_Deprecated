@@ -46,22 +46,13 @@ extern "C" uint64_t SubmitRequest(
             *punSerializedResponseSizeInBytes = 0;
         }
     }
-
     catch (BaseException oException)
     {
-        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
-                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
-                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
-                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
-                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
-                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
-                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+        ::RegisterException(oException, __func__, __LINE__);
     }
-
     catch (...)
     {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return un64Identifier;
@@ -100,13 +91,13 @@ extern "C" bool GetResponse(
             fSuccess = poAuditLogManager->GetResponse(un64Identifier, pbSerializedResponseBuffer, unSerializedResponseBufferSizeInBytes);
         }
     }
-
-    catch (BaseException oBaseException)
+    catch (BaseException oException)
     {
+        ::RegisterException(oException, __func__, __LINE__);
     }
-
     catch (...)
     {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return fSuccess;
@@ -142,13 +133,13 @@ extern "C" bool __stdcall InitializePlugin(
         std::vector<Byte> stlDictionary = poAuditLogManager->GetDictionarySerializedBuffer();
         fSuccess = fnRegisterPluginFn(poAuditLogManager->GetName(), poAuditLogManager->GetUuid(), poAuditLogManager->GetVersion(), SubmitRequest, GetResponse, stlDictionary.data(), stlDictionary.size());
     }
-
-    catch (BaseException oBaseException)
+    catch (BaseException oException)
     {
+        ::RegisterException(oException, __func__, __LINE__);
     }
-
     catch (...)
     {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return fSuccess;
@@ -170,12 +161,12 @@ extern "C" void __stdcall ShutdownPlugin(void)
     {
         ::ShutdownAuditLogManager();
     }
-
-    catch (BaseException oBaseException)
+    catch (BaseException oException)
     {
+        ::RegisterException(oException, __func__, __LINE__);
     }
-
     catch (...)
     {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 }

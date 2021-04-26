@@ -21,7 +21,7 @@ extern bool __stdcall SetIpAddressOfSailWebApiPortalGateway(
     _in Word wPortAddressOfWebPortalGateway
     ) throw();
     
-extern std::string __stdcall LoginToWebApiServicesPortal(
+extern std::string __stdcall LoginToSailWebApiPortal(
     _in const std::string & c_strUsername,
     _in const std::string & c_strUserPassword
     );

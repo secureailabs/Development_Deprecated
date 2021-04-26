@@ -399,45 +399,66 @@ std::vector<Byte> __thiscall SailAuthentication::AuthenticateUserCredentails(
 
     StructuredBuffer oResponse;
 
-    // Validate user credentials
-    std::string strEmail = c_oRequest.GetString("Email");
-    std::string strPassword = c_oRequest.GetString("Password");
-    std::string strPassphrase;
+    Dword dwStatus = 404;
+    Socket * poIpcAccountManager = nullptr, * poIpcCryptographicManager = nullptr;
 
-    // Trim whitespaces in email and convert all letters to lowercase
-    strEmail.erase(std::remove_if(strEmail.begin(), strEmail.end(), ::isspace), strEmail.end());
-    std::transform(strEmail.begin(), strEmail.end(), strEmail.begin(), ::tolower);
-    // Generate email/password string
-    strPassphrase = strEmail + "/" + strPassword;
-
-    // Call AccountManager plugin to fetch BasicUser and ConfidentialUser records from the database
-    bool fSuccess = false;
-    StructuredBuffer oCredentials;
-    oCredentials.PutDword("TransactionType", 0x00000001);
-    oCredentials.PutString("Passphrase", strPassphrase);
-    Socket * poIpcAccountManager = ::ConnectToUnixDomainSocket("/tmp/{0BE996BF-6966-41EB-B211-2D63C9908289}");
-    StructuredBuffer oAccountRecords(::PutIpcTransactionAndGetResponse(poIpcAccountManager, oCredentials));
-    poIpcAccountManager->Release();
-    // Call CryptographicManager plugin to get the Eosb
-    if ((0 < oAccountRecords.GetSerializedBufferRawDataSizeInBytes())&&(404 != oAccountRecords.GetDword("Status")) )
+    try
     {
-        oAccountRecords.PutDword("TransactionType", 0x00000001);
-        oAccountRecords.PutString("Passphrase", ::Base64HashOfEmailPassword(strEmail, strPassword));
-        Socket * poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-        std::vector<Byte> stlEosb = ::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oAccountRecords);
-        poIpcCryptographicManager->Release();
-        if (0 < stlEosb.size())
+        // Validate user credentials
+        std::string strEmail = c_oRequest.GetString("Email");
+        std::string strPassword = c_oRequest.GetString("Password");
+        std::string strPassphrase;
+
+        // Trim whitespaces in email and convert all letters to lowercase
+        strEmail.erase(std::remove_if(strEmail.begin(), strEmail.end(), ::isspace), strEmail.end());
+        std::transform(strEmail.begin(), strEmail.end(), strEmail.begin(), ::tolower);
+        // Generate email/password string
+        strPassphrase = strEmail + "/" + strPassword;
+
+        // Call AccountManager plugin to fetch BasicUser and ConfidentialUser records from the database
+        StructuredBuffer oCredentials;
+        oCredentials.PutDword("TransactionType", 0x00000001);
+        oCredentials.PutString("Passphrase", strPassphrase);
+        poIpcAccountManager = ::ConnectToUnixDomainSocket("/tmp/{0BE996BF-6966-41EB-B211-2D63C9908289}");
+        StructuredBuffer oAccountRecords(::PutIpcTransactionAndGetResponse(poIpcAccountManager, oCredentials));
+        poIpcAccountManager->Release();
+        // Call CryptographicManager plugin to get the Eosb
+        if ((0 < oAccountRecords.GetSerializedBufferRawDataSizeInBytes())&&(404 != oAccountRecords.GetDword("Status")) )
         {
-            fSuccess = true;
-            oResponse.PutDword("Status", 201);
-            oResponse.PutBuffer("Eosb", stlEosb);
+            oAccountRecords.PutDword("TransactionType", 0x00000001);
+            oAccountRecords.PutString("Passphrase", ::Base64HashOfEmailPassword(strEmail, strPassword));
+            poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+            std::vector<Byte> stlEosb = ::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oAccountRecords);
+            poIpcCryptographicManager->Release();
+            if (0 < stlEosb.size())
+            {
+                oResponse.PutBuffer("Eosb", stlEosb);
+                dwStatus = 201;
+            }
         }
     }
-    // Add error code if login was unsuccessful
-    if (false == fSuccess)
+    catch (BaseException oException)
     {
-        oResponse.PutDword("Status", 404);
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
     }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poIpcAccountManager)
+    {
+        poIpcAccountManager->Release();
+    }
+    if (nullptr != poIpcCryptographicManager)
+    {
+        poIpcCryptographicManager->Release();
+    }
+
+    // Send back the status of the transaction
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -461,33 +482,50 @@ std::vector<Byte> __thiscall SailAuthentication::GetBasicUserInformation(
 
     StructuredBuffer oResponse;
 
-    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+    Dword dwStatus = 404;
+    Socket * poIpcCryptographicManager = nullptr;
 
-    StructuredBuffer oDecryptEosbRequest;
-    oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
-    oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
-
-    // Call CryptographicManager plugin to get the decrypted eosb
-    bool fSuccess = false;
-    Socket * poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-    StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
-    poIpcCryptographicManager->Release();
-    if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
+    try 
     {
-        StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
-        oResponse.PutDword("Status", 200);
-        oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
-        oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
-        // TODO: get user access rights from the confidential record, for now it can't be decrypted
-        oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
-        fSuccess = true;
+        std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+
+        StructuredBuffer oDecryptEosbRequest;
+        oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
+        oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
+
+        // Call CryptographicManager plugin to get the decrypted eosb
+        poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+        poIpcCryptographicManager->Release();
+        if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
+        {
+            StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
+            oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
+            oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
+            // TODO: get user access rights from the confidential record, for now it can't be decrypted
+            oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
+            dwStatus = 200;
+        }
     }
-    // Add error code if transaction was unsuccessful
-    if (false == fSuccess)
+    catch (BaseException oException)
     {
-        oResponse.PutDword("Status", 404);
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
     }
 
+    if (nullptr != poIpcCryptographicManager)
+    {
+        poIpcCryptographicManager->Release();
+    }
+
+    // Send back the status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+    
     return oResponse.GetSerializedBuffer();
 }
 
@@ -510,28 +548,44 @@ std::vector<Byte> __thiscall SailAuthentication::GetRemoteAttestationCertificate
     StructuredBuffer oResponse;
 
     Dword dwStatus = 204;
-    // Get nonce
-    std::vector<Byte> stlNonce = c_oRequest.GetBuffer("Nonce");
+    Socket * poIpcCryptographicManager = nullptr;
 
-    StructuredBuffer oRemoteAttestationCertificate;
-    oRemoteAttestationCertificate.PutDword("TransactionType", 0x00000004);
-    oRemoteAttestationCertificate.PutBuffer("MessageDigest", stlNonce);
-
-    // Call CryptographicManager plugin to get the digital signature blob
-    Socket * poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-    StructuredBuffer oPluginResponse(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oRemoteAttestationCertificate));
-    poIpcCryptographicManager->Release();
-    if ((0 < oPluginResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oPluginResponse.GetDword("Status")))
+    try 
     {
-        // Add digital signature and public key to the response
-        StructuredBuffer oDigitalSignature(oPluginResponse.GetStructuredBuffer("DSIG"));
-        oResponse.PutBuffer("RemoteAttestationCertificatePem", oDigitalSignature.GetBuffer("DigitalSignature"));
-        oResponse.PutString("PublicKeyCertificate", oDigitalSignature.GetString("PublicKeyPEM"));
-        dwStatus = 200;
+        // Get nonce
+        std::vector<Byte> stlNonce = c_oRequest.GetBuffer("Nonce");
+
+        StructuredBuffer oRemoteAttestationCertificate;
+        oRemoteAttestationCertificate.PutDword("TransactionType", 0x00000004);
+        oRemoteAttestationCertificate.PutBuffer("MessageDigest", stlNonce);
+
+        // Call CryptographicManager plugin to get the digital signature blob
+        poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+        StructuredBuffer oPluginResponse(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oRemoteAttestationCertificate));
+        poIpcCryptographicManager->Release();
+        if ((0 < oPluginResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oPluginResponse.GetDword("Status")))
+        {
+            // Add digital signature and public key to the response
+            StructuredBuffer oDigitalSignature(oPluginResponse.GetStructuredBuffer("DSIG"));
+            oResponse.PutBuffer("RemoteAttestationCertificatePem", oDigitalSignature.GetBuffer("DigitalSignature"));
+            oResponse.PutString("PublicKeyCertificate", oDigitalSignature.GetString("PublicKeyPEM"));
+            dwStatus = 200;
+        }
     }
-    else
+    catch (BaseException oException)
     {
-        _ThrowBaseException("Error getting digital signatures.", nullptr);
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poIpcCryptographicManager)
+    {
+        poIpcCryptographicManager->Release();
     }
 
     oResponse.PutDword("Status", dwStatus);
@@ -559,31 +613,50 @@ std::vector<Byte> __thiscall SailAuthentication::ResetDatabase(
     StructuredBuffer oResponse;
 
     Dword dwStatus = 204;
-    // Make a Tls connection with the database portal
     TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-    // Reset the database
-    StructuredBuffer oRequest;
-    oRequest.PutString("PluginName", "DatabaseManager");
-    oRequest.PutString("Verb", "DELETE");
-    oRequest.PutString("Resource", "/SAIL/DatabaseManager/ResetDatabase");
-    std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-    // Send request packet
-    poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
 
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-    // Make sure to release the poTlsNode
-    poTlsNode->Release();
-        
-    StructuredBuffer oDatabaseResponse(stlResponse);
-    if (404 != oDatabaseResponse.GetDword("Status"))
+    try 
     {
-        dwStatus = 200;
+        // Make a Tls connection with the database portal
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        // Reset the database
+        StructuredBuffer oRequest;
+        oRequest.PutString("PluginName", "DatabaseManager");
+        oRequest.PutString("Verb", "DELETE");
+        oRequest.PutString("Resource", "/SAIL/DatabaseManager/ResetDatabase");
+        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+        // Send request packet
+        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+        // Read header and body of the response
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+        // Make sure to release the poTlsNode
+        poTlsNode->Release();
+            
+        StructuredBuffer oDatabaseResponse(stlResponse);
+        if (404 != oDatabaseResponse.GetDword("Status"))
+        {
+            dwStatus = 200;
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     oResponse.PutDword("Status", dwStatus);

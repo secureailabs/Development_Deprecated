@@ -626,32 +626,49 @@ std::vector<Byte> __thiscall AuditLogManager::GetUserInfo(
 
     StructuredBuffer oResponse;
 
-    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+    Dword dwStatus = 404;
+    Socket * poIpcCryptographicManager = nullptr;
 
-    StructuredBuffer oDecryptEosbRequest;
-    oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
-    oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
+    try 
+    {
+        std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
 
-    // Call CryptographicManager plugin to get the decrypted eosb
-    bool fSuccess = false;
-    Socket * poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-    StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
-    poIpcCryptographicManager->Release();
-    if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
-    {
-        StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
-        oResponse.PutDword("Status", 200);
-        oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
-        oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
-        // TODO: get user access rights from the confidential record, for now it can't be decrypted
-        oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
-        fSuccess = true;
+        StructuredBuffer oDecryptEosbRequest;
+        oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
+        oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
+
+        // Call CryptographicManager plugin to get the decrypted eosb
+        poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+        poIpcCryptographicManager->Release();
+        if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
+        {
+            StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
+            oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
+            oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
+            // TODO: get user access rights from the confidential record, for now it can't be decrypted
+            oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
+            dwStatus = 200;
+        }
     }
-    // Add error code if transaction was unsuccessful
-    if (false == fSuccess)
+    catch (BaseException oException)
     {
-        oResponse.PutDword("Status", 404);
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
     }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poIpcCryptographicManager)
+    {
+        poIpcCryptographicManager->Release();
+    }
+    
+    // Send back the transaction status
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -675,34 +692,53 @@ std::vector<Byte> __thiscall AuditLogManager::AddNonLeafEvent(
 
     StructuredBuffer oResponse;
 
-    // Make a Tls connection with the database portal
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-    // Create a request to store a non leaf event in the database
-    StructuredBuffer oRequest;
-    oRequest.PutString("PluginName", "DatabaseManager");
-    oRequest.PutString("Verb", "POST");
-    oRequest.PutString("Resource", "/SAIL/DatabaseManager/NonLeafEvent");
-    oRequest.PutStructuredBuffer("NonLeafEvent", c_oRequest.GetStructuredBuffer("NonLeafEvent"));
-    std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-    // Send request packet
-    poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
-    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-    // Make sure to release the poTlsNode
-    poTlsNode->Release();
-    
     Dword dwStatus = 204;
-    // Check if DatabaseManager registered the events or not
-    StructuredBuffer oDatabaseResponse(stlResponse);
-    if (404 != oDatabaseResponse.GetDword("Status"))
+    TlsNode * poTlsNode = nullptr;
+
+    try 
     {
-        dwStatus = 201;
+        // Make a Tls connection with the database portal
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        // Create a request to store a non leaf event in the database
+        StructuredBuffer oRequest;
+        oRequest.PutString("PluginName", "DatabaseManager");
+        oRequest.PutString("Verb", "POST");
+        oRequest.PutString("Resource", "/SAIL/DatabaseManager/NonLeafEvent");
+        oRequest.PutStructuredBuffer("NonLeafEvent", c_oRequest.GetStructuredBuffer("NonLeafEvent"));
+        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+        // Send request packet
+        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+        // Read header and body of the response
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+        // Make sure to release the poTlsNode
+        poTlsNode->Release();
+        
+        // Check if DatabaseManager registered the events or not
+        StructuredBuffer oDatabaseResponse(stlResponse);
+        if (404 != oDatabaseResponse.GetDword("Status"))
+        {
+            dwStatus = 201;
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
     
     // Send back status of the transaction
@@ -731,40 +767,59 @@ std::vector<Byte> __thiscall AuditLogManager::AddLeafEvent(
     StructuredBuffer oStatus;
 
     Dword dwStatus = 404;
-    // Get user information to check if the user is a digital contract admin or database admin
-    StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-    if (200 == oUserInfo.GetDword("Status"))
-    {
-        // Make a Tls connection with the database portal
-        TlsNode * poTlsNode = nullptr;
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-        // Create a request to store a non leaf event in the database
-        StructuredBuffer oRequest;
-        oRequest.PutString("PluginName", "DatabaseManager");
-        oRequest.PutString("Verb", "POST");
-        oRequest.PutString("Resource", "/SAIL/DatabaseManager/LeafEvent");
-        oRequest.PutString("ParentGuid", c_oRequest.GetString("ParentGuid"));
-        oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
-        oRequest.PutStructuredBuffer("LeafEvents", c_oRequest.GetStructuredBuffer("LeafEvents"));
-        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-        // Send request packet
-        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+    TlsNode * poTlsNode = nullptr;
 
-        // Read header and body of the response
-        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
-        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
-        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-        // Make sure to release the poTlsNode
-        poTlsNode->Release();
-        
-        // Check if DatabaseManager registered the events or not
-        StructuredBuffer oResponse(stlResponse);
-        if (200 == oResponse.GetDword("Status"))
+    try 
+    {
+        // Get user information to check if the user is a digital contract admin or database admin
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
         {
-            dwStatus = 201;
+            // Make a Tls connection with the database portal
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to store a non leaf event in the database
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "POST");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/LeafEvent");
+            oRequest.PutString("ParentGuid", c_oRequest.GetString("ParentGuid"));
+            oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+            oRequest.PutStructuredBuffer("LeafEvents", c_oRequest.GetStructuredBuffer("LeafEvents"));
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+            // Make sure to release the poTlsNode
+            poTlsNode->Release();
+            
+            // Check if DatabaseManager registered the events or not
+            StructuredBuffer oResponse(stlResponse);
+            if (200 == oResponse.GetDword("Status"))
+            {
+                dwStatus = 201;
+            }
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oStatus.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oStatus.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction
@@ -791,36 +846,55 @@ std::vector<Byte> __thiscall AuditLogManager::GetListOfEvents(
 
     StructuredBuffer oAuditLogs;
 
-    // Make a Tls connection with the database portal
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-    // Create a request to fetch list of events
-    StructuredBuffer oRequest;
-    oRequest.PutString("PluginName", "DatabaseManager");
-    oRequest.PutString("Verb", "GET");
-    oRequest.PutString("Resource", "/SAIL/DatabaseManager/Events");
-    oRequest.PutString("ParentGuid", c_oRequest.GetString("ParentGuid"));
-    oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
-    oRequest.PutStructuredBuffer("Filters", c_oRequest.GetStructuredBuffer("Filters"));
-    std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-    // Send request packet
-    poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    std::vector<Byte> stlResponse= poTlsNode->Read(unResponseDataSizeInBytes, 2000);
-    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-    // Make sure to release the poTlsNode
-    poTlsNode->Release();
-        
     Dword dwStatus = 204;
-    StructuredBuffer oResponse(stlResponse);
-    if (200 == oResponse.GetDword("Status"))
+    TlsNode * poTlsNode = nullptr;
+
+    try 
     {
-        oAuditLogs.PutStructuredBuffer("ListOfEvents", oResponse.GetStructuredBuffer("ListOfEvents"));
-        dwStatus = 200;
+        // Make a Tls connection with the database portal
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        // Create a request to fetch list of events
+        StructuredBuffer oRequest;
+        oRequest.PutString("PluginName", "DatabaseManager");
+        oRequest.PutString("Verb", "GET");
+        oRequest.PutString("Resource", "/SAIL/DatabaseManager/Events");
+        oRequest.PutString("ParentGuid", c_oRequest.GetString("ParentGuid"));
+        oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
+        oRequest.PutStructuredBuffer("Filters", c_oRequest.GetStructuredBuffer("Filters"));
+        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+        // Send request packet
+        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+        // Read header and body of the response
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+        std::vector<Byte> stlResponse= poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+        // Make sure to release the poTlsNode
+        poTlsNode->Release();
+            
+        StructuredBuffer oResponse(stlResponse);
+        if (200 == oResponse.GetDword("Status"))
+        {
+            oAuditLogs.PutStructuredBuffer("ListOfEvents", oResponse.GetStructuredBuffer("ListOfEvents"));
+            dwStatus = 200;
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oAuditLogs.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oAuditLogs.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction
@@ -847,35 +921,54 @@ std::vector<Byte> __thiscall AuditLogManager::DigitalContractBranchExists(
 
     StructuredBuffer oAuditLog;
 
-    // Make a Tls connection with the database portal
-    TlsNode * poTlsNode = nullptr;
-    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-    // Create a request to fetch list of events
-    StructuredBuffer oRequest;
-    oRequest.PutString("PluginName", "DatabaseManager");
-    oRequest.PutString("Verb", "GET");
-    oRequest.PutString("Resource", "/SAIL/DatabaseManager/GetDCEvent");
-    oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
-    oRequest.PutStructuredBuffer("Filters", c_oRequest.GetStructuredBuffer("Filters"));
-    std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-    // Send request packet
-    poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
-
-    // Read header and body of the response
-    std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
-    _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-    unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-    std::vector<Byte> stlResponse= poTlsNode->Read(unResponseDataSizeInBytes, 2000);
-    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-    // Make sure to release the poTlsNode
-    poTlsNode->Release();
-    
     Dword dwStatus = 204;
-    StructuredBuffer oResponse(stlResponse);
-    if (200 == oResponse.GetDword("Status"))
+    TlsNode * poTlsNode = nullptr;
+
+    try 
     {
-        oAuditLog.PutString("DCEventGuid", oResponse.GetString("DCEventGuid"));
-        dwStatus = 200;
+        // Make a Tls connection with the database portal
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        // Create a request to fetch list of events
+        StructuredBuffer oRequest;
+        oRequest.PutString("PluginName", "DatabaseManager");
+        oRequest.PutString("Verb", "GET");
+        oRequest.PutString("Resource", "/SAIL/DatabaseManager/GetDCEvent");
+        oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
+        oRequest.PutStructuredBuffer("Filters", c_oRequest.GetStructuredBuffer("Filters"));
+        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+        // Send request packet
+        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+        // Read header and body of the response
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+        std::vector<Byte> stlResponse= poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+        // Make sure to release the poTlsNode
+        poTlsNode->Release();
+        
+        StructuredBuffer oResponse(stlResponse);
+        if (200 == oResponse.GetDword("Status"))
+        {
+            oAuditLog.PutString("DCEventGuid", oResponse.GetString("DCEventGuid"));
+            dwStatus = 200;
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oAuditLog.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oAuditLog.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back status of the transaction

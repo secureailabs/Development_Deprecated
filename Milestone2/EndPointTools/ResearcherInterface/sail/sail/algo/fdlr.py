@@ -107,4 +107,4 @@ class Fdlr(Algorithm):
 
     def score(self):
         scores = self.mae(self.data['X_train'], self.data['y_train'])
-        return sum(scores)/len(scores)
+        return scores

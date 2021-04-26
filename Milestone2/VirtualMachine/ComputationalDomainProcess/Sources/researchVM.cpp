@@ -118,6 +118,7 @@ void __thiscall ComputationVM::Initialize(void)
 void ComputationVM::SocketListen(void)
 {
     __DebugFunction();
+    TlsNode* poNewConnection = nullptr;
 
     StatusMonitor oStatusMonitor("void ComputationVM::SocketListen(void)");
 
@@ -127,10 +128,11 @@ void ComputationVM::SocketListen(void)
         {
             if (true == m_oTlsServer.WaitForConnection(1000))
             {
-                TlsNode* poNewConnection = m_oTlsServer.Accept();
+                poNewConnection = m_oTlsServer.Accept();
                 _ThrowIfNull(poNewConnection, "Handle computationVM connection request retures a null pointer.", nullptr);
                 this->HandleConnection(poNewConnection);
                 poNewConnection->Release();
+                poNewConnection = nullptr;
             }
         }
         catch(const BaseException & oBaseException)
@@ -139,6 +141,11 @@ void ComputationVM::SocketListen(void)
             std::cout<<oBaseException.GetExceptionMessage()<<std::endl;
             oResponseStructuredBuffer.PutString("Status", "Fail");
             oResponseStructuredBuffer.PutString("Error", oBaseException.GetExceptionMessage());
+        }
+        if (nullptr != poNewConnection)
+        {
+            poNewConnection->Release();
+            poNewConnection = nullptr;
         }
     }
 }

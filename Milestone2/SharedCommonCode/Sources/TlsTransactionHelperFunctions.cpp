@@ -82,6 +82,7 @@ std::vector<Byte> GetPayload(
     std::string strStartOfValue = strLineWithKey.substr(strLineWithKey.find(": ")+2);
     unsigned int unSizeOfPayload = std::stoi(strStartOfValue.c_str());
     std::vector<Byte> stlFileToDownload = poTlsNode->Read(unSizeOfPayload, unMillisecondTimeout);
+    _ThrowBaseExceptionIf((unSizeOfPayload != stlFileToDownload.size()), "Read over Tls failed. Timeout", nullptr);
     stlFileToDownload.push_back(0);
     std::vector stlResponseDecodedBuffer = ::Base64Decode((char *)stlFileToDownload.data());
     return stlResponseDecodedBuffer;

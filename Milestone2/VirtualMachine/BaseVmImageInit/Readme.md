@@ -16,8 +16,11 @@ The BaseVmImageInit tool is a process that runs on the newly provisioned Azure V
         ```
         sudo apt-get update
         sudo apt-get install -y libssl-dev libuuid1 python3-dev python3-pip
-        sudo pip3 install numpy scipy pandas xgboost matplotlib shap imbalanced-learn ipython torch
+        sudo pip3 install numpy scipy
+        sudo pip3 install pandas xgboost matplotlib shap imbalanced-learn
         sudo pip3 install -U scikit-learn
+        sudo pip3 install ipython
+        sudo pip3 install torch --no-cache-dir
         ```
 4. Copy the BaseVmImageInit using the following instructions to the virtual machine.
 

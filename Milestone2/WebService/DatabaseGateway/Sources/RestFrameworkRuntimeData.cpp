@@ -89,7 +89,6 @@ RestFrameworkRuntimeData::~RestFrameworkRuntimeData(void) throw()
 {
     __DebugFunction();
 
-    m_poDictionaryManager->Release();
     m_stlConnectionThreads.clear();
 }
 
@@ -118,6 +117,9 @@ void __thiscall RestFrameworkRuntimeData::HandleConnection(
     pthread_t connectionThread;
     int nStatus = ::pthread_create(&connectionThread, nullptr, StartThread, poThreadParameters);
     _ThrowBaseExceptionIf((0 != nStatus), "Error creating a thread with nStatus: %d.", nStatus);
+    // Detach the thread as it terminates on its own by calling pthread_exit
+    // Detaching the thread will make sure that the system recycles its underlying resources automatically
+    ::pthread_detach(connectionThread);
 
     this->AddConnection(connectionThread);
 }

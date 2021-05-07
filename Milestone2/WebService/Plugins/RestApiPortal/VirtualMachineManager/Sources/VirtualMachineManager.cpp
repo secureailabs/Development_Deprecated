@@ -94,6 +94,7 @@ void __stdcall ShutdownVirtualMachineManager(void)
 
     if (nullptr != gs_oVirtualMachineManager)
     {
+        gs_oVirtualMachineManager->TerminateSignalEncountered();
         gs_oVirtualMachineManager->Release();
         gs_oVirtualMachineManager = nullptr;
     }
@@ -215,6 +216,21 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetDictionarySerializedBuffe
     __DebugFunction();
 
     return m_oDictionary.GetSerializedDictionary();
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function TerminateSignalEncountered
+ * @brief Set termination signal
+ *
+ ********************************************************************************************/
+
+void __thiscall VirtualMachineManager::TerminateSignalEncountered(void)
+{
+    __DebugFunction();
+
+    m_fTerminationSignalEncountered = true;
 }
 
 /********************************************************************************************
@@ -470,6 +486,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetUserInfo(
         poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
         StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
         poIpcCryptographicManager->Release();
+        poIpcCryptographicManager = nullptr;
         if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
         {
             StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
@@ -545,6 +562,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetVmInformation(
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
         // Make sure to release the poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
             
         StructuredBuffer oDatabaseResponse(stlResponse);
         if (404 != oDatabaseResponse.GetDword("Status"))
@@ -609,6 +627,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::VerifyDigitalContract(
         poIpcDigitalContractManager = ::ConnectToUnixDomainSocket("/tmp/{BC5AEAAF-E37E-4605-B074-F9DF2E82CD34}");
         StructuredBuffer oDigitalContractResponse(::PutIpcTransactionAndGetResponse(poIpcDigitalContractManager, oDigitalContractRequest));
         poIpcDigitalContractManager->Release();
+        poIpcDigitalContractManager = nullptr;
         if ((0 < oDigitalContractResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oDigitalContractResponse.GetDword("Status")))
         {   
             if (true == fIsResearcher)
@@ -719,6 +738,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
         // Make sure to release the poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         
         // Check if DatabaseManager registered the virtual machine or not
         StructuredBuffer oDatabaseResponse(stlResponse);
@@ -732,6 +752,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
             poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
             StructuredBuffer oUpdatedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oUpdateEosbRequest));
             poIpcCryptographicManager->Release();
+            poIpcCryptographicManager = nullptr;
             // Throw base exception if transaction was unsuccessful
             _ThrowBaseExceptionIf(((0 == oUpdatedEosb.GetSerializedBufferRawDataSizeInBytes())&&(200 != oUpdatedEosb.GetDword("Status"))), "Error updating the Eosb", nullptr);
             oResponse.PutBuffer("VmEosb", oUpdatedEosb.GetBuffer("UpdatedEosb"));
@@ -985,6 +1006,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmAuditEvent(
         poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
         StructuredBuffer oDCEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oGetDcBranchEventRequest));
         poIpcAuditLogManager->Release();
+        poIpcAuditLogManager = nullptr;
         _ThrowBaseExceptionIf((0 > oDCEventLog.GetSerializedBufferRawDataSizeInBytes()), "Error checking for DC event", nullptr);
         
         if (200 == oDCEventLog.GetDword("Status"))
@@ -1010,6 +1032,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmAuditEvent(
             poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
             StructuredBuffer oVmEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oVmBranchEvent));
             poIpcAuditLogManager->Release();
+            poIpcAuditLogManager = nullptr;
             if ((0 < oVmEventLog.GetSerializedBufferRawDataSizeInBytes())&&(201 == oVmEventLog.GetDword("Status")))
             {
                 // Add Vm branch log event guid to the response

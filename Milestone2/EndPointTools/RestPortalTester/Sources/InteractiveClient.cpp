@@ -150,10 +150,11 @@ std::string Login(
 
     std::string strEosb;
 
+    TlsNode * poTlsNode = nullptr;
+
     try
     {
         bool fSuccess = false;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         std::string strHttpLoginRequest = "POST /SAIL/AuthenticationManager/User/Login?Email="+ c_strEmail +"&Password="+ c_strUserPassword +" HTTP/1.1\r\n"
@@ -204,6 +205,11 @@ std::string Login(
         ::ShowErrorMessage("Login Failed!");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return strEosb;
 }
 
@@ -218,10 +224,11 @@ std::vector<Byte> GetBasicUserInformation(
 
     StructuredBuffer oUserInformation;
 
+    TlsNode * poTlsNode = nullptr;
+
     try
     {
         bool fSuccess = false;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         std::string strHttpLoginRequest = "GET /SAIL/AuthenticationManager/GetBasicUserInformation?Eosb="+ c_strEosb +" HTTP/1.1\r\n"
@@ -275,6 +282,11 @@ std::vector<Byte> GetBasicUserInformation(
         ::ShowErrorMessage(oBaseException.GetExceptionMessage());
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return oUserInformation.GetSerializedBuffer();
 }
 
@@ -289,10 +301,11 @@ std::string GetIEosb(
 
    std::string strIEosb;
 
+   TlsNode * poTlsNode = nullptr;
+
     try
     {
         bool fSuccess = false;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         std::string strRequest = "GET /SAIL/CryptographicManager/User/GetIEosb?Eosb="+ c_strEosb +" HTTP/1.1\r\n"
@@ -342,6 +355,11 @@ std::string GetIEosb(
     catch(BaseException oBaseException)
     {
         ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     return strIEosb;
@@ -406,10 +424,11 @@ bool RegisterLeafEvents(
 
     bool fSuccess = false;
 
+    TlsNode * poTlsNode = nullptr;
+
     try
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -496,6 +515,11 @@ bool RegisterLeafEvents(
         ::ShowErrorMessage("Error registering leaf events.");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return fSuccess;
 }
 
@@ -543,10 +567,11 @@ std::string RegisterVirtualMachine(
 
     std::string strVmEosb;
 
+    TlsNode * poTlsNode = nullptr;
+
     try
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -609,6 +634,11 @@ std::string RegisterVirtualMachine(
         ::ShowErrorMessage("Error registering virtual machine.");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return strVmEosb;
 }
 
@@ -625,10 +655,11 @@ std::string RegisterVmAfterDataUpload(
 
     std::string strVmEventGuid;
 
+    TlsNode * poTlsNode = nullptr;
+
     try
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -688,6 +719,11 @@ std::string RegisterVmAfterDataUpload(
         ::ShowErrorMessage("Error registering virtual machine.");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return strVmEventGuid;
 }
 
@@ -704,10 +740,11 @@ std::string RegisterVmForComputation(
 
     std::string strVmEventGuid;
 
+    TlsNode * poTlsNode = nullptr;
+
     try
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -767,6 +804,11 @@ std::string RegisterVmForComputation(
         ::ShowErrorMessage("Error registering virtual machine.");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return strVmEventGuid;
 }
 
@@ -786,10 +828,11 @@ bool GetListOfEvents(
 
     bool fSuccess = false;
 
+    TlsNode * poTlsNode = nullptr;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -866,6 +909,11 @@ bool GetListOfEvents(
     catch(...)
     {
         ::ShowErrorMessage("Error getting list of events.");
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     return fSuccess;
@@ -948,10 +996,11 @@ bool RegisterOrganizationAndSuperUser(
 
     bool fSuccess = false;
 
+    TlsNode * poTlsNode = nullptr;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -1026,6 +1075,11 @@ bool RegisterOrganizationAndSuperUser(
         ::ShowErrorMessage("Error registering new organization and super user.");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return fSuccess;
 }
 
@@ -1088,10 +1142,11 @@ bool RegisterUser(
 
     bool fSuccess = false;
 
+    TlsNode * poTlsNode = nullptr;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -1157,6 +1212,11 @@ bool RegisterUser(
         ::ShowErrorMessage("Error registering new user.");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return fSuccess;
 }
 
@@ -1198,10 +1258,11 @@ bool UpdateOrganizationInformation(
     __DebugAssert(0 < strSecondaryContactEmail.size());
     __DebugAssert(0 < strSecondaryContactPhoneNumber.size());
 
+    TlsNode * poTlsNode = nullptr;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -1274,6 +1335,11 @@ bool UpdateOrganizationInformation(
         ::ShowErrorMessage("Error updating organization information.");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return fSuccess;
 }
 
@@ -1287,10 +1353,11 @@ bool ListOrganizations(
 
     bool fSuccess = false;
 
+    TlsNode * poTlsNode = nullptr;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -1365,6 +1432,11 @@ bool ListOrganizations(
         ::ShowErrorMessage("Error getting list of organizations.");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return fSuccess;
 }
 
@@ -1386,10 +1458,11 @@ bool DeleteUser(
 
     __DebugAssert(38 == strUserGuid.size())
 
+    TlsNode * poTlsNode = nullptr;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -1450,6 +1523,11 @@ bool DeleteUser(
         ::ShowErrorMessage("Error deleting user.");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return fSuccess;
 }
 
@@ -1471,10 +1549,11 @@ bool DeleteOrganization(
 
     __DebugAssert(38 == strOrganizationGuid.size())
 
+    TlsNode * poTlsNode = nullptr;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -1535,6 +1614,11 @@ bool DeleteOrganization(
         ::ShowErrorMessage("Error deleting organization.");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return fSuccess;
 }
 
@@ -1590,10 +1674,11 @@ bool RegisterDigitalContract(
     std::string strVersionNumber = "0x0000000100000001";
     std::string strDatasetGuid = Guid(eDataset).ToString(eHyphensAndCurlyBraces);
 
+    TlsNode * poTlsNode = nullptr;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -1660,6 +1745,11 @@ bool RegisterDigitalContract(
         ::ShowErrorMessage("Error registering new digital contract.");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return fSuccess;
 }
 
@@ -1711,10 +1801,11 @@ bool AcceptDigitalContract(
 
     bool fSuccess = false;
 
+    TlsNode * poTlsNode = nullptr;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -1778,6 +1869,11 @@ bool AcceptDigitalContract(
         ::ShowErrorMessage("Error approving the digital contract.");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return fSuccess;
 }
 
@@ -1826,10 +1922,11 @@ bool ActivateDigitalContract(
 
     bool fSuccess = false;
 
+    TlsNode * poTlsNode = nullptr;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -1892,6 +1989,11 @@ bool ActivateDigitalContract(
         ::ShowErrorMessage("Error activating the digital contract.");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return fSuccess;
 }
 
@@ -1905,10 +2007,11 @@ std::vector<Byte> ListDigitalContracts(
 
     std::vector<Byte> stlDigitalContracts;
 
+    TlsNode * poTlsNode = nullptr;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -1965,6 +2068,11 @@ std::vector<Byte> ListDigitalContracts(
         ::ShowErrorMessage("Error getting list of digital contracts.");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return stlDigitalContracts;
 }
 
@@ -2014,10 +2122,11 @@ bool PullDigitalContract(
 
     __DebugAssert(0 < strDcGuid.size());
 
+    TlsNode * poTlsNode = nullptr;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -2086,6 +2195,11 @@ bool PullDigitalContract(
         ::ShowErrorMessage("Error pulling the digital contract.");
     }
 
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
     return fSuccess;
 }
 
@@ -2104,10 +2218,11 @@ std::vector<Byte> GetRemoteAttestationCertificate(void)
     // Base64 encode buffer
     std::string strNonce = ::Base64Encode(stlNonce.data(), stlNonce.size());
 
+    TlsNode * poTlsNode = nullptr;
+
     try 
     {
         std::vector<Byte> stlRestResponse;
-        TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
 
         // Create rest request
@@ -2168,7 +2283,89 @@ std::vector<Byte> GetRemoteAttestationCertificate(void)
     {
         ::ShowErrorMessage("Error getting remote attestation certificate.");
     }
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
 
     return stlSerializedResponse;
 }
 
+/********************************************************************************************/
+
+void ShutdownPortal(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+
+    std::vector<Byte> stlSerializedResponse;
+
+    TlsNode * poTlsNode = nullptr;
+
+    try 
+    {
+        std::vector<Byte> stlRestResponse;
+        poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
+
+        // Create rest request
+        std::string strHttpRequest = "POST /SAIL/AuthenticationManager/ShutdownPortal?Eosb="+ c_strEosb +" HTTP/1.1\r\n"
+                                        "Content-Type: application/json\r\n"
+                                        "Accept: */*\r\n"
+                                        "Host: localhost:6200\r\n"
+                                        "Connection: keep-alive\r\n"
+                                        "Content-Length: 0\r\n"
+                                        "\r\n";
+
+        // Send request packet
+        poTlsNode->Write((Byte *) strHttpRequest.data(), (strHttpRequest.size()));
+
+        // Read Header of the Rest response one byte at a time
+        bool fIsEndOfHeader = false;
+        std::vector<Byte> stlHeaderData;
+        while (false == fIsEndOfHeader)
+        {   
+            std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
+            // Check whether the read was successful or not
+            if (0 < stlBuffer.size())
+            {
+                stlHeaderData.push_back(stlBuffer.at(0));
+                if (4 <= stlHeaderData.size())
+                {
+                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
+                    {
+                        fIsEndOfHeader = true;
+                    }
+                }
+            }
+            else 
+            {
+                fIsEndOfHeader = true;
+            }
+        }
+        if(0 == stlHeaderData.size())
+        {
+            std::cout << "Dead Packet, Portal shut down successfully." << std::endl;
+        }
+        
+        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
+        stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
+        // Release poTlsNode
+        poTlsNode->Release();
+        StructuredBuffer oResponse(stlSerializedResponse);
+        _ThrowBaseExceptionIf((204 == oResponse.GetFloat64("Status")), "Error shutting down the server.", nullptr);
+    }
+    catch(BaseException oBaseException)
+    {
+        ::ShowErrorMessage(oBaseException.GetExceptionMessage());
+    }
+    catch(...)
+    {
+        ::ShowErrorMessage("Error shutting down the server.");
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+}

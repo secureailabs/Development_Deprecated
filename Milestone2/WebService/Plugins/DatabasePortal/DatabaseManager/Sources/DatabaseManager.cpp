@@ -47,6 +47,7 @@ void __stdcall ShutdownDatabaseManager(void)
 
     if (nullptr != gs_oDatabaseManager)
     {
+        gs_oDatabaseManager->TerminateSignalEncountered();
         gs_oDatabaseManager->Release();
         gs_oDatabaseManager = nullptr;
     }
@@ -66,7 +67,11 @@ DatabaseManager::DatabaseManager(void)
 
     m_sMutex = PTHREAD_MUTEX_INITIALIZER;
     m_unNextAvailableIdentifier = 0;
-
+    m_fTerminationSignalEncountered = false;
+    // Create only one instance
+    mongocxx::instance oMongoInstance{};
+    mongocxx::uri oUri{"mongodb://localhost:27017/?replicaSet=rs0"};
+    m_poMongoPool = std::unique_ptr<mongocxx::pool>(new mongocxx::pool(oUri));
 }
 
 /********************************************************************************************
@@ -172,6 +177,21 @@ std::vector<Byte> __thiscall DatabaseManager::GetDictionarySerializedBuffer(void
 /********************************************************************************************
  *
  * @class DatabaseManager
+ * @function TerminateSignalEncountered
+ * @brief Set termination signal
+ *
+ ********************************************************************************************/
+
+void __thiscall DatabaseManager::TerminateSignalEncountered(void)
+{
+    __DebugFunction();
+
+    m_fTerminationSignalEncountered = true;
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
  * @function InitializePlugin
  * @brief Connects to the database and initializes the plugin's dictionary
  *
@@ -180,11 +200,6 @@ std::vector<Byte> __thiscall DatabaseManager::GetDictionarySerializedBuffer(void
 void __thiscall DatabaseManager::InitializePlugin(void)
 {
     __DebugFunction();
-
-    mongocxx::instance oMongoInstance{}; // Create only one instance
-    mongocxx::uri oUri{"mongodb://localhost:27017/?replicaSet=rs0"};
-
-    m_poMongoPool = std::unique_ptr<mongocxx::pool>(new mongocxx::pool(oUri));
 
     // Get basic user record
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/BasicUser");
@@ -218,6 +233,8 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterVirtualMachine");
     // Takes in an EOSB and create a digital contract for a chosen dataset
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterDigitalContract");
+    // Shuts down the server
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/ShutdownPortal");
     // Update user's access rights
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/UpdateUserRights");
     // Update organization information
@@ -336,6 +353,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             else if ("/SAIL/DatabaseManager/RegisterDigitalContract" == strResource)
             {
                 stlResponseBuffer = this->RegisterDigitalContract(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/ShutdownPortal" == strResource)
+            {
+                stlResponseBuffer = this->ShutdownPortal(c_oRequestStructuredBuffer);
             }
             else
             {
@@ -458,6 +479,47 @@ bool __thiscall DatabaseManager::GetResponse(
     ::pthread_mutex_unlock(&m_sMutex);
 
     return fSuccess;
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
+ * @function ShutdownPortal
+ * @brief Shut down the server
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns termination signal and status of the transaction
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::ShutdownPortal(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+
+    try 
+    {
+        // Send termination signal
+        oResponse.PutBoolean("TerminateSignalEncountered", true);
+        dwStatus = 200;
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
 }
 
 /********************************************************************************************

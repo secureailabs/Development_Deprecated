@@ -34,11 +34,11 @@ extern "C" uint64_t SubmitRequest(
 
     try
     {
-        CryptographicKeyManagementPlugin & poCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
+        CryptographicKeyManagementPlugin * poCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
         if ((nullptr != c_pbSerializedRequest)&&(0 < unSerializedRequestSizeInBytes)&&(nullptr != punSerializedResponseSizeInBytes))
         {
             StructuredBuffer oRequest(c_pbSerializedRequest, unSerializedRequestSizeInBytes);
-            un64Identifier = poCryptographicKeyManagementPlugin.SubmitRequest(oRequest, punSerializedResponseSizeInBytes);
+            un64Identifier = poCryptographicKeyManagementPlugin->SubmitRequest(oRequest, punSerializedResponseSizeInBytes);
         }
         else if (nullptr != punSerializedResponseSizeInBytes)
         {
@@ -83,10 +83,10 @@ extern "C" bool GetResponse(
 
     try
     {
-        CryptographicKeyManagementPlugin & poCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
+        CryptographicKeyManagementPlugin * poCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
         if ((nullptr != pbSerializedResponseBuffer)&&(0 < unSerializedResponseBufferSizeInBytes))
         {
-            fSuccess = poCryptographicKeyManagementPlugin.GetResponse(un64Identifier, pbSerializedResponseBuffer, unSerializedResponseBufferSizeInBytes);
+            fSuccess = poCryptographicKeyManagementPlugin->GetResponse(un64Identifier, pbSerializedResponseBuffer, unSerializedResponseBufferSizeInBytes);
         }
     }
     catch (BaseException oException)
@@ -125,10 +125,10 @@ extern "C" bool __stdcall InitializePlugin(
 
     try
     {
-        CryptographicKeyManagementPlugin & poCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
-        poCryptographicKeyManagementPlugin.InitializePlugin();
-        std::vector<Byte> stlDictionary = poCryptographicKeyManagementPlugin.GetDictionarySerializedBuffer();
-        fSuccess = fnRegisterPluginFn(poCryptographicKeyManagementPlugin.GetName(), poCryptographicKeyManagementPlugin.GetUuid(), poCryptographicKeyManagementPlugin.GetVersion(), SubmitRequest, GetResponse, stlDictionary.data(), stlDictionary.size());
+        CryptographicKeyManagementPlugin * poCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
+        poCryptographicKeyManagementPlugin->InitializePlugin();
+        std::vector<Byte> stlDictionary = poCryptographicKeyManagementPlugin->GetDictionarySerializedBuffer();
+        fSuccess = fnRegisterPluginFn(poCryptographicKeyManagementPlugin->GetName(), poCryptographicKeyManagementPlugin->GetUuid(), poCryptographicKeyManagementPlugin->GetVersion(), SubmitRequest, GetResponse, stlDictionary.data(), stlDictionary.size());
     }
     catch (BaseException oException)
     {
@@ -156,7 +156,7 @@ extern "C" void __stdcall ShutdownPlugin(void)
 
     try
     {
-        CryptographicKeyManagementPlugin::Shutdown();
+        ::ShutdownCryptographicKeyManagementPlugin();
     }
     catch (BaseException oException)
     {

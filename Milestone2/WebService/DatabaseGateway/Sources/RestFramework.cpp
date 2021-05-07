@@ -140,15 +140,6 @@ RestFramework::~RestFramework(void)
 
     m_poDictionaryManager->Release();
     m_poTlsServer->Release();
-
-    // Shutdown plugins and Close all plugin handles
-    for (void * pPluginHandle : m_stlPluginHandles)
-    {
-        ShutdownPluginFn fnShutdownPlugin = (ShutdownPluginFn) ::dlsym(pPluginHandle, "ShutdownPlugin");
-        fnShutdownPlugin();
-        ::dlclose(pPluginHandle);
-    }
-
     m_stlPluginHandles.clear();
 }
 
@@ -235,6 +226,13 @@ void __thiscall RestFramework::RunServer(void)
     }
 
     poRestFrameworkRuntimeData->Release();
+    // Shutdown plugins and Close all plugin handles
+    for (void * pPluginHandle : m_stlPluginHandles)
+    {
+        ShutdownPluginFn fnShutdownPlugin = (ShutdownPluginFn) ::dlsym(pPluginHandle, "ShutdownPlugin");
+        fnShutdownPlugin();
+        ::dlclose(pPluginHandle);
+    }
 }
 
 /********************************************************************************************
@@ -254,6 +252,7 @@ void __thiscall RestFramework::LoadPlugins(
     __DebugFunction();
 
     void * pPluginHandle;
+    char * szErrorMessage = nullptr;
 
     try 
     {
@@ -263,13 +262,14 @@ void __thiscall RestFramework::LoadPlugins(
             {
                 pPluginHandle = ::dlopen(itrFileEntry.path().string().c_str(), RTLD_NOW);
 
-                if (nullptr == pPluginHandle)
+                if (!pPluginHandle)
                 {
                     __DebugError("%s", "Error: Library file could not be open.");
                 }
                 else
                 {
                     InitializePluginFn fnInitializePlugin = (InitializePluginFn) ::dlsym(pPluginHandle, "InitializePlugin");
+                    _ThrowBaseExceptionIf((nullptr != (szErrorMessage = dlerror())), szErrorMessage, nullptr);
                     fnInitializePlugin(::RegisterPlugin);
                     m_stlPluginHandles.push_back(pPluginHandle);
                 }
@@ -279,9 +279,19 @@ void __thiscall RestFramework::LoadPlugins(
     catch (BaseException oException)
     {
         ::RegisterException(oException, __func__, __LINE__);
+        // Close all plugin handles
+        for (void * pPluginHandle : m_stlPluginHandles)
+        {
+            ::dlclose(pPluginHandle);
+        }
     }
     catch (...)
     {
         ::RegisterUnknownException(__func__, __LINE__);
+        // Close all plugin handles
+        for (void * pPluginHandle : m_stlPluginHandles)
+        {
+            ::dlclose(pPluginHandle);
+        }
     }
 }

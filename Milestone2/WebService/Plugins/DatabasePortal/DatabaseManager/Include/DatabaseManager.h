@@ -70,6 +70,9 @@ class DatabaseManager : public Object
         Qword __thiscall GetVersion(void) const throw();
         std::vector<Byte> __thiscall GetDictionarySerializedBuffer(void) const throw();
 
+        // Property setter method
+        void __thiscall TerminateSignalEncountered(void);
+
         // Method used to initializes data members including the plugin's dictionary
         void __thiscall InitializePlugin(void);
 
@@ -209,6 +212,11 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Shutdown the server
+        std::vector<Byte> __thiscall ShutdownPortal(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Reset the database
         std::vector<Byte> __thiscall ResetDatabase(
             _in const StructuredBuffer & c_oRequest
@@ -220,6 +228,7 @@ class DatabaseManager : public Object
         uint64_t m_unNextAvailableIdentifier;
         PluginDictionary m_oDictionary;
         std::unique_ptr<mongocxx::pool> m_poMongoPool;
+        bool m_fTerminationSignalEncountered;
 };
 
 /********************************************************************************************/

@@ -25,7 +25,7 @@
 #include <sys/stat.h>
 
 // Singleton Object, can be declared anywhere, but only once
-CryptographicKeyManagementPlugin CryptographicKeyManagementPlugin::m_oCryptographicKeyManagementPlugin;
+static CryptographicKeyManagementPlugin * gs_oCryptographicKeyManagementPlugin = nullptr;
 
 static SmartMemoryAllocator gs_oMemoryAllocator;
 
@@ -65,8 +65,8 @@ static void * __stdcall StartIpcServerThread(
 
     try
     {
-        CryptographicKeyManagementPlugin & poCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
-        poCryptographicKeyManagementPlugin.RunIpcServer(poIpcServerParameters->poIpcServer, poIpcServerParameters->poThreadManager);
+        CryptographicKeyManagementPlugin * poCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
+        poCryptographicKeyManagementPlugin->RunIpcServer(poIpcServerParameters->poIpcServer, poIpcServerParameters->poThreadManager);
     }
     catch (BaseException oException)
     {
@@ -118,8 +118,8 @@ static void * __stdcall StartIpcThread(
 
     try
     {
-        CryptographicKeyManagementPlugin & poCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
-        poCryptographicKeyManagementPlugin.HandleIpcRequest(poIpcSocket);
+        CryptographicKeyManagementPlugin * poCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
+        poCryptographicKeyManagementPlugin->HandleIpcRequest(poIpcSocket);
     }
     catch (BaseException oException)
     {
@@ -157,26 +157,36 @@ static void * __stdcall StartIpcThread(
  *
  ********************************************************************************************/
 
-CryptographicKeyManagementPlugin & __stdcall CryptographicKeyManagementPlugin::Get(void)
+CryptographicKeyManagementPlugin * __stdcall CryptographicKeyManagementPlugin::Get(void)
 {
     __DebugFunction();
 
-    return m_oCryptographicKeyManagementPlugin;
+    if (nullptr == gs_oCryptographicKeyManagementPlugin)
+    {
+        gs_oCryptographicKeyManagementPlugin = new CryptographicKeyManagementPlugin();
+        _ThrowOutOfMemoryExceptionIfNull(gs_oCryptographicKeyManagementPlugin);
+    }
+
+    return gs_oCryptographicKeyManagementPlugin;
 }
 
 /********************************************************************************************
- * @class CryptographicKeyManagementPlugin
- * @function Shutdown
+ *
+ * @function ShutdownCryptographicKeyManagementPlugin
  * @brief Release the object resources
  *
  ********************************************************************************************/
 
-void __stdcall CryptographicKeyManagementPlugin::Shutdown(void)
+void __stdcall ShutdownCryptographicKeyManagementPlugin(void)
 {
     __DebugFunction();
 
-    CryptographicKeyManagementPlugin & oCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
-    oCryptographicKeyManagementPlugin.Release();
+    if (nullptr != gs_oCryptographicKeyManagementPlugin)
+    {
+        gs_oCryptographicKeyManagementPlugin->TerminateSignalEncountered();
+        gs_oCryptographicKeyManagementPlugin->Release();
+        gs_oCryptographicKeyManagementPlugin = nullptr;
+    }
 }
 
 /********************************************************************************************
@@ -190,14 +200,8 @@ void * __stdcall ManageEphemeralKeys(void *)
 {
     __DebugFunction();
 
-    CryptographicKeyManagementPlugin & oCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
-    while (true)
-    {
-        oCryptographicKeyManagementPlugin.RotateEphemeralKeys();
-
-        // Sleep for 20 Minutes
-        ::sleep(20*60);
-    }
+    CryptographicKeyManagementPlugin * poCryptographicKeyManagementPlugin = CryptographicKeyManagementPlugin::Get();
+    poCryptographicKeyManagementPlugin->RotateEphemeralKeys();
 
     return nullptr;
 }
@@ -217,6 +221,7 @@ CryptographicKeyManagementPlugin::CryptographicKeyManagementPlugin(void)
 
     m_sMutex = PTHREAD_MUTEX_INITIALIZER;
     m_sEosbKeyMutex = PTHREAD_MUTEX_INITIALIZER;
+    m_sEosbCacheMutex = PTHREAD_MUTEX_INITIALIZER;
     m_unNextAvailableIdentifier = 0;
     m_fTerminationSignalEncountered = false;
 }
@@ -233,9 +238,9 @@ CryptographicKeyManagementPlugin::~CryptographicKeyManagementPlugin(void)
 {
     __DebugFunction();
 
-    // Kill the Eosb Key Rotation Thread
+    // Wait for all threads in the group to terminate
     ThreadManager * poThreadManager = ThreadManager::GetInstance();
-    poThreadManager->TerminateThread(m_unKeyRotationThreadID);
+    poThreadManager->JoinThreadGroup("CryptographicManagerPluginGroup");
 }
 
 /********************************************************************************************
@@ -307,6 +312,23 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GetDictionarySeri
 /********************************************************************************************
  *
  * @class CryptographicKeyManagementPlugin
+ * @function TerminateSignalEncountered
+ * @brief Set termination signal
+ *
+ ********************************************************************************************/
+
+void __thiscall CryptographicKeyManagementPlugin::TerminateSignalEncountered(void)
+{
+    __DebugFunction();
+
+    m_fTerminationSignalEncountered = true;
+    // Wake up the thread responsible for rotating keys
+    m_oRotateKeysConditionalVariable.notify_one();
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
  * @function RotateEphemeralKeys
  * @brief Creates Ephemeral Keys and rotates them at a fixed interval
  *
@@ -314,16 +336,24 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GetDictionarySeri
 
 void __thiscall CryptographicKeyManagementPlugin::RotateEphemeralKeys()
 {
-    ::pthread_mutex_lock(&m_sEosbKeyMutex);
-    if (Guid((const char *)nullptr) != m_oGuidEosbCurrentKey)
+    while (false == m_fTerminationSignalEncountered)
     {
-        m_oGuidEosbPredecessorKey = m_oGuidEosbCurrentKey;
-    }
+        ::pthread_mutex_lock(&m_sEosbKeyMutex);
+        if (Guid((const char *)nullptr) != m_oGuidEosbCurrentKey)
+        {
+            m_oGuidEosbPredecessorKey = m_oGuidEosbCurrentKey;
+        }
 
-    CryptographicKey oCurrentKey(KeySpec::eAES256);
-    oCurrentKey.StoreKey();
-    m_oGuidEosbCurrentKey = oCurrentKey.GetKeyGuid();
-    ::pthread_mutex_unlock(&m_sEosbKeyMutex);
+        CryptographicKey oCurrentKey(KeySpec::eAES256);
+        oCurrentKey.StoreKey();
+        m_oGuidEosbCurrentKey = oCurrentKey.GetKeyGuid();
+        ::pthread_mutex_unlock(&m_sEosbKeyMutex);
+
+        // Block for 20 minutes, or until notified
+        std::mutex oMutex;
+        std::unique_lock<std::mutex> oLock(oMutex);
+        m_oRotateKeysConditionalVariable.wait_until(oLock, std::chrono::system_clock::now() + std::chrono::minutes(20));
+    }
 }
 
 /********************************************************************************************
@@ -421,11 +451,6 @@ void __thiscall CryptographicKeyManagementPlugin::RunIpcServer(
             }
         }
     }
-
-    // Close Socket Server for the plugin
-    poIpcServer->Release();
-    // Wait for all threads in the group to terminate
-    poThreadManager->JoinThreadGroup("CryptographicManagerPluginGroup");
 }
 
 /********************************************************************************************

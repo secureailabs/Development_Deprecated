@@ -44,6 +44,9 @@ class VirtualMachineManager : public Object
         Qword __thiscall GetVersion(void) const throw();
         std::vector<Byte> __thiscall GetDictionarySerializedBuffer(void) const throw();
 
+        // Property setter method
+        void __thiscall TerminateSignalEncountered(void);
+
         // Method used to initializes data members including the plugin's dictionary
         void __thiscall InitializePlugin(void);
 

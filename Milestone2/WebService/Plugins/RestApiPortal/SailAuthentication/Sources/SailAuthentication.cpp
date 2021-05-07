@@ -92,6 +92,7 @@ void __stdcall ShutdownSailAuthentication(void)
 
     if (nullptr != gs_oSailAuthentication)
     {
+        gs_oSailAuthentication->TerminateSignalEncountered();
         gs_oSailAuthentication->Release();
         gs_oSailAuthentication = nullptr;
     }
@@ -111,6 +112,7 @@ SailAuthentication::SailAuthentication(void)
 
     m_sMutex = PTHREAD_MUTEX_INITIALIZER;
     m_unNextAvailableIdentifier = 0;
+    m_fTerminationSignalEncountered = false;
 }
 
 /********************************************************************************************
@@ -216,6 +218,21 @@ std::vector<Byte> __thiscall SailAuthentication::GetDictionarySerializedBuffer(v
 /********************************************************************************************
  *
  * @class SailAuthentication
+ * @function TerminateSignalEncountered
+ * @brief Set termination signal
+ *
+ ********************************************************************************************/
+
+void __thiscall SailAuthentication::TerminateSignalEncountered(void)
+{
+    __DebugFunction();
+
+    m_fTerminationSignalEncountered = true;
+}
+
+/********************************************************************************************
+ *
+ * @class SailAuthentication
  * @function InitializePlugin
  * @brief Initializer that initializes the plugin's dictionary
  *
@@ -257,6 +274,10 @@ void __thiscall SailAuthentication::InitializePlugin(void)
     oNonce.PutBoolean("IsRequired", true);
     oGetRemoteAttestationCertificate.PutStructuredBuffer("Nonce", oNonce);
 
+    // Add parameters for ShutdownPortal resource in a StructuredBuffer.
+    StructuredBuffer oShutdownPortal;
+    oShutdownPortal.PutStructuredBuffer("Eosb", oEosb);
+
     // Verifies user credentials and starts an authenticated session with SAIL SaaS
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuthenticationManager/User/Login", oLoginParameters);
 
@@ -265,6 +286,9 @@ void __thiscall SailAuthentication::InitializePlugin(void)
 
     // Take in a nonce and send back a certificate and public key
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AuthenticationManager/RemoteAttestationCertificate", oGetRemoteAttestationCertificate);
+
+    // Shutdown the portal
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuthenticationManager/ShutdownPortal", oShutdownPortal);
 
     // Reset the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AuthenticationManager/Admin/ResetDatabase");
@@ -303,6 +327,10 @@ uint64_t __thiscall SailAuthentication::SubmitRequest(
         if ("/SAIL/AuthenticationManager/User/Login" == strResource)
         {
             stlResponseBuffer = this->AuthenticateUserCredentails(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/AuthenticationManager/ShutdownPortal" == strResource)
+        {
+            stlResponseBuffer = this->ShutdownPortal(c_oRequestStructuredBuffer);
         }
     }
     else if ("GET" == strVerb)
@@ -422,6 +450,7 @@ std::vector<Byte> __thiscall SailAuthentication::AuthenticateUserCredentails(
         poIpcAccountManager = ::ConnectToUnixDomainSocket("/tmp/{0BE996BF-6966-41EB-B211-2D63C9908289}");
         StructuredBuffer oAccountRecords(::PutIpcTransactionAndGetResponse(poIpcAccountManager, oCredentials));
         poIpcAccountManager->Release();
+        poIpcAccountManager = nullptr;
         // Call CryptographicManager plugin to get the Eosb
         if ((0 < oAccountRecords.GetSerializedBufferRawDataSizeInBytes())&&(404 != oAccountRecords.GetDword("Status")) )
         {
@@ -430,6 +459,7 @@ std::vector<Byte> __thiscall SailAuthentication::AuthenticateUserCredentails(
             poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
             std::vector<Byte> stlEosb = ::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oAccountRecords);
             poIpcCryptographicManager->Release();
+            poIpcCryptographicManager = nullptr;
             if (0 < stlEosb.size())
             {
                 oResponse.PutBuffer("Eosb", stlEosb);
@@ -497,6 +527,7 @@ std::vector<Byte> __thiscall SailAuthentication::GetBasicUserInformation(
         poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
         StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
         poIpcCryptographicManager->Release();
+        poIpcCryptographicManager = nullptr;
         if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
         {
             StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
@@ -563,6 +594,7 @@ std::vector<Byte> __thiscall SailAuthentication::GetRemoteAttestationCertificate
         poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
         StructuredBuffer oPluginResponse(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oRemoteAttestationCertificate));
         poIpcCryptographicManager->Release();
+        poIpcCryptographicManager = nullptr;
         if ((0 < oPluginResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oPluginResponse.GetDword("Status")))
         {
             // Add digital signature and public key to the response
@@ -586,6 +618,73 @@ std::vector<Byte> __thiscall SailAuthentication::GetRemoteAttestationCertificate
     if (nullptr != poIpcCryptographicManager)
     {
         poIpcCryptographicManager->Release();
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class SailAuthentication
+ * @function ShutdownPortal
+ * @brief Shuts down the portal
+ * @param[in] c_oRequest contains the request body
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall SailAuthentication::ShutdownPortal(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    // TODO: check if the user is a Sail admin or think of some other way to shut down the portal
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 204;
+    TlsNode * poTlsNode = nullptr;
+
+    try 
+    {
+        // Make a Tls connection with the database portal
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        // Shutdown the DatabaseGateway
+        StructuredBuffer oRequest;
+        oRequest.PutString("PluginName", "DatabaseManager");
+        oRequest.PutString("Verb", "POST");
+        oRequest.PutString("Resource", "/SAIL/DatabaseManager/ShutdownPortal");
+        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+        // Send request packet
+        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+        // Read header and body of the response
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+        _ThrowBaseExceptionIf((0 != stlRestResponseLength.size()), "Database Gateway could not be shut down.", nullptr);
+        // Make sure to release the poTlsNode
+        poTlsNode->Release();
+        poTlsNode = nullptr;
+            
+        // Send termination signal
+        oResponse.PutBoolean("TerminateSignalEncountered", true);
+        dwStatus = 200;
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     oResponse.PutDword("Status", dwStatus);

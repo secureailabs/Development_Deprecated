@@ -27,6 +27,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <condition_variable>
 #include <functional>
 #include <string>
 #include <vector>
@@ -44,14 +45,16 @@ class CryptographicKeyManagementPlugin : public Object
             ) = delete;
         // The static function for the class that can get the reference to the
         // CryptographicEngine singleton object
-        static CryptographicKeyManagementPlugin & __stdcall Get(void);
-        static void __stdcall Shutdown(void);
+        static CryptographicKeyManagementPlugin * __stdcall Get(void);
 
         // Property accessor methods
         const char * __thiscall GetName(void) const throw();
         const char * __thiscall GetUuid(void) const throw();
         Qword __thiscall GetVersion(void) const throw();
         std::vector<Byte> __thiscall GetDictionarySerializedBuffer(void) const throw();
+
+        // Property setter method
+        void __thiscall TerminateSignalEncountered(void);
 
         // Method used to initializes data members including the plugin's dictionary
         void __thiscall InitializePlugin(void);
@@ -141,6 +144,11 @@ class CryptographicKeyManagementPlugin : public Object
         pthread_mutex_t m_sEosbKeyMutex;
         pthread_mutex_t m_sEosbCacheMutex;
         std::map<Qword, std::vector<Byte>> m_stlCachedKeysForEosb;
+        // Data members for managing the thread that rotates the keys
+        std::condition_variable m_oRotateKeysConditionalVariable;
 };
 
 /********************************************************************************************/
+
+extern void __stdcall ShutdownCryptographicKeyManagementPlugin(void);
+

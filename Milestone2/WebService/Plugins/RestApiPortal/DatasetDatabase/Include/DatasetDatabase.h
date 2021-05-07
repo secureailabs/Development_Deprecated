@@ -45,6 +45,9 @@ class DatasetDatabase : public Object
         Qword __thiscall GetVersion(void) const throw();
         std::vector<Byte> __thiscall GetDictionarySerializedBuffer(void) const throw();
 
+        // Property setter method
+        void __thiscall TerminateSignalEncountered(void);
+
         // Initialize User Accounts
         void __thiscall InitializeUserAccounts(void);
 
@@ -94,6 +97,7 @@ class DatasetDatabase : public Object
         PluginDictionary m_oDictionary;
         std::vector<Dataset *> m_stlDatasets;
         std::vector<UserAccount *> m_stlUserAccounts;
+        bool m_fTerminationSignalEncountered;
 };
 
 /********************************************************************************************/

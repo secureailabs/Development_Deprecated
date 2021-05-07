@@ -175,3 +175,7 @@ extern bool PullDigitalContract(
     );
 
 extern std::vector<Byte> GetRemoteAttestationCertificate(void);
+
+extern void ShutdownPortal(
+    _in const std::string & c_strEosb
+    );

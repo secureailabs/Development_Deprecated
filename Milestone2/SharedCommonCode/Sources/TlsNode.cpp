@@ -41,53 +41,95 @@ TlsNode::TlsNode(
     __DebugFunction();
     __DebugAssert(nullptr != poSocket);
 
-    m_poSocket = poSocket;
+    SSL_CTX * poSSL_CTX = nullptr;
 
-    // Loading and initializing the needed SSL libraries
-    ::SSL_library_init();
-    ::OpenSSL_add_all_algorithms();
-    ::SSL_load_error_strings();
-    ::ERR_load_BIO_strings();
-    ::ERR_load_crypto_strings();
-
-    // Initalizing the SSL Context structure
-    SSL_CTX * poSSL_CTX = ::SSL_CTX_new(TLS_method());
-    _ThrowIfNull(poSSL_CTX, "SSL_CTX_new() failed.", nullptr);
-
-    // TODO temporary resort until the key pair can be provided by the planned TrustStore
-    if (eSSLModeServer == connectionMode)
+    try
     {
-        /* Load certificate and private key files, and check consistency */
-        this->LoadServerCTXKeyAndCertificate(poSSL_CTX);
+
+        m_poSocket = poSocket;
+
+        // Loading and initializing the needed SSL libraries
+        ::SSL_library_init();
+        ::OpenSSL_add_all_algorithms();
+        ::SSL_load_error_strings();
+        ::ERR_load_BIO_strings();
+        ::ERR_load_crypto_strings();
+
+        // Initalizing the SSL Context structure
+        poSSL_CTX = ::SSL_CTX_new(TLS_method());
+        if (nullptr == poSSL_CTX)
+        {
+            ::SSL_CTX_free(poSSL_CTX);
+            _ThrowBaseException("SSL_CTX_new() failed.", nullptr);
+        }
+
+        // TODO temporary resort until the key pair can be provided by the planned TrustStore
+        if (eSSLModeServer == connectionMode)
+        {
+            /* Load certificate and private key files, and check consistency */
+            this->LoadServerCTXKeyAndCertificate(poSSL_CTX);
+        }
+
+        // Options Set: To support just TLS1.2 for now
+        // SSL_OP_ALL: Bug workarounds
+        // SSL_OP_NO_SSLv2: Do not use the SSLv2 protocol
+        // SSL_OP_NO_SSLv3: Do not use the SSLv3 protocol
+        // SSL_OP_NO_TLSv1_1: Do not use the TLSv1.1 protocol
+        // SSL_OP_NO_TLSv1_3: Do not use the TLSv1.3 protocol.
+        // SSL_OP_NO_TLSv1: Do not use the TLSv1 protocol.
+        ::SSL_CTX_set_options(poSSL_CTX, SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1_1|SSL_OP_NO_TLSv1_3|SSL_OP_NO_TLSv1);
+
+        m_poReadBIO = ::BIO_new(BIO_s_mem());
+        m_poWriteBIO = ::BIO_new(BIO_s_mem());
+        m_poSSL = ::SSL_new(poSSL_CTX);
+
+        // Free the pointer
+        ::SSL_CTX_free(poSSL_CTX);
+
+        // Set the SSL Context based on the connection mode
+        if (eSSLModeServer == connectionMode)
+        {
+            ::SSL_set_accept_state(m_poSSL);
+        }
+        else if (eSSLModeClient == connectionMode)
+        {
+            ::SSL_set_connect_state(m_poSSL);
+        }
+
+        ::SSL_set_bio(m_poSSL, m_poReadBIO, m_poWriteBIO);
+    
+        //Perform the TLS Handhshake with a default timeout of 15 second
+        this->SSLHandshake(15000);
     }
-
-    // Options Set: To support just TLS1.2 for now
-    // SSL_OP_ALL: Bug workarounds
-    // SSL_OP_NO_SSLv2: Do not use the SSLv2 protocol
-    // SSL_OP_NO_SSLv3: Do not use the SSLv3 protocol
-    // SSL_OP_NO_TLSv1_1: Do not use the TLSv1.1 protocol
-    // SSL_OP_NO_TLSv1_3: Do not use the TLSv1.3 protocol.
-    // SSL_OP_NO_TLSv1: Do not use the TLSv1 protocol.
-    ::SSL_CTX_set_options(poSSL_CTX, SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1_1|SSL_OP_NO_TLSv1_3|SSL_OP_NO_TLSv1);
-
-    m_poReadBIO = ::BIO_new(BIO_s_mem());
-    m_poWriteBIO = ::BIO_new(BIO_s_mem());
-    m_poSSL = ::SSL_new(poSSL_CTX);
-
-    // Set the SSL Context based on the connection mode
-    if (eSSLModeServer == connectionMode)
+    catch (BaseException oException)
     {
-        ::SSL_set_accept_state(m_poSSL);
+        // The socket object is released
+        m_poSocket->Release();
+        // Release other data members
+        m_stlTlsHeaderCache.clear();
+        //SSL_free will also free the read/writes BIOs attached to it
+        ::SSL_free(m_poSSL);
+        // Release the pointer then throw an exception
+        if (nullptr != poSSL_CTX)
+        {
+            ::SSL_CTX_free(poSSL_CTX);
+        }
+        _ThrowBaseException(oException.GetExceptionMessage(), nullptr);
     }
-    else if (eSSLModeClient == connectionMode)
+    catch(...)
     {
-        ::SSL_set_connect_state(m_poSSL);
+        // The socket object is released
+        m_poSocket->Release();
+        // Release other data members
+        m_stlTlsHeaderCache.clear();
+        //SSL_free will also free the read/writes BIOs attached to it
+        ::SSL_free(m_poSSL);
+        if (nullptr != poSSL_CTX)
+        {
+            ::SSL_CTX_free(poSSL_CTX);
+        }
+        _ThrowBaseException("Unknown Exception Caught!", nullptr);
     }
-
-    ::SSL_set_bio(m_poSSL, m_poReadBIO, m_poWriteBIO);
-  
-    //Perform the TLS Handhshake with a default timeout of 15 second
-    this->SSLHandshake(15000);
 }
 
 /********************************************************************************************
@@ -105,9 +147,12 @@ TlsNode::~TlsNode(void)
 
     // The socket object is released
     m_poSocket->Release();
-
+    // Release other data members
+    m_stlTlsHeaderCache.clear();
     //SSL_free will also free the read/writes BIOs attached to it
     ::SSL_free(m_poSSL);
+    // Cleanup functions
+    ::ERR_remove_state(0);
 }
 
 /********************************************************************************************
@@ -332,37 +377,59 @@ void __thiscall TlsNode::LoadServerCTXKeyAndCertificate(
     _in SSL_CTX * poSSL_CTX
     ) const
 {
-    // Create a BIO buffer to read the keys and certificates from
-    std::unique_ptr<BIO, decltype(&::BIO_free)> poBio(::BIO_new(BIO_s_mem()), ::BIO_free);
-    _ThrowBaseExceptionIf((nullptr == poBio), "Creating BIO buffer failed.", nullptr);
-
-    // Convert the private key from the PEM format to EVP_PKEY
-    int nBytesWrittenToBio = ::BIO_write(poBio.get(), gc_abInitializerTlsPrivateKey, gc_unInitializerTlsPrivateKeySizeInBytes);
-    _ThrowBaseExceptionIf((gc_unInitializerTlsPrivateKeySizeInBytes != nBytesWrittenToBio), "Writing to BIO buffer failed.", nullptr);
-
     EVP_PKEY * poPrivateKey = nullptr;
-    ::PEM_read_bio_PrivateKey(poBio.get(), &poPrivateKey, 0, 0);
-
-    long nBIOctrlStatus = ::BIO_ctrl(poBio.get(), BIO_CTRL_RESET, 0, nullptr);
-    _ThrowBaseExceptionIf((1 != nBIOctrlStatus),"TLS failed: Write BIO reset failed", nullptr);
-
-    // Convert the certificate from PEM to X509
-    nBytesWrittenToBio = ::BIO_write(poBio.get(), gc_abInitializerTlsPublicKeyCertificate, gc_unInitializerTlsPublicKeyCertificateSizeInBytes);
-    _ThrowBaseExceptionIf((gc_unInitializerTlsPublicKeyCertificateSizeInBytes != nBytesWrittenToBio), "Writing to BIO buffer failed.", nullptr);
-
     X509 * poX509Certificate = nullptr;
-    ::PEM_read_bio_X509(poBio.get(), &poX509Certificate, 0, 0);
 
-    nBIOctrlStatus = ::BIO_ctrl(poBio.get(), BIO_CTRL_RESET, 0, nullptr);
-    _ThrowBaseExceptionIf((1 != nBIOctrlStatus),"TLS failed: Write BIO reset failed", nullptr);
+    try 
+    {
+        // Create a BIO buffer to read the keys and certificates from
+        std::unique_ptr<BIO, decltype(&::BIO_free)> poBio(::BIO_new(BIO_s_mem()), ::BIO_free);
+        _ThrowBaseExceptionIf((nullptr == poBio), "Creating BIO buffer failed.", nullptr);
 
-    int nSSLStatus = ::SSL_CTX_use_certificate(poSSL_CTX, poX509Certificate);
-    _ThrowBaseExceptionIf((1 != nSSLStatus), "SSL_CTX_use_certificate failed\n", nullptr);
+        // Convert the private key from the PEM format to EVP_PKEY
+        int nBytesWrittenToBio = ::BIO_write(poBio.get(), gc_abInitializerTlsPrivateKey, gc_unInitializerTlsPrivateKeySizeInBytes);
+        _ThrowBaseExceptionIf((gc_unInitializerTlsPrivateKeySizeInBytes != nBytesWrittenToBio), "Writing to BIO buffer failed.", nullptr);
 
-    nSSLStatus = ::SSL_CTX_use_PrivateKey(poSSL_CTX, poPrivateKey);
-    _ThrowBaseExceptionIf((1 != nSSLStatus), "SSL_CTX_use_PrivateKey_file failed\n", nullptr);
+        ::PEM_read_bio_PrivateKey(poBio.get(), &poPrivateKey, 0, 0);
 
-    /* Make sure the key and certificate file match. */
-    nSSLStatus = ::SSL_CTX_check_private_key(poSSL_CTX);
-    _ThrowBaseExceptionIf((1 != nSSLStatus), "SSL_CTX_check_private_key failed\n", nullptr);
+        long nBIOctrlStatus = ::BIO_ctrl(poBio.get(), BIO_CTRL_RESET, 0, nullptr);
+        _ThrowBaseExceptionIf((1 != nBIOctrlStatus),"TLS failed: Write BIO reset failed", nullptr);
+
+        // Convert the certificate from PEM to X509
+        nBytesWrittenToBio = ::BIO_write(poBio.get(), gc_abInitializerTlsPublicKeyCertificate, gc_unInitializerTlsPublicKeyCertificateSizeInBytes);
+        _ThrowBaseExceptionIf((gc_unInitializerTlsPublicKeyCertificateSizeInBytes != nBytesWrittenToBio), "Writing to BIO buffer failed.", nullptr);
+
+        ::PEM_read_bio_X509(poBio.get(), &poX509Certificate, 0, 0);
+
+        nBIOctrlStatus = ::BIO_ctrl(poBio.get(), BIO_CTRL_RESET, 0, nullptr);
+        _ThrowBaseExceptionIf((1 != nBIOctrlStatus), "TLS failed: Write BIO reset failed", nullptr);
+
+        int nSSLStatus = ::SSL_CTX_use_certificate(poSSL_CTX, poX509Certificate);
+        _ThrowBaseExceptionIf((1 != nSSLStatus), "SSL_CTX_use_certificate failed\n", nullptr);
+
+        nSSLStatus = ::SSL_CTX_use_PrivateKey(poSSL_CTX, poPrivateKey);
+        _ThrowBaseExceptionIf((1 != nSSLStatus), "SSL_CTX_use_PrivateKey_file failed\n", nullptr);
+
+        /* Make sure the key and certificate file match. */
+        nSSLStatus = ::SSL_CTX_check_private_key(poSSL_CTX);
+        _ThrowBaseExceptionIf((1 != nSSLStatus), "SSL_CTX_check_private_key failed\n", nullptr);
+
+        // Free the pointers
+        ::EVP_PKEY_free(poPrivateKey);
+        ::X509_free(poX509Certificate);
+    }
+    catch (BaseException oException)
+    {
+        // Release the pointers and then throw the base exception 
+        if (nullptr != poPrivateKey)
+        {
+            ::EVP_PKEY_free(poPrivateKey);
+        }
+        if (nullptr != poX509Certificate)
+        {
+            ::X509_free(poX509Certificate);
+        }
+
+        _ThrowBaseException(oException.GetExceptionMessage(), nullptr);
+    }
 }

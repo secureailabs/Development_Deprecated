@@ -218,6 +218,7 @@ void __stdcall ShutdownAccountDatabase(void)
 
     if (nullptr != gs_oAccountDatabase)
     {
+        gs_oAccountDatabase->TerminateSignalEncountered();
         gs_oAccountDatabase->Release();
         gs_oAccountDatabase = nullptr;
     }
@@ -270,6 +271,10 @@ AccountDatabase::AccountDatabase(
 AccountDatabase::~AccountDatabase(void)
 {
     __DebugFunction();
+
+    // Wait for all threads in the group to terminate
+    ThreadManager * poThreadManager = ThreadManager::GetInstance();
+    poThreadManager->JoinThreadGroup("AccountManagerPluginGroup");
 }
 
 /********************************************************************************************
@@ -338,6 +343,21 @@ std::vector<Byte> __thiscall AccountDatabase::GetDictionarySerializedBuffer(void
     __DebugFunction();
 
     return m_oDictionary.GetSerializedDictionary();
+}
+
+/********************************************************************************************
+ *
+ * @class AccountDatabase
+ * @function TerminateSignalEncountered
+ * @brief Set termination signal
+ *
+ ********************************************************************************************/
+
+void __thiscall AccountDatabase::TerminateSignalEncountered(void)
+{
+    __DebugFunction();
+
+    m_fTerminationSignalEncountered = true;
 }
 
 /********************************************************************************************
@@ -569,11 +589,6 @@ void __thiscall AccountDatabase::RunIpcServer(
             }
         }
     }
-
-    // Close Socket Server for the plugin
-    poIpcServer->Release();
-    // Wait for all threads in the group to terminate
-    poThreadManager->JoinThreadGroup("AccountManagerPluginGroup");
 }
 
 /********************************************************************************************
@@ -822,6 +837,7 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserRecords(
             _ThrowBaseExceptionIf((0 == stlConfidentialUser.size()), "Dead Packet.", nullptr);
             // Make sure to release the poTlsNode
             poTlsNode->Release();
+            poTlsNode = nullptr;
         
             StructuredBuffer oConfidentialRecord(stlConfidentialUser);
             if (404 != oConfidentialRecord.GetDword("Status"))
@@ -889,6 +905,7 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserInfo(
         poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
         StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
         poIpcCryptographicManager->Release();
+        poIpcCryptographicManager = nullptr;
         if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
         {
             StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
@@ -944,6 +961,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
 
     Dword dwStatus = 204;
     TlsNode * poTlsNode = nullptr;
+    Socket * poIpcAuditLogManager = nullptr;
 
     try
     {
@@ -967,6 +985,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
         // Make sure to release the poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         
         // Check if DatabaseManager registered the user or not
         StructuredBuffer oDatabaseResponse(stlResponse);
@@ -985,9 +1004,10 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
             oMetadata.PutStructuredBuffer("PlainTextEventData", StructuredBuffer());
             oRootEvent.PutStructuredBuffer("NonLeafEvent", oMetadata);
             // Call AuditLog plugin to register root node event
-            Socket * poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
+            poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
             StructuredBuffer oStatus(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oRootEvent));
             poIpcAuditLogManager->Release();
+            poIpcAuditLogManager = nullptr;
             if ((0 < oStatus.GetSerializedBufferRawDataSizeInBytes())&&(201 == oStatus.GetDword("Status")))
             {
                 oResponse.PutDword("RootEventStatus", 201);
@@ -1012,6 +1032,10 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
     if (nullptr != poTlsNode)
     {
         poTlsNode->Release();
+    }
+    if (nullptr != poIpcAuditLogManager)
+    {
+        poIpcAuditLogManager->Release();
     }
 
     // Send back status of the transaction
@@ -1073,6 +1097,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterUser(
                 _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
                 // Make sure to release the poTlsNode
                 poTlsNode->Release();
+                poTlsNode = nullptr;
                 
                 // Check if DatabaseManager registered the user or not
                 StructuredBuffer oDatabaseResponse(stlResponse);
@@ -1156,6 +1181,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
                 _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
                 // Make sure to release the poTlsNode
                 poTlsNode->Release();
+                poTlsNode = nullptr;
                 
                 // Check if DatabaseManager updated the user rights or not
                 StructuredBuffer oDatabaseResponse(stlResponse);
@@ -1239,6 +1265,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateOrganizationInformation(
                 _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
                 // Make sure to release the poTlsNode
                 poTlsNode->Release();
+                poTlsNode = nullptr;
         
                 // Check if DatabaseManager updated the organization information or not
                 StructuredBuffer oDatabaseResponse(stlResponse);
@@ -1325,6 +1352,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
                 _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
                 // Make sure to release the poTlsNode
                 poTlsNode->Release();
+                poTlsNode = nullptr;
                 
                 // Check if DatabaseManager updated the user information, excluding the access rights, or not
                 StructuredBuffer oDatabaseResponse(stlResponse);
@@ -1407,6 +1435,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizations(
                 _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
                 // Make sure to release the poTlsNode
                 poTlsNode->Release();
+                poTlsNode = nullptr;
                 
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (404 != oDatabaseResponse.GetDword("Status"))
@@ -1489,6 +1518,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListUsers(
                 _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
                 // Make sure to release the poTlsNode
                 poTlsNode->Release();
+                poTlsNode = nullptr;
                 
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (404 != oDatabaseResponse.GetDword("Status"))
@@ -1572,6 +1602,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizationUsers(
                 _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
                 // Make sure to release the poTlsNode
                 poTlsNode->Release();
+                poTlsNode = nullptr;
                 
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (404 != oDatabaseResponse.GetDword("Status"))
@@ -1656,6 +1687,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteUser(
                 _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
                 // Make sure to release the poTlsNode
                 poTlsNode->Release();
+                poTlsNode = nullptr;
                 
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (404 != oDatabaseResponse.GetDword("Status"))
@@ -1739,6 +1771,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteOrganization(
                 _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
                 // Make sure to release the poTlsNode
                 poTlsNode->Release();
+                poTlsNode = nullptr;
                 
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (404 != oDatabaseResponse.GetDword("Status"))

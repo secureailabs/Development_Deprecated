@@ -22,7 +22,7 @@ int main()
     {
         ::ClearScreen();
 
-        std::cout << "************************\n  SAIL DATABASE TOOL\n************************\n" << std::endl;
+        std::cout << "************************\n  REST PORTAL TESTER \n************************\n" << std::endl;
         std::string strIpAddress = ::GetStringInput("IP address: ", 50, false, c_szValidInputCharacters);
         unsigned int unPortNumber = std::stoul(::GetStringInput("Port number: ", 50, false, c_szValidInputCharacters));
         // Add webservices configuration
@@ -69,6 +69,12 @@ int main()
 
                         switch (stoi(strUserInput))
                         {
+                            case 0:
+                            {
+                                ::ShutdownPortal(strEncodedEosb);
+                                fTerminatedSignalEncountered = true;
+                                break;
+                            }
                             case 1:
                             {
                                 if (1 == qwAccessRights) // Check if user is an admin
@@ -278,7 +284,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 0:
+                            case 16:
                             {
                                 fTerminatedSignalEncountered = true;
                             break;

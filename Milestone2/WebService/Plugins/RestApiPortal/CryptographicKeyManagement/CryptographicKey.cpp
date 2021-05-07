@@ -318,6 +318,9 @@ void __thiscall CryptographicKey::GenerateEccKeyPair(
     _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Assigning EC Private Key to EVP_PKEY failed", nullptr);
     nOpenSslStatus = ::EVP_PKEY_assign_EC_KEY(m_poPublicKey.get(), poPublicKey);
     _ThrowBaseExceptionIf((1 != nOpenSslStatus), "Assigning EC Public Key to EVP_PKEY failed", nullptr);
+
+    ::EC_KEY_free(poPublicKey);
+    ::EC_KEY_free(poPrivateKey);
 }
 
 /********************************************************************************************

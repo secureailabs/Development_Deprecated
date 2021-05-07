@@ -216,6 +216,7 @@ void __stdcall ShutdownDigitalContractDatabase(void)
 
     if (nullptr != gs_oDigitalContractDatabase)
     {
+        gs_oDigitalContractDatabase->TerminateSignalEncountered();
         gs_oDigitalContractDatabase->Release();
         gs_oDigitalContractDatabase = nullptr;
     }
@@ -268,6 +269,10 @@ DigitalContractDatabase::DigitalContractDatabase(
 DigitalContractDatabase::~DigitalContractDatabase(void)
 {
     __DebugFunction();
+
+    // Wait for all threads in the group to terminate
+    ThreadManager * poThreadManager = ThreadManager::GetInstance();
+    poThreadManager->JoinThreadGroup("DigitalContractPluginGroup");
 }
 
 /********************************************************************************************
@@ -336,6 +341,21 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetDictionarySerializedBuf
     __DebugFunction();
 
     return m_oDictionary.GetSerializedDictionary();
+}
+
+/********************************************************************************************
+ *
+ * @class DigitalContractDatabase
+ * @function TerminateSignalEncountered
+ * @brief Set termination signal
+ *
+ ********************************************************************************************/
+
+void __thiscall DigitalContractDatabase::TerminateSignalEncountered(void)
+{
+    __DebugFunction();
+
+    m_fTerminationSignalEncountered = true;
 }
 
 /********************************************************************************************
@@ -475,11 +495,6 @@ void __thiscall DigitalContractDatabase::RunIpcServer(
             }
         }
     }
-
-    // Close Socket Server for the plugin
-    poIpcServer->Release();
-    // Wait for all threads in the group to terminate
-    poThreadManager->JoinThreadGroup("DigitalContractPluginGroup");
 }
 
 /********************************************************************************************
@@ -667,6 +682,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetUserInfo(
         poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
         StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
         poIpcCryptographicManager->Release();
+        poIpcCryptographicManager = nullptr;
         if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
         {
             StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
@@ -728,6 +744,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetDigitalSignature(
     Socket * poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
     StructuredBuffer oPluginResponse(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
     poIpcCryptographicManager->Release();
+    poIpcCryptographicManager = nullptr;
     if ((0 < oPluginResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oPluginResponse.GetDword("Status")))
     {
         oResponse.PutStructuredBuffer("DSIG", oPluginResponse.GetStructuredBuffer("DSIG"));
@@ -987,6 +1004,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ListDigitalContracts(
             _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
             // Make sure to release the poTlsNode
             poTlsNode->Release();
+            poTlsNode = nullptr;
             
             StructuredBuffer oDatabaseResponse(stlResponse);
             if (404 != oDatabaseResponse.GetDword("Status"))
@@ -1074,6 +1092,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::PullDigitalContract(
             _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
             // Make sure to release the poTlsNode
             poTlsNode->Release();
+            poTlsNode = nullptr;
             
             StructuredBuffer oDatabaseResponse(stlResponse);
             if (404 != oDatabaseResponse.GetDword("Status"))
@@ -1182,6 +1201,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
             _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
             // Make sure to release the poTlsNode
             poTlsNode->Release();
+            poTlsNode = nullptr;
             
             // Check if DatabaseManager registered the user or not
             StructuredBuffer oDatabaseResponse(stlResponse);
@@ -1286,6 +1306,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AcceptDigitalContract(
                             _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
                             // Make sure to release the poTlsNode
                             poTlsNode->Release();
+                            poTlsNode = nullptr;
             
                             // Check if DatabaseManager updated the digital contract or not
                             StructuredBuffer oDatabaseResponse(stlResponse);
@@ -1413,6 +1434,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ActivateDigitalContract(
                             _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
                             // Make sure to release the poTlsNode
                             poTlsNode->Release();
+                            poTlsNode = nullptr;
                             
                             // Check if DatabaseManager updated the digital contract or not
                             StructuredBuffer oDatabaseResponse(stlResponse);
@@ -1504,6 +1526,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDcAuditEvent(
         poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
         StructuredBuffer oAuditLogResponse(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oGetDcBranchEventRequest));
         poIpcAuditLogManager->Release();
+        poIpcAuditLogManager = nullptr;
         if (200 == oAuditLogResponse.GetDword("Status"))
         {
             StructuredBuffer oListOfEvents = oAuditLogResponse.GetStructuredBuffer("ListOfEvents");
@@ -1530,6 +1553,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDcAuditEvent(
                 poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
                 StructuredBuffer oDcEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oDcBranchEvent));
                 poIpcAuditLogManager->Release();
+                poIpcAuditLogManager = nullptr;
                 _ThrowBaseExceptionIf(((0 > oDcEventLog.GetSerializedBufferRawDataSizeInBytes())&&(201 != oDcEventLog.GetDword("Status"))), "Error creating DC branch event.", nullptr);
                 dwStatus = 201;
             }

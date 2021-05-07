@@ -216,6 +216,7 @@ void __stdcall ShutdownAuditLogManager(void)
 
     if (nullptr != gs_oAuditLogManager)
     {
+        gs_oAuditLogManager->TerminateSignalEncountered();
         gs_oAuditLogManager->Release();
         gs_oAuditLogManager = nullptr;
     }
@@ -269,6 +270,9 @@ AuditLogManager::~AuditLogManager(void)
 {
     __DebugFunction();
 
+    // Wait for all threads in the group to terminate
+    ThreadManager * poThreadManager = ThreadManager::GetInstance();
+    poThreadManager->JoinThreadGroup("AuditLogManagerPluginGroup");
 }
 
 /********************************************************************************************
@@ -337,6 +341,21 @@ std::vector<Byte> __thiscall AuditLogManager::GetDictionarySerializedBuffer(void
     __DebugFunction();
 
     return m_oDictionary.GetSerializedDictionary();
+}
+
+/********************************************************************************************
+ *
+ * @class AuditLogManager
+ * @function TerminateSignalEncountered
+ * @brief Set termination signal
+ *
+ ********************************************************************************************/
+
+void __thiscall AuditLogManager::TerminateSignalEncountered(void)
+{
+    __DebugFunction();
+
+    m_fTerminationSignalEncountered = true;
 }
 
 /********************************************************************************************
@@ -456,11 +475,6 @@ void __thiscall AuditLogManager::RunIpcServer(
             }
         }
     }
-
-    // Close Socket Server for the plugin
-    poIpcServer->Release();
-    // Wait for all threads in the group to terminate
-    poThreadManager->JoinThreadGroup("AuditLogManagerPluginGroup");
 }
 
 /********************************************************************************************
@@ -641,6 +655,7 @@ std::vector<Byte> __thiscall AuditLogManager::GetUserInfo(
         poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
         StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
         poIpcCryptographicManager->Release();
+        poIpcCryptographicManager = nullptr;
         if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
         {
             StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
@@ -717,6 +732,7 @@ std::vector<Byte> __thiscall AuditLogManager::AddNonLeafEvent(
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
         // Make sure to release the poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         
         // Check if DatabaseManager registered the events or not
         StructuredBuffer oDatabaseResponse(stlResponse);
@@ -797,6 +813,7 @@ std::vector<Byte> __thiscall AuditLogManager::AddLeafEvent(
             _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
             // Make sure to release the poTlsNode
             poTlsNode->Release();
+            poTlsNode = nullptr;
             
             // Check if DatabaseManager registered the events or not
             StructuredBuffer oResponse(stlResponse);
@@ -873,6 +890,7 @@ std::vector<Byte> __thiscall AuditLogManager::GetListOfEvents(
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
         // Make sure to release the poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
             
         StructuredBuffer oResponse(stlResponse);
         if (200 == oResponse.GetDword("Status"))
@@ -947,6 +965,7 @@ std::vector<Byte> __thiscall AuditLogManager::DigitalContractBranchExists(
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
         // Make sure to release the poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         
         StructuredBuffer oResponse(stlResponse);
         if (200 == oResponse.GetDword("Status"))

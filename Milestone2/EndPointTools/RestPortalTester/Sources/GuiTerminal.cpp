@@ -23,6 +23,7 @@ std::string strLoginMenu = oFontColor.strWhite + "1- Login \n" +
             oFontColor.strRed + "0- Exit\n";
 
 std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
+            oFontColor.strRed + "0- Shut down servers\n" +
             oFontColor.strMagenta + "1- Add a new user - Admin privileges required!\n" +
             oFontColor.strMagenta + "2- Get list of organizations - Admin privileges required!\n" +
             oFontColor.strMagenta + "3- Update organization information - Admin privileges required!\n" +
@@ -38,7 +39,7 @@ std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strBlue + "13- Pull a digital contract\n" +
             oFontColor.strBlue + "14- Approve a digital contract - Dataset Admin privileges required\n" +
             oFontColor.strBlue + "15- Activate a digital contract - Digital Contract Admin privileges required\n" +
-            oFontColor.strYellow + "0- Logout\n";
+            oFontColor.strYellow + "16- Logout\n";
 
 /********************************************************************************************/
 

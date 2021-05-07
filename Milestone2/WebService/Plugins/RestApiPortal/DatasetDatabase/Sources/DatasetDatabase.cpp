@@ -47,6 +47,7 @@ void __stdcall ShutdownDatasetDatabase(void)
 
     if (nullptr != gs_oDatasetDatabase)
     {
+        gs_oDatasetDatabase->TerminateSignalEncountered();
         gs_oDatasetDatabase->Release();
         gs_oDatasetDatabase = nullptr;
     }
@@ -66,6 +67,7 @@ DatasetDatabase::DatasetDatabase(void)
 
     m_sMutex = PTHREAD_MUTEX_INITIALIZER;
     m_unNextAvailableIdentifier = 0;
+    m_fTerminationSignalEncountered = false;
 
     this->InitializeUserAccounts();
 }
@@ -179,6 +181,21 @@ std::vector<Byte> __thiscall DatasetDatabase::GetDictionarySerializedBuffer(void
     __DebugFunction();
 
     return m_oDictionary.GetSerializedDictionary();
+}
+
+/********************************************************************************************
+ *
+ * @class DatasetDatabase
+ * @function TerminateSignalEncountered
+ * @brief Set termination signal
+ *
+ ********************************************************************************************/
+
+void __thiscall DatasetDatabase::TerminateSignalEncountered(void)
+{
+    __DebugFunction();
+
+    m_fTerminationSignalEncountered = true;
 }
 
 /********************************************************************************************

@@ -139,7 +139,7 @@ static void * __stdcall StartIpcThread(
 
     poIpcSocket->Release();
 
-    return nullptr;
+    ::pthread_exit(nullptr);
 }
 
 /********************************************************************************************
@@ -585,7 +585,12 @@ void __thiscall AccountDatabase::RunIpcServer(
             Socket * poSocket = poIpcServer->Accept();
             if (nullptr != poSocket)
             {
-                poThreadManager->CreateThread("AccountManagerPluginGroup", StartIpcThread, (void *) poSocket);
+                pthread_t connectionThread;
+                int nStatus = ::pthread_create(&connectionThread, nullptr, StartIpcThread, (void *) poSocket);
+                _ThrowBaseExceptionIf((0 != nStatus), "Error creating a thread with nStatus: %d.", nStatus);
+                // Detach the thread as it terminates on its own by calling pthread_exit
+                // Detaching the thread will make sure that the system recycles its underlying resources automatically
+                ::pthread_detach(connectionThread);
             }
         }
     }

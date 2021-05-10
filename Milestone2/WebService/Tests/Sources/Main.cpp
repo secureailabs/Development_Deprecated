@@ -20,7 +20,7 @@ int main()
     std::string strRootEventGuid = "{00000000-0000-0000-0000-000000000000}";
 
     // Add webservices configuration
-    ::AddWebPortalConfiguration("127.0.0.1", 6200);
+    ::AddWebPortalConfiguration("137.116.61.13", 6200);
     while (true)
     {
         try
@@ -42,4 +42,6 @@ int main()
             std::cout << "Unknown exception caught!" << std::endl;
         }
     }
+
+    return 0;
 }

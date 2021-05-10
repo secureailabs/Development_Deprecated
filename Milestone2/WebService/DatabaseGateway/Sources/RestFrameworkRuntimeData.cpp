@@ -53,8 +53,6 @@ static void * __stdcall StartThread(
     poRestFrameworkRuntimeData->DeleteConnection();
 
     ::pthread_exit(nullptr);
-
-    return nullptr;
 }
 
 /********************************************************************************************

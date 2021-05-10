@@ -196,6 +196,7 @@ std::string Login(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release(); 
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error logging in.", nullptr);
         strEosb = oResponse.GetString("Eosb");
@@ -271,6 +272,7 @@ std::vector<Byte> GetBasicUserInformation(
         _ThrowBaseExceptionIf((0 == stlSerializedResponse.size()), "Dead Packet.", nullptr);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error decrypting eosb.", nullptr);
         oUserInformation.PutString("OrganizationGuid", oResponse.GetString("OrganizationGuid"));
@@ -348,6 +350,7 @@ std::string GetIEosb(
         _ThrowBaseExceptionIf((0 == stlSerializedResponse.size()), "Dead Packet.", nullptr);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error gettign imposter eosb.", nullptr);
         strIEosb = oResponse.GetString("UpdatedEosb");
@@ -501,6 +504,7 @@ bool RegisterLeafEvents(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
         std::cout << "Leaf events added successfully!" << std::endl;
@@ -621,6 +625,7 @@ std::string RegisterVirtualMachine(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
         strVmEosb = oResponse.GetString("VmEosb");
@@ -706,6 +711,7 @@ std::string RegisterVmAfterDataUpload(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
         strVmEventGuid = oResponse.GetString("VmEventGuid");
@@ -791,6 +797,7 @@ std::string RegisterVmForComputation(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
         strVmEventGuid = oResponse.GetString("VmEventGuid");
@@ -884,6 +891,7 @@ bool GetListOfEvents(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting list of events.", nullptr);
         StructuredBuffer oListOfEvents(oResponse.GetStructuredBuffer("ListOfEvents"));
@@ -1061,6 +1069,7 @@ bool RegisterOrganizationAndSuperUser(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error registering new organization and super user.", nullptr);
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("RootEventStatus")), "Error registering root event for the organization.", nullptr);
@@ -1199,6 +1208,7 @@ bool RegisterUser(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error registering new user.", nullptr);
         fSuccess = true;
@@ -1322,6 +1332,7 @@ bool UpdateOrganizationInformation(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error updating organization information.", nullptr);
         fSuccess = true;
@@ -1401,6 +1412,7 @@ bool ListOrganizations(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting list of organizations.", nullptr);
         fSuccess = true;
@@ -1510,6 +1522,7 @@ bool DeleteUser(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error deleting user.", nullptr);
         fSuccess = true;
@@ -1601,6 +1614,7 @@ bool DeleteOrganization(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error deleting organization.", nullptr);
         fSuccess = true;
@@ -1732,6 +1746,7 @@ bool RegisterDigitalContract(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error registering new digital contract.", nullptr);
         fSuccess = true;
@@ -1855,6 +1870,7 @@ bool AcceptDigitalContract(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error approving the digital contract.", nullptr);
         std::cout << "Instructions: " << oResponse.GetString("Instructions") << std::endl;
@@ -1975,6 +1991,7 @@ bool ActivateDigitalContract(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error activating the digital contract.", nullptr);
         std::cout << "Instructions: " << oResponse.GetString("Instructions") << std::endl;
@@ -2055,6 +2072,7 @@ std::vector<Byte> ListDigitalContracts(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting list of digital contracts.", nullptr);
         stlDigitalContracts = oResponse.GetStructuredBuffer("DigitalContracts").GetSerializedBuffer();
@@ -2173,6 +2191,7 @@ bool PullDigitalContract(
         std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting list of digital contracts.", nullptr);
         fSuccess = true;
@@ -2269,6 +2288,7 @@ std::vector<Byte> GetRemoteAttestationCertificate(void)
         stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting remote attestation certificate.", nullptr);
         // The following is the response structure
@@ -2352,6 +2372,7 @@ void ShutdownPortal(
         stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
         // Release poTlsNode
         poTlsNode->Release();
+        poTlsNode = nullptr;
         StructuredBuffer oResponse(stlSerializedResponse);
         _ThrowBaseExceptionIf((204 == oResponse.GetFloat64("Status")), "Error shutting down the server.", nullptr);
     }

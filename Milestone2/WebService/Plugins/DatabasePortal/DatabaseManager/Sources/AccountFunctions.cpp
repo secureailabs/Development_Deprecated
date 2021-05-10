@@ -46,7 +46,6 @@ std::vector<Byte> __thiscall DatabaseManager::GetBasicOrganizationRecord(
         bsoncxx::stdx::optional<bsoncxx::document::value> oBasicOrganization = oBasicOrganizationCollection.find_one(document{} << "OrganizationName" << strOrganizationName << finalize);
         if (bsoncxx::stdx::nullopt != oBasicOrganization)
         {
-            std::cout << bsoncxx::to_json(*oBasicOrganization) << std::endl;
             fFound = true;
         }
 
@@ -124,7 +123,6 @@ std::vector<Byte> __thiscall DatabaseManager::GetBasicUserRecord(
         bsoncxx::stdx::optional<bsoncxx::document::value> oBasicUser = oBasicUserCollection.find_one(document{} << "64BitHash" << (double)qw64BitHash << finalize);
         if (bsoncxx::stdx::nullopt != oBasicUser)
         {
-            std::cout << bsoncxx::to_json(*oBasicUser) << std::endl;
             fFound = true;
         }
 
@@ -212,7 +210,6 @@ std::vector<Byte> __thiscall DatabaseManager::GetConfidentialUserRecord(
         bsoncxx::stdx::optional<bsoncxx::document::value> oConfidentialUser = oConfidentialUserCollection.find_one(document{} << "OrganizationOrUserUuid" << strUserUuid << finalize);
         if (bsoncxx::stdx::nullopt != oConfidentialUser)
         {
-            std::cout << bsoncxx::to_json(*oConfidentialUser) << std::endl;
             fFound = true;
         }
 

@@ -103,12 +103,6 @@ TlsNode::TlsNode(
     }
     catch (BaseException oException)
     {
-        // The socket object is released
-        m_poSocket->Release();
-        // Release other data members
-        m_stlTlsHeaderCache.clear();
-        //SSL_free will also free the read/writes BIOs attached to it
-        ::SSL_free(m_poSSL);
         // Release the pointer then throw an exception
         if (nullptr != poSSL_CTX)
         {
@@ -118,12 +112,6 @@ TlsNode::TlsNode(
     }
     catch(...)
     {
-        // The socket object is released
-        m_poSocket->Release();
-        // Release other data members
-        m_stlTlsHeaderCache.clear();
-        //SSL_free will also free the read/writes BIOs attached to it
-        ::SSL_free(m_poSSL);
         if (nullptr != poSSL_CTX)
         {
             ::SSL_CTX_free(poSSL_CTX);
@@ -151,8 +139,6 @@ TlsNode::~TlsNode(void)
     m_stlTlsHeaderCache.clear();
     //SSL_free will also free the read/writes BIOs attached to it
     ::SSL_free(m_poSSL);
-    // Cleanup functions
-    ::ERR_remove_state(0);
 }
 
 /********************************************************************************************
@@ -431,5 +417,19 @@ void __thiscall TlsNode::LoadServerCTXKeyAndCertificate(
         }
 
         _ThrowBaseException(oException.GetExceptionMessage(), nullptr);
+    }
+    catch (...)
+    {
+        // Release the pointers and then throw the base exception 
+        if (nullptr != poPrivateKey)
+        {
+            ::EVP_PKEY_free(poPrivateKey);
+        }
+        if (nullptr != poX509Certificate)
+        {
+            ::X509_free(poX509Certificate);
+        }
+
+        _ThrowBaseException("Unknown exception caught.", nullptr);
     }
 }

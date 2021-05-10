@@ -218,12 +218,12 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
         // Parse Header of the Rest Request
         HttpRequestParser oParser;
         std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
-        std::cout << "Rest header: \n" << strRequestHeader << std::endl;
         bool fSuccess = oParser.ParseRequest(strRequestHeader);
         _ThrowBaseExceptionIf((false == fSuccess), "Error: Parsing request failed.", nullptr);
         // Get Verb and Resource from the parsed request
         std::string strVerb = oParser.GetHeaderValue("Verb");
         std::string strResource = oParser.GetHeaderValue("Resource");
+        std::cout << "Rest request: " << strVerb << " " << strResource << std::endl;
         _ThrowBaseExceptionIf(((true == strVerb.empty()) || (true == strResource.empty())), "Invalid Request.", nullptr);
 
         // Parse request body
@@ -242,7 +242,6 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
                 std::vector<Byte> stlBodyData = poTlsNode->Read(unContentLength, 2000);
                 _ThrowBaseExceptionIf((0 == stlBodyData.size()), "Dead Packet.", nullptr);
                 std::string strRequestBody = std::string(stlBodyData.begin(), stlBodyData.end());
-                std::cout << "\nRequest Content:\n\n" << strRequestBody << std::endl;
 
                 // Check Content-Type
                 _ThrowBaseExceptionIf((false == oParser.HeaderExists("Content-Type")), "Invalid request format.", nullptr);
@@ -317,7 +316,6 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
             std::string strResponseHeader = "HTTP/1.1 200 OK \r\nContent-Length: " + std::to_string(strResponseString.size()) + "\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
             std::string strResponseData(strResponseHeader);
             strResponseData += strResponseString;
-            std::cout << "\n\nRest Response:\n\n" << strResponseData << std::endl;
             // Send back response data
             poTlsNode->Write((const Byte *) strResponseData.data(), strResponseData.size());
             // Delete the JsonValue pointer

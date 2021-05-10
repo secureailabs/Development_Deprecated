@@ -16,16 +16,16 @@ public class MicrosoftAzureApiPortalInterop
     /// <summary>
     /// 
     /// </summary>
-    /// <param name="subscriptionIdentifier"></param>
-    /// <param name="resourceGroup"></param>
-    /// <param name="virtualMachineIdentifier"></param>
-    /// <param name="publicIpSpecification"></param>
-    /// <param name="networkInterfaceSpecification"></param>
-    /// <param name="virtualMachineSpecification"></param>
+    /// <param name="c_szSubscriptionIdentifier"></param>
+    /// <param name="c_szResourceGroup"></param>
+    /// <param name="c_szVirtualMachineIdentifier"></param>
+    /// <param name="c_szPublicIpSpecification"></param>
+    /// <param name="c_szNetworkInterfaceSpecification"></param>
+    /// <param name="c_szVirtualMachineSpecification"></param>
     /// <returns></returns>
-    [DllImport("MicrosoftAzureApiFunctions.dll", CallingConvention = CallingConvention.Cdecl )]
+    [DllImport("MicrosoftAzureApiFunctions.dll", CallingConvention = CallingConvention.Cdecl)]
     [return: MarshalAs(UnmanagedType.BStr)]
-    static extern public string ProvisionVirtualMachineAndWait(string subscriptionIdentifier, string resourceGroup, string virtualMachineIdentifier, string publicIpSpecification, string networkInterfaceSpecification, string virtualMachineSpecification);
+    static extern public string DeployVirtualMachineAndWait(string c_szSubscriptionIdentifier, string c_szResourceGroup, string c_szVirtualMachineIdentifier, string confidentialVirtualMachineSpecification, string c_szLocation);
 
     /// <summary>
     /// 

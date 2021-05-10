@@ -32,15 +32,15 @@ namespace MicrosoftAzureVirtualMachineInitializer
                         {
                             case 1   // Load from configuration file
                             :
-                                initializerSettings = new InitializerSettings(startupDialog.SettingsFilename);
+                                initializerSettings = new InitializerSettings(startupDialog.SettingsFilename, startupDialog.IsConfidential);
                                 break;
                             case 2    // Configure manually
                             :
-                                initializerSettings = new InitializerSettings(false);
+                                initializerSettings = new InitializerSettings(false, startupDialog.IsConfidential);
                                 break;
                             case 3    // Initialize Only
                             :
-                                initializerSettings = new InitializerSettings(true);
+                                initializerSettings = new InitializerSettings(true, startupDialog.IsConfidential);
                                 break;
                         }
                         // Are we ready to provision and initialize

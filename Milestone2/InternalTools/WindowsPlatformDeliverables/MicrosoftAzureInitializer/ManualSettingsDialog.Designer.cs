@@ -175,7 +175,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.m_NextButton.DialogResult = System.Windows.Forms.DialogResult.OK;
             this.m_NextButton.Enabled = false;
-            this.m_NextButton.Location = new System.Drawing.Point(281, 292);
+            this.m_NextButton.Location = new System.Drawing.Point(281, 295);
             this.m_NextButton.Name = "m_NextButton";
             this.m_NextButton.Size = new System.Drawing.Size(132, 29);
             this.m_NextButton.TabIndex = 3;
@@ -186,7 +186,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_PreviousButton
             // 
             this.m_PreviousButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.m_PreviousButton.Location = new System.Drawing.Point(419, 292);
+            this.m_PreviousButton.Location = new System.Drawing.Point(419, 295);
             this.m_PreviousButton.Name = "m_PreviousButton";
             this.m_PreviousButton.Size = new System.Drawing.Size(132, 29);
             this.m_PreviousButton.TabIndex = 4;
@@ -277,11 +277,11 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_ResourceGroupLabel
             // 
             this.m_ResourceGroupLabel.AutoSize = true;
-            this.m_ResourceGroupLabel.Location = new System.Drawing.Point(184, 124);
+            this.m_ResourceGroupLabel.Location = new System.Drawing.Point(163, 124);
             this.m_ResourceGroupLabel.Name = "m_ResourceGroupLabel";
-            this.m_ResourceGroupLabel.Size = new System.Drawing.Size(91, 15);
+            this.m_ResourceGroupLabel.Size = new System.Drawing.Size(112, 15);
             this.m_ResourceGroupLabel.TabIndex = 15;
-            this.m_ResourceGroupLabel.Text = "Resource Group";
+            this.m_ResourceGroupLabel.Text = "VM Resource Group";
             this.m_ResourceGroupLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // m_LocationLabel
@@ -297,21 +297,21 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_VirtualNetworkLabel
             // 
             this.m_VirtualNetworkLabel.AutoSize = true;
-            this.m_VirtualNetworkLabel.Location = new System.Drawing.Point(186, 180);
+            this.m_VirtualNetworkLabel.Location = new System.Drawing.Point(176, 181);
             this.m_VirtualNetworkLabel.Name = "m_VirtualNetworkLabel";
-            this.m_VirtualNetworkLabel.Size = new System.Drawing.Size(89, 15);
+            this.m_VirtualNetworkLabel.Size = new System.Drawing.Size(102, 15);
             this.m_VirtualNetworkLabel.TabIndex = 17;
-            this.m_VirtualNetworkLabel.Text = "Virtual Network";
+            this.m_VirtualNetworkLabel.Text = "Virtual Network Id";
             this.m_VirtualNetworkLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // m_NetworkSecurityGroupLabel
             // 
             this.m_NetworkSecurityGroupLabel.AutoSize = true;
-            this.m_NetworkSecurityGroupLabel.Location = new System.Drawing.Point(142, 208);
+            this.m_NetworkSecurityGroupLabel.Location = new System.Drawing.Point(132, 209);
             this.m_NetworkSecurityGroupLabel.Name = "m_NetworkSecurityGroupLabel";
-            this.m_NetworkSecurityGroupLabel.Size = new System.Drawing.Size(133, 15);
+            this.m_NetworkSecurityGroupLabel.Size = new System.Drawing.Size(146, 15);
             this.m_NetworkSecurityGroupLabel.TabIndex = 18;
-            this.m_NetworkSecurityGroupLabel.Text = "Network Security Group";
+            this.m_NetworkSecurityGroupLabel.Text = "Network Security Group Id";
             this.m_NetworkSecurityGroupLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // m_RefreshTimer
@@ -332,7 +332,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.m_VirtualMachineSizeTextBox.BackColor = System.Drawing.SystemColors.Info;
             this.m_VirtualMachineSizeTextBox.Font = new System.Drawing.Font("Consolas", 9F);
-            this.m_VirtualMachineSizeTextBox.Location = new System.Drawing.Point(281, 262);
+            this.m_VirtualMachineSizeTextBox.Location = new System.Drawing.Point(281, 265);
             this.m_VirtualMachineSizeTextBox.Name = "m_VirtualMachineSizeTextBox";
             this.m_VirtualMachineSizeTextBox.Size = new System.Drawing.Size(552, 22);
             this.m_VirtualMachineSizeTextBox.TabIndex = 20;
@@ -340,17 +340,17 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_BaseMachineNameLabel
             // 
             this.m_BaseMachineNameLabel.AutoSize = true;
-            this.m_BaseMachineNameLabel.Location = new System.Drawing.Point(160, 236);
+            this.m_BaseMachineNameLabel.Location = new System.Drawing.Point(198, 238);
             this.m_BaseMachineNameLabel.Name = "m_BaseMachineNameLabel";
-            this.m_BaseMachineNameLabel.Size = new System.Drawing.Size(115, 15);
+            this.m_BaseMachineNameLabel.Size = new System.Drawing.Size(80, 15);
             this.m_BaseMachineNameLabel.TabIndex = 21;
-            this.m_BaseMachineNameLabel.Text = "Base Machine Name";
+            this.m_BaseMachineNameLabel.Text = "Base Image Id";
             this.m_BaseMachineNameLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // m_VirtualMachineSizeLabel
             // 
             this.m_VirtualMachineSizeLabel.AutoSize = true;
-            this.m_VirtualMachineSizeLabel.Location = new System.Drawing.Point(162, 264);
+            this.m_VirtualMachineSizeLabel.Location = new System.Drawing.Point(165, 269);
             this.m_VirtualMachineSizeLabel.Name = "m_VirtualMachineSizeLabel";
             this.m_VirtualMachineSizeLabel.Size = new System.Drawing.Size(113, 15);
             this.m_VirtualMachineSizeLabel.TabIndex = 22;

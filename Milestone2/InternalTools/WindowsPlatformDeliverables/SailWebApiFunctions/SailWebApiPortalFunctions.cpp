@@ -231,6 +231,7 @@ extern "C" __declspec(dllexport) bool __cdecl Login(
         std::string strJsonBody = "";
         // Send the REST API call to the SAIL Web Api Portal
         std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfSailWebApiPortal, (Word) gs_unPortAddressOfSailWebApiPortal, strVerb, strApiUri, strJsonBody, true);
+        stlRestResponse.push_back(0);
         // Parse the returning value.
         StructuredBuffer oLoginResponse = JsonValue::ParseDataToStructuredBuffer((const char*) stlRestResponse.data());
         // Did the transaction succeed?

@@ -95,6 +95,59 @@ namespace MicrosoftAzureVirtualMachineInitializer
         }
 
         /// <summary>
+        /// Default constructor
+        /// </summary>
+        public MicrosoftAzureVirtualMachine(
+            string clusterIdentifier,
+            string digitalContractIdentifier,
+            string datasetIdentifier,
+            string datasetFilename,
+            string sailWebApiPortalIpAddress,
+            string subscriptionIdentifier,
+            string resourceGroup,
+            string location,
+            string virtualNetworkId,
+            string networkSecurityGroup,
+            string osDiskUrl,
+            string osDiskVgmsUrl,
+            string osDiskStorageAccount,
+            string virtualMachineSize
+            )
+        {
+            // First we try to load the dataset since
+            if (false == System.IO.File.Exists(datasetFilename))
+            {
+                throw new InvalidOperationException("Data file does not exist");
+            }
+
+            m_DatasetFilename = datasetFilename;
+            m_Dataset = System.IO.File.ReadAllBytes(datasetFilename);
+            m_DatasetIdentifier = datasetIdentifier;
+            m_VirtualMachineIdentifier = System.Guid.NewGuid().ToString("D").ToUpper();
+            m_ClusterIdentifier = clusterIdentifier;
+            m_RootOfTrustDomainIdentifier = System.Guid.NewGuid().ToString("B").ToUpper();
+            m_ComputationalDomainIdentifier = System.Guid.NewGuid().ToString("B").ToUpper();
+            m_DataConnectorDomainIdentifier = System.Guid.NewGuid().ToString("B").ToUpper();
+            m_DigitalContractIdentifier = digitalContractIdentifier.ToUpper();
+            m_VirtualMachineIpAddress = "000.000.000.000";
+            m_SailWebApiPortalIpAddress = sailWebApiPortalIpAddress;
+            m_VirtualMachineStatus = "Not Started";
+            m_SubscriptionIdentifier = subscriptionIdentifier;
+            m_ResourceGroup = resourceGroup;
+            m_Location = location;
+            m_VirtualNetwork = virtualNetworkId;
+            m_NetworkSecurityGroup = networkSecurityGroup;
+            m_VirtualMachineSize = virtualMachineSize;
+            m_osDiskUrl = osDiskUrl;
+            m_osDiskVgmsUrl = osDiskVgmsUrl;
+            m_osDiskStorageAccount = osDiskStorageAccount;
+            m_ConfidentialVirtualMachine = true;
+            m_VirtualMachineUsername = "saildeveloper";
+            m_VirtualMachinePassword = "Iw2btin2AC+beRl&dir!";
+            m_VirtualMachineComputerName = "SailSecureVm";
+        }
+
+        /// <summary>
         /// 
         /// </summary>
         public string AzureSubscriptionIdentifier
@@ -320,23 +373,35 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // Create a virtual machine in azure
             if ("000.000.000.000" == m_VirtualMachineIpAddress)
             {
-                // Create a public ip address
-                string publicIpSpecification = this.FillTemplate(global::MicrosoftAzureInitializer.Properties.Resources.ResourceManager.GetString("PublicIpJson"));
-                string networkInterfaceSpecification = this.FillTemplate(global::MicrosoftAzureInitializer.Properties.Resources.ResourceManager.GetString("NetworkInterfaceJson"));
-                string virtualMachineSpecification = this.FillTemplate(global::MicrosoftAzureInitializer.Properties.Resources.ResourceManager.GetString("VirtualMachineFromImageJson"));
-                // Do some specification substitutions ups that are above and beyond the FillTemplate() substitutions
-                publicIpSpecification = publicIpSpecification.Replace("{{DnsLabel}}", ("sail" + m_VirtualMachineIdentifier).ToLower());
-                networkInterfaceSpecification = networkInterfaceSpecification.Replace("{{Name}}", (m_VirtualMachineIdentifier + "-nic").ToLower());
-                networkInterfaceSpecification = networkInterfaceSpecification.Replace("{{IpAddressId}}", (m_VirtualMachineIdentifier + "-ip").ToLower());
-                virtualMachineSpecification = virtualMachineSpecification.Replace("{{OsDiskName}}", (m_VirtualMachineIdentifier + "-disk").ToLower());
-                virtualMachineSpecification = virtualMachineSpecification.Replace("{{NetworkInterface}}", (m_VirtualMachineIdentifier + "-nic").ToLower());
-                virtualMachineSpecification = virtualMachineSpecification.Replace("{{ImageName}}", m_BaseMachineName);
-                virtualMachineSpecification = virtualMachineSpecification.Replace("{{VmSize}}", m_VirtualMachineSize);
-                virtualMachineSpecification = virtualMachineSpecification.Replace("{{Password}}", m_VirtualMachinePassword);
-                virtualMachineSpecification = virtualMachineSpecification.Replace("{{Username}}", m_VirtualMachineUsername);
-                virtualMachineSpecification = virtualMachineSpecification.Replace("{{ComputerName}}", m_VirtualMachineComputerName);
                 // Provision the virtual machine on Microsoft Azure and get it's IP address
-                m_VirtualMachineIpAddress = MicrosoftAzureApiPortalInterop.ProvisionVirtualMachineAndWait(m_SubscriptionIdentifier, m_ResourceGroup, VirtualMachineIdentifier, publicIpSpecification, networkInterfaceSpecification, virtualMachineSpecification);
+                if (true == m_ConfidentialVirtualMachine)
+                {
+                    string confidentialVirtualMachineSpecification = global::MicrosoftAzureInitializer.Properties.Resources.ResourceManager.GetString("ConfidentialVirtualMachineDeploymentJson");
+                    confidentialVirtualMachineSpecification = confidentialVirtualMachineSpecification.Replace("{{VmName}}", m_VirtualMachineIdentifier.ToLower());
+                    confidentialVirtualMachineSpecification = confidentialVirtualMachineSpecification.Replace("{{VmSize}}", m_VirtualMachineSize);
+                    confidentialVirtualMachineSpecification = confidentialVirtualMachineSpecification.Replace("{{NetworkSecurityGroupId}}", m_NetworkSecurityGroup);
+                    confidentialVirtualMachineSpecification = confidentialVirtualMachineSpecification.Replace("{{VirtualNetworkId}}", m_VirtualNetwork);
+                    confidentialVirtualMachineSpecification = confidentialVirtualMachineSpecification.Replace("{{OsDiskUrl}}", m_osDiskUrl);
+                    confidentialVirtualMachineSpecification = confidentialVirtualMachineSpecification.Replace("{{OsDiskVmgsUrl}}", m_osDiskVgmsUrl);
+                    confidentialVirtualMachineSpecification = confidentialVirtualMachineSpecification.Replace("{{OsDiskStorageAccountID}}", m_osDiskStorageAccount);
+                    confidentialVirtualMachineSpecification = confidentialVirtualMachineSpecification.Replace("{{TemplateUrl}}", "https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/DeployConfidentialVm.json?sp=r&st=2021-05-10T21:27:58Z&se=2022-01-19T05:27:58Z&spr=https&sv=2020-02-10&sr=b&sig=Sz4cI1iG2ZsxLhSJOpCgTxrOhcVWNv%2Bu4gG0a7SuFac%3D");
+                    m_VirtualMachineIpAddress = MicrosoftAzureApiPortalInterop.DeployVirtualMachineAndWait(m_SubscriptionIdentifier, m_ResourceGroup, VirtualMachineIdentifier, confidentialVirtualMachineSpecification, m_Location);
+                }
+                else
+                {
+                    string virtualMachineSpecification = global::MicrosoftAzureInitializer.Properties.Resources.ResourceManager.GetString("VirtualMachineDeploymentJson");
+                    // Do some specification substitutions ups that are above and beyond the FillTemplate() substitutions
+                    virtualMachineSpecification = virtualMachineSpecification.Replace("{{VmName}}", m_VirtualMachineIdentifier.ToLower());
+                    virtualMachineSpecification = virtualMachineSpecification.Replace("{{VmSize}}", m_VirtualMachineSize);
+                    virtualMachineSpecification = virtualMachineSpecification.Replace("{{NetworkSecurityGroupId}}", m_NetworkSecurityGroup);
+                    virtualMachineSpecification = virtualMachineSpecification.Replace("{{VirtualNetworkId}}", m_VirtualNetwork);
+                    virtualMachineSpecification = virtualMachineSpecification.Replace("{{ImageResourceId}}", m_BaseMachineName);
+                    virtualMachineSpecification = virtualMachineSpecification.Replace("{{Password}}", m_VirtualMachinePassword);
+                    virtualMachineSpecification = virtualMachineSpecification.Replace("{{Username}}", m_VirtualMachineUsername);
+                    virtualMachineSpecification = virtualMachineSpecification.Replace("{{ComputerName}}", m_VirtualMachineComputerName);
+                    virtualMachineSpecification = virtualMachineSpecification.Replace("{{TemplateUrl}}", "https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/DeployVm.json?sp=r&st=2021-05-12T00:10:18Z&se=2022-01-01T08:10:18Z&spr=https&sv=2020-02-10&sr=b&sig=Y7lq5sRR9F3tmo3nQyvoad32Dn69CzhUfyEUILo0ogs%3D");
+                    m_VirtualMachineIpAddress = MicrosoftAzureApiPortalInterop.DeployVirtualMachineAndWait(m_SubscriptionIdentifier, m_ResourceGroup, VirtualMachineIdentifier, virtualMachineSpecification, m_Location);
+                }
                 m_VirtualMachineStatus = "Installing...";
                 // Upload the binaries to the virtual machine
                 byte[] installationPackage = System.IO.File.ReadAllBytes("SecureComputationalVirtualMachine.binaries");
@@ -355,24 +420,6 @@ namespace MicrosoftAzureVirtualMachineInitializer
             string datasetBase64Encoded = System.Convert.ToBase64String(m_Dataset);
             SailWebApiPortalInterop.UploadInitializationParametersToVirtualMachine("Some nice name for the virtual machine", m_VirtualMachineIpAddress, m_VirtualMachineIdentifier, m_ClusterIdentifier, m_DigitalContractIdentifier, m_DatasetIdentifier, m_RootOfTrustDomainIdentifier, m_ComputationalDomainIdentifier, m_DataConnectorDomainIdentifier, m_SailWebApiPortalIpAddress, datasetBase64Encoded);
             m_VirtualMachineStatus = "Ready...";
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="unfilledTemplate"></param>
-        /// <returns></returns>
-        private string FillTemplate(
-            string unfilledTemplate
-            )
-        {
-            string filledTemplate = unfilledTemplate.Replace("{{SubscriptionId}}", m_SubscriptionIdentifier);
-            filledTemplate = filledTemplate.Replace("{{ResourceGroup}}", m_ResourceGroup);
-            filledTemplate = filledTemplate.Replace("{{Location}}", m_Location);
-            filledTemplate = filledTemplate.Replace("{{VirtualNetwork}}", m_VirtualNetwork);
-            filledTemplate = filledTemplate.Replace("{{NetworkSecurityGroup}}", m_NetworkSecurityGroup);
-
-            return filledTemplate;
         }
 
         // Private data members
@@ -398,6 +445,10 @@ namespace MicrosoftAzureVirtualMachineInitializer
         private byte[] m_Dataset;
         private string m_VirtualMachineIpAddress;
         private string m_VirtualMachineStatus;
+        private bool m_ConfidentialVirtualMachine = false;
+        private string m_osDiskUrl;
+        private string m_osDiskStorageAccount;
+        private string m_osDiskVgmsUrl;
         private System.Threading.Thread m_ProvisionAndInitializationThread;
     }
 }

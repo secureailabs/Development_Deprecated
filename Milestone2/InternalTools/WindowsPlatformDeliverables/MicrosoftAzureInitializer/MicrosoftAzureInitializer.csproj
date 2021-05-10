@@ -8,11 +8,12 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>MicrosoftAzureInitializer</RootNamespace>
     <AssemblyName>MicrosoftAzureInitializer</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
     <IsWebBootstrapper>false</IsWebBootstrapper>
+    <TargetFrameworkProfile />
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -77,6 +78,12 @@
       <DependentUpon>InitializerOnlySettingsDialog.cs</DependentUpon>
     </Compile>
     <Compile Include="InitializerSettings.cs" />
+    <Compile Include="ConfidentialVirtualMachineManualSettingsDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ConfidentialVirtualMachineManualSettingsDialog.designer.cs">
+      <DependentUpon>ConfidentialVirtualMachineManualSettingsDialog.cs</DependentUpon>
+    </Compile>
     <Compile Include="ManualSettingsDialog.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -117,6 +124,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="InitializerOnlySettingsDialog.resx">
       <DependentUpon>InitializerOnlySettingsDialog.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ConfidentialVirtualMachineManualSettingsDialog.resx">
+      <DependentUpon>ConfidentialVirtualMachineManualSettingsDialog.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="ManualSettingsDialog.resx">
       <DependentUpon>ManualSettingsDialog.cs</DependentUpon>

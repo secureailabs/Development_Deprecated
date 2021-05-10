@@ -266,4 +266,118 @@ use the same digital contract and the same dataset.</value>
     "location": "{{Location}}"
 }</value>
   </data>
+  <data name="ConfidentialVirtualMachineDeploymentJson" xml:space="preserve">
+    <value>{
+ "properties": {
+   "templateLink": {
+     "uri": "{{TemplateUrl}}"
+   },
+    "parameters": {
+        "vmName": {
+            "value": "{{VmName}}"
+        },
+        "vmSize": {
+            "value": "{{VmSize}}"
+        },
+        "networkSecurityGroupId": {
+            "value": "{{NetworkSecurityGroupId}}"
+        },
+        "virtualNetworkId": {
+            "value":"{{VirtualNetworkId}}"
+        },
+        "addressPrefix": {
+            "value": "10.1.16.0/24"
+        },
+        "subnetPrefix": {
+            "value": "10.1.16.0/24"
+        },
+        "osDiskType": {
+            "value": "StandardSSD_LRS"
+        },
+        "osType": {
+            "value": "Linux"
+        },
+        "hyperVGeneration": {
+            "value": "V2"
+        },
+        "osDiskURL": {
+            "value": "{{OsDiskUrl}}"
+        },
+        "osDiskVmgsURL": {
+            "value": "{{OsDiskVmgsUrl}}"
+        },
+        "osDiskStorageAccountID": {
+            "value": "{{OsDiskStorageAccountID}}"
+        },
+        "bootDiagnostics": {
+            "value": "false"
+        },
+        "secureBootEnabled": {
+            "value": "true"
+        },
+        "vTpmEnabled": {
+            "value": "true"
+        }
+    },
+   "mode": "Incremental"
+ }
+}</value>
+  </data>
+  <data name="VirtualMachineDeploymentJson" xml:space="preserve">
+    <value>{
+ "properties": {
+   "templateLink": {
+     "uri": "{{TemplateUrl}}"
+   },
+    "parameters": {
+        "vmName": {
+            "value": "{{VmName}}"
+        },
+        "vmSize": {
+            "value": "{{VmSize}}"
+        },
+        "networkSecurityGroupId": {
+            "value": "{{NetworkSecurityGroupId}}"
+        },
+        "virtualNetworkId": {
+            "value":"{{VirtualNetworkId}}"
+        },
+        "addressPrefix": {
+            "value": "10.1.16.0/24"
+        },
+        "subnetPrefix": {
+            "value": "10.1.16.0/24"
+        },
+        "osDiskType": {
+            "value": "StandardSSD_LRS"
+        },
+        "osType": {
+            "value": "Linux"
+        },
+        "hyperVGeneration": {
+            "value": "V2"
+        },
+        "VmImageResourceId": {
+            "value": "{{ImageResourceId}}"
+        },
+        "Username": {
+            "value": "{{Username}}"
+        },
+        "ComputerName": {
+            "value": "{{ComputerName}}"
+        },
+        "Password": {
+            "value": "{{Password}}"
+        },
+        "bootDiagnostics": {
+            "value": "false"
+        },
+        "secureBootEnabled": {
+            "value": "true"
+        }
+    },
+   "mode": "Incremental"
+ }
+}</value>
+  </data>
 </root>

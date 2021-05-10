@@ -248,14 +248,83 @@ extern "C" __declspec(dllexport) bool __cdecl LoginToMicrosoftAzureApiPortal(
 /// <param name="c_szNetworkInterfaceSpecification"></param>
 /// <param name="c_szVirtualMachineSpecification"></param>
 /// <returns></returns>
-extern "C" __declspec(dllexport) BSTR __cdecl ProvisionVirtualMachineAndWait(
-    _in const char * c_szSubscriptionIdentifier,
-    _in const char * c_szResourceGroup,
-    _in const char * c_szVirtualMachineIdentifier,
-    _in const char * c_szPublicIpSpecification,
-    _in const char * c_szNetworkInterfaceSpecification,
-    _in const char * c_szVirtualMachineSpecification
-    )
+extern "C" __declspec(dllexport) BSTR __cdecl CreateResourceGroup(
+    _in const char* c_szSubscriptionIdentifier,
+    _in const char* c_szResourceGroup,
+    _in const char* c_szResourceGroupSpecification
+)
+{
+    __DebugFunction();
+
+    // [DllImport("MicrosoftAzureApiFunctions.dll", CallingConvention = CallingConvention.Cdecl )]
+    // static extern public string ProvisionVirtualMachineAndWait(string subscriptionIdentifier, string resourceGroup, string virtualMachineIdentifier, string publicIpSpecification, string networkInterfaceSpecification, string virtualMachineSpecification);
+
+    try
+    {
+        // Make sure we are not currently logged on
+        _ThrowBaseExceptionIf((0 == gs_strMicrosoftAzureAccessToken.size()), "Authentication required...", nullptr);
+
+        // General settings
+        std::string strSubscription = c_szSubscriptionIdentifier;
+        std::string strResourceGroup = c_szResourceGroup;
+        std::string strResourceGroupSpecification = c_szResourceGroupSpecification;
+        // Create a Microsoft Azure public IP address
+        std::string strVerb = "PUT";
+        std::string strResource = "Microsoft.Network/resourcegroups/" + strResourceGroup;
+        std::string strHost = "management.azure.com";
+        std::string strContent = c_szResourceGroupSpecification;
+        std::string strApiVersionDate = "2020-10-01";
+
+        // Make sure we are currently logged on
+        _ThrowBaseExceptionIf((0 == gs_strMicrosoftAzureAccessToken.size()), "Authentication is required...", nullptr);
+
+        // Build out the API call components
+        std::string strApiUri = "/subscriptions/" + strSubscription + "/resourceGroups/" + strResourceGroup + "?api-version=" + strApiVersionDate;
+        std::vector<std::string> stlHeader;
+        stlHeader.push_back("Host: " + strHost);
+        stlHeader.push_back("Authorization: Bearer " + gs_strMicrosoftAzureAccessToken);
+        if (0 != strContent.length())
+        {
+            stlHeader.push_back("Content-Type: application/json");
+        }
+        stlHeader.push_back("Content-Length: " + std::to_string(strContent.size()));
+
+        std::vector<Byte> stlResponse = ::RestApiCall(strHost, 443, strVerb, strApiUri, strContent, false, stlHeader);
+        std::string strResponse = (const char*)stlResponse.data();
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to create a Microsoft Azure Resource Group", nullptr);
+        _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to create a Microsoft Azure Resource Group with error %s", strResponse.c_str());
+    }
+
+    catch (BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return ::ConvertToBSTR("Success");
+}
+
+/// <summary>
+/// 
+/// </summary>
+/// <param name="c_szSubscriptionIdentifier"></param>
+/// <param name="c_szResourceGroup"></param>
+/// <param name="c_szVirtualMachineIdentifier"></param>
+/// <param name="c_szPublicIpSpecification"></param>
+/// <param name="c_szNetworkInterfaceSpecification"></param>
+/// <param name="c_szVirtualMachineSpecification"></param>
+/// <returns></returns>
+extern "C" __declspec(dllexport) BSTR __cdecl DeployVirtualMachineAndWait(
+    _in const char* c_szSubscriptionIdentifier,
+    _in const char* c_szResourceGroup,
+    _in const char* c_szVirtualMachineIdentifier,
+    _in const char* c_szconfidentialVirtualMachineSpecification,
+    _in const char* c_szLocation
+)
 {
     __DebugFunction();
 
@@ -273,39 +342,22 @@ extern "C" __declspec(dllexport) BSTR __cdecl ProvisionVirtualMachineAndWait(
         std::string strSubscription = c_szSubscriptionIdentifier;
         std::string strResourceGroup = c_szResourceGroup;
         std::string strVirtualMachineIdentifier = c_szVirtualMachineIdentifier;
+        std::string strLocation = c_szLocation;
+
+        // Create resource group
+        std::string resourceGroupSpec = std::string("{\"location\": \"") + strLocation + "\"}";
+        ::CreateResourceGroup(c_szSubscriptionIdentifier, c_szResourceGroup, resourceGroupSpec.c_str());
 
         // Create a Microsoft Azure public IP address
         std::string strVerb = "PUT";
-        std::string strResource = "Microsoft.Network/publicIPAddresses/" + strVirtualMachineIdentifier + "-ip";
+        std::string strResource = "Microsoft.Resources/deployments/" + strVirtualMachineIdentifier + "-deploy";
         std::string strHost = "management.azure.com";
-        std::string strContent = c_szPublicIpSpecification;
-        std::string strApiVersionDate = "2020-07-01";
+        std::string strContent = c_szconfidentialVirtualMachineSpecification;
+        std::string strApiVersionDate = "2020-10-01";
         std::vector<Byte> stlResponse = ::MakeMicrosoftAzureApiCall(strVerb, strResource, strHost, strContent, strApiVersionDate, strSubscription, strResourceGroup);
-        std::string strResponse = (const char *) stlResponse.data();
+        std::string strResponse = (const char*)stlResponse.data();
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to create a Microsoft Azure public IP address", nullptr);
-        _ThrowBaseExceptionIf((std::string::npos != strResponse.find("Error")), "Failed to create a Microsoft Azure public IP address with error %s", strResponse.c_str());
-
-        // Create a network interface for the Virtual Machine
-        strVerb = "PUT";
-        strResource = "Microsoft.Network/networkInterfaces/" + strVirtualMachineIdentifier + "-nic";
-        strHost = "management.azure.com";
-        strContent = c_szNetworkInterfaceSpecification;
-        strApiVersionDate = "2020-07-01";
-        stlResponse = ::MakeMicrosoftAzureApiCall(strVerb, strResource, strHost, strContent, strApiVersionDate, strSubscription, strResourceGroup);
-        strResponse = (const char*) stlResponse.data();
-        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to create a Microsoft Azure network interface", nullptr);
-        _ThrowBaseExceptionIf((std::string::npos != strResponse.find("Error")), "Failed to create a Microsoft Azure network interface with error %s", strResponse.c_str());
-
-        // Create a virtual machine on the cloud
-        strVerb = "PUT";
-        strResource = "Microsoft.Compute/virtualMachines/" + strVirtualMachineIdentifier;
-        strHost = "management.azure.com";
-        strContent = c_szVirtualMachineSpecification;
-        strApiVersionDate = "2020-12-01";
-        stlResponse = ::MakeMicrosoftAzureApiCall(strVerb, strResource, strHost, strContent, strApiVersionDate, strSubscription, strResourceGroup);
-        strResponse = (const char*) stlResponse.data();
-        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to create a Microsoft Azure virtual machine", nullptr);
-        _ThrowBaseExceptionIf((std::string::npos != strResponse.find("Error")), "Failed to create a Microsoft Azure virtual machine with error %s", strResponse.c_str());
+        _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to create a Microsoft Azure public IP address with error %s", strResponse.c_str());
 
         // Wait until the virtual machine is running
         bool fIsRunning = false;
@@ -317,10 +369,10 @@ extern "C" __declspec(dllexport) BSTR __cdecl ProvisionVirtualMachineAndWait(
             strContent = "";
             strApiVersionDate = "2020-12-01";
             stlResponse = ::MakeMicrosoftAzureApiCall(strVerb, strResource, strHost, strContent, strApiVersionDate, strSubscription, strResourceGroup);
-            strResponse = (const char*) stlResponse.data();
+            strResponse = (const char*)stlResponse.data();
             _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
-            _ThrowBaseExceptionIf((std::string::npos != strResponse.find("Error")), "Failed to get the status of a virtual machine being provisioned with error %s", strResponse.c_str());
-            StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((const char*) stlResponse.data());
+            _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to get the status of a virtual machine being provisioned with error %s", strResponse.c_str());
+            StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
             if (true == oResponse.IsElementPresent("properties", INDEXED_BUFFER_VALUE_TYPE))
             {
                 StructuredBuffer oProperties(oResponse.GetStructuredBuffer("properties").GetBase64SerializedBuffer().c_str());
@@ -339,8 +391,7 @@ extern "C" __declspec(dllexport) BSTR __cdecl ProvisionVirtualMachineAndWait(
             {
                 ::Sleep(5000);
             }
-        }
-        while (false == fIsRunning);
+        } while (false == fIsRunning);
 
         // Now that the virtual machine is running, we go ahead and effectively get the IP address of the
         // virtual machine. This is the last step in the provisioning of a Microsoft Azure virtual machine
@@ -350,12 +401,12 @@ extern "C" __declspec(dllexport) BSTR __cdecl ProvisionVirtualMachineAndWait(
         strContent = "";
         strApiVersionDate = "2020-07-01";
         stlResponse = ::MakeMicrosoftAzureApiCall(strVerb, strResource, strHost, strContent, strApiVersionDate, strSubscription, strResourceGroup);
-        strResponse = (const char*) stlResponse.data();
+        strResponse = (const char*)stlResponse.data();
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the ip address of a Microsoft Azure virtual machine", nullptr);
-        _ThrowBaseExceptionIf((std::string::npos != strResponse.find("Error")), "Failed to get the ip address of a Microsoft Azure virtual machine with error %s", strResponse.c_str());
+        _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to get the ip address of a Microsoft Azure virtual machine with error %s", strResponse.c_str());
         // This won't work as the ParseDataToStructuredBuffer cannot handle the escaped strings. So the workaround is to manually get
         // the Ip Address from the string response.
-        strVirtualMachineIpAddress = ::GetJsonValue(std::string((char*) stlResponse.data(), stlResponse.size()), "\"ipAddress\"");
+        strVirtualMachineIpAddress = ::GetJsonValue(std::string((char*)stlResponse.data(), stlResponse.size()), "\"ipAddress\"");
     }
 
     catch (BaseException oBaseException)

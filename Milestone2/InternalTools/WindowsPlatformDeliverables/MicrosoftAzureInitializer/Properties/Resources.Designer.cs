@@ -61,12 +61,99 @@ namespace MicrosoftAzureInitializer.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to {
+        /// &quot;properties&quot;: {
+        ///   &quot;templateLink&quot;: {
+        ///     &quot;uri&quot;: &quot;{{TemplateUrl}}&quot;
+        ///   },
+        ///    &quot;parameters&quot;: {
+        ///        &quot;vmName&quot;: {
+        ///            &quot;value&quot;: &quot;{{VmName}}&quot;
+        ///        },
+        ///        &quot;vmSize&quot;: {
+        ///            &quot;value&quot;: &quot;{{VmSize}}&quot;
+        ///        },
+        ///        &quot;networkSecurityGroupId&quot;: {
+        ///            &quot;value&quot;: &quot;{{NetworkSecurityGroupId}}&quot;
+        ///        },
+        ///        &quot;virtualNetworkId&quot;: {
+        ///            &quot;value&quot;:&quot;{{VirtualNetworkId}}&quot;
+        ///        },
+        ///        &quot;addressPrefix&quot;: {
+        ///            &quot;value&quot;: &quot;10.1.16.0/24&quot;
+        ///        },
+        ///        &quot;s [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string ConfidentialVirtualMachineDeploymentJson {
+            get {
+                return ResourceManager.GetString("ConfidentialVirtualMachineDeploymentJson", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to When manually configuring the virtual machine settings
+        ///in preparation for provisioning and initialization within
+        ///Microsoft Azure, it should be noted that ALL of the
+        ///virtual machines will be part of the same identical
+        ///virtual machine cluster (i.e. shared cluster identifier)
+        ///and all of the virtual machines will be configured to
+        ///use the same digital contract and the same dataset..
+        /// </summary>
+        internal static string Help_001 {
+            get {
+                return ResourceManager.GetString("Help_001", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         internal static System.Drawing.Bitmap MicrosoftLogo {
             get {
                 object obj = ResourceManager.GetObject("MicrosoftLogo", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {
+        ///  &quot;properties&quot;: {
+        ///    &quot;enableAcceleratedNetworking&quot;: false,
+        ///    &quot;ipConfigurations&quot;: [
+        ///      {
+        ///        &quot;name&quot;: &quot;{{Name}}&quot;,
+        ///        &quot;properties&quot;: {
+        ///          &quot;publicIPAddress&quot;: {
+        ///            &quot;id&quot;: &quot;/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Network/publicIPAddresses/{{IpAddressId}}&quot;
+        ///          },
+        ///          &quot;subnet&quot;: {
+        ///            &quot;id&quot;: &quot;/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Network/virtualNetworks/{{Virtua [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string NetworkInterfaceJson {
+            get {
+                return ResourceManager.GetString("NetworkInterfaceJson", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {
+        ///    &quot;location&quot;: &quot;{{Location}}&quot;
+        ///}.
+        /// </summary>
+        internal static string PublicIpJson {
+            get {
+                return ResourceManager.GetString("PublicIpJson", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {
+        ///    &quot;location&quot;: &quot;{{Location}}&quot;
+        ///}.
+        /// </summary>
+        internal static string ResourceGroupJson {
+            get {
+                return ResourceManager.GetString("ResourceGroupJson", resourceCulture);
             }
         }
         
@@ -87,6 +174,108 @@ namespace MicrosoftAzureInitializer.Properties {
             get {
                 object obj = ResourceManager.GetObject("SAIL_Icon1", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {
+        ///  &quot;location&quot;: &quot;{{Location}}&quot;,
+        ///  &quot;properties&quot;: {
+        ///    &quot;hardwareProfile&quot;: {
+        ///      &quot;vmSize&quot;: &quot;Standard_D1_v2&quot;
+        ///    },
+        ///    &quot;storageProfile&quot;: {
+        ///      &quot;imageReference&quot;: {
+        ///        &quot;publisher&quot;: &quot;canonical&quot;,
+        ///        &quot;offer&quot;: &quot;0001-com-ubuntu-server-focal&quot;,
+        ///        &quot;sku&quot;: &quot;20_04-lts&quot;,
+        ///        &quot;version&quot;: &quot;latest&quot;
+        ///    },
+        ///      &quot;osDisk&quot;: {
+        ///        &quot;caching&quot;: &quot;ReadWrite&quot;,
+        ///        &quot;managedDisk&quot;: {
+        ///          &quot;storageAccountType&quot;: &quot;Standard_LRS&quot;
+        ///        },
+        ///        &quot;name&quot;: &quot;{{OsDiskName}}&quot;,
+        ///        &quot;create [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string VirtualMachineConfigurationJson {
+            get {
+                return ResourceManager.GetString("VirtualMachineConfigurationJson", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {
+        /// &quot;properties&quot;: {
+        ///   &quot;templateLink&quot;: {
+        ///     &quot;uri&quot;: &quot;{{TemplateUrl}}&quot;
+        ///   },
+        ///    &quot;parameters&quot;: {
+        ///        &quot;vmName&quot;: {
+        ///            &quot;value&quot;: &quot;{{VmName}}&quot;
+        ///        },
+        ///        &quot;vmSize&quot;: {
+        ///            &quot;value&quot;: &quot;{{VmSize}}&quot;
+        ///        },
+        ///        &quot;networkSecurityGroupId&quot;: {
+        ///            &quot;value&quot;: &quot;{{NetworkSecurityGroupId}}&quot;
+        ///        },
+        ///        &quot;virtualNetworkId&quot;: {
+        ///            &quot;value&quot;:&quot;{{VirtualNetworkId}}&quot;
+        ///        },
+        ///        &quot;addressPrefix&quot;: {
+        ///            &quot;value&quot;: &quot;10.1.16.0/24&quot;
+        ///        },
+        ///        &quot;s [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string VirtualMachineDeploymentJson {
+            get {
+                return ResourceManager.GetString("VirtualMachineDeploymentJson", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {
+        ///  &quot;location&quot;: &quot;{{Location}}&quot;,
+        ///  &quot;plan&quot;: {
+        ///    &quot;name&quot;: &quot;pro-20_04-lts&quot;,
+        ///    &quot;publisher&quot;: &quot;canonical&quot;,
+        ///    &quot;product&quot;: &quot;0001-com-ubuntu-pro-focal&quot;
+        ///  },
+        ///  &quot;properties&quot;: {
+        ///    &quot;hardwareProfile&quot;: {
+        ///      &quot;vmSize&quot;: &quot;{{VmSize}}&quot;
+        ///    },
+        ///    &quot;storageProfile&quot;: {
+        ///      &quot;imageReference&quot;: {
+        ///        &quot;id&quot;: &quot;/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Compute/images/{{ImageName}}&quot;
+        ///      },
+        ///      &quot;osDisk&quot;: {
+        ///        &quot;caching&quot;: &quot;ReadWrite&quot;,
+        ///        &quot;managedDisk&quot;: { [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string VirtualMachineFromImageJson {
+            get {
+                return ResourceManager.GetString("VirtualMachineFromImageJson", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {
+        ///    &quot;properties&quot;: {
+        ///      &quot;addressSpace&quot;: {
+        ///        &quot;addressPrefixes&quot;: [
+        ///          &quot;10.0.0.0/16&quot;
+        ///        ]
+        ///      }
+        ///    },
+        ///    &quot;location&quot;: &quot;{{Location}}&quot;
+        ///}.
+        /// </summary>
+        internal static string VirtualNetworkJson {
+            get {
+                return ResourceManager.GetString("VirtualNetworkJson", resourceCulture);
             }
         }
     }

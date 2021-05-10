@@ -11,26 +11,48 @@ namespace MicrosoftAzureVirtualMachineInitializer
         /// manual configuration
         /// </summary>
         public InitializerSettings(
-            bool initializerOnly
+            bool initializerOnly,
+            bool isConfidential
             )
         {
             m_ListOfVirtualMachines = new Dictionary<uint, MicrosoftAzureVirtualMachine>();
             if (false == initializerOnly)
             {
-                ManualSettingsDialog manualSettingsDialog = new ManualSettingsDialog();
-                if (System.Windows.Forms.DialogResult.OK == manualSettingsDialog.ShowDialog())
+                if (true == isConfidential)
                 {
-                    string clusterIdentifier = System.Guid.NewGuid().ToString("B").ToUpper();
-                    string datasetIdentifier = SailWebApiPortalInterop.GetDigitalContractProperty(manualSettingsDialog.DigitalContractIdentifier, "DatasetGuid");
-                    for (uint index = 0; index < manualSettingsDialog.VirtualMachineCount; index++)
+                    ConfidentialVirtualMachineManualSettingsDialog confidentialVmSettingsDialog = new ConfidentialVirtualMachineManualSettingsDialog();
+                    if (System.Windows.Forms.DialogResult.OK == confidentialVmSettingsDialog.ShowDialog())
                     {
-                        m_ListOfVirtualMachines.Add(index, new MicrosoftAzureVirtualMachine(clusterIdentifier, manualSettingsDialog.DigitalContractIdentifier, datasetIdentifier, manualSettingsDialog.DatasetFilename, SailWebApiPortalInterop.GetIpAddress(), manualSettingsDialog.AzureSubscriptionIdentifier, manualSettingsDialog.AzureResourceGroup, manualSettingsDialog.AzureLocation, manualSettingsDialog.AzureVirtualNetwork, manualSettingsDialog.AzureNetworkSecurityGroup, manualSettingsDialog.AzureBaseMachineName, manualSettingsDialog.AzureVirtualMachineSize));
+                        string clusterIdentifier = System.Guid.NewGuid().ToString("B").ToUpper();
+                        string datasetIdentifier = SailWebApiPortalInterop.GetDigitalContractProperty(confidentialVmSettingsDialog.DigitalContractIdentifier, "DatasetGuid");
+                        for (uint index = 0; index < confidentialVmSettingsDialog.VirtualMachineCount; index++)
+                        {
+                            m_ListOfVirtualMachines.Add(index, new MicrosoftAzureVirtualMachine(clusterIdentifier, confidentialVmSettingsDialog.DigitalContractIdentifier, datasetIdentifier, confidentialVmSettingsDialog.DatasetFilename, SailWebApiPortalInterop.GetIpAddress(), confidentialVmSettingsDialog.AzureSubscriptionIdentifier, confidentialVmSettingsDialog.AzureResourceGroup, confidentialVmSettingsDialog.AzureLocation, confidentialVmSettingsDialog.AzureVirtualNetwork, confidentialVmSettingsDialog.AzureNetworkSecurityGroup, confidentialVmSettingsDialog.AzureVmOsDiskUrl, confidentialVmSettingsDialog.AzureVmOsVgmsDiskUrl, confidentialVmSettingsDialog.AzureOsDiskStorageAccount, confidentialVmSettingsDialog.AzureVirtualMachineSize));
+                        }
+                        m_IsConfigured = true;
                     }
-                    m_IsConfigured = true;
+                    else
+                    {
+                        m_IsConfigured = false;
+                    }
                 }
                 else
                 {
-                    m_IsConfigured = false;
+                    ManualSettingsDialog manualSettingsDialog = new ManualSettingsDialog();
+                    if (System.Windows.Forms.DialogResult.OK == manualSettingsDialog.ShowDialog())
+                    {
+                        string clusterIdentifier = System.Guid.NewGuid().ToString("B").ToUpper();
+                        string datasetIdentifier = SailWebApiPortalInterop.GetDigitalContractProperty(manualSettingsDialog.DigitalContractIdentifier, "DatasetGuid");
+                        for (uint index = 0; index < manualSettingsDialog.VirtualMachineCount; index++)
+                        {
+                            m_ListOfVirtualMachines.Add(index, new MicrosoftAzureVirtualMachine(clusterIdentifier, manualSettingsDialog.DigitalContractIdentifier, datasetIdentifier, manualSettingsDialog.DatasetFilename, SailWebApiPortalInterop.GetIpAddress(), manualSettingsDialog.AzureSubscriptionIdentifier, manualSettingsDialog.AzureResourceGroup, manualSettingsDialog.AzureLocation, manualSettingsDialog.AzureVirtualNetwork, manualSettingsDialog.AzureNetworkSecurityGroup, manualSettingsDialog.AzureBaseMachineName, manualSettingsDialog.AzureVirtualMachineSize));
+                        }
+                        m_IsConfigured = true;
+                    }
+                    else
+                    {
+                        m_IsConfigured = false;
+                    }
                 }
             }
             else
@@ -56,7 +78,8 @@ namespace MicrosoftAzureVirtualMachineInitializer
         /// </summary>
         /// <param name="settingsFilename"></param>
         public InitializerSettings(
-            string settingsFilename
+            string settingsFilename, 
+            bool isConfidential
             )
         {
             // Read the settings from file. The settings should be:
@@ -103,6 +126,29 @@ namespace MicrosoftAzureVirtualMachineInitializer
                 singleLineOfText = file.ReadLine();
                 singleLineOfText.Trim();
                 if ("# NetworkSecurityGroup" != singleLineOfText) throw new FormatException("Line 5 is invalid. Expecting \"# NetworkSecurityGroup\"");
+                // Only needed if confidential Virtual Machine
+                if (true == isConfidential)
+                {
+                    // Line 6
+                    singleLineOfText = file.ReadLine();
+                    singleLineOfText.Trim();
+                    if ("# ConfidentialOsDisksUrl" != singleLineOfText) throw new FormatException("Line 5 is invalid. Expecting \"# ConfidentialOsDisksUrl\"");
+                    // Line 7
+                    singleLineOfText = file.ReadLine();
+                    singleLineOfText.Trim();
+                    if ("# ConfidentialOsDiskVgmsUrl" != singleLineOfText) throw new FormatException("Line 5 is invalid. Expecting \"# ConfidentialOsDiskVgmsUrl\"");
+                    // Line 8
+                    singleLineOfText = file.ReadLine();
+                    singleLineOfText.Trim();
+                    if ("# OsDiskStorageAccount" != singleLineOfText) throw new FormatException("Line 5 is invalid. Expecting \"# OsDiskStorageAccount\"");
+                }
+                else
+                {
+                    // Line 6
+                    singleLineOfText = file.ReadLine();
+                    singleLineOfText.Trim();
+                    if ("# BaseMachineName" != singleLineOfText) throw new FormatException("Line 5 is invalid. Expecting \"# BaseMachineName\"");
+                }
                 // Line 6
                 singleLineOfText = file.ReadLine();
                 singleLineOfText.Trim();
@@ -124,6 +170,33 @@ namespace MicrosoftAzureVirtualMachineInitializer
                 singleLineOfText.Trim();
                 string networkSecurityGroup = singleLineOfText;
                 // Line 11
+                // Only needed if confidential Virtual Machine
+                string confidentialVmOsDiskUrl = "";
+                string confidentialOsDiskVgmsUrl = "";
+                string osDiskStorageAccount = "";
+                string vmBaseImage = "";
+                if (true == isConfidential)
+                {
+                    // Line 14
+                    singleLineOfText = file.ReadLine();
+                    singleLineOfText.Trim();
+                    confidentialVmOsDiskUrl = singleLineOfText;
+                    // Line 15
+                    singleLineOfText = file.ReadLine();
+                    singleLineOfText.Trim();
+                    confidentialOsDiskVgmsUrl = singleLineOfText;
+                    // Line 16
+                    singleLineOfText = file.ReadLine();
+                    singleLineOfText.Trim();
+                    osDiskStorageAccount = singleLineOfText;
+                }
+                else 
+                {
+                    // Line 14
+                    singleLineOfText = file.ReadLine();
+                    singleLineOfText.Trim();
+                    vmBaseImage = singleLineOfText;
+                }
                 singleLineOfText = file.ReadLine();
                 singleLineOfText.Trim();
                 if ("# One or more virtual machine settings using the template. The number of virtual" != singleLineOfText) throw new FormatException("Line 11 is invalid. Expecting \"# One or more virtual machine settings using the template. The number of virtual\"");
@@ -145,16 +218,22 @@ namespace MicrosoftAzureVirtualMachineInitializer
                         singleLineOfText.Trim();
                         // Now we cut the line up in pieces
                         string[] singleLineOfTextElement = singleLineOfText.Split(',');
-                        if (4 != singleLineOfTextElement.Length) throw new FormatException("Line " + Convert.ToString(14 + index) + " is invalid. Expecting 4 element, but found " + singleLineOfTextElement.Length);
-                        string baseMachineName = singleLineOfTextElement[0];
-                        string virtualMachineSize = singleLineOfTextElement[1];
-                        string digitalContractIdentifier = singleLineOfTextElement[2];
-                        string datasetFilename = singleLineOfTextElement[3];
+                        if (3 != singleLineOfTextElement.Length) throw new FormatException("Line " + Convert.ToString(14 + index) + " is invalid. Expecting 4 element, but found " + singleLineOfTextElement.Length);
+                        string virtualMachineSize = singleLineOfTextElement[0];
+                        string digitalContractIdentifier = singleLineOfTextElement[1];
+                        string datasetFilename = singleLineOfTextElement[2];
                         if (false == System.IO.File.Exists(datasetFilename)) throw new FormatException("Line " + Convert.ToString(14 + index) + " contains an invalid dataset name. File " + datasetFilename + " not found");
                         string datasetIdentifier = SailWebApiPortalInterop.GetDigitalContractProperty(digitalContractIdentifier, "DatasetGuid");
                         if (0 == datasetIdentifier.Length) throw new FormatException("Line " + Convert.ToString(14 + index) + " contains an invalid digital contract identifier. DC " + digitalContractIdentifier + " not found");
                         // Now that we have all the information needed, create a new MicrosoftAzureVirtualMachine
-                        m_ListOfVirtualMachines.Add(index, new MicrosoftAzureVirtualMachine(clusterIdentifier, digitalContractIdentifier, datasetIdentifier, datasetFilename, SailWebApiPortalInterop.GetIpAddress(), subscriptionIdentifier, resourceGroup, location, virtualNetwork, networkSecurityGroup, baseMachineName, virtualMachineSize));
+                        if (true == isConfidential)
+                        {
+                            m_ListOfVirtualMachines.Add(index, new MicrosoftAzureVirtualMachine(clusterIdentifier, digitalContractIdentifier, datasetIdentifier, datasetFilename, SailWebApiPortalInterop.GetIpAddress(), subscriptionIdentifier, resourceGroup, location, virtualNetwork, networkSecurityGroup, confidentialVmOsDiskUrl, confidentialOsDiskVgmsUrl, osDiskStorageAccount, virtualMachineSize));
+                        }
+                        else
+                        {
+                            m_ListOfVirtualMachines.Add(index, new MicrosoftAzureVirtualMachine(clusterIdentifier, digitalContractIdentifier, datasetIdentifier, datasetFilename, SailWebApiPortalInterop.GetIpAddress(), subscriptionIdentifier, resourceGroup, location, virtualNetwork, networkSecurityGroup, vmBaseImage, virtualMachineSize));
+                        }
                         index++;
                     }
                 }
@@ -167,8 +246,6 @@ namespace MicrosoftAzureVirtualMachineInitializer
             {
                 System.Windows.Forms.MessageBox.Show(e.Message, "Configuration File Reading Error", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
             }
-
-            
         }
 
         /// <summary>

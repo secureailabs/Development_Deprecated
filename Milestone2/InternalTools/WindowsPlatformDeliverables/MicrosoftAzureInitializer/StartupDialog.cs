@@ -34,6 +34,17 @@ namespace MicrosoftAzureVirtualMachineInitializer
         /// <summary>
         /// 
         /// </summary>
+        public bool IsConfidential
+        {
+            get
+            {
+                return m_ConfidentialVirtualMachine.Checked;
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
         public string SettingsFilename
         {
             get

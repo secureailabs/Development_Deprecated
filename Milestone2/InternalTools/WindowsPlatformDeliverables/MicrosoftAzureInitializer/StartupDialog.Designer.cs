@@ -46,6 +46,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_InitializerOnlyGroupBox = new System.Windows.Forms.GroupBox();
             this.m_InitializerButton = new System.Windows.Forms.Button();
             this.m_InitializerOnlyLabel = new System.Windows.Forms.Label();
+            this.m_ConfidentialVirtualMachine = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.m_StatusStrip.SuspendLayout();
             this.m_SecureVirtualMachineGroupBox.SuspendLayout();
@@ -82,7 +83,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_StatusStrip.ImageScalingSize = new System.Drawing.Size(24, 24);
             this.m_StatusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.m_CopyrightStripStatusLabel});
-            this.m_StatusStrip.Location = new System.Drawing.Point(0, 451);
+            this.m_StatusStrip.Location = new System.Drawing.Point(0, 474);
             this.m_StatusStrip.Name = "m_StatusStrip";
             this.m_StatusStrip.Size = new System.Drawing.Size(555, 28);
             this.m_StatusStrip.TabIndex = 2;
@@ -98,7 +99,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_LoadFromConfigurationButton
             // 
             this.m_LoadFromConfigurationButton.AutoSize = true;
-            this.m_LoadFromConfigurationButton.Location = new System.Drawing.Point(33, 120);
+            this.m_LoadFromConfigurationButton.Location = new System.Drawing.Point(33, 147);
             this.m_LoadFromConfigurationButton.Name = "m_LoadFromConfigurationButton";
             this.m_LoadFromConfigurationButton.Size = new System.Drawing.Size(294, 26);
             this.m_LoadFromConfigurationButton.TabIndex = 3;
@@ -109,7 +110,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // m_ManuallyConfigureButton
             // 
             this.m_ManuallyConfigureButton.AutoSize = true;
-            this.m_ManuallyConfigureButton.Location = new System.Drawing.Point(33, 152);
+            this.m_ManuallyConfigureButton.Location = new System.Drawing.Point(33, 179);
             this.m_ManuallyConfigureButton.Name = "m_ManuallyConfigureButton";
             this.m_ManuallyConfigureButton.Size = new System.Drawing.Size(294, 26);
             this.m_ManuallyConfigureButton.TabIndex = 4;
@@ -121,7 +122,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.m_CloseButton.AutoSize = true;
             this.m_CloseButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.m_CloseButton.Location = new System.Drawing.Point(213, 412);
+            this.m_CloseButton.Location = new System.Drawing.Point(213, 437);
             this.m_CloseButton.Name = "m_CloseButton";
             this.m_CloseButton.Size = new System.Drawing.Size(294, 26);
             this.m_CloseButton.TabIndex = 5;
@@ -148,12 +149,13 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             // m_SecureVirtualMachineGroupBox
             // 
+            this.m_SecureVirtualMachineGroupBox.Controls.Add(this.m_ConfidentialVirtualMachine);
             this.m_SecureVirtualMachineGroupBox.Controls.Add(this.m_InstructionsLabel);
             this.m_SecureVirtualMachineGroupBox.Controls.Add(this.m_LoadFromConfigurationButton);
             this.m_SecureVirtualMachineGroupBox.Controls.Add(this.m_ManuallyConfigureButton);
             this.m_SecureVirtualMachineGroupBox.Location = new System.Drawing.Point(179, 1);
             this.m_SecureVirtualMachineGroupBox.Name = "m_SecureVirtualMachineGroupBox";
-            this.m_SecureVirtualMachineGroupBox.Size = new System.Drawing.Size(363, 189);
+            this.m_SecureVirtualMachineGroupBox.Size = new System.Drawing.Size(363, 214);
             this.m_SecureVirtualMachineGroupBox.TabIndex = 7;
             this.m_SecureVirtualMachineGroupBox.TabStop = false;
             this.m_SecureVirtualMachineGroupBox.Text = "Secure Computational Virtual Machine Configuration";
@@ -162,7 +164,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.m_WebPortalVirtualMachineConfigurationGroupBox.Controls.Add(this.m_WebPortalGroupBox);
             this.m_WebPortalVirtualMachineConfigurationGroupBox.Controls.Add(this.m_StartWebPortalVirtualMachineButton);
-            this.m_WebPortalVirtualMachineConfigurationGroupBox.Location = new System.Drawing.Point(180, 196);
+            this.m_WebPortalVirtualMachineConfigurationGroupBox.Location = new System.Drawing.Point(180, 221);
             this.m_WebPortalVirtualMachineConfigurationGroupBox.Name = "m_WebPortalVirtualMachineConfigurationGroupBox";
             this.m_WebPortalVirtualMachineConfigurationGroupBox.Size = new System.Drawing.Size(363, 101);
             this.m_WebPortalVirtualMachineConfigurationGroupBox.TabIndex = 8;
@@ -197,7 +199,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.m_InitializerOnlyGroupBox.Controls.Add(this.m_InitializerButton);
             this.m_InitializerOnlyGroupBox.Controls.Add(this.m_InitializerOnlyLabel);
-            this.m_InitializerOnlyGroupBox.Location = new System.Drawing.Point(180, 303);
+            this.m_InitializerOnlyGroupBox.Location = new System.Drawing.Point(180, 328);
             this.m_InitializerOnlyGroupBox.Name = "m_InitializerOnlyGroupBox";
             this.m_InitializerOnlyGroupBox.Size = new System.Drawing.Size(363, 98);
             this.m_InitializerOnlyGroupBox.TabIndex = 9;
@@ -227,11 +229,21 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_InitializerOnlyLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.m_InitializerOnlyLabel.Click += new System.EventHandler(this.m_InitializerOnlyLabel_Click);
             // 
+            // m_ConfidentialVirtualMachine
+            // 
+            this.m_ConfidentialVirtualMachine.AutoSize = true;
+            this.m_ConfidentialVirtualMachine.Location = new System.Drawing.Point(96, 122);
+            this.m_ConfidentialVirtualMachine.Name = "m_ConfidentialVirtualMachine";
+            this.m_ConfidentialVirtualMachine.Size = new System.Drawing.Size(177, 19);
+            this.m_ConfidentialVirtualMachine.TabIndex = 7;
+            this.m_ConfidentialVirtualMachine.Text = "Confidential Virtual Machine";
+            this.m_ConfidentialVirtualMachine.UseVisualStyleBackColor = true;
+            // 
             // StartupDialog
             // 
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.CancelButton = this.m_CloseButton;
-            this.ClientSize = new System.Drawing.Size(555, 479);
+            this.ClientSize = new System.Drawing.Size(555, 502);
             this.ControlBox = false;
             this.Controls.Add(this.m_InitializerOnlyGroupBox);
             this.Controls.Add(this.m_WebPortalVirtualMachineConfigurationGroupBox);
@@ -279,5 +291,6 @@ namespace MicrosoftAzureVirtualMachineInitializer
         private System.Windows.Forms.GroupBox m_InitializerOnlyGroupBox;
         private System.Windows.Forms.Button m_InitializerButton;
         private System.Windows.Forms.Label m_InitializerOnlyLabel;
+        private System.Windows.Forms.CheckBox m_ConfidentialVirtualMachine;
     }
 }

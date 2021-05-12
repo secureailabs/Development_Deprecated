@@ -359,8 +359,42 @@ extern "C" __declspec(dllexport) BSTR __cdecl DeployVirtualMachineAndWait(
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to create a Microsoft Azure public IP address", nullptr);
         _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to create a Microsoft Azure public IP address with error %s", strResponse.c_str());
 
-        // Wait until the virtual machine is running
+        // Wait until the deployment is running
         bool fIsRunning = false;
+        do
+        {
+            strVerb = "GET";
+            strResource = "Microsoft.Resources/deployments/" + strVirtualMachineIdentifier + "-deploy";
+            strHost = "management.azure.com";
+            strContent = "";
+            strApiVersionDate = "2021-04-01";
+            stlResponse = ::MakeMicrosoftAzureApiCall(strVerb, strResource, strHost, strContent, strApiVersionDate, strSubscription, strResourceGroup);
+            strResponse = (const char*)stlResponse.data();
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
+            _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to get the status of a virtual machine being provisioned with error %s", strResponse.c_str());
+            StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
+            if (true == oResponse.IsElementPresent("properties", INDEXED_BUFFER_VALUE_TYPE))
+            {
+                StructuredBuffer oProperties(oResponse.GetStructuredBuffer("properties").GetBase64SerializedBuffer().c_str());
+                if (true == oProperties.IsElementPresent("provisioningState", ANSI_CHARACTER_STRING_VALUE_TYPE))
+                {
+                    std::string strProvisioningState = oProperties.GetString("provisioningState");
+                    if (strProvisioningState == "Succeeded")
+                    {
+                        fIsRunning = true;
+                    }
+                }
+            }
+
+            // Should we put the thread to sleep while we wait?
+            if (false == fIsRunning)
+            {
+                ::Sleep(5000);
+            }
+        } while (false == fIsRunning);
+
+        // Wait until the virtual machine is running
+        fIsRunning = false;
         do
         {
             strVerb = "GET";

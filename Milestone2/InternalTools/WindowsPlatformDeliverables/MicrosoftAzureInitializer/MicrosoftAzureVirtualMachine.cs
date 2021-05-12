@@ -385,7 +385,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
                     confidentialVirtualMachineSpecification = confidentialVirtualMachineSpecification.Replace("{{OsDiskVmgsUrl}}", m_osDiskVgmsUrl);
                     confidentialVirtualMachineSpecification = confidentialVirtualMachineSpecification.Replace("{{OsDiskStorageAccountID}}", m_osDiskStorageAccount);
                     confidentialVirtualMachineSpecification = confidentialVirtualMachineSpecification.Replace("{{TemplateUrl}}", "https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/DeployConfidentialVm.json?sp=r&st=2021-05-10T21:27:58Z&se=2022-01-19T05:27:58Z&spr=https&sv=2020-02-10&sr=b&sig=Sz4cI1iG2ZsxLhSJOpCgTxrOhcVWNv%2Bu4gG0a7SuFac%3D");
-                    m_VirtualMachineIpAddress = MicrosoftAzureApiPortalInterop.DeployVirtualMachineAndWait(m_SubscriptionIdentifier, m_ResourceGroup, VirtualMachineIdentifier, confidentialVirtualMachineSpecification, m_Location);
+                    m_VirtualMachineIpAddress = MicrosoftAzureApiPortalInterop.DeployVirtualMachineAndWait(m_SubscriptionIdentifier, m_ResourceGroup, VirtualMachineIdentifier.ToLower(), confidentialVirtualMachineSpecification, m_Location);
                 }
                 else
                 {
@@ -400,7 +400,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
                     virtualMachineSpecification = virtualMachineSpecification.Replace("{{Username}}", m_VirtualMachineUsername);
                     virtualMachineSpecification = virtualMachineSpecification.Replace("{{ComputerName}}", m_VirtualMachineComputerName);
                     virtualMachineSpecification = virtualMachineSpecification.Replace("{{TemplateUrl}}", "https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/DeployVm.json?sp=r&st=2021-05-12T00:10:18Z&se=2022-01-01T08:10:18Z&spr=https&sv=2020-02-10&sr=b&sig=Y7lq5sRR9F3tmo3nQyvoad32Dn69CzhUfyEUILo0ogs%3D");
-                    m_VirtualMachineIpAddress = MicrosoftAzureApiPortalInterop.DeployVirtualMachineAndWait(m_SubscriptionIdentifier, m_ResourceGroup, VirtualMachineIdentifier, virtualMachineSpecification, m_Location);
+                    m_VirtualMachineIpAddress = MicrosoftAzureApiPortalInterop.DeployVirtualMachineAndWait(m_SubscriptionIdentifier, m_ResourceGroup, VirtualMachineIdentifier.ToLower(), virtualMachineSpecification, m_Location);
                 }
                 m_VirtualMachineStatus = "Installing...";
                 // Upload the binaries to the virtual machine

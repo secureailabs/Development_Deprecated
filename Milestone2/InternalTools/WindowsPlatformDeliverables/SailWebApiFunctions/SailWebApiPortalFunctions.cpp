@@ -596,7 +596,7 @@ extern "C" __declspec(dllexport) bool __cdecl UploadInstallationPackageToVirtual
 
         std::vector<std::string> stlHeaders;
         std::vector<Byte> stlResponse;
-        unsigned int unLoopCounter = 24;
+        unsigned int unLoopCounter = 120;
         do
         {
             stlResponse = ::RestApiCall(c_szIpAddressOfVirtualMachine, 9090, "POST", "/UploadData", c_szBase64EncodedInstallationPackage, true, stlHeaders);

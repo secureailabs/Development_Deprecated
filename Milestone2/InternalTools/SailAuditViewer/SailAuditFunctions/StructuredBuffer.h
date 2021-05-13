@@ -360,7 +360,7 @@ class StructuredBuffer : public Object
         void __thiscall DeleteCachedData(void) throw();
         
         // Inner version of ToString()
-        static void __stdcall ToString(
+        static void __stdcall ToAString(
             _inout std::string & strDestination,
             _in const std::string & c_strIndent,
             _in const StructuredBuffer & c_oStructuredBuffer

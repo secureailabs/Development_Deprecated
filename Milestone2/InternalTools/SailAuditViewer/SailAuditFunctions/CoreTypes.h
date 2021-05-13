@@ -86,7 +86,7 @@ typedef void * Handle;
 #endif  // __linux__
 
 #ifndef MAX_STRING_LENGTH
-#define MAX_STRING_LENGTH 32728
+#define MAX_STRING_LENGTH 101241024
 #endif
 
 #ifdef __cplusplus

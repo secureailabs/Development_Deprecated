@@ -285,7 +285,7 @@ std::string __thiscall StructuredBuffer::ToString(void) throw()
 
     try
     {
-        StructuredBuffer::ToString(strDestination, strIndex, *this);
+        StructuredBuffer::ToAString(strDestination, strIndex, *this);
     }
 
     catch (BaseException oException)
@@ -1056,7 +1056,7 @@ void __thiscall StructuredBuffer::DeleteCachedData(void) throw()
 
 /********************************************************************************************/
 
-void __thiscall StructuredBuffer::ToString(
+void __stdcall StructuredBuffer::ToAString(
     _inout std::string & strDestination,
     _in const std::string & c_strIndent,
     _in const StructuredBuffer & c_oStructuredBuffer
@@ -1163,7 +1163,7 @@ void __thiscall StructuredBuffer::ToString(
                     std::string strNewIndent = c_strIndent + "    ";
                     StructuredBuffer oStructuredBuffer(element.second->GetRawDataPtr(), element.second->GetRawDataSizeInBytes());
                     strDestination += "STRUCTURED_BUFFER) = {\r\n";
-                    StructuredBuffer::ToString(strDestination, strNewIndent, oStructuredBuffer);
+                    StructuredBuffer::ToAString(strDestination, strNewIndent, oStructuredBuffer);
                     strDestination += c_strIndent;
                     strDestination += "}";
                 }

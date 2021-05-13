@@ -151,6 +151,7 @@ int __cdecl main(
     
     try
     {
+        
         // Figure out whether or not the GlobalMonitor will be displaying status information
         // or not.
         StructuredBuffer oCommandLineParameters = ::ParseCommandLineParameters(nNumberOfArguments, (const char **) pszCommandLineArguments);

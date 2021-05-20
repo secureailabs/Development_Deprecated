@@ -10,6 +10,7 @@
  
 #include "ApiCallHelpers.h"
 #include "Base64Encoder.h"
+#include "CurlRest.h"
 #include "DateAndTime.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
@@ -144,46 +145,14 @@ std::string __stdcall LoginToSailWebApiPortal(
 
     // There is no sense trying to login if the incoming parameters are invalid
     _ThrowBaseExceptionIf(((0 == c_strUsername.size())&&(0 == c_strPassword.size())), "Invalid parameters.", nullptr);
-    // Connect to the Web API Portal Gateway
-    TlsNode * poTlsNode = ::TlsConnectToNetworkSocket(gs_strIpAddressOfWebPortalGateway.c_str(), gs_unPortAddressOfWebPortalGateway);
-    // Build the HTTP request string
-    std::string strHttpLoginRequest = "POST /SAIL/AuthenticationManager/User/Login?Email="+ c_strUsername +"&Password="+ c_strPassword +" HTTP/1.1\r\n"
-                                      "Accept: */*\r\n"
-                                      "Host: localhost:6200\r\n"
-                                      "Connection: keep-alive\r\n"
-                                      "Content-Length: 0\r\n"
-                                      "\r\n";
-    // Send the HTTP request string
-    poTlsNode->Write((Byte *) strHttpLoginRequest.data(), (strHttpLoginRequest.size()));
-    // Read Header of the Rest response one byte at a time
-    bool fIsEndOfHeader = false;
-    std::vector<Byte> stlHeaderData;
-    while (false == fIsEndOfHeader)
-    {   
-        std::vector<Byte> stlBuffer = poTlsNode->Read(1, 20000);
-        // Check whether the read was successful or not
-        if (0 < stlBuffer.size())
-        {
-            stlHeaderData.push_back(stlBuffer.at(0));
-            if (4 <= stlHeaderData.size())
-            {
-                if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
-                {
-                    fIsEndOfHeader = true;
-                }
-            }
-        }
-        else 
-        {
-            fIsEndOfHeader = true;
-        }
-    }
-    _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Invalid Packet.", nullptr);
-    std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
-    std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
-    // Release poTlsNode
-    poTlsNode->Release();
-    StructuredBuffer oResponse(stlSerializedResponse);
+    // Build the HTTP request
+    std::string strVerb = "POST";
+    std::string strApiUrl = "/SAIL/AuthenticationManager/User/Login?Email="+ c_strUsername +"&Password="+ c_strPassword;
+    std::string strJsonBody = "";
+    // Make the API call and get REST response
+    std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfWebPortalGateway, (Word) gs_unPortAddressOfWebPortalGateway, strVerb, strApiUrl, strJsonBody, true);
+    std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+    StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
     _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Failed REST Response", nullptr);
     strEosb = oResponse.GetString("Eosb");
     
@@ -204,47 +173,14 @@ StructuredBuffer __stdcall GetSailWebApiPortalBasicUserInformation(
     {
         if (0 < c_strEosb.size())
         {
-            // Connect to the Web API Portal Gateway
-            TlsNode * poTlsNode = ::TlsConnectToNetworkSocket(gs_strIpAddressOfWebPortalGateway.c_str(), gs_unPortAddressOfWebPortalGateway);
             // Build the HTTP request string
-            std::string strHttpLoginRequest = "GET /SAIL/AuthenticationManager/GetBasicUserInformation?Eosb="+ c_strEosb +" HTTP/1.1\r\n"
-                                              "Accept: */*\r\n"
-                                              "Host: localhost:6200\r\n"
-                                              "Connection: keep-alive\r\n"
-                                              "Content-Length: 0\r\n"
-                                              "\r\n";
-            // Send the HTTP request string
-            poTlsNode->Write((Byte *) strHttpLoginRequest.data(), (strHttpLoginRequest.size()));
-            // Read Header of the Rest response one byte at a time
-            bool fIsEndOfHeader = false;
-            std::vector<Byte> stlHeaderData;
-            while (false == fIsEndOfHeader)
-            {   
-                std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
-                // Check whether the read was successful or not
-                if (0 < stlBuffer.size())
-                {
-                    stlHeaderData.push_back(stlBuffer.at(0));
-                    if (4 <= stlHeaderData.size())
-                    {
-                        if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
-                        {
-                            fIsEndOfHeader = true;
-                        }
-                    }
-                }
-                else 
-                {
-                    fIsEndOfHeader = true;
-                }
-            }
-            _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Invalid Packet.", nullptr);
-            std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
-            std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
-            _ThrowBaseExceptionIf((0 == stlSerializedResponse.size()), "Invalid Packet.", nullptr);
-            // Release poTlsNode
-            poTlsNode->Release();
-            StructuredBuffer oResponse(stlSerializedResponse);
+            std::string strVerb = "GET";
+            std::string strApiUrl = "/SAIL/AuthenticationManager/GetBasicUserInformation?Eosb="+ c_strEosb;
+            std::string strJsonBody = "";
+            // Make the API call and get REST response
+            std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfWebPortalGateway, (Word) gs_unPortAddressOfWebPortalGateway, strVerb, strApiUrl, strJsonBody, true);
+            std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+            StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
             _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Failed REST Response", nullptr);
             oBasicUserInformation.PutString("OrganizationGuid", oResponse.GetString("OrganizationGuid"));
             oBasicUserInformation.PutString("UserGuid", oResponse.GetString("UserGuid"));
@@ -286,11 +222,10 @@ bool __stdcall TransmitAuditEventsToSailWebApiPortal(
     {
         if ((0 < c_strEosb.size())&&(0 < c_strParentBranchNodeIdentifier.size()))
         {
-            // Connect to the Web API Portal Gateway
-            TlsNode * poTlsNode = ::TlsConnectToNetworkSocket(gs_strIpAddressOfWebPortalGateway.c_str(), gs_unPortAddressOfWebPortalGateway);
             // Build the HTTP request string
-            std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","
-                                     "\n    \"ParentGuid\": \""+ c_strParentBranchNodeIdentifier +"\","
+            std::string strVerb = "POST";
+            std::string strApiUrl = "/SAIL/AuditLogManager/LeafEvents?Eosb="+ c_strEosb;
+            std::string strContent = "{\n    \"ParentGuid\": \""+ c_strParentBranchNodeIdentifier +"\","
                                      "\n    \"LeafEvents\": [";
             // Add leaf events to the rest request body
             std::vector<std::string> stlEvents = c_oAuditEvents.GetNamesOfElements();
@@ -316,49 +251,10 @@ bool __stdcall TransmitAuditEventsToSailWebApiPortal(
             
             strContent += "\n    ]"
                         "\n}";
-
-            std::string strHttpRegisterRequest = "POST /SAIL/AuditLogManager/LeafEvents HTTP/1.1\r\n"
-                                            "Content-Type: application/json\r\n"
-                                            "Accept: */*\r\n"
-                                            "Host: localhost:6200\r\n"
-                                            "Connection: keep-alive\r\n"
-                                            "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
-                                            "\r\n"
-                                            + strContent;
-
-            // Send request packet
-            poTlsNode->Write((Byte *) strHttpRegisterRequest.data(), (strHttpRegisterRequest.size()));
-
-            // Read Header of the Rest response one byte at a time
-            bool fIsEndOfHeader = false;
-            std::vector<Byte> stlHeaderData;
-            while (false == fIsEndOfHeader)
-            {   
-                std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
-                // Check whether the read was successful or not
-                if (0 < stlBuffer.size())
-                {
-                    stlHeaderData.push_back(stlBuffer.at(0));
-                    if (4 <= stlHeaderData.size())
-                    {
-                        if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
-                        {
-                            fIsEndOfHeader = true;
-                        }
-                    }
-                }
-                else 
-                {
-                    fIsEndOfHeader = true;
-                }
-            }
-            
-            _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Invalid Packet.", nullptr);
-            std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
-            std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
-            // Release poTlsNode
-            poTlsNode->Release();
-            StructuredBuffer oResponse(stlSerializedResponse);
+            // Make the API call and get REST response
+            std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfWebPortalGateway, (Word) gs_unPortAddressOfWebPortalGateway, strVerb, strApiUrl, strContent, true);
+            std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+            StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
             _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Failed REST Response", nullptr);
             fSuccess = true;
         }
@@ -391,50 +287,14 @@ StructuredBuffer __stdcall GetListOfDigitalContracts(
     {
         if (0 < c_strEosb.size())
         {
-            // Connect to the Web API Portal Gateway
-            TlsNode * poTlsNode = ::TlsConnectToNetworkSocket(gs_strIpAddressOfWebPortalGateway.c_str(), gs_unPortAddressOfWebPortalGateway);
             // Build the HTTP request string
-            std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\""
-                                    "\n}";
-            std::string strHttpRequest = "GET /SAIL/DigitalContractManager/DigitalContracts HTTP/1.1\r\n"
-                                         "Content-Type: application/json\r\n"
-                                         "Accept: */*\r\n"
-                                         "Host: localhost:6200\r\n"
-                                         "Connection: keep-alive\r\n"
-                                         "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
-                                         "\r\n"
-                                         + strContent;
-            // Send request packet
-            poTlsNode->Write((Byte *) strHttpRequest.data(), (strHttpRequest.size()));
-            // Read Header of the Rest response one byte at a time
-            bool fIsEndOfHeader = false;
-            std::vector<Byte> stlHeaderData;
-            while (false == fIsEndOfHeader)
-            {   
-                std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
-                // Check whether the read was successful or not
-                if (0 < stlBuffer.size())
-                {
-                    stlHeaderData.push_back(stlBuffer.at(0));
-                    if (4 <= stlHeaderData.size())
-                    {
-                        if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
-                        {
-                            fIsEndOfHeader = true;
-                        }
-                    }
-                }
-                else 
-                {
-                    fIsEndOfHeader = true;
-                }
-            }
-            _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Invalid Packet.", nullptr);
-            std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
-            std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
-            // Release poTlsNode
-            poTlsNode->Release();
-            StructuredBuffer oResponse(stlSerializedResponse);
+            std::string strVerb = "GET";
+            std::string strApiUrl = "/SAIL/DigitalContractManager/DigitalContracts?Eosb="+ c_strEosb;
+            std::string strJsonBody = "";
+            // Make the API call and get REST response
+            std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfWebPortalGateway, (Word) gs_unPortAddressOfWebPortalGateway, strVerb, strApiUrl, strJsonBody, true);
+            std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+            StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
             _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Failed REST Response", nullptr);
             oListOfDigitalContracts.PutStructuredBuffer("ListOfDigitalContracts", oResponse.GetStructuredBuffer("DigitalContracts"));
             oListOfDigitalContracts.PutBoolean("Success", true);
@@ -473,52 +333,15 @@ StructuredBuffer __stdcall GetDigitalContract(
     {
         if (0 < c_strEosb.size())
         {
-            // Connect to the Web API Portal Gateway
-            TlsNode * poTlsNode = ::TlsConnectToNetworkSocket(gs_strIpAddressOfWebPortalGateway.c_str(), gs_unPortAddressOfWebPortalGateway);
             // Build the HTTP request string
-            std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","
-                                    "\n    \"DigitalContractGuid\": \""+ c_oDigitalContractIdentifier.ToString(eHyphensAndCurlyBraces) +"\""
+            std::string strVerb = "GET";
+            std::string strApiUrl = "/SAIL/DigitalContractManager/PullDigitalContract?Eosb="+ c_strEosb;
+            std::string strContent = "{\n    \"DigitalContractGuid\": \""+ c_oDigitalContractIdentifier.ToString(eHyphensAndCurlyBraces) +"\""
                                     "\n}";
-            std::string strHttpRequest = "GET /SAIL/DigitalContractManager/PullDigitalContract HTTP/1.1\r\n"
-                                         "Content-Type: application/json\r\n"
-                                         "Accept: */*\r\n"
-                                         "Host: localhost:6200\r\n"
-                                         "Connection: keep-alive\r\n"
-                                         "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
-                                         "\r\n"
-                                         + strContent;
-            // Send request packet
-            poTlsNode->Write((Byte *) strHttpRequest.data(), (strHttpRequest.size()));
-            // Read Header of the Rest response one byte at a time
-            bool fIsEndOfHeader = false;
-            std::vector<Byte> stlHeaderData;
-            while (false == fIsEndOfHeader)
-            {   
-                std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
-                // Check whether the read was successful or not
-                if (0 < stlBuffer.size())
-                {
-                    stlHeaderData.push_back(stlBuffer.at(0));
-                    if (4 <= stlHeaderData.size())
-                    {
-                        if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
-                        {
-                            fIsEndOfHeader = true;
-                        }
-                    }
-                }
-                else 
-                {
-                    fIsEndOfHeader = true;
-                }
-            }
-            
-            _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Invalid Packet.", nullptr);
-            std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
-            std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
-            // Release poTlsNode
-            poTlsNode->Release();
-            StructuredBuffer oResponse(stlSerializedResponse);
+            // Make the API call and get REST response
+            std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfWebPortalGateway, (Word) gs_unPortAddressOfWebPortalGateway, strVerb, strApiUrl, strContent, true);
+            std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+            StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
             _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting list of digital contracts.", nullptr);
             oDigitalContract.PutStructuredBuffer("DigitalContract", oResponse.GetStructuredBuffer("DigitalContract"));
             oDigitalContract.PutBoolean("Success", true);
@@ -561,54 +384,18 @@ std::string __stdcall RegisterVirtualMachineWithSailWebApiPortal(
     {
         if (0 < c_strEosb.size())
         {
-            // Connect to the Web API Portal Gateway
-            TlsNode * poTlsNode = ::TlsConnectToNetworkSocket(gs_strIpAddressOfWebPortalGateway.c_str(), gs_unPortAddressOfWebPortalGateway);
             // Build the HTTP request string
-            std::string strContent = "{\n    \"IEosb\": \""+ c_strEosb +"\","
-                                    "\n    \"DigitalContractGuid\": \""+ c_strDigitalContractIdentifier +"\","
+            std::string strVerb = "POST";
+            std::string strApiUrl = "/SAIL/VirtualMachineManager/RegisterVM?IEosb="+ c_strEosb;
+            std::string strContent = "{\n    \"DigitalContractGuid\": \""+ c_strDigitalContractIdentifier +"\","
                                     "\n    \"VirtualMachineGuid\": \""+ c_strVirtualMachineIdentifier +"\","
                                     "\n    \"HeartbeatBroadcastTime\": "+ std::to_string(::GetEpochTimeInSeconds()) +","
                                     "\n    \"IPAddress\": \""+ c_strIpAddress +"\""
                                     "\n}";
-            std::string strHttpRegisterRequest = "POST /SAIL/VirtualMachineManager/RegisterVM HTTP/1.1\r\n"
-                                            "Content-Type: application/json\r\n"
-                                            "Accept: */*\r\n"
-                                            "Host: localhost:6200\r\n"
-                                            "Connection: keep-alive\r\n"
-                                            "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
-                                            "\r\n"
-                                            + strContent;
-            // Send request packet
-            poTlsNode->Write((Byte *) strHttpRegisterRequest.data(), (strHttpRegisterRequest.size()));
-            // Read Header of the Rest response one byte at a time
-            bool fIsEndOfHeader = false;
-            std::vector<Byte> stlHeaderData;
-            while (false == fIsEndOfHeader)
-            {   
-                std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
-                // Check whether the read was successful or not
-                if (0 < stlBuffer.size())
-                {
-                    stlHeaderData.push_back(stlBuffer.at(0));
-                    if (4 <= stlHeaderData.size())
-                    {
-                        if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
-                        {
-                            fIsEndOfHeader = true;
-                        }
-                    }
-                }
-                else 
-                {
-                    fIsEndOfHeader = true;
-                }
-            }
-            _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
-            std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
-            std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
-            // Release poTlsNode
-            poTlsNode->Release();
-            StructuredBuffer oResponse(stlSerializedResponse);
+            // Make the API call and get REST response
+            std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfWebPortalGateway, (Word) gs_unPortAddressOfWebPortalGateway, strVerb, strApiUrl, strContent, true);
+            std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+            StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
             std::cout << oResponse.ToString() << std::endl;
             _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
             strVirtualMachineEosb = oResponse.GetString("VmEosb");
@@ -645,52 +432,15 @@ std::string __stdcall RegisterVirtualMachineDataOwner(
     {
         if (0 < c_strEosb.size())
         {
-            // Connect to the Web API Portal Gateway
-            TlsNode * poTlsNode = ::TlsConnectToNetworkSocket(gs_strIpAddressOfWebPortalGateway.c_str(), gs_unPortAddressOfWebPortalGateway);
             // Build the HTTP request string
-            std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","
-                                    "\n    \"VirtualMachineGuid\": \""+ c_strVirtualMachineIdentifier +"\""
+            std::string strVerb = "POST";
+            std::string strApiUrl = "/SAIL/VirtualMachineManager/DataOwner/RegisterVM?Eosb="+ c_strEosb;
+            std::string strContent = "{\n    \"VirtualMachineGuid\": \""+ c_strVirtualMachineIdentifier +"\""
                                     "\n}";
-            std::string strHttpRegisterRequest = "POST /SAIL/VirtualMachineManager/DataOwner/RegisterVM HTTP/1.1\r\n"
-                                            "Content-Type: application/json\r\n"
-                                            "Accept: */*\r\n"
-                                            "Host: localhost:6200\r\n"
-                                            "Connection: keep-alive\r\n"
-                                            "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
-                                            "\r\n"
-                                            + strContent;
-            // Send request packet
-            poTlsNode->Write((Byte *) strHttpRegisterRequest.data(), (strHttpRegisterRequest.size()));
-
-            // Read Header of the Rest response one byte at a time
-            bool fIsEndOfHeader = false;
-            std::vector<Byte> stlHeaderData;
-            while (false == fIsEndOfHeader)
-            {   
-                std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
-                // Check whether the read was successful or not
-                if (0 < stlBuffer.size())
-                {
-                    stlHeaderData.push_back(stlBuffer.at(0));
-                    if (4 <= stlHeaderData.size())
-                    {
-                        if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
-                        {
-                            fIsEndOfHeader = true;
-                        }
-                    }
-                }
-                else 
-                {
-                    fIsEndOfHeader = true;
-                }
-            }
-            _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
-            std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
-            std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
-            // Release poTlsNode
-            poTlsNode->Release();
-            StructuredBuffer oResponse(stlSerializedResponse);
+            // Make the API call and get REST response
+            std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfWebPortalGateway, (Word) gs_unPortAddressOfWebPortalGateway, strVerb, strApiUrl, strContent, true);
+            std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+            StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
             _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
             strVirtualMachineAuditEventBranchNodeIdentifier = oResponse.GetString("VmEventGuid");
         }
@@ -726,51 +476,15 @@ std::string RegisterVirtualMachineResearcher(
     {
         if (0 < c_strEosb.size())
         {
-            // Connect to the Web API Portal Gateway
-            TlsNode * poTlsNode = ::TlsConnectToNetworkSocket(gs_strIpAddressOfWebPortalGateway.c_str(), gs_unPortAddressOfWebPortalGateway);
             // Build the HTTP request string
-            std::string strContent = "{\n    \"Eosb\": \""+ c_strEosb +"\","
-                                    "\n    \"VirtualMachineGuid\": \""+ c_strVirtualMachineIdentifier +"\""
+            std::string strVerb = "POST";
+            std::string strApiUrl = "/SAIL/VirtualMachineManager/Researcher/RegisterVM?Eosb="+ c_strEosb;
+            std::string strContent = "{\n    \"VirtualMachineGuid\": \""+ c_strVirtualMachineIdentifier +"\""
                                     "\n}";
-            std::string strHttpRegisterRequest = "POST /SAIL/VirtualMachineManager/Researcher/RegisterVM HTTP/1.1\r\n"
-                                            "Content-Type: application/json\r\n"
-                                            "Accept: */*\r\n"
-                                            "Host: localhost:6200\r\n"
-                                            "Connection: keep-alive\r\n"
-                                            "Content-Length: "+ std::to_string(strContent.size()) +"\r\n"
-                                            "\r\n"
-                                            + strContent;
-            // Send request packet
-            poTlsNode->Write((Byte *) strHttpRegisterRequest.data(), (strHttpRegisterRequest.size()));
-            // Read Header of the Rest response one byte at a time
-            bool fIsEndOfHeader = false;
-            std::vector<Byte> stlHeaderData;
-            while (false == fIsEndOfHeader)
-            {   
-                std::vector<Byte> stlBuffer = poTlsNode->Read(1, 2000);
-                // Check whether the read was successful or not
-                if (0 < stlBuffer.size())
-                {
-                    stlHeaderData.push_back(stlBuffer.at(0));
-                    if (4 <= stlHeaderData.size())
-                    {
-                        if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
-                        {
-                            fIsEndOfHeader = true;
-                        }
-                    }
-                }
-                else 
-                {
-                    fIsEndOfHeader = true;
-                }
-            }
-            _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
-            std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
-            std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poTlsNode);
-            // Release poTlsNode
-            poTlsNode->Release();
-            StructuredBuffer oResponse(stlSerializedResponse);
+            // Make the API call and get REST response
+            std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfWebPortalGateway, (Word) gs_unPortAddressOfWebPortalGateway, strVerb, strApiUrl, strContent, true);
+            std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+            StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
             _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error while processing the transaction.", nullptr);
             strVirtualMachineAuditEventBranchNodeIdentifier = oResponse.GetString("VmEventGuid");
         }

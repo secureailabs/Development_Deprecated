@@ -21,6 +21,7 @@
 #include "Utils.h"
 #include "HttpRequestParser.h"
 #include "JsonValue.h"
+#include "CurlRest.h"
 
 #include <string.h>
 
@@ -170,8 +171,13 @@ extern void PrintDigitalContracts(
     _in const StructuredBuffer & c_oDigitalContracts
     );
 
-extern bool PullDigitalContract(
+extern std::vector<Byte> PullDigitalContract(
     _in const std::string & c_strEosb
+    );
+
+extern std::vector<Byte> PullDigitalContract(
+    _in const std::string & c_strEosb,
+    _in const std::string & c_strDcGuid
     );
 
 extern std::vector<Byte> GetRemoteAttestationCertificate(void);

@@ -1,7 +1,7 @@
 BUILD_MODE?=debug
 CXXFLAGS=-std=c++17 -fstack-protector -DUNIX -DOS_UNIX -Wall -g -MMD -MP -fPIC
 LDFLAGS = -Xlinker -export-dynamic -shared
-LDLIBS = -lpthread -ldl -luuid -lrt -lcrypto -lssl -lutil -lm -lstdc++fs -lpython3.8 
+LDLIBS = -lpthread -ldl -luuid -lrt -lcrypto -lssl -lutil -lm -lstdc++fs -lpython3.8 -lcurl
 
 ifeq ($(BUILD_MODE), debug)
 	CXXFLAGS+= -ggdb -O0

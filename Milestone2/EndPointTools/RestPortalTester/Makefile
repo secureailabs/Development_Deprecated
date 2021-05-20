@@ -1,6 +1,6 @@
 BUILD_MODE?=debug
 CXXFLAGS=-std=c++17 -fPIC -fstack-protector -DUNIX -DOS_UNIX -fPIC
-LDFLAGS=-lpthread -ldl -luuid -lrt -lcrypto -lssl -lstdc++fs -lssl
+LDFLAGS=-lpthread -ldl -luuid -lrt -lcrypto -lssl -lstdc++fs -lssl -lcurl
 
 ifeq ($(BUILD_MODE), debug)
 	CXXFLAGS+= -ggdb

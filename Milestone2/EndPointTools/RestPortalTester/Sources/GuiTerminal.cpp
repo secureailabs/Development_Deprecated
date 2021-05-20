@@ -58,7 +58,7 @@ void __stdcall ShowErrorMessage(
 {
     __DebugFunction();
 
-    std::cout << oFontColor.strRed << strErrorMessage << std::endl;
+    std::cout << oFontColor.strRed << strErrorMessage << oFontColor.strWhite << std::endl;
 }
 
 /********************************************************************************************/
@@ -69,7 +69,7 @@ void __stdcall ShowSuccessMessage(
 {
     __DebugFunction();
 
-    std::cout << oFontColor.strGreen << strSuccessMessage << std::endl;
+    std::cout << oFontColor.strGreen << strSuccessMessage << oFontColor.strWhite << std::endl;
 }
 
 /********************************************************************************************/

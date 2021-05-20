@@ -246,7 +246,7 @@ int main()
                             }
                             case 13:
                             {
-                                bool fSuccess = ::PullDigitalContract(strEncodedEosb);
+                                ::PullDigitalContract(strEncodedEosb);
                                 ::WaitForUserToContinue();
                             break; 
                             }

@@ -70,7 +70,7 @@ static void __cdecl InitDataConnector(void)
         }
     }
     while (false == oStatusMonitor.IsTerminating());
-    
+
     // Wait for all of the threads to gracefull exit
     poThreadManager->JoinAllThreads();
 }

@@ -17,6 +17,8 @@
 
 #include <iostream>
 
+JobEngine JobEngine::m_oJobEngine;
+
 int __cdecl main(
     _in int nNumberOfArguments,
     _in char ** pszCommandLineArguments

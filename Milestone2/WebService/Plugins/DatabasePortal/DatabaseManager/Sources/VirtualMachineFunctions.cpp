@@ -33,14 +33,14 @@ std::vector<Byte> __thiscall DatabaseManager::PullVirtualMachine(
 
     try 
     {
-        std::string strDcGuid = c_oRequest.GetString("VirtualMachineGuid");
+        std::string strVmGuid = c_oRequest.GetString("VirtualMachineGuid");
         // Each client and transaction can only be used in a single thread
         mongocxx::pool::entry oClient = m_poMongoPool->acquire();
         // Access SailDatabase
         mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
         // Fetch the virtual machine record
         bsoncxx::stdx::optional<bsoncxx::document::value> oVmDocument = oSailDatabase["VirtualMachine"].find_one(document{}
-                                                                                                                    << "VirtualMachineGuid" << strDcGuid
+                                                                                                                    << "VirtualMachineGuid" << strVmGuid
                                                                                                                     << finalize);
         if (bsoncxx::stdx::nullopt != oVmDocument)
         {                                                                                                           

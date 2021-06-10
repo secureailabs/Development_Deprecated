@@ -180,6 +180,22 @@ extern std::vector<Byte> PullDigitalContract(
     _in const std::string & c_strDcGuid
     );
 
+extern bool RegisterDataset(
+    _in const std::string & c_strEosb
+    );
+
+extern bool ListDatasets(
+    _in const std::string & c_strEosb
+    );
+
+extern bool PullDataset(
+    _in const std::string & c_strEosb
+    );
+
+extern bool DeleteDataset(
+    _in const std::string & c_strEosb
+    );
+
 extern std::vector<Byte> GetRemoteAttestationCertificate(void);
 
 extern void ShutdownPortal(

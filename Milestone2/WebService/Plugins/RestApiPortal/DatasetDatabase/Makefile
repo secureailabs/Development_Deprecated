@@ -16,6 +16,7 @@ OBJDIR=$(ABSROOTDIR)/Binary/Objects
 # Add the new include folders here
 INCLUDE+=-I$(shell realpath ./Include)
 INCLUDE+=-I$(shell realpath ../../../../WebService/RestApiPortal/Include)
+INCLUDE+=-I$(shell realpath ../../../../WebService/SharedCommonCode/Include)
 INCLUDE+=-I$(shell realpath ../../../../SharedCommonCode/Include)
 
 # Add the new source directory here

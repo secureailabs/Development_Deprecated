@@ -39,7 +39,11 @@ std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strBlue + "13- Pull a digital contract\n" +
             oFontColor.strBlue + "14- Approve a digital contract - Dataset Admin privileges required\n" +
             oFontColor.strBlue + "15- Activate a digital contract - Digital Contract Admin privileges required\n" +
-            oFontColor.strYellow + "16- Logout\n";
+            oFontColor.strYellow + "16- Register a dataset\n" +
+            oFontColor.strYellow + "17- Get list of all available datasets\n" +
+            oFontColor.strYellow + "18- Get metadata of desired dataset\n" +
+            oFontColor.strYellow + "19- Delete a dataset - Dataset Admin privileges required!\n" +
+            oFontColor.strYellow + "20- Logout\n";
 
 /********************************************************************************************/
 

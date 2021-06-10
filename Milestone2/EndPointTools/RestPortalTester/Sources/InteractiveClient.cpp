@@ -907,7 +907,7 @@ bool ListOrganizations(
         std::cout << "************************\n List of Organizations \n************************\n" << std::endl;
         StructuredBuffer oOrganizations(oResponse.GetStructuredBuffer("Organizations"));
         for (std::string strElement : oOrganizations.GetNamesOfElements())
-        {;
+        {
             StructuredBuffer oElement(oOrganizations.GetStructuredBuffer(strElement.c_str()));
             std::cout << "Organization guid: " << strElement << std::endl;
             std::cout << "Organization name: " << oElement.GetString("OrganizationName") << std::endl;
@@ -1406,6 +1406,226 @@ std::vector<Byte> PullDigitalContract(
     }
 
     return stlSerializedDigitalContract;
+}
+
+/********************************************************************************************/
+
+bool RegisterDataset(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get dataset information
+    std::cout << "************************\n Register Dataset \n************************\n" << std::endl;
+    std::string strDsetGuid = Guid(eDataset).ToString(eHyphensAndCurlyBraces);
+    std::string strVersionNumber = ::GetStringInput("Enter dataset version number: ", 16, false, c_szValidInputCharacters);
+    std::string strName = ::GetStringInput("Enter dataset name: ", 50, false, c_szValidInputCharacters);
+    std::string strDescription = ::GetStringInput("Enter dataset description: ", 100, false, c_szValidInputCharacters);
+    std::string strKeywords = ::GetStringInput("Enter comma seperated keywords: ", 100, false, c_szValidInputCharacters);
+    uint64_t un64PublishTime = std::stoull(::GetStringInput("Enter datetime (in seconds) of publish date: ", 64, false, c_szValidInputCharacters));
+    Byte bPrivacyLevel = std::stoi(::GetStringInput("Enter privacy level (0-10): ", 2, false, c_szValidInputCharacters));
+    std::string strLimitations = ::GetStringInput("Enter country codes where dataset can be used: ", 100, false, c_szValidInputCharacters);
+
+    try
+    {
+        // Create rest request
+        std::string strVerb = "POST";
+        std::string strApiUrl = "/SAIL/DatasetManager/RegisterDataset?Eosb="+ c_strEosb;
+        std::string strContent = "{\n   \"DatasetGuid\": \""+ strDsetGuid +"\","
+                                "\n   \"DatasetData\": {"
+                                "\n   \"VersionNumber\": \""+ strVersionNumber +"\","
+                                "\n   \"DatasetName\": \""+ strName +"\","
+                                "\n   \"Description\": \""+ strDescription +"\","
+                                "\n   \"Keywords\": \""+ strKeywords +"\","
+                                "\n   \"PublishDate\": "+ std::to_string(un64PublishTime) +","
+                                "\n   \"PrivacyLevel\": "+ std::to_string(bPrivacyLevel) +","
+                                "\n   \"JurisdictionalLimitations\": \""+ strLimitations +"\""
+                                "\n   }"
+                                "\n}";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error registering the dataset.", nullptr);
+        fSuccess = true;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool ListDatasets(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    try
+    {
+        // Create rest request
+        std::string strVerb = "GET";
+        std::string strApiUrl = "/SAIL/DatasetManager/ListDatasets?Eosb="+ c_strEosb;
+        std::string strJsonBody = "";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strJsonBody, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error fetching available datasets.", nullptr);
+        fSuccess = true;
+        std::cout << "************************\n List of Datasets \n************************\n" << std::endl;
+        StructuredBuffer oDatasets(oResponse.GetStructuredBuffer("Datasets"));
+        for (std::string strElement : oDatasets.GetNamesOfElements())
+        {
+            StructuredBuffer oElement(oDatasets.GetStructuredBuffer(strElement.c_str()));
+            std::cout << "Guid: " << strElement << std::endl;
+            std::cout << "Name: " << oElement.GetString("DatasetName") << std::endl;
+            std::cout << "Version number: " << oElement.GetString("VersionNumber") << std::endl;
+            std::cout << "Data owner organization guid: " << oElement.GetString("DataOwnerGuid") << std::endl;
+            std::cout << "Description: " << oElement.GetString("Description") << std::endl;
+            std::cout << "Keywords: " << oElement.GetString("Keywords") << std::endl;
+            std::cout << "Publish date: " << oElement.GetFloat64("PublishDate") << std::endl;
+            std::cout << "Privacy level: " << oElement.GetFloat64("PrivacyLevel") << std::endl;
+            std::cout << "Jurisdictional limitations: " << oElement.GetString("JurisdictionalLimitations") << std::endl;
+            std::cout << "------------------------------------------------------" << std::endl;
+        }
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool PullDataset(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get dataset information
+    std::cout << "************************\n Pull Dataset \n************************\n" << std::endl;
+    std::string strDsetGuid = ::GetStringInput("Enter hyphen and curly braces formatted dataset guid: ", 38, true, c_szValidInputCharacters);
+
+    __DebugAssert(38 == strDsetGuid.size());
+
+    try
+    {
+        // Create rest request
+        std::string strVerb = "GET";
+        std::string strApiUrl = "/SAIL/DatasetManager/PullDataset?Eosb="+ c_strEosb;
+        std::string strContent = "{\n   \"DatasetGuid\": \""+ strDsetGuid +"\""
+                                "\n}";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting the dataset information.", nullptr);
+        fSuccess = true;
+        StructuredBuffer oDataset(oResponse.GetStructuredBuffer("Dataset"));
+        std::cout << "Guid: " << oDataset.GetString("DatasetGuid") << std::endl;
+        std::cout << "Name: " << oDataset.GetString("DatasetName") << std::endl;
+        std::cout << "Version number: " << oDataset.GetString("VersionNumber") << std::endl;
+        std::cout << "Data owner organization guid: " << oDataset.GetString("DataOwnerGuid") << std::endl;
+        std::cout << "Description: " << oDataset.GetString("Description") << std::endl;
+        std::cout << "Keywords: " << oDataset.GetString("Keywords") << std::endl;
+        std::cout << "Publish date: " << oDataset.GetFloat64("PublishDate") << std::endl;
+        std::cout << "Privacy level: " << oDataset.GetFloat64("PrivacyLevel") << std::endl;
+        std::cout << "Jurisdictional limitations: " << oDataset.GetString("JurisdictionalLimitations") << std::endl;
+        std::cout << "------------------------------------------------------" << std::endl;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool DeleteDataset(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get dataset information
+    std::cout << "************************\n Delete Dataset \n************************\n" << std::endl;
+    std::string strDsetGuid = ::GetStringInput("Enter hyphen and curly braces formatted dataset guid: ", 38, true, c_szValidInputCharacters);
+
+    __DebugAssert(38 == strDsetGuid.size());
+
+    try
+    {
+        // Create rest request
+        std::string strVerb = "DELETE";
+        std::string strApiUrl = "/SAIL/DatasetManager/DeleteDataset?Eosb="+ c_strEosb;
+        std::string strContent = "{\n   \"DatasetGuid\": \""+ strDsetGuid +"\""
+                                "\n}";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error deleting the dataset record.", nullptr);
+        fSuccess = true;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
 }
 
 /********************************************************************************************/

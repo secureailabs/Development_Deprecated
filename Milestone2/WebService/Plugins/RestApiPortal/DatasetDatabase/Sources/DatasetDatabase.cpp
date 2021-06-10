@@ -9,8 +9,52 @@
  ********************************************************************************************/
 
 #include "DatasetDatabase.h"
+#include "IpcTransactionHelperFunctions.h"
+#include "SocketClient.h"
+#include "TlsClient.h"
 
 static DatasetDatabase * gs_oDatasetDatabase = nullptr;
+
+/********************************************************************************************
+ *
+ * @function CreateRequestPacket
+ * @brief Create a Tls request packet to send to the database portal
+ * @param[in] c_oRequest StructuredBuffer containing the request parameters
+ * @return Serialized request packet
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __stdcall CreateRequestPacket(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    unsigned int unSerializedBufferSizeInBytes = sizeof(Dword) + sizeof(uint32_t) + c_oRequest.GetSerializedBufferRawDataSizeInBytes() + sizeof(Dword);
+
+    std::vector<Byte> stlSerializedBuffer(unSerializedBufferSizeInBytes);
+    Byte * pbSerializedBuffer = (Byte *) stlSerializedBuffer.data();
+
+    // The format of the request data is:
+    //
+    // +------------------------------------------------------------------------------------+
+    // | [Dword] 0x436f6e74                                                                 |
+    // +------------------------------------------------------------------------------------+
+    // | [uint32_t] SizeInBytesOfRestRequestStructuredBuffer                                |
+    // +------------------------------------------------------------------------------------+
+    // | [SizeInBytesOfRestRequestStructuredBuffer] RestRequestStructuredBuffer             |
+    // +------------------------------------------------------------------------------------+
+    // | [Dword] 0x656e6420                                                                 |
+    // +------------------------------------------------------------------------------------+
+
+    *((Dword *) pbSerializedBuffer) = 0x436f6e74;
+    pbSerializedBuffer += sizeof(Dword);
+    *((uint32_t *) pbSerializedBuffer) = (uint32_t) c_oRequest.GetSerializedBufferRawDataSizeInBytes();
+    pbSerializedBuffer += sizeof(uint32_t);
+    ::memcpy((void *) pbSerializedBuffer, (const void *) c_oRequest.GetSerializedBufferRawDataPtr(), c_oRequest.GetSerializedBufferRawDataSizeInBytes());
+    pbSerializedBuffer += c_oRequest.GetSerializedBufferRawDataSizeInBytes();
+    *((Dword *) pbSerializedBuffer) = 0x656e6420;
+
+    return stlSerializedBuffer;
+}
 
 /********************************************************************************************
  *
@@ -68,8 +112,6 @@ DatasetDatabase::DatasetDatabase(void)
     m_sMutex = PTHREAD_MUTEX_INITIALIZER;
     m_unNextAvailableIdentifier = 0;
     m_fTerminationSignalEncountered = false;
-
-    this->InitializeUserAccounts();
 }
 
 /********************************************************************************************
@@ -102,17 +144,6 @@ DatasetDatabase::DatasetDatabase(
 DatasetDatabase::~DatasetDatabase(void)
 {
     __DebugFunction();
-
-    for (Dataset * oDataset : m_stlDatasets)
-    {
-        delete oDataset;
-    }
-
-    for (UserAccount * oUserAccount : m_stlUserAccounts)
-    {
-        delete oUserAccount;
-    }
-
 }
 
 /********************************************************************************************
@@ -201,28 +232,6 @@ void __thiscall DatasetDatabase::TerminateSignalEncountered(void)
 /********************************************************************************************
  *
  * @class DatasetDatabase
- * @function InitializeUserAccounts
- * @brief Insert user data
- *
- ********************************************************************************************/
-
-void __thiscall DatasetDatabase::InitializeUserAccounts(void)
-{
-    __DebugFunction();
-
-    m_stlUserAccounts.push_back(new UserAccount("{FEB1CAE7-0F10-4185-A1F2-DE71B85DBD25}", "johnsnow", "John Snow", "jsnow@example.com", "HBO", "1234567890", 999, 0x7));
-    m_stlUserAccounts.push_back(new UserAccount("{C1F45EF0-AB47-4799-9407-CA8A40CAC159}", "aryastark", "Arya Stark", "astark@example.com", "HBO", "1234567890", 888, 0x2));
-    m_stlUserAccounts.push_back(new UserAccount("{0A83BCF5-2845-4437-AEBE-E02DFB349BAB}", "belle", "Belle", "belle@example.com", "Walt Disney", "1234567890", 777, 0x1));
-    m_stlUserAccounts.push_back(new UserAccount("{64E4FAC3-63C9-4844-BF82-1581F9C750CE}", "gaston", "Gaston", "gaston@example.com", "Walt Disney", "1234567890", 666, 0x6));
-    m_stlUserAccounts.push_back(new UserAccount("{F732CA9C-217E-4E3D-BF25-E2425B480556}", "hermoinegranger", "Hermoine Granger", "hgranger@example.com", "Universal Studios", "1234567890", 555, 0x5));
-    m_stlUserAccounts.push_back(new UserAccount("{F3FBE722-1A42-4052-8815-0ABDDB3F2841}", "harrypotter", "Harry Potter", "hpotter@example.com", "Universal Studios", "1234567890", 444, 0x4));
-    m_stlUserAccounts.push_back(new UserAccount("{2B9C3814-79D4-456B-B64A-ED79F69373D3}", "antman", "Ant man", "antman@example.com", "Marvel Cinematic Universe", "1234567890", 333, 0x7));
-    m_stlUserAccounts.push_back(new UserAccount("{B40E1F9C-C100-46B3-BD7F-C80EB1351794}", "spiderman", "Spider man", "spiderman@example.com", "Marvel Cinematic Universe", "1234567890", 222, 0x6));
-}
-
-/********************************************************************************************
- *
- * @class DatasetDatabase
  * @function InitializePlugin
  * @brief Initializer that initializes the plugin's dictionary
  *
@@ -232,18 +241,74 @@ void __thiscall DatasetDatabase::InitializePlugin(void)
 {
     __DebugFunction();
 
-    // Takes in an EOSB and sends back all datasets information within the organization
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/Dataset/GetSubmittedDataset");
+    // Add parameters for RegisterDataset resource
+    StructuredBuffer oRegisterDataset;
+    StructuredBuffer oEosb;
+    oEosb.PutByte("ElementType", BUFFER_VALUE_TYPE);
+    oEosb.PutBoolean("IsRequired", true);
+    oRegisterDataset.PutStructuredBuffer("Eosb", oEosb);
+    StructuredBuffer oDatasetGuid;
+    oDatasetGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oDatasetGuid.PutBoolean("IsRequired", true);
+    oRegisterDataset.PutStructuredBuffer("DatasetGuid", oDatasetGuid);
+    StructuredBuffer oDatasetMetadata;
+    oDatasetMetadata.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
+    oDatasetMetadata.PutBoolean("IsRequired", true);
+    StructuredBuffer oVersionNumber;
+    oVersionNumber.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oVersionNumber.PutBoolean("IsRequired", true);
+    oDatasetMetadata.PutStructuredBuffer("VersionNumber", oVersionNumber);
+    StructuredBuffer oDatasetName;
+    oDatasetName.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oDatasetName.PutBoolean("IsRequired", true);
+    oDatasetMetadata.PutStructuredBuffer("DatasetName", oDatasetName);
+    StructuredBuffer oDescription;
+    oDescription.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oDescription.PutBoolean("IsRequired", true);
+    oDatasetMetadata.PutStructuredBuffer("Description", oDescription);
+    StructuredBuffer oKeywords;
+    oKeywords.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oKeywords.PutBoolean("IsRequired", true);
+    oDatasetMetadata.PutStructuredBuffer("Keywords", oKeywords);
+    StructuredBuffer oPublishDate;
+    oPublishDate.PutByte("ElementType", UINT64_VALUE_TYPE);
+    oPublishDate.PutBoolean("IsRequired", true);
+    oDatasetMetadata.PutStructuredBuffer("PublishDate", oPublishDate);
+    StructuredBuffer oPrivacyLevel;
+    oPrivacyLevel.PutByte("ElementType", BYTE_VALUE_TYPE);
+    oPrivacyLevel.PutBoolean("IsRequired", true);
+    oDatasetMetadata.PutStructuredBuffer("PrivacyLevel", oPrivacyLevel);
+    StructuredBuffer oLimitations;
+    oLimitations.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oLimitations.PutBoolean("IsRequired", true);
+    oDatasetMetadata.PutStructuredBuffer("JurisdictionalLimitations", oLimitations);
+    oRegisterDataset.PutStructuredBuffer("DatasetData", oDatasetMetadata);
+
+    // Add parameters for ListDatasets resource
+    StructuredBuffer oListDatasets;
+    oListDatasets.PutStructuredBuffer("Eosb", oEosb);
+
+    // Add parameters for PullDataset resource
+    StructuredBuffer oPullDataset;
+    oPullDataset.PutStructuredBuffer("Eosb", oEosb);
+    oPullDataset.PutStructuredBuffer("DatasetGuid", oDatasetGuid);
+
+    // Add parameters for DeleteDataset
+    StructuredBuffer oDeleteDataset;
+    oDeleteDataset.PutStructuredBuffer("Eosb", oEosb);
+    oDeleteDataset.PutStructuredBuffer("DatasetGuid", oDatasetGuid);
+
+    // Stores dataset metadata in the database
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatasetManager/RegisterDataset", oRegisterDataset);
 
     // Sends back list of all available datasets
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/Dataset/GetAvailableDataset");
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatasetManager/ListDatasets", oListDatasets);
 
-    // Adds a dataset record in the database
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatasetManager");
+    // Send back metadata of the dataset associated with the requested DatasetGuid
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatasetManager/PullDataset", oPullDataset);
 
-    // Deletes a dataset record in the database
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatasetManager/DeleteDataset");
-
+    // Deletes a dataset record from the database
+    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatasetManager/DeleteDataset", oDeleteDataset);
 }
 
 /********************************************************************************************
@@ -276,24 +341,25 @@ uint64_t __thiscall DatasetDatabase::SubmitRequest(
     // Route to the requested resource
     if ("GET" == strVerb)
     {
-        if ("/SAIL/Dataset/GetSubmittedDataset" == strResource)
-        {
-            stlResponseBuffer = this->GetListOfSubmittedDatasets(c_oRequestStructuredBuffer);
-        }
-
-        else if ("/SAIL/Dataset/GetAvailableDataset" == strResource)
+        if ("/SAIL/DatasetManager/ListDatasets" == strResource)
         {
             stlResponseBuffer = this->GetListOfAvailableDatasets(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/DatasetManager/PullDataset" == strResource)
+        {
+            stlResponseBuffer = this->PullDataset(c_oRequestStructuredBuffer);
         }
     }
     else if ("POST" == strVerb)
     {
-        if ("/SAIL/DatasetManager" == strResource)
+        if ("/SAIL/DatasetManager/RegisterDataset" == strResource)
         {
             stlResponseBuffer = this->RegisterDataset(c_oRequestStructuredBuffer);
         }
-
-        else if ("/SAIL/DatasetManager/DeleteDataset" == strResource)
+    }
+    else if ("DELETE" == strVerb)
+    {
+        if ("/SAIL/DatasetManager/DeleteDataset" == strResource)
         {
             stlResponseBuffer = this->DeleteDataset(c_oRequestStructuredBuffer);
         }
@@ -359,72 +425,66 @@ bool __thiscall DatasetDatabase::GetResponse(
 /********************************************************************************************
  *
  * @class DatasetDatabase
- * @function GetListOfSubmittedDatasets
- * @brief Send back a full list of all datasets submitted by any of the Dataset Admins within the organizaion
+ * @function GetUserInfo
+ * @brief Take in a full EOSB and send back a StructuredBuffer containing user metadata
  * @param[in] c_oRequest contains the request body
  * @throw BaseException Error StructuredBuffer element not found
- * @returns StructuredBuffer containing list of submitted datasets
+ * @returns StructuredBuffer containing user metadata
  *
  ********************************************************************************************/
 
-std::vector<Byte> __thiscall DatasetDatabase::GetListOfSubmittedDatasets(
+std::vector<Byte> __thiscall DatasetDatabase::GetUserInfo(
     _in const StructuredBuffer & c_oRequest
     )
 {
     __DebugFunction();
-    // TODO: Fetch dataset records from the database
-    // TODO: Replace call to abstract class UserAccount::IsDatasetAdmin() with call to AccountDatabase plugin
-    //       and get TypeOfUser and Organization associated with strUserUuid
 
     StructuredBuffer oResponse;
 
-    // Take in full EOSB of DatasetAdmin
-    StructuredBuffer oEosb(c_oRequest.GetBuffer("Eosb"));
-    std::string strUserUuid = oEosb.GetString("UserUuid");
-    bool fIsImposter = oEosb.GetBoolean("IsImposter");
-    _ThrowBaseExceptionIf((true == fIsImposter), "Imposter EOSB cannot be used to get list of submitted datasets.", nullptr);
-
-    // Verify that the user's TypeOfAccount is "Dataset Admin"
-    unsigned int unUserIndex = -1;
-    for (unsigned int unIndex = 0; ((-1 == unUserIndex) && (unIndex < m_stlUserAccounts.size())); ++unIndex)
-    {
-        if (strUserUuid == m_stlUserAccounts[unIndex]->GetUserUuid())
-        {
-            if (true == m_stlUserAccounts[unIndex]->IsDatasetAdmin())
-            {
-                unUserIndex = unIndex;
-            }
-            else
-            {
-                _ThrowBaseException("Error: User is not authorized for this transaction", nullptr);
-            }
-        }
-    }
-    _ThrowBaseExceptionIf((-1 == unUserIndex), "Error: User not found", nullptr);
-
-    // Generate a StructuredBuffer containing all datasets submitted by users within the organization
     Dword dwStatus = 404;
-    Dataset * oDataset;
-    ::pthread_mutex_lock(&m_sMutex);
-    for (unsigned int unIndex = 0 ; unIndex < m_stlDatasets.size(); ++unIndex)
-    {
-        oDataset = m_stlDatasets[unIndex];
-        // Add all datasets whose organization is the same as the requesting user's organization to the StructuredBuffer
-        if (oDataset->GetDatasetOrganization() == m_stlUserAccounts[unUserIndex]->GetOrganization())
-        {
-            StructuredBuffer oDatasetMetadata;
-            oDatasetMetadata.PutString("DatasetName", oDataset->GetDatasetName());
-            oDatasetMetadata.PutString("UserUuid", oDataset->GetDatasetSubmittedBy());
-            oDatasetMetadata.PutQword("DatasetSubmissionDate", oDataset->GetDatasetSubmissionDate());
-            oResponse.PutStructuredBuffer(oDataset->GetDatasetUuid().c_str(), oDatasetMetadata);
+    Socket * poIpcCryptographicManager = nullptr;
 
+    try
+    {
+        std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+
+        StructuredBuffer oDecryptEosbRequest;
+        oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
+        oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
+
+        // Call CryptographicManager plugin to get the decrypted eosb
+        poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+        poIpcCryptographicManager->Release();
+        poIpcCryptographicManager = nullptr;
+        if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
+        {
+            StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
+            oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
+            oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
+            // TODO: get user access rights from the confidential record, for now it can't be decrypted
+            oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
             dwStatus = 200;
         }
     }
-    ::pthread_mutex_unlock(&m_sMutex);
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
 
-    // Send back transaction
-    oResponse.PutWord("Status", dwStatus);
+    if (nullptr != poIpcCryptographicManager)
+    {
+        poIpcCryptographicManager->Release();
+    }
+
+    // Add status code for the transaction
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -444,35 +504,134 @@ std::vector<Byte> __thiscall DatasetDatabase::GetListOfAvailableDatasets(
     )
 {
     __DebugFunction();
-    // TODO: Fetch dataset records from the database
 
     StructuredBuffer oResponse;
 
-    // Take in full EOSB of the caller
-    StructuredBuffer oEosb(c_oRequest.GetBuffer("Eosb"));
-    std::string strUserUuid = oEosb.GetString("UserUuid");
-    bool fIsImposter = oEosb.GetBoolean("IsImposter");
-    _ThrowBaseExceptionIf((true == fIsImposter), "Imposter EOSB cannot be used to list available datasets.", nullptr);
-
-    // Generate a StructuredBuffer containing all available datasets metadata
     Dword dwStatus = 404;
-    Dataset * oDataset;
-    ::pthread_mutex_lock(&m_sMutex);
-    for (unsigned int unIndex = 0 ; unIndex < m_stlDatasets.size(); ++unIndex)
+    TlsNode * poTlsNode = nullptr;
+
+    try 
     {
-        oDataset = m_stlDatasets[unIndex];
-        StructuredBuffer oDatasetMetadata;
-        oDatasetMetadata.PutString("DatasetName", oDataset->GetDatasetName());
-        oDatasetMetadata.PutString("DatasetOrganization", oDataset->GetDatasetOrganization());
-        oDatasetMetadata.PutQword("DatasetSubmissionDate", oDataset->GetDatasetSubmissionDate());
-        oResponse.PutStructuredBuffer(oDataset->GetDatasetUuid().c_str(), oDatasetMetadata);
+        // Make a Tls connection with the database portal
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        // Create a request to list of all datasets
+        StructuredBuffer oRequest;
+        oRequest.PutString("PluginName", "DatabaseManager");
+        oRequest.PutString("Verb", "GET");
+        oRequest.PutString("Resource", "/SAIL/DatabaseManager/ListDatasets");
+        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+        // Send request packet
+        poTlsNode->Write(stlRequest.data(), stlRequest.size());
 
-        dwStatus = 200;
+        // Read header and body of the response
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+        // Make sure to release the poTlsNode
+        poTlsNode->Release();
+        poTlsNode = nullptr;
+
+        StructuredBuffer oDatabaseResponse(stlResponse);
+        if (200 == oDatabaseResponse.GetDword("Status"))
+        {
+            oResponse.PutStructuredBuffer("Datasets", oDatabaseResponse.GetStructuredBuffer("Datasets"));
+            dwStatus = 200;
+        }
     }
-    ::pthread_mutex_unlock(&m_sMutex);
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
 
-    // Send back transaction
-    oResponse.PutWord("Status", dwStatus);
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DatasetDatabase
+ * @function PullDataset
+ * @brief Get metadata of the dataset associated with the GUID
+ * @param[in] c_oRequest contains the request body
+ * @returns StructuredBuffer containing metatdata of the dataset
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatasetDatabase::PullDataset(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    TlsNode * poTlsNode = nullptr;
+
+    try 
+    {
+        // Make a Tls connection with the database portal
+        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        // Create a request to get metadata of the dataset
+        StructuredBuffer oRequest;
+        oRequest.PutString("PluginName", "DatabaseManager");
+        oRequest.PutString("Verb", "GET");
+        oRequest.PutString("Resource", "/SAIL/DatabaseManager/PullDataset");
+        oRequest.PutString("DatasetGuid", c_oRequest.GetString("DatasetGuid"));
+        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+        // Send request packet
+        poTlsNode->Write(stlRequest.data(), stlRequest.size());
+
+        // Read header and body of the response
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+        // Make sure to release the poTlsNode
+        poTlsNode->Release();
+        poTlsNode = nullptr;
+
+        StructuredBuffer oDatabaseResponse(stlResponse);
+        if (200 == oDatabaseResponse.GetDword("Status"))
+        {
+            oResponse.PutStructuredBuffer("Dataset", oDatabaseResponse.GetStructuredBuffer("Dataset"));
+            dwStatus = 200;
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -493,57 +652,68 @@ std::vector<Byte> __thiscall DatasetDatabase::RegisterDataset(
     )
 {
     __DebugFunction();
-    // TODO: save dataset record in the database
-    // TODO: Replace call to abstract class UserAccount::IsDatasetAdmin() with call to AccountDatabase plugin
-    //       and get TypeOfUser associated with strUserUuid
 
     StructuredBuffer oResponse;
 
-    // Take in full EOSB of data owner
-    StructuredBuffer oEosb(c_oRequest.GetBuffer("Eosb"));
-    std::string strUserUuid = oEosb.GetString("UserUuid");
-    bool fIsImposter = oEosb.GetBoolean("IsImposter");
-    _ThrowBaseExceptionIf((true == fIsImposter), "Imposter EOSB cannot be used to register a dataset.", nullptr);
+    Dword dwStatus = 404;
+    TlsNode * poTlsNode = nullptr;
 
-    // Verify that the user's TypeOfAccount is "Dataset Admin"
-    bool fFound = false;
-    for (unsigned int unIndex = 0; ((false == fFound) && (unIndex < m_stlUserAccounts.size())); ++unIndex)
+    try 
     {
-        if (strUserUuid == m_stlUserAccounts[unIndex]->GetUserUuid())
+        StructuredBuffer oUserInfo = this->GetUserInfo(c_oRequest);
+        if (200 == oUserInfo.GetDword("Status"))
         {
-            if (true == m_stlUserAccounts[unIndex]->IsDatasetAdmin())
+            // TODO: Verify that the user is a "DatasetAdmin"
+            // Make a Tls connection with the database portal
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to add dataset metadata to the database
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "POST");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterDataset");
+            oRequest.PutString("DatasetGuid", c_oRequest.GetString("DatasetGuid"));
+            oRequest.PutString("DataOwnerGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+            oRequest.PutStructuredBuffer("DatasetData", c_oRequest.GetStructuredBuffer("DatasetData"));
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+            // Make sure to release the poTlsNode
+            poTlsNode->Release();
+            poTlsNode = nullptr;
+            
+            // Check if DatabaseManager registered the dataset or not
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (204 != oDatabaseResponse.GetDword("Status"))
             {
-                fFound = true;
-            }
-            else
-            {
-                _ThrowBaseException("Error: User is not authorized for this transaction", nullptr);
+                dwStatus = 201;
             }
         }
     }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
 
-    _ThrowBaseExceptionIf((false == fFound), "Error: User not found", nullptr);
-
-    // Get the new dataset information
-    std::string strDatasetName = c_oRequest.GetString("DatasetName");
-    std::string strDatasetOrganization = c_oRequest.GetString("DatasetOrganization");
-    Qword qwSubmissionDate = c_oRequest.GetQword("DatasetSubmissionDate");
-
-    // Generate a UUID for the new dataset
-    Guid oDatasetGuid;
-    std::string strDatasetUuid = oDatasetGuid.ToString(eHyphensAndCurlyBraces);
-
-    // Create a new dataset record
-    Dataset * oDataset = new Dataset(strDatasetUuid, strDatasetName, strDatasetOrganization, strUserUuid, qwSubmissionDate);
-
-    // Add new dataset record to the vector container
-    ::pthread_mutex_lock(&m_sMutex);
-    m_stlDatasets.push_back(oDataset);
-    ::pthread_mutex_unlock(&m_sMutex);
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
 
     // Send back status and database uuid
-    oResponse.PutWord("Status", 200);
-    oResponse.PutString("DatasetUuid", strDatasetUuid);
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -564,54 +734,69 @@ std::vector<Byte> __thiscall DatasetDatabase::DeleteDataset(
     )
 {
     __DebugFunction();
-    // TODO: Fetch dataset records from the database
-    // TODO: Replace call to abstract class UserAccount::IsDatasetAdmin() with call to AccountDatabase plugin
-    //       and get TypeOfUser associated with strUserUuid
 
     StructuredBuffer oResponse;
 
-    // Take in full EOSB of data owner
-    StructuredBuffer oEosb(c_oRequest.GetBuffer("Eosb"));
-    std::string strUserUuid = oEosb.GetString("UserUuid");
-    bool fIsImposter = oEosb.GetBoolean("IsImposter");
-    _ThrowBaseExceptionIf((true == fIsImposter), "Imposter EOSB cannot be used to delete a dataset.", nullptr);
+    Dword dwStatus = 404;
+    TlsNode * poTlsNode = nullptr;
 
-    // Verify that the user's TypeOfAccount is "Dataset Admin"
-    bool fFound = false;
-    for (unsigned int unIndex = 0; ((false == fFound) && (unIndex < m_stlUserAccounts.size())); ++unIndex)
+    try 
     {
-        if (strUserUuid == m_stlUserAccounts[unIndex]->GetUserUuid())
+        // Verify that the user is a "DatasetAdmin"
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
         {
-            if (true == m_stlUserAccounts[unIndex]->IsDatasetAdmin())
+            if (eDatasetAdmin == oUserInfo.GetQword("AccessRights"))
             {
-                fFound = true;
-            }
-            else
-            {
-                _ThrowBaseException("Error: User is not authorized for this transaction", nullptr);
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to delete the dataset
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "DELETE");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/DeleteDataset");
+                oRequest.PutString("DatasetGuid", c_oRequest.GetString("DatasetGuid"));
+                oRequest.PutString("DataOwnerGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), stlRequest.size());
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                poTlsNode = nullptr;
+
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (200 == oDatabaseResponse.GetDword("Status"))
+                {
+                    dwStatus = 200;
+                }
             }
         }
     }
-
-    _ThrowBaseExceptionIf((false == fFound), "Error: User not found", nullptr);
-
-    // Get the dataset UUID
-    std::string strDatasetUuid = c_oRequest.GetString("DatasetUuid");
-    // Find the dataset and Verify that the user is the dataset owner
-    Word dwStatus = 404;
-    ::pthread_mutex_lock(&m_sMutex);
-    for (unsigned int unIndex = 0 ; ((dwStatus == 404) && (unIndex < m_stlDatasets.size())); ++unIndex)
+    catch (BaseException oException)
     {
-        if ((strDatasetUuid == m_stlDatasets[unIndex]->GetDatasetUuid()) && (strUserUuid == m_stlDatasets[unIndex]->GetDatasetSubmittedBy()))
-        {
-            m_stlDatasets.erase(m_stlDatasets.begin() + unIndex);
-            dwStatus = 200;
-        }
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
     }
-    ::pthread_mutex_unlock(&m_sMutex);
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
 
     // Send back status of the transaction
-    oResponse.PutWord("Status", dwStatus);
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }

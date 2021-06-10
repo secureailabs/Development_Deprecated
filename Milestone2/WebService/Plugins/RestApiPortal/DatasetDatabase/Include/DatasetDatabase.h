@@ -11,14 +11,13 @@
 #pragma once
 
 #include "DebugLibrary.h"
+#include "EntityTypes.h"
 #include "ExceptionRegister.h"
 #include "Exceptions.h"
 #include "Object.h"
 #include "PluginDictionary.h"
 #include "RestFrameworkSharedFunctions.h"
 #include "StructuredBuffer.h"
-#include "Dataset.h"
-#include "UserAccount.h"
 
 #include <pthread.h>
 #include <string.h>
@@ -48,9 +47,6 @@ class DatasetDatabase : public Object
         // Property setter method
         void __thiscall TerminateSignalEncountered(void);
 
-        // Initialize User Accounts
-        void __thiscall InitializeUserAccounts(void);
-
         // Method used to initializes data members including the plugin's dictionary
         void __thiscall InitializePlugin(void);
 
@@ -72,12 +68,18 @@ class DatasetDatabase : public Object
 
     private:
 
-        // Fetch list of all datasets whose organization is the same as the requesting user's organization
-        std::vector<Byte> __thiscall GetListOfSubmittedDatasets(
+        // Take in a full EOSB and send back a StructuredBuffer containing user metadata
+        std::vector<Byte> __thiscall GetUserInfo(
             _in const StructuredBuffer & c_oRequest
             );
+
         // Fetch list of all available datasets metadata
         std::vector<Byte> __thiscall GetListOfAvailableDatasets(
+            _in const StructuredBuffer & c_oRequest
+            );
+        
+        // Get metadata of the dataset associated with the GUID
+        std::vector<Byte> __thiscall PullDataset(
             _in const StructuredBuffer & c_oRequest
             );
 
@@ -95,8 +97,6 @@ class DatasetDatabase : public Object
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;
         uint64_t m_unNextAvailableIdentifier;
         PluginDictionary m_oDictionary;
-        std::vector<Dataset *> m_stlDatasets;
-        std::vector<UserAccount *> m_stlUserAccounts;
         bool m_fTerminationSignalEncountered;
 };
 

@@ -286,12 +286,44 @@ int main()
                             }
                             case 16:
                             {
+                                bool fSuccess = ::RegisterDataset(strEncodedEosb);
+                                if (true == fSuccess)
+                                {
+                                    ::ShowSuccessMessage("Dataset registered!");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 17:
+                            {
+                                bool fSuccess = ::ListDatasets(strEncodedEosb);
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 18:
+                            {
+                                bool fSuccess = ::PullDataset(strEncodedEosb);
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 19:
+                            {
+                                bool fSuccess = ::DeleteDataset(strEncodedEosb);
+                                if (true == fSuccess)
+                                {
+                                    ::ShowSuccessMessage("Dataset deleted!");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 20:
+                            {
                                 fTerminatedSignalEncountered = true;
                             break;
                             }
                             default:
                             {
-                                ::ShowErrorMessage("Invalid option. Usage: [0-15]");
+                                ::ShowErrorMessage("Invalid option. Usage: [0-20]");
                             break;
                             }
                         }

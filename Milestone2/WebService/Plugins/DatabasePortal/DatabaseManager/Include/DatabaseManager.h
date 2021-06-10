@@ -212,6 +212,26 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Fetch list of all available datasets
+        std::vector<Byte> __thiscall ListDatasets(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch the dataset information
+        std::vector<Byte> __thiscall PullDataset(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Register a dataset
+        std::vector<Byte> __thiscall RegisterDataset(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Delete a dataset 
+        std::vector<Byte> __thiscall DeleteDataset(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Shutdown the server
         std::vector<Byte> __thiscall ShutdownPortal(
             _in const StructuredBuffer & c_oRequest

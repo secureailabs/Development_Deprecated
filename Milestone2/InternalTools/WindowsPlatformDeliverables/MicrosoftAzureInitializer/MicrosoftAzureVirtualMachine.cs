@@ -418,8 +418,15 @@ namespace MicrosoftAzureVirtualMachineInitializer
             }
             // Now we need to initialize the virtual machine
             string datasetBase64Encoded = System.Convert.ToBase64String(m_Dataset);
-            SailWebApiPortalInterop.UploadInitializationParametersToVirtualMachine("Some nice name for the virtual machine", m_VirtualMachineIpAddress, m_VirtualMachineIdentifier, m_ClusterIdentifier, m_DigitalContractIdentifier, m_DatasetIdentifier, m_RootOfTrustDomainIdentifier, m_ComputationalDomainIdentifier, m_DataConnectorDomainIdentifier, m_SailWebApiPortalIpAddress, datasetBase64Encoded);
-            m_VirtualMachineStatus = "Ready...";
+            bool fInitializeStatus = SailWebApiPortalInterop.UploadInitializationParametersToVirtualMachine("Some nice name for the virtual machine", m_VirtualMachineIpAddress, m_VirtualMachineIdentifier, m_ClusterIdentifier, m_DigitalContractIdentifier, m_DatasetIdentifier, m_RootOfTrustDomainIdentifier, m_ComputationalDomainIdentifier, m_DataConnectorDomainIdentifier, m_SailWebApiPortalIpAddress, datasetBase64Encoded);
+            if (true == fInitializeStatus)
+            {
+                m_VirtualMachineStatus = "Ready...";
+            }
+            else
+            {
+                m_VirtualMachineStatus = "Failed...";
+            }
         }
 
         // Private data members

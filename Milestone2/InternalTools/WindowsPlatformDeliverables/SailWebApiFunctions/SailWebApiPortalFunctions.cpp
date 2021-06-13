@@ -686,8 +686,26 @@ extern "C" __declspec(dllexport) bool __cdecl UploadInitializationParametersToVi
         oInitializationParameters.PutString("DataOwnerUserIdentifier", gs_strAuthenticatedUserIdentifier);
         // Now we blast out the transaction
         std::vector<std::string> stlHeaders;
-        std::vector<Byte> stlResponse = ::RestApiCall(c_szIpAddressOfVirtualMachine, 6800, "POST", "/SAIL/InitializationParameters", oInitializationParameters.GetBase64SerializedBuffer(), true, stlHeaders);
-        fSuccess = true;
+        std::vector<Byte> stlResponse;
+
+        unsigned int unLoopCounter = 120;
+        do
+        {
+            stlResponse = ::RestApiCall(c_szIpAddressOfVirtualMachine, 6800, "POST", "/SAIL/InitializationParameters", oInitializationParameters.GetBase64SerializedBuffer(), true, stlHeaders);
+            if (0 == stlResponse.size())
+            {
+                unLoopCounter -= 1;
+                ::Sleep(5000);
+            }
+            else
+            {
+                 // Parse the returning value.
+                 StructuredBuffer oGetDigitalContractsResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
+                 // Did the transaction succeed?
+                 _ThrowBaseExceptionIf(("Success" != oGetDigitalContractsResponse.GetString("Status")), "Initialization has failed. %s", (const char*)stlResponse.data(),nullptr);
+                 fSuccess = true;
+            }
+        } while ((0 <= unLoopCounter) && (false == fSuccess));
     }
 
     catch (BaseException oBaseException)

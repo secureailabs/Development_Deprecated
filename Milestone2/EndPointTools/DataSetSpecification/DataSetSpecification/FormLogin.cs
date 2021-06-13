@@ -27,9 +27,15 @@ namespace DataSetSpecification
         public string m_userName;
         public string m_password;
         public string m_authorizationTokken = "";
+        public string m_strWebPortalUrl = "";
+        public bool m_isDatasetToBeRegistered = false;
+
         public FormLogin()
         {
             InitializeComponent();
+            textBox1.Text = "nadams@mghl.com";
+            textBoxWebPortalUrl.Text = "137.116.90.145";
+            textBox2.Text = "sailpassword";
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -46,7 +52,8 @@ namespace DataSetSpecification
             {
                 try
                 {
-                    var client = new RestClient("https://localhost:6200/SAIL/AuthenticationManager/User/Login?Email=" + textBox1.Text + "&Password=" + textBox2.Text)
+                    m_strWebPortalUrl = textBoxWebPortalUrl.Text;
+                    var client = new RestClient("https://"+ m_strWebPortalUrl + ":6200/SAIL/AuthenticationManager/User/Login?Email=" + textBox1.Text + "&Password=" + textBox2.Text)
                     {
                         // ************* VERY VERY IMPORTANT ********************************************/
                         // TODO: this is temporary to ignore the certificate validation for the rest call 
@@ -60,8 +67,10 @@ namespace DataSetSpecification
                     {
                         loginStatus.Text = "Login Success!!";
                         m_authorizationTokken = responseJsonObject.Eosb;
-                        Thread.Sleep(1000);
+                        m_isDatasetToBeRegistered = checkBoxDatasetRegister.Checked;
+                        Thread.Sleep(500);
                         this.Hide();
+                        client = null;
                         m_container.GetAuth();
                     }
                     else
@@ -69,14 +78,9 @@ namespace DataSetSpecification
                         loginStatus.Text = "Login Fail. Try Again!!";
                     }
                 }
-                catch
+                catch (Exception oException)
                 {
-                    // TODO: don't do this. 
-                    loginStatus.Text = "Login Success!!";
-                    m_authorizationTokken = "aaaaaaaa";
-                    Thread.Sleep(1000);
-                    this.Hide();
-                    m_container.GetAuth();
+                    loginStatus.Text = oException.Message;
                 }
             }
         }

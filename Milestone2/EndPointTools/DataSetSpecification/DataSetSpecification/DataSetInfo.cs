@@ -12,6 +12,8 @@ using System.Threading;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using RestSharp;
+using Newtonsoft.Json;
 
 namespace DataSetSpecification
 {
@@ -178,10 +180,41 @@ namespace DataSetSpecification
 
                     // Close the file
                     outputFile.Close();
+
+                    // If the dataset has to be registered on the portal 
+                    if (true == loginPage.m_isDatasetToBeRegistered)
+                    {
+                        var client = new RestClient("https://" + loginPage.m_strWebPortalUrl + ":6200/SAIL/DatasetManager/RegisterDataset?Eosb=" + authToken)
+                        {
+                            // ************* VERY VERY IMPORTANT ********************************************/
+                            // TODO: this is temporary to ignore the certificate validation for the rest call 
+                            // but should be removed in production.
+                            RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true
+                        };
+                        client.Timeout = -1;
+                        string strContent = "{\n   \"DatasetGuid\": \"" + label5.Text + "\"," +
+                                "\n   \"DatasetData\": {" +
+                                "\n   \"VersionNumber\": \"" + "0.1" + "\"," +
+                                "\n   \"DatasetName\": \"" + textBox2.Text + "\"," +
+                                "\n   \"Description\": \"" + textBox4.Text + "\"," +
+                                "\n   \"Keywords\": \"" + textBox3.Text + "\"," +
+                                "\n   \"PublishDate\": " + DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString() + "," + 
+                                "\n   \"PrivacyLevel\": " + "1" + "," +
+                                "\n   \"JurisdictionalLimitations\": \"" + "US,EU,AUS" + "\"" +
+                                "\n   }" + 
+                                "\n}";
+                        var request = new RestRequest(Method.POST);
+                        request.AddHeader("Content-Type", "application/json");
+                        request.AddParameter("application/json", strContent, ParameterType.RequestBody);
+                        IRestResponse response = client.Execute(request);
+                        dynamic responseJsonObject = JsonConvert.DeserializeObject(response.Content);
+                        Console.WriteLine("Json is "+responseJsonObject);
+                    }
                 }
-                catch (Exception Ex)
+                catch
                 {
-                    Console.WriteLine(Ex.ToString());
+                    //Console.WriteLine("Exception: " + Ex.ToString());
+                    Console.WriteLine("Some Exception: ");
                 }
             }
             else

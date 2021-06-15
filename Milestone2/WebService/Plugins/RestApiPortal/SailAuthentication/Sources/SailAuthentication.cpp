@@ -279,19 +279,19 @@ void __thiscall SailAuthentication::InitializePlugin(void)
     oShutdownPortal.PutStructuredBuffer("Eosb", oEosb);
 
     // Verifies user credentials and starts an authenticated session with SAIL SaaS
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuthenticationManager/User/Login", oLoginParameters);
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuthenticationManager/User/Login", oLoginParameters, 2);
 
     // Take in a full EOSB, call Cryptographic plugin and fetches user guid and organization guid
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AuthenticationManager/GetBasicUserInformation", oGetBasicUserInformationParameters);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AuthenticationManager/GetBasicUserInformation", oGetBasicUserInformationParameters, 1);
 
     // Take in a nonce and send back a certificate and public key
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AuthenticationManager/RemoteAttestationCertificate", oGetRemoteAttestationCertificate);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AuthenticationManager/RemoteAttestationCertificate", oGetRemoteAttestationCertificate, 1);
 
     // Shutdown the portal
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuthenticationManager/ShutdownPortal", oShutdownPortal);
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuthenticationManager/ShutdownPortal", oShutdownPortal, 0);
 
     // Reset the database
-    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AuthenticationManager/Admin/ResetDatabase");
+    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AuthenticationManager/Admin/ResetDatabase", 0);
 }
 
 /********************************************************************************************
@@ -533,8 +533,11 @@ std::vector<Byte> __thiscall SailAuthentication::GetBasicUserInformation(
             StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
             oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
             oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
-            // TODO: get user access rights from the confidential record, for now it can't be decrypted
+            // TODO: get user access rights, Username, Title, and Email from the confidential record, for now it can't be decrypted
             oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
+            oResponse.PutString("Username", oEosb.GetString("Username"));
+            oResponse.PutString("Title", oEosb.GetString("Title"));
+            oResponse.PutString("Email", oEosb.GetString("Email"));
             dwStatus = 200;
         }
     }

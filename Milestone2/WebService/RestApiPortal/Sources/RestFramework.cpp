@@ -195,7 +195,7 @@ void __thiscall RestFramework::RunServer(void)
     __DebugFunction();
 
     RestFrameworkRuntimeData * poRestFrameworkRuntimeData = new RestFrameworkRuntimeData(m_poDictionaryManager);
-    unsigned int unNumberOfResources = std::thread::hardware_concurrency();
+    unsigned int unNumberOfResources = std::thread::hardware_concurrency() * 0.75;
     while (false == poRestFrameworkRuntimeData->IsTerminationSignalEncountered())
     {
         try

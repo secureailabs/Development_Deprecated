@@ -19,6 +19,23 @@
 
 /********************************************************************************************
  *
+ * @brief Global map to associate an http code with a string
+ *
+ ********************************************************************************************/
+
+std::map<Dword, std::string> g_stlHttpCodes = {
+    {eOk, "OK"},
+    {eCreated, "Created"},
+    {eNoContent, "NoContent"},
+    {eBadRequest, "BadRequest"},
+    {eUnauthorized, "Unauthorized"},
+    {eForbidden, "Forbidden"},
+    {eNotFound, "NotFound"},
+    {eInternalError, "InternalServerError"}
+};
+
+/********************************************************************************************
+ *
  * @struct ThreadParameters
  * @brief Struct used to pass in parameters to StartThread()
  *
@@ -79,6 +96,7 @@ RestFrameworkRuntimeData::RestFrameworkRuntimeData(
     m_sMutex = PTHREAD_MUTEX_INITIALIZER;
     m_poDictionaryManager = poDictionaryManager;
     m_fTerminateSignalEncountered = false;
+    m_qwRequiredNumberOfUnixConnections = 0;
 }
 
 /********************************************************************************************
@@ -184,6 +202,8 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
 {
     __DebugFunction();
 
+    Qword qwRequiredNumberOfUnixConnections = 0;
+
     try
     {
         SmartMemoryAllocator oLocalSmartMemoryAllocator;
@@ -257,7 +277,7 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
                 }
                 else
                 {
-                    _ThrowBaseException("Content Type: %s not supported.", strContentType);
+                    _ThrowBaseException("Content-Type not supported.", nullptr);
                 }
             }
         }
@@ -274,6 +294,10 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
         StructuredBuffer oRequestData;
         nMatchingPluginIndex = this->ParseRequestContent(oParser, poRequestParameters, &oRequestData);
         _ThrowBaseExceptionIf((-1 == nMatchingPluginIndex), "Invalid request.", nullptr);
+        // Add required number of unix connections to connections count
+        // This count is used by the RestFramework to determine if a new connection can be accepted as new connection means creating a new thread
+        qwRequiredNumberOfUnixConnections = oRequestData.GetQword("NumberOfUnixConnections");
+        m_qwRequiredNumberOfUnixConnections += qwRequiredNumberOfUnixConnections;
 
         // Get the plugin name associated with the best matching plugin index
         std::string strPluginName(m_poDictionaryManager->GetPluginName(nMatchingPluginIndex));
@@ -311,7 +335,8 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
             // Create a response packet
             JsonValue * poResponseJson = JsonValue::ParseStructuredBufferToJson(oResponseStructuredBuffer);
             std::string strResponseString = poResponseJson->ToString();
-            std::string strResponseHeader = "HTTP/1.1 200 OK \r\nContent-Length: " + std::to_string(strResponseString.size()) + "\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
+            Dword dwStatus = oResponseStructuredBuffer.GetDword("Status");
+            std::string strResponseHeader = "HTTP/1.1 "+ std::to_string(dwStatus) +" "+ g_stlHttpCodes[dwStatus] +" \r\nContent-Length: " + std::to_string(strResponseString.size()) + "\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
             std::string strResponseData(strResponseHeader);
             strResponseData += strResponseString;
             // Send back response data
@@ -341,6 +366,9 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
         // Send back error
         poTlsNode->Write((const Byte *) strErrorMessage.data(), strErrorMessage.size());
     }
+
+    // Decrement the number of required unix connections by the plugin once the transaction is complete
+    m_qwRequiredNumberOfUnixConnections -= qwRequiredNumberOfUnixConnections;
 }
 
 /********************************************************************************************
@@ -356,7 +384,7 @@ unsigned int __thiscall RestFrameworkRuntimeData::GetNumberOfActiveConnections(v
 {
     __DebugFunction();
 
-    return m_stlConnectionThreads.size();
+    return (m_stlConnectionThreads.size() + m_qwRequiredNumberOfUnixConnections);
 }
 
 /********************************************************************************************
@@ -566,6 +594,13 @@ bool __thiscall RestFrameworkRuntimeData::ValidateRequestData(
                 fValid = this->ValidateParameter(c_szParameterName, oSerializedRequest, oPluginParameter, poRequestData);
             }
         }
+    }
+
+    // Add required number of unix connections to connections count
+    // This count is used by the RestFramework to determine if a new connection can be accepted as new connection means creating a new thread
+    if (true == fValid)
+    {
+        poRequestData->PutQword("NumberOfUnixConnections", oPluginParameters.GetQword("NumberOfUnixConnections"));
     }
 
     return fValid;

@@ -10,6 +10,26 @@
 
 #pragma once
 
+#include "CoreTypes.h"
+
+#include <map>
+#include <string>
+
+/********************************************************************************************/
+
+typedef enum http_code
+{
+    eOk = 200,
+    eCreated = 201,
+    eNoContent = 204,
+    eBadRequest = 400,
+    eUnauthorized = 401,
+    eForbidden = 403,
+    eNotFound = 404,
+    eInternalError = 500
+}
+HttpCode;
+
 /********************************************************************************************/
 
 typedef enum account_status

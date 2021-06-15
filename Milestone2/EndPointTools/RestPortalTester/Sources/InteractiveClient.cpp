@@ -204,6 +204,9 @@ std::vector<Byte> GetBasicUserInformation(
         oUserInformation.PutString("OrganizationGuid", oResponse.GetString("OrganizationGuid"));
         oUserInformation.PutString("UserGuid", oResponse.GetString("UserGuid"));
         oUserInformation.PutQword("AccessRights", (Qword) oResponse.GetFloat64("AccessRights"));
+        oUserInformation.PutString("Username", oResponse.GetString("Username"));
+        oUserInformation.PutString("Title", oResponse.GetString("Title"));
+        oUserInformation.PutString("Email", oResponse.GetString("Email"));
     }
     
     catch(BaseException oBaseException)
@@ -1048,18 +1051,21 @@ bool RegisterDigitalContract(
     std::cout << "************************\n Register Digital Contract \n************************\n" << std::endl;
     std::string strTitle = ::GetStringInput("Enter digital contract title: ", 50, false, c_szValidInputCharacters);
     std::string strDooGuid = ::GetStringInput("Enter hyphen and curly braces formatted data owner organization guid: ", 38, false, c_szValidInputCharacters);
+    std::string strDescription = ::GetStringInput("Enter description for the digital contract: ", 200, false, c_szValidInputCharacters);
     std::string strVersionNumber = "0x0000000100000001";
     uint64_t unSubscriptionDays = std::stoull(::GetStringInput("Enter your requested subscription period (in days): ", 50, false, c_szValidInputCharacters));
     std::string strDatasetGuid = Guid(eDataset).ToString(eHyphensAndCurlyBraces);
     std::string strLegalAgreement = ::GetStringInput("Enter the legal agreement: ", 200, false, c_szValidInputCharacters);
 
     __DebugAssert(38 == strDooGuid.size());
+    __DebugAssert(0 < strDescription.size());
     __DebugAssert(0 < unSubscriptionDays);
     __DebugAssert(0 < strLegalAgreement.size());
 
     StructuredBuffer oDcInformation;
     oDcInformation.PutString("Title", strTitle);
     oDcInformation.PutString("DOOGuid", strDooGuid);
+    oDcInformation.PutString("Description", strDescription);
     oDcInformation.PutUnsignedInt64("SubscriptionDays", unSubscriptionDays);
     oDcInformation.PutString("LegalAgreement", strLegalAgreement);
 
@@ -1090,6 +1096,7 @@ bool RegisterDigitalContract(
         std::string strApiUrl = "/SAIL/DigitalContractManager/Applications?Eosb="+ c_strEncodedEosb;
         std::string strContent = "{\n   \"DataOwnerOrganization\": \""+ c_oDcInformation.GetString("DOOGuid") +"\","
                                 "\n    \"Title\": \""+ c_oDcInformation.GetString("Title") +"\","
+                                "\n    \"Description\": \""+ c_oDcInformation.GetString("Description") +"\","
                                 "\n    \"VersionNumber\": \""+ strVersionNumber +"\","
                                 "\n    \"SubscriptionDays\": "+ std::to_string(c_oDcInformation.GetUnsignedInt64("SubscriptionDays")) +","
                                 "\n    \"DatasetGuid\": \""+ strDatasetGuid +"\","
@@ -1134,19 +1141,18 @@ bool AcceptDigitalContract(
     // Get digital contract information
     std::cout << "************************\n Approve Digital Contract \n************************\n" << std::endl;
     std::string strDcGuid = ::GetStringInput("Enter hyphen and curly braces formatted digital contract guid: ", 38, true, c_szValidInputCharacters);
+    std::string strDescription = ::GetStringInput("Add your comment on the digital contract (if any): ", 200, false, c_szValidInputCharacters);
     uint64_t unRetentionTime = std::stoull(::GetStringInput("Enter the retention time: ", 50, false, c_szValidInputCharacters));
-    std::string strEula = ::GetStringInput("Enter the accepted EULA: ", 200, false, c_szValidInputCharacters);
     std::string strLegalAgreement = ::GetStringInput("Enter the legal agreement: ", 200, false, c_szValidInputCharacters);
 
     __DebugAssert(0 < strDcGuid.size());
     __DebugAssert(0 < unRetentionTime);
-    __DebugAssert(0 < strEula.size());
     __DebugAssert(0 < strLegalAgreement.size());
 
     StructuredBuffer oDcInformation;
     oDcInformation.PutString("DigitalContractGuid", strDcGuid);
+    oDcInformation.PutString("Description", strDescription);
     oDcInformation.PutUnsignedInt64("RetentionTime", unRetentionTime);
-    oDcInformation.PutString("EULA", strEula);
     oDcInformation.PutString("LegalAgreement", strLegalAgreement);
 
     fSuccess = ::AcceptDigitalContract(c_strEncodedEosb, oDcInformation);
@@ -1171,11 +1177,13 @@ bool AcceptDigitalContract(
         // Create rest request
         std::string strVerb = "PATCH";
         std::string strApiUrl = "/SAIL/DigitalContractManager/DataOwner/Accept?Eosb="+ c_strEncodedEosb;
-        std::string strContent = "{\n    \"DigitalContractGuid\": \""+ c_oDcInformation.GetString("DigitalContractGuid") +"\","
-                                "\n    \"RetentionTime\": "+ std::to_string(c_oDcInformation.GetUnsignedInt64("RetentionTime")) +","
-                                "\n    \"EULA\": \""+ c_oDcInformation.GetString("EULA") +"\","
-                                "\n    \"LegalAgreement\": \""+ c_oDcInformation.GetString("LegalAgreement") +"\""
-                                "\n}";
+        std::string strContent = "{\n    \"DigitalContractGuid\": \""+ c_oDcInformation.GetString("DigitalContractGuid") +"\",";
+        if (true == c_oDcInformation.IsElementPresent("Description", ANSI_CHARACTER_STRING_VALUE_TYPE)) {
+            strContent += "\n    \"Description\": \""+ c_oDcInformation.GetString("Description") +"\",";
+        }
+        strContent +=   "\n    \"RetentionTime\": "+ std::to_string(c_oDcInformation.GetUnsignedInt64("RetentionTime")) +","
+                        "\n    \"LegalAgreement\": \""+ c_oDcInformation.GetString("LegalAgreement") +"\""
+                        "\n}";
         // Make the API call and get REST response
         std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
         std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
@@ -1214,17 +1222,13 @@ bool ActivateDigitalContract(
     // Get digital contract information
     std::cout << "************************\n Activate Digital Contract \n************************\n" << std::endl;
     std::string strDcGuid = ::GetStringInput("Enter hyphen and curly braces formatted digital contract guid: ", 38, true, c_szValidInputCharacters);
-    std::string strEula = ::GetStringInput("Enter the accepted EULA: ", 200, false, c_szValidInputCharacters);
-    std::string strLegalAgreement = ::GetStringInput("Enter the legal agreement: ", 200, false, c_szValidInputCharacters);
+    std::string strDescription = ::GetStringInput("Add your comment on the digital contract (if any): ", 200, false, c_szValidInputCharacters);
 
     __DebugAssert(0 < strDcGuid.size());
-    __DebugAssert(0 < strEula.size());
-    __DebugAssert(0 < strLegalAgreement.size());
 
     StructuredBuffer oDcInformation;
     oDcInformation.PutString("DigitalContractGuid", strDcGuid);
-    oDcInformation.PutString("EULA", strEula);
-    oDcInformation.PutString("LegalAgreement", strLegalAgreement);
+    oDcInformation.PutString("Description", strDescription);
 
     fSuccess = ::ActivateDigitalContract(c_strEncodedEosb, oDcInformation);
 
@@ -1248,10 +1252,17 @@ bool ActivateDigitalContract(
         // Create rest request
         std::string strVerb = "PATCH";
         std::string strApiUrl = "/SAIL/DigitalContractManager/Researcher/Activate?Eosb="+ c_strEncodedEosb;
-        std::string strContent = "{\n    \"DigitalContractGuid\": \""+ c_oDcInformation.GetString("DigitalContractGuid") +"\","
-                                "\n    \"EULA\": \""+ c_oDcInformation.GetString("EULA") +"\","
-                                "\n    \"LegalAgreement\": \""+ c_oDcInformation.GetString("LegalAgreement") +"\""
-                                "\n}";
+        std::string strContent = "";
+        if (true == c_oDcInformation.IsElementPresent("Description", ANSI_CHARACTER_STRING_VALUE_TYPE)) {
+            strContent = "{\n    \"DigitalContractGuid\": \""+ c_oDcInformation.GetString("DigitalContractGuid") +"\","
+                        "\n    \"Description\": \""+ c_oDcInformation.GetString("Description") +"\""
+                        "\n}";
+        }
+        else 
+        {
+            strContent = "{\n    \"DigitalContractGuid\": \""+ c_oDcInformation.GetString("DigitalContractGuid") +"\""
+                        "\n}";
+        }
         // Make the API call and get REST response
         std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
         std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
@@ -1326,14 +1337,14 @@ void PrintDigitalContracts(
         StructuredBuffer oElement(c_oDigitalContracts.GetStructuredBuffer(strElement.c_str()));
         std::cout << "Digital contract guid: " << strElement << std::endl;
         std::cout << "Title: " << oElement.GetString("Title") << std::endl;
+        std::cout << "Description: " << oElement.GetString("Description") << std::endl;
         std::cout << "Version number: " << oElement.GetString("VersionNumber") << std::endl;
         std::cout << "Contract stage: " << (Dword) oElement.GetFloat64("ContractStage") << std::endl;
         std::cout << "Subscription days: " << (uint64_t) oElement.GetFloat64("SubscriptionDays") << std::endl;
         std::cout << "Dataset guid: " << oElement.GetString("DatasetGuid") << std::endl;
         std::cout << "Activation date: " << oElement.GetFloat64("ActivationTime") << std::endl;
         std::cout << "Expiration date: " << oElement.GetFloat64("ExpirationTime") << std::endl;
-        std::cout << "Eula accepted by data owner organization: " << oElement.GetString("EulaAcceptedByDOOAuthorizedUser") << std::endl;
-        std::cout << "Eula accepted by researcher organization: " << oElement.GetString("EulaAcceptedByROAuthorizedUser") << std::endl;
+        std::cout << "Eula: " << oElement.GetString("Eula") << std::endl;
         std::cout << "Legal agreement: " << oElement.GetString("LegalAgreement") << std::endl;
         std::cout << "------------------------------------------------------" << std::endl;
     }
@@ -1384,6 +1395,7 @@ std::vector<Byte> PullDigitalContract(
         StructuredBuffer oDigitalContract(oResponse.GetStructuredBuffer("DigitalContract"));
         std::cout << "Digital contract guid: " << oDigitalContract.GetString("DigitalContractGuid") << std::endl;
         std::cout << "Title: " << oDigitalContract.GetString("Title") << std::endl;
+        std::cout << "Description: " << oDigitalContract.GetString("Description") << std::endl;
         std::cout << "Version number: " << oDigitalContract.GetString("VersionNumber") << std::endl;
         std::cout << "Contract stage: " << (Dword) oDigitalContract.GetFloat64("ContractStage") << std::endl;
         std::cout << "Subscription days: " << (uint64_t) oDigitalContract.GetFloat64("SubscriptionDays") << std::endl;

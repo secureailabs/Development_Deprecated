@@ -37,12 +37,14 @@ class PluginDictionary : public Object
         // Methods to add a dictionary entry
         void __thiscall AddDictionaryEntry(
             _in const char * c_szVerb,
-            _in const char * c_szResource
+            _in const char * c_szResource,
+            _in Qword qwRequiredUnixConnections
             );
         void __thiscall AddDictionaryEntry(
             _in const char * c_szVerb,
             _in const char * c_szResource,
-            _in const StructuredBuffer & oParameters
+            _in const StructuredBuffer & oParameters,
+            _in Qword qwRequiredUnixConnections
             );
 
         // Methods to access plugin's dictionary

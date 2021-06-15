@@ -28,6 +28,7 @@ void TestRegisterDigitalContract(
     oDcInformation.PutUnsignedInt64("SubscriptionDays", 3);
     oDcInformation.PutString("LegalAgreement", "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties.");
     oDcInformation.PutString("DOOGuid", c_strDooGuid);
+    oDcInformation.PutString("Description", "Creating digital contract for testing.");
 
     fSuccess = ::RegisterDigitalContract(c_strEncodedEosb, oDcInformation);
 
@@ -64,9 +65,9 @@ std::string TestAcceptDigitalContract(void)
 
     StructuredBuffer oDcInformation;
     oDcInformation.PutUnsignedInt64("RetentionTime", 16186603);
-    oDcInformation.PutString("EULA", "Company grants You a revocable, non-exclusive, non-transferable, limited right to use the dataset on a single machine.");
     oDcInformation.PutString("LegalAgreement", "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties.");
     oDcInformation.PutString("DigitalContractGuid", strDcGuid);
+    oDcInformation.PutString("Description", "Modified description");
 
     bool fSuccess = ::AcceptDigitalContract(strEosb, oDcInformation);
 
@@ -92,8 +93,6 @@ void TestActivateDigitalContract(
     std::string strEosb = ::Login("user4@test.com", "sailpassword");
 
     StructuredBuffer oDcInformation;
-    oDcInformation.PutString("EULA", "Company grants You a revocable, non-exclusive, non-transferable, limited right to use the dataset on a single machine.");
-    oDcInformation.PutString("LegalAgreement", "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties.");
     oDcInformation.PutString("DigitalContractGuid", c_strDcGuid);
 
     fSuccess = ::ActivateDigitalContract(strEosb, oDcInformation);

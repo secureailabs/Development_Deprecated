@@ -387,6 +387,10 @@ void __thiscall DigitalContractDatabase::InitializePlugin(void)
     oTitle.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oTitle.PutBoolean("IsRequired", true);
     oRegisterDc.PutStructuredBuffer("Title", oTitle);
+    StructuredBuffer oDescription;
+    oDescription.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oDescription.PutBoolean("IsRequired", true);
+    oRegisterDc.PutStructuredBuffer("Description", oDescription);
     StructuredBuffer oVersionNumber;
     oVersionNumber.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oVersionNumber.PutBoolean("IsRequired", true);
@@ -416,10 +420,8 @@ void __thiscall DigitalContractDatabase::InitializePlugin(void)
     oDcGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oDcGuid.PutBoolean("IsRequired", true);
     oDcAcceptance.PutStructuredBuffer("DigitalContractGuid", oDcGuid);
-    StructuredBuffer oEula;
-    oEula.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
-    oEula.PutBoolean("IsRequired", true);
-    oDcAcceptance.PutStructuredBuffer("EULA", oEula);
+    oDescription.PutBoolean("IsRequired", false);
+    oDcAcceptance.PutStructuredBuffer("Description", oDescription);
     StructuredBuffer oRetentionTime;
     oRetentionTime.PutByte("ElementType", UINT64_VALUE_TYPE);
     oRetentionTime.PutBoolean("IsRequired", true);
@@ -430,7 +432,7 @@ void __thiscall DigitalContractDatabase::InitializePlugin(void)
     StructuredBuffer oDcActivation;
     oDcActivation.PutStructuredBuffer("Eosb", oEosb);
     oDcActivation.PutStructuredBuffer("DigitalContractGuid", oDcGuid);
-    oDcActivation.PutStructuredBuffer("EULA", oEula);
+    oDcAcceptance.PutStructuredBuffer("Description", oDescription);
 
     // Add parameters for getting list of digital contracts
     StructuredBuffer oListDc;
@@ -442,15 +444,15 @@ void __thiscall DigitalContractDatabase::InitializePlugin(void)
     oPullDc.PutStructuredBuffer("DigitalContractGuid", oDcGuid);
 
     // Takes in an EOSB and create a digital contract for a chosen dataset
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DigitalContractManager/Applications", oRegisterDc);
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DigitalContractManager/Applications", oRegisterDc, 4);
     // Update the digital contract when a data owner accepts the digital contract
-    m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DigitalContractManager/DataOwner/Accept", oDcAcceptance);
+    m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DigitalContractManager/DataOwner/Accept", oDcAcceptance, 6);
     // Update the digital contract when a researcher accepts the DC terms from the Data owner organization
-    m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DigitalContractManager/Researcher/Activate", oDcActivation);
+    m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DigitalContractManager/Researcher/Activate", oDcActivation, 6);
     // Get a list of digital contracts associated with a researcher or a data owner
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DigitalContractManager/DigitalContracts", oListDc);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DigitalContractManager/DigitalContracts", oListDc, 1);
     // Get a digital contract's information
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DigitalContractManager/PullDigitalContract", oPullDc);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DigitalContractManager/PullDigitalContract", oPullDc, 1);
 
     // Start the Ipc server
     // Start listening for Ipc connections
@@ -1170,12 +1172,13 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
             // Create Ssb containing Dc information
             StructuredBuffer oSsb;
             oSsb.PutString("Title", c_oRequest.GetString("Title"));
+            oSsb.PutString("Description", c_oRequest.GetString("Description"));
             oSsb.PutString("VersionNumber", c_oRequest.GetString("VersionNumber"));
             oSsb.PutString("DigitalContractGuid", strDcGuid);
             oSsb.PutDword("ContractStage", eApplication);
             oSsb.PutUnsignedInt64("SubscriptionDays", c_oRequest.GetUnsignedInt64("SubscriptionDays"));
             oSsb.PutString("DatasetGuid", c_oRequest.GetString("DatasetGuid"));
-            oSsb.PutString("ROAuthorizedUser", oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces));
+            oSsb.PutString("Eula", SAIL_EULA);
             oSsb.PutString("LegalAgreement", c_oRequest.GetString("LegalAgreement"));
             oSsb.PutUnsignedInt32("DatasetDRMMetadataSize", c_oRequest.GetUnsignedInt32("DatasetDRMMetadataSize"));
             oSsb.PutStructuredBuffer("DatasetDRMMetadata", c_oRequest.GetStructuredBuffer("DatasetDRMMetadata"));
@@ -1243,7 +1246,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
  * @class DigitalContractDatabase
  * @function AcceptDigitalContract
  * @brief Update the digital contract when a data owner accepts the digital contract
- * @param[in] c_oRequest contains user Eosb, EULA accepted by the data owner, retention time, and legal agreement
+ * @param[in] c_oRequest contains user Eosb, retention time, and legal agreement
  * @throw BaseException Error StructuredBuffer element not found
  * @returns status of the transaction and instructions of what happens next
  *
@@ -1282,9 +1285,13 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AcceptDigitalContract(
                         if (eApplication == oSsb.GetDword("ContractStage"))
                         {
                             oSsb.PutDword("ContractStage", eApproval);
+                            // Update the description of the digital contract if the data owner edited the description
+                            if (true == c_oRequest.IsElementPresent("Description", ANSI_CHARACTER_STRING_VALUE_TYPE))
+                            {
+                                oSsb.PutString("Description", c_oRequest.GetString("Description"));
+                            }
                             oSsb.PutUnsignedInt64("RetentionTime", c_oRequest.GetUnsignedInt64("RetentionTime"));
-                            oSsb.PutString("DOOAuthorizedUser", oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces));
-                            oSsb.PutString("EulaAcceptedByDOOAuthorizedUser", c_oRequest.GetString("EULA"));
+                            oSsb.PutString("EulaAcceptedByDOOAuthorizedUser", SAIL_EULA);
                             oSsb.PutString("LegalAgreement", c_oRequest.GetString("LegalAgreement"));
                             // Serialize the update digital contract blob
                             std::vector<Byte> stlUpdatedSsb;
@@ -1367,7 +1374,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AcceptDigitalContract(
  * @class DigitalContractDatabase
  * @function ActivateDigitalContract
  * @brief Update the digital contract when a researcher accepts the DC terms from the Data owner organization
- * @param[in] c_oRequest contains user Eosb, EULA accepted by the data owner
+ * @param[in] c_oRequest contains user Eosb, comments made by the researcher organization
  * @throw BaseException Error StructuredBuffer element not found
  * @returns status of the transaction and instructions of what happens next
  *
@@ -1412,8 +1419,12 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ActivateDigitalContract(
                             uint64_t unExpirationTime = unActivationTime + (unSubscriptionDays * 24 * 60 * 60);
                             oSsb.PutUnsignedInt64("ExpirationTime", unExpirationTime);
                             oSsb.PutDword("ContractStage", eActive);
-                            oSsb.PutString("ROAuthorizedUser", oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces));
-                            oSsb.PutString("EulaAcceptedByROAuthorizedUser", c_oRequest.GetString("EULA"));
+                            oSsb.PutString("EulaAcceptedByROAuthorizedUser", SAIL_EULA);
+                            // Update the description of the digital contract if the researcher edited the description
+                            if (true == c_oRequest.IsElementPresent("Description", ANSI_CHARACTER_STRING_VALUE_TYPE))
+                            {
+                                oSsb.PutString("Description", c_oRequest.GetString("Description"));
+                            }
                             // Serialize the update digital contract blob
                             std::vector<Byte> stlUpdatedSsb;
                             this->SerializeDigitalContract(oSsb, stlUpdatedSsb);

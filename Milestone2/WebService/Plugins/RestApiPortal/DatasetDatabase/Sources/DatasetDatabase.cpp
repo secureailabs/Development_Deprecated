@@ -299,16 +299,16 @@ void __thiscall DatasetDatabase::InitializePlugin(void)
     oDeleteDataset.PutStructuredBuffer("DatasetGuid", oDatasetGuid);
 
     // Stores dataset metadata in the database
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatasetManager/RegisterDataset", oRegisterDataset);
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatasetManager/RegisterDataset", oRegisterDataset, 1);
 
     // Sends back list of all available datasets
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatasetManager/ListDatasets", oListDatasets);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatasetManager/ListDatasets", oListDatasets, 0);
 
     // Send back metadata of the dataset associated with the requested DatasetGuid
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatasetManager/PullDataset", oPullDataset);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatasetManager/PullDataset", oPullDataset, 0);
 
     // Deletes a dataset record from the database
-    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatasetManager/DeleteDataset", oDeleteDataset);
+    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatasetManager/DeleteDataset", oDeleteDataset, 1);
 }
 
 /********************************************************************************************

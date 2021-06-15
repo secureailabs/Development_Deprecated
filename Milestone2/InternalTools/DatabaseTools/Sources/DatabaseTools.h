@@ -118,24 +118,21 @@ typedef struct DigitalContractInformation
     uint64_t m_unSubscriptionDays;
     std::string m_strLegalAgreement;
     uint64_t m_unRetentionTime;
-    std::string m_strEulaSignedByDoo;
-    std::string m_strEulaSignedByRo;
+    std::string m_strDescription;
 
     DigitalContractInformation(
         _in std::string strTitle,
         _in uint64_t unSubscriptionDays, 
         _in const std::string & c_strLegalAgreement,
         _in uint64_t unRetentionTime,
-        _in const std::string & c_strEulaSignedByDoo,
-        _in const std::string & c_strEulaSignedByRo
+        _in std::string strDescription
         )
     {
         m_strTitle = strTitle;
         m_unSubscriptionDays = unSubscriptionDays;
         m_strLegalAgreement = c_strLegalAgreement;
         m_unRetentionTime = unRetentionTime;
-        m_strEulaSignedByDoo = c_strEulaSignedByDoo;
-        m_strEulaSignedByRo = c_strEulaSignedByRo;
+        m_strDescription = strDescription;
     }
 } 
 DigitalContractInformation;

@@ -427,10 +427,10 @@ void __thiscall AuditLogManager::InitializePlugin(void)
     oGetListOfEvents.PutStructuredBuffer("Filters", oFilters);
 
     // Takes in a EOSB and registers leaf events
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuditLogManager/LeafEvents", oRegisterLeafEvents);
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuditLogManager/LeafEvents", oRegisterLeafEvents, 1);
 
     // Takes in an EOSB and lists events
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AuditLogManager/GetListOfEvents", oGetListOfEvents);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AuditLogManager/GetListOfEvents", oGetListOfEvents, 0);
 
     // Start the Ipc server
     // Start listening for Ipc connections

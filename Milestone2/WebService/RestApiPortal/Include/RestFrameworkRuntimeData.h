@@ -11,6 +11,7 @@
 #pragma once
 
 #include "CoreTypes.h"
+#include "EntityTypes.h"
 #include "Exceptions.h"
 #include "PluginDictionaryManager.h"
 #include "RestFramework.h"
@@ -101,5 +102,6 @@ class RestFrameworkRuntimeData : public Object
         mutable pthread_mutex_t m_sMutex;
         PluginDictionaryManager * m_poDictionaryManager;
         std::set<pthread_t> m_stlConnectionThreads;
+        Qword m_qwRequiredNumberOfUnixConnections;
         bool m_fTerminateSignalEncountered;
 };

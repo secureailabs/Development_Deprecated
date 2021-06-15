@@ -70,13 +70,15 @@ PluginDictionary::~PluginDictionary(void) throw()
 
 void __thiscall PluginDictionary::AddDictionaryEntry(
     _in const char * c_szVerb,
-    _in const char * c_szResource
+    _in const char * c_szResource,
+    _in Qword qwRequiredUnixConnections
     )
 {
     __DebugFunction();
 
     StructuredBuffer oDictionaryEntry;
     oDictionaryEntry.PutString("Verb", c_szVerb);
+    oDictionaryEntry.PutQword("NumberOfUnixConnections", qwRequiredUnixConnections);
 
     m_poDictionaryStructuredBuffer->PutStructuredBuffer(c_szResource, oDictionaryEntry);
 }
@@ -96,13 +98,15 @@ void __thiscall PluginDictionary::AddDictionaryEntry(
 void __thiscall PluginDictionary::AddDictionaryEntry(
     _in const char * c_szVerb,
     _in const char * c_szResource,
-    _in const StructuredBuffer & oParameters
+    _in const StructuredBuffer & oParameters,
+    _in Qword qwRequiredUnixConnections
     )
 {
     __DebugFunction();
 
     StructuredBuffer oDictionaryEntry;
     oDictionaryEntry.PutString("Verb", c_szVerb);
+    oDictionaryEntry.PutQword("NumberOfUnixConnections", qwRequiredUnixConnections);
     oDictionaryEntry.PutStructuredBuffer("Parameters", oParameters);
 
     m_poDictionaryStructuredBuffer->PutStructuredBuffer(c_szResource, oDictionaryEntry);

@@ -97,14 +97,13 @@ void __thiscall DatabaseTools::InitializeMembers(void)
     m_unNumberOfOtherUsers = 5;
     // Add digital contracts information
     std::string strLegalAgreement = "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties. "
-    "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";
-    std::string strEulaSignedByDoo = "Company grants You a revocable, non-exclusive, non-transferable, limited right to use the dataset on a single machine.";
-    std::string strEulaSignedByRo = "Company grants You a revocable, non-exclusive, non-transferable, limited right to use the dataset on a single machine.";
-    m_stlDigitalContracts.push_back(DigitalContractInformation{"Kidney Cancer Research Consortium", 10, strLegalAgreement, 16186603, strEulaSignedByDoo, strEulaSignedByRo});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{"Diabetes Re-admission Model Phase 1", 28, strLegalAgreement, 24117352, strEulaSignedByDoo, strEulaSignedByRo});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{"Churn Prediction Project", 35, strLegalAgreement, 60768913, strEulaSignedByDoo, strEulaSignedByRo});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{"Harvest Model", 90, strLegalAgreement, 8090084, strEulaSignedByDoo, strEulaSignedByRo});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{"Obesity Model", 120, strLegalAgreement, 18605667, strEulaSignedByDoo, strEulaSignedByRo});
+    "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";  
+    std::string strDescription = "The dataset will be used to train models for academic research purposes.";  
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Kidney Cancer Research Consortium", 10, strLegalAgreement, 16186603, strDescription});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Diabetes Re-admission Model Phase 1", 28, strLegalAgreement, 24117352, strDescription});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Churn Prediction Project", 35, strLegalAgreement, 60768913, strDescription});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Harvest Model", 90, strLegalAgreement, 8090084, strDescription});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Obesity Model", 120, strLegalAgreement, 18605667, strDescription});
 }
 
 /********************************************************************************************/
@@ -199,6 +198,7 @@ void __thiscall DatabaseTools::AddDigitalContracts(void)
         oDcInformation.PutString("Title", m_stlDigitalContracts.at(unIndex).m_strTitle);
         oDcInformation.PutUnsignedInt64("SubscriptionDays", m_stlDigitalContracts.at(unIndex).m_unSubscriptionDays);
         oDcInformation.PutString("LegalAgreement", m_stlDigitalContracts.at(unIndex).m_strLegalAgreement);
+        oDcInformation.PutString("Description", m_stlDigitalContracts.at(unIndex).m_strDescription);
         // Register digital contract
         ::RegisterDigitalContract(strEncodedEosb, oDcInformation);
     }
@@ -227,7 +227,6 @@ void __thiscall DatabaseTools::AcceptDigitalContracts(void)
     {
         StructuredBuffer oDcInformation;
         oDcInformation.PutUnsignedInt64("RetentionTime", m_stlDigitalContracts.at(unIndex).m_unRetentionTime);
-        oDcInformation.PutString("EULA", m_stlDigitalContracts.at(unIndex).m_strEulaSignedByDoo);
         oDcInformation.PutString("LegalAgreement", m_stlDigitalContracts.at(unIndex).m_strLegalAgreement);
         oDcInformation.PutString("DigitalContractGuid", m_stlDigitalContractGuids.at(unIndex));
         // Accept digital contract
@@ -253,8 +252,6 @@ void __thiscall DatabaseTools::ActivateDigitalContracts(void)
     for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
     {
         StructuredBuffer oDcInformation;
-        oDcInformation.PutString("EULA", m_stlDigitalContracts.at(unIndex).m_strEulaSignedByRo);
-        oDcInformation.PutString("LegalAgreement", m_stlDigitalContracts.at(unIndex).m_strLegalAgreement);
         oDcInformation.PutString("DigitalContractGuid", m_stlDigitalContractGuids.at(unIndex));
         // Activate digital contract
         ::ActivateDigitalContract(strEncodedEosb, oDcInformation);

@@ -277,19 +277,19 @@ void __thiscall VirtualMachineManager::InitializePlugin(void)
     oRegisterEvent.PutStructuredBuffer("VirtualMachineGuid", oVmGuid);
 
     // Takes in an EOSB and sends back list of all running VMs information associated with the smart contract
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/GetRunningVMs");
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/GetRunningVMs", 0);
 
     // Sends back report of VM's status
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/GetVMHeartBeat");
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/GetVMHeartBeat", 0);
 
     // Register a Virtual Machine
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/RegisterVM", oRegisterVmParameters);
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/RegisterVM", oRegisterVmParameters, 2);
 
     // Register a Virtual Machine event for DOO 
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/DataOwner/RegisterVM", oRegisterEvent);
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/DataOwner/RegisterVM", oRegisterEvent, 4);
 
     // Register a Virtual Machine event for RO 
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/Researcher/RegisterVM", oRegisterEvent);
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/Researcher/RegisterVM", oRegisterEvent, 4);
 
 }
 

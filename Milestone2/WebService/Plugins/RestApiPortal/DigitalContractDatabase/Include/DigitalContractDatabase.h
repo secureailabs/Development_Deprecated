@@ -29,6 +29,8 @@
 #include <map>
 #include <vector>
 
+#define SAIL_EULA "Company grants You a revocable, non-exclusive, non-transferable, limited right to use the dataset on a single machine."
+
 /********************************************************************************************/
 
 class DigitalContractDatabase : public Object

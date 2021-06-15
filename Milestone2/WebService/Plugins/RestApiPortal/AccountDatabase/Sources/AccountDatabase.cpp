@@ -524,27 +524,27 @@ void __thiscall AccountDatabase::InitializePlugin(void)
     oDeleteOrganization.PutStructuredBuffer("IsHardDelete", oIsHardDelete);
 
     // Takes in an EOSB and returns a list of all organization
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Organizations", oListOrganizations);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Organizations", oListOrganizations, 1);
     // Takes in an EOSB and returns a list of all users
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Users", oListUsers);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Users", oListUsers, 1);
     // Takes in an EOSB and returns a list of users associated with specified organization guid
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Organization/Users", oListOrganizationUsers);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Organization/Users", oListOrganizationUsers, 1);
     // TODO: take in Sail Eosb
     // Takes in user information and registers a user
     // Register the organziation first and register the user as a super admin afterwards
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AccountManager/RegisterUser", oRegisterOrganizationAndUser);
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AccountManager/RegisterUser", oRegisterOrganizationAndUser, 1);
     // Accessed by an admin user to register a new user
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AccountManager/Admin/RegisterUser", oRegisterUser);
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AccountManager/Admin/RegisterUser", oRegisterUser, 1);
     // Updates user's access rights
-    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/AccountManager/Update/AccessRight", oUpdateAccessRight);
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/AccountManager/Update/AccessRight", oUpdateAccessRight, 1);
     // Updates organization information
-    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/AccountManager/Update/Organization", oUpdateOrganization);
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/AccountManager/Update/Organization", oUpdateOrganization, 1);
     // Updates user information, excluding access rights
-    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/AccountManager/Update/User", oUpdateUser);
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/AccountManager/Update/User", oUpdateUser, 1);
     // Delete a user from the database
-    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AccountManager/Remove/User", oDeleteUser);
+    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AccountManager/Remove/User", oDeleteUser, 1);
     // Delete an organization from the database
-    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AccountManager/Remove/Organization", oDeleteOrganization);
+    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AccountManager/Remove/Organization", oDeleteOrganization, 1);
 
     // Start the Ipc server
     // Start listening for Ipc connections

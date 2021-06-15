@@ -388,7 +388,7 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     oEosb.PutBoolean("IsRequired", true);
     oRefreshEosb.PutStructuredBuffer("Eosb", oEosb);
     // Re-encrypts the old Eosb with the latest key and returns the fresh Eosb
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/RefreshEosb", oRefreshEosb);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/RefreshEosb", oRefreshEosb, 0);
 
     StructuredBuffer oSignMessageDigest;
     oSignMessageDigest.PutStructuredBuffer("Eosb", oEosb);
@@ -397,7 +397,7 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     oMessageDigest.PutBoolean("IsRequired", true);
     oSignMessageDigest.PutStructuredBuffer("MessageDigest", oMessageDigest);
     // Sign the message digest with the specified key or the user key
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/SignMessageDigest", oSignMessageDigest);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/SignMessageDigest", oSignMessageDigest, 0);
 
     StructuredBuffer oVerifySignature;
     oVerifySignature.PutStructuredBuffer("Eosb", oEosb);
@@ -407,14 +407,14 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     oSignature.PutBoolean("IsRequired", true);
     oVerifySignature.PutStructuredBuffer("Signature", oSignature);
     // Verify the signature with the userkey and message digest
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/VerifySignature", oVerifySignature);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/VerifySignature", oVerifySignature, 0);
 
     // TODO: Remove this resource in the future or figure out how the Initializer is going to get the IEosb
     StructuredBuffer oGetIEosb;
     oGetIEosb.PutStructuredBuffer("Eosb", oEosb);
     // Takes in an EOSB and sends back an imposter EOSB (IEOSB)
     // IEOSB has restricted rights and thus minimizes security risks when initializing and logging onto VM's
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/GetIEosb", oGetIEosb);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/GetIEosb", oGetIEosb, 0);
 
     // Generate the ephemeral Keys and keep rotating them every 20 minutes and at a time keep only the
     // latest key active and it's predecessor for the grace period.
@@ -753,9 +753,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
         oStructuredBufferEosb.PutGuid("OrganizationGuid", oStructuredBufferBasicUserRecord.GetGuid("OrganizationGuid"));
         oStructuredBufferEosb.PutGuid("SessionId", Guid());
         oStructuredBufferEosb.PutBuffer("AccountKey", stlAccountKey);
-        // TODO: Do not add user access rights in the Eosb
-        // It is added in the Eosb for now because there is no way decrypting the confidential record anywhere else
         oStructuredBufferEosb.PutQword("AccessRights", 1);  // 1 is for eEosb access right
+        // TODO: Do not add user access rights, user name, title and email in the Eosb
+        // It is added in the Eosb for now because there is no way decrypting the confidential record anywhere else
+        oStructuredBufferEosb.PutString("Username", oPlainTextConfidentialUserRecord.GetString("Username"));
+        oStructuredBufferEosb.PutString("Title", oPlainTextConfidentialUserRecord.GetString("Title"));
+        oStructuredBufferEosb.PutString("Email", oPlainTextConfidentialUserRecord.GetString("Email"));
         oStructuredBufferEosb.PutQword("UserAccessRights", oPlainTextConfidentialUserRecord.GetQword("AccessRights"));
         oStructuredBufferEosb.PutUnsignedInt64("Timestamp", oPlainTextConfidentialUserRecord.GetUnsignedInt64("TimeOfAccountCreation"));
         oStructuredBufferEosb.PutGuid("UserRootKeyId", oPlainTextConfidentialUserRecord.GetGuid("UserRootKeyGuid"));

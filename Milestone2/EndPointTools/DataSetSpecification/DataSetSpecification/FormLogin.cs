@@ -35,7 +35,7 @@ namespace DataSetSpecification
             InitializeComponent();
             textBox1.Text = "nadams@mghl.com";
             textBoxWebPortalUrl.Text = "137.116.90.145";
-            textBox2.Text = "sailpassword";
+            textBox2.Text = "";
         }
 
         private void button1_Click(object sender, EventArgs e)

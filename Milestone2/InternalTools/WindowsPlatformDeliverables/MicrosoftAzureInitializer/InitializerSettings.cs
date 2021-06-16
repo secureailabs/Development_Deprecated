@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Linq;
 
 namespace MicrosoftAzureVirtualMachineInitializer
 {
@@ -220,6 +221,11 @@ namespace MicrosoftAzureVirtualMachineInitializer
                         string[] singleLineOfTextElement = singleLineOfText.Split(',');
                         if (3 != singleLineOfTextElement.Length) throw new FormatException("Line " + Convert.ToString(14 + index) + " is invalid. Expecting 4 element, but found " + singleLineOfTextElement.Length);
                         string virtualMachineSize = singleLineOfTextElement[0];
+                        if (true == isConfidential)
+                        {
+                            string[] strListOfVmSizes = { "Standard_DC2as_v4", "Standard_DC8as_v4", "Standard_DC16as_v4", "Standard_DC32as_v4", "Standard_DC48as_v4", "Standard_DC96as_v4" };
+                            if (!strListOfVmSizes.Contains(virtualMachineSize)) throw new FormatException("Line " + Convert.ToString(14 + index) + " is invalid. VM Size " + virtualMachineSize + " is not permitted.");
+                        }
                         string digitalContractIdentifier = singleLineOfTextElement[1];
                         string datasetFilename = singleLineOfTextElement[2];
                         if (false == System.IO.File.Exists(datasetFilename)) throw new FormatException("Line " + Convert.ToString(14 + index) + " contains an invalid dataset name. File " + datasetFilename + " not found");

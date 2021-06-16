@@ -211,10 +211,9 @@ namespace DataSetSpecification
                         Console.WriteLine("Json is "+responseJsonObject);
                     }
                 }
-                catch
+                catch (Exception oException)
                 {
-                    //Console.WriteLine("Exception: " + Ex.ToString());
-                    Console.WriteLine("Some Exception: ");
+                    Console.WriteLine("Exception: " + oException.ToString());
                 }
             }
             else

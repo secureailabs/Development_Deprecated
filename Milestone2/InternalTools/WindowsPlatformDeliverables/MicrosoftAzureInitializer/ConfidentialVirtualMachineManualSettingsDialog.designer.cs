@@ -394,7 +394,6 @@ namespace MicrosoftAzureVirtualMachineInitializer
             // 
             this.m_VirtualMachineSizeComboBox.FormattingEnabled = true;
             this.m_VirtualMachineSizeComboBox.Items.AddRange(new object[] {
-            "Standard_DC1as_v4",
             "Standard_DC2as_v4",
             "Standard_DC8as_v4",
             "Standard_DC16as_v4",

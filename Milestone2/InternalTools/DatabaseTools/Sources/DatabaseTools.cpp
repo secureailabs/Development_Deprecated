@@ -95,6 +95,20 @@ void __thiscall DatabaseTools::InitializeMembers(void)
     m_stlUsers.push_back(UserInformation("dquilp@mghl.com", "Daniel Quilp", "Data Scientist", "000-000-0000", eDatasetAdmin));
     // Initialize to the number of other users that will be added for each organization
     m_unNumberOfOtherUsers = 5;
+    std::string m_strDatasetGuid;
+    std::string m_strVersionNumber;
+    std::string m_strName;
+    std::string m_strDescription;
+    std::string m_strKeywords;
+    uint64_t m_un64PublishTime;
+    Byte m_bPrivacyLevel;
+    std::string m_strLimitations;
+    // Add datasets information
+    m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","Chronic Kidney Disease dataset","Data has 25 features which may predict a patient with chronic kidney disease","Health conditions",GetEpochTimeInSeconds(),1,"N/A"));
+    m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","Raman spectroscopy of Diabetes","Raman Spectroscopy to Screen Diabetes Mellitus with Machine Learning Tools","computer science,health,classification,diabetes,healthcare,nutrition,medicine",GetEpochTimeInSeconds(),1,"N/A"));
+    m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","Telco Customer Churn","Focused customer retention programs","business",GetEpochTimeInSeconds(),1,"N/A"));
+    m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","Harvest","A toolkit for extracting posts and post metadata from web forums","computer science,software,programming",GetEpochTimeInSeconds(),1,"N/A"));
+    m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","Obesity among adults by country, 1975-2016","Prevalence of obesity among adults","N/A",GetEpochTimeInSeconds(),1,"N/A"));
     // Add digital contracts information
     std::string strLegalAgreement = "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties. "
     "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";  
@@ -177,6 +191,36 @@ void __thiscall DatabaseTools::AddOtherUsers(void)
 
 /********************************************************************************************/
 
+void __thiscall DatabaseTools::AddDatasets(void)
+{
+    __DebugFunction();
+
+    unsigned int unDooIndex = 1;
+    // Login to the web services as one of the users from the data owner organization
+    std::string strEncodedEosb = Login(m_stlAdmins.at(unDooIndex).m_strEmail, m_strPassword);
+    _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
+    StructuredBuffer oDsetInformation;
+    // Register five datasets for the data owner organizations
+    // The dataset guids will later be used in the digital contracts
+    for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
+    {
+        oDsetInformation.PutString("DatasetGuid", m_stlDatasets.at(unIndex).m_strDatasetGuid);
+        oDsetInformation.PutString("VersionNumber", m_stlDatasets.at(unIndex).m_strVersionNumber);
+        oDsetInformation.PutString("DatasetName", m_stlDatasets.at(unIndex).m_strName);
+        oDsetInformation.PutString("Description", m_stlDatasets.at(unIndex).m_strDescription);
+        oDsetInformation.PutString("Keywords", m_stlDatasets.at(unIndex).m_strKeywords);
+        oDsetInformation.PutUnsignedInt64("PublishDate", m_stlDatasets.at(unIndex).m_un64PublishTime);
+        oDsetInformation.PutByte("PrivacyLevel", m_stlDatasets.at(unIndex).m_bPrivacyLevel);
+        oDsetInformation.PutString("JurisdictionalLimitations", m_stlDatasets.at(unIndex).m_strLimitations);
+        // Register dataset
+        ::RegisterDataset(strEncodedEosb, oDsetInformation);
+    }
+
+    std::cout << "Datasets added successfully." << std::endl;
+}
+
+/********************************************************************************************/
+
 void __thiscall DatabaseTools::AddDigitalContracts(void)
 {
     __DebugFunction();
@@ -199,6 +243,7 @@ void __thiscall DatabaseTools::AddDigitalContracts(void)
         oDcInformation.PutUnsignedInt64("SubscriptionDays", m_stlDigitalContracts.at(unIndex).m_unSubscriptionDays);
         oDcInformation.PutString("LegalAgreement", m_stlDigitalContracts.at(unIndex).m_strLegalAgreement);
         oDcInformation.PutString("Description", m_stlDigitalContracts.at(unIndex).m_strDescription);
+        oDcInformation.PutString("DatasetGuid", m_stlDatasets.at(unIndex).m_strDatasetGuid);
         // Register digital contract
         ::RegisterDigitalContract(strEncodedEosb, oDcInformation);
     }

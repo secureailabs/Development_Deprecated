@@ -121,21 +121,55 @@ typedef struct DigitalContractInformation
     std::string m_strDescription;
 
     DigitalContractInformation(
-        _in std::string strTitle,
+        _in const std::string & c_strTitle,
         _in uint64_t unSubscriptionDays, 
         _in const std::string & c_strLegalAgreement,
         _in uint64_t unRetentionTime,
-        _in std::string strDescription
+        _in const std::string & c_strDescription
         )
     {
-        m_strTitle = strTitle;
+        m_strTitle = c_strTitle;
         m_unSubscriptionDays = unSubscriptionDays;
         m_strLegalAgreement = c_strLegalAgreement;
         m_unRetentionTime = unRetentionTime;
-        m_strDescription = strDescription;
+        m_strDescription = c_strDescription;
     }
 } 
 DigitalContractInformation;
+
+typedef struct DatasetInformation
+{
+    std::string m_strDatasetGuid;
+    std::string m_strVersionNumber;
+    std::string m_strName;
+    std::string m_strDescription;
+    std::string m_strKeywords;
+    uint64_t m_un64PublishTime;
+    Byte m_bPrivacyLevel;
+    std::string m_strLimitations;
+
+    DatasetInformation(
+        _in const std::string & c_strDatasetGuid,
+        _in const std::string & c_strVersionNumber, 
+        _in const std::string & c_strName,
+        _in const std::string & c_strDescription,
+        _in const std::string & c_strKeywords,
+        _in uint64_t un64PublishTime,
+        _in Byte bPrivacyLevel,
+        _in const std::string & c_strLimitations
+        )
+    {
+        m_strDatasetGuid = c_strDatasetGuid;
+        m_strVersionNumber = c_strVersionNumber;
+        m_strName = c_strName;
+        m_strDescription = c_strDescription;
+        m_strKeywords = c_strKeywords;
+        m_un64PublishTime = un64PublishTime;
+        m_bPrivacyLevel = bPrivacyLevel;
+        m_strLimitations = c_strLimitations;
+    }
+} 
+DatasetInformation;
 
 /********************************************************************************************/
 
@@ -157,6 +191,8 @@ class DatabaseTools : public Object
         void __thiscall AddOrganizationsAndSuperAdmins(void);
         // Register other users for each organization
         void __thiscall AddOtherUsers(void);
+        // Register datasets
+        void __thiscall AddDatasets(void);
         // Register digital contracts
         void __thiscall AddDigitalContracts(void);
 
@@ -190,6 +226,7 @@ class DatabaseTools : public Object
         std::vector<OrganizationInformation> m_stlOrganizations;
         std::vector<UserInformation> m_stlAdmins;
         std::vector<UserInformation> m_stlUsers;
+        std::vector<DatasetInformation> m_stlDatasets;
         std::vector<DigitalContractInformation> m_stlDigitalContracts;
         std::vector<std::string> m_stlDigitalContractGuids;
 };

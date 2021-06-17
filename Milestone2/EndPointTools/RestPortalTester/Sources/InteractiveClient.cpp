@@ -1091,6 +1091,10 @@ bool RegisterDigitalContract(
 
     try 
     {
+        if (true == c_oDcInformation.IsElementPresent("DatasetGuid", ANSI_CHARACTER_STRING_VALUE_TYPE))
+        {
+            strDatasetGuid = c_oDcInformation.GetString("DatasetGuid");
+        }
         // Create rest request
         std::string strVerb = "POST";
         std::string strApiUrl = "/SAIL/DigitalContractManager/Applications?Eosb="+ c_strEncodedEosb;
@@ -1444,20 +1448,49 @@ bool RegisterDataset(
     Byte bPrivacyLevel = std::stoi(::GetStringInput("Enter privacy level (0-10): ", 2, false, c_szValidInputCharacters));
     std::string strLimitations = ::GetStringInput("Enter country codes where dataset can be used: ", 100, false, c_szValidInputCharacters);
 
+    StructuredBuffer oDsetInformation;
+    oDsetInformation.PutString("DatasetGuid", strDsetGuid);
+    oDsetInformation.PutString("VersionNumber", strVersionNumber);
+    oDsetInformation.PutString("DatasetName", strName);
+    oDsetInformation.PutString("Description", strDescription);
+    oDsetInformation.PutString("Keywords", strKeywords);
+    oDsetInformation.PutUnsignedInt64("PublishDate", un64PublishTime);
+    oDsetInformation.PutByte("PrivacyLevel", bPrivacyLevel);
+    oDsetInformation.PutString("JurisdictionalLimitations", strLimitations);
+
+    __DebugAssert(38 == strDsetGuid.size());
+
+    fSuccess = ::RegisterDataset(c_strEosb, oDsetInformation);
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool RegisterDataset(
+    _in const std::string & c_strEosb,
+    _in const StructuredBuffer & c_oDsetInformation
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
     try
     {
         // Create rest request
         std::string strVerb = "POST";
         std::string strApiUrl = "/SAIL/DatasetManager/RegisterDataset?Eosb="+ c_strEosb;
-        std::string strContent = "{\n   \"DatasetGuid\": \""+ strDsetGuid +"\","
+        std::string strContent = "{\n   \"DatasetGuid\": \""+ c_oDsetInformation.GetString("DatasetGuid") +"\","
                                 "\n   \"DatasetData\": {"
-                                "\n   \"VersionNumber\": \""+ strVersionNumber +"\","
-                                "\n   \"DatasetName\": \""+ strName +"\","
-                                "\n   \"Description\": \""+ strDescription +"\","
-                                "\n   \"Keywords\": \""+ strKeywords +"\","
-                                "\n   \"PublishDate\": "+ std::to_string(un64PublishTime) +","
-                                "\n   \"PrivacyLevel\": "+ std::to_string(bPrivacyLevel) +","
-                                "\n   \"JurisdictionalLimitations\": \""+ strLimitations +"\""
+                                "\n   \"VersionNumber\": \""+ c_oDsetInformation.GetString("VersionNumber") +"\","
+                                "\n   \"DatasetName\": \""+ c_oDsetInformation.GetString("DatasetName") +"\","
+                                "\n   \"Description\": \""+ c_oDsetInformation.GetString("Description") +"\","
+                                "\n   \"Keywords\": \""+ c_oDsetInformation.GetString("Keywords") +"\","
+                                "\n   \"PublishDate\": "+ std::to_string(c_oDsetInformation.GetUnsignedInt64("PublishDate")) +","
+                                "\n   \"PrivacyLevel\": "+ std::to_string(c_oDsetInformation.GetByte("PrivacyLevel")) +","
+                                "\n   \"JurisdictionalLimitations\": \""+ c_oDsetInformation.GetString("JurisdictionalLimitations") +"\""
                                 "\n   }"
                                 "\n}";
         // Make the API call and get REST response

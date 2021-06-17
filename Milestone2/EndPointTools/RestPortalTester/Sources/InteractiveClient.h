@@ -184,6 +184,11 @@ extern bool RegisterDataset(
     _in const std::string & c_strEosb
     );
 
+extern bool RegisterDataset(
+    _in const std::string & c_strEosb,
+    _in const StructuredBuffer & c_oDsetInformation
+    );
+
 extern bool ListDatasets(
     _in const std::string & c_strEosb
     );

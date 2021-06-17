@@ -96,6 +96,8 @@ int main(int argc, char * argv[])
                 oDatabaseTools.AddOrganizationsAndSuperAdmins();
                 // Add other users for the organizations
                 oDatabaseTools.AddOtherUsers();
+                // Register dataset metadata
+                oDatabaseTools.AddDatasets();
                 // Register digital contracts for the organizations
                 oDatabaseTools.AddDigitalContracts();
                 // Accept digital contracts

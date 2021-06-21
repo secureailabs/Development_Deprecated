@@ -95,14 +95,6 @@ void __thiscall DatabaseTools::InitializeMembers(void)
     m_stlUsers.push_back(UserInformation("dquilp@mghl.com", "Daniel Quilp", "Data Scientist", "000-000-0000", eDatasetAdmin));
     // Initialize to the number of other users that will be added for each organization
     m_unNumberOfOtherUsers = 5;
-    std::string m_strDatasetGuid;
-    std::string m_strVersionNumber;
-    std::string m_strName;
-    std::string m_strDescription;
-    std::string m_strKeywords;
-    uint64_t m_un64PublishTime;
-    Byte m_bPrivacyLevel;
-    std::string m_strLimitations;
     // Add datasets information
     m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","Chronic Kidney Disease dataset","Data has 25 features which may predict a patient with chronic kidney disease","Health conditions",GetEpochTimeInSeconds(),1,"N/A"));
     m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","Raman spectroscopy of Diabetes","Raman Spectroscopy to Screen Diabetes Mellitus with Machine Learning Tools","computer science,health,classification,diabetes,healthcare,nutrition,medicine",GetEpochTimeInSeconds(),1,"N/A"));

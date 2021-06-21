@@ -1338,10 +1338,12 @@ void PrintDigitalContracts(
     std::cout << "************************\n List of Digital Contracts \n************************\n" << std::endl;
     for (std::string strElement : c_oDigitalContracts.GetNamesOfElements())
     {
-        StructuredBuffer oElement(c_oDigitalContracts.GetStructuredBuffer(strElement.c_str()));
+        StructuredBuffer oElement = c_oDigitalContracts.GetStructuredBuffer(strElement.c_str());
         std::cout << "Digital contract guid: " << strElement << std::endl;
         std::cout << "Title: " << oElement.GetString("Title") << std::endl;
         std::cout << "Description: " << oElement.GetString("Description") << std::endl;
+        std::cout << "Data owner organization guid: " << oElement.GetString("DataOwnerOrganization") << std::endl;
+        std::cout << "Researcher organization guid: " << oElement.GetString("ResearcherOrganization") << std::endl;
         std::cout << "Version number: " << oElement.GetString("VersionNumber") << std::endl;
         std::cout << "Contract stage: " << (Dword) oElement.GetFloat64("ContractStage") << std::endl;
         std::cout << "Subscription days: " << (uint64_t) oElement.GetFloat64("SubscriptionDays") << std::endl;

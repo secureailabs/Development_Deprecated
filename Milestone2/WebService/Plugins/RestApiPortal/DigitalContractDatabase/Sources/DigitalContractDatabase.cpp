@@ -1019,8 +1019,11 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ListDigitalContracts(
                 StructuredBuffer oDigitalContracts = oDatabaseResponse.GetStructuredBuffer("DigitalContracts");
                 for (std::string strDcGuid : oDigitalContracts.GetNamesOfElements())
                 {
-                    StructuredBuffer oDeserializedDc = this->DeserializeDigitalContract(oDigitalContracts.GetStructuredBuffer(strDcGuid.c_str()).GetBuffer("DigitalContractBlob"));
-                    oDigitalContracts.PutStructuredBuffer(strDcGuid.c_str(), oDeserializedDc);
+                    StructuredBuffer oDigitalContractRecord = oDigitalContracts.GetStructuredBuffer(strDcGuid.c_str());
+                    StructuredBuffer oDigitalContract = this->DeserializeDigitalContract(oDigitalContractRecord.GetStructuredBuffer("DigitalContract").GetBuffer("DigitalContractBlob"));
+                    oDigitalContract.PutString("ResearcherOrganization", oDigitalContractRecord.GetString("ResearcherOrganization"));
+                    oDigitalContract.PutString("DataOwnerOrganization", oDigitalContractRecord.GetString("DataOwnerOrganization"));
+                    oDigitalContracts.PutStructuredBuffer(strDcGuid.c_str(), oDigitalContract);
                 }
                 oResponse.PutStructuredBuffer("DigitalContracts", oDigitalContracts);
                 dwStatus = 200;

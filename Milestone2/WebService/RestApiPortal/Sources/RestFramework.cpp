@@ -195,7 +195,7 @@ void __thiscall RestFramework::RunServer(void)
     __DebugFunction();
 
     RestFrameworkRuntimeData * poRestFrameworkRuntimeData = new RestFrameworkRuntimeData(m_poDictionaryManager);
-    unsigned int unNumberOfResources = std::thread::hardware_concurrency() * 0.75;
+    unsigned int unNumberOfResources = std::thread::hardware_concurrency();
     while (false == poRestFrameworkRuntimeData->IsTerminationSignalEncountered())
     {
         try
@@ -211,7 +211,9 @@ void __thiscall RestFramework::RunServer(void)
                 {
                     // Put this thread to sleep since we have maxed out our threading resources
                     // and need to wait for a running thread to exit
+                    std::cout << "Resources maxed out. Going to sleep\n";
                     ::sleep(10);
+                    std::cout << "Waking up. Checking resources...\n";
                 }
             }
         }

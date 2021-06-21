@@ -114,9 +114,13 @@ std::vector<Byte> __thiscall DatabaseManager::ListDigitalContracts(
         for (auto&& oDocumentView : oDcRecords)
         {
             bsoncxx::document::element oDcGuid = oDocumentView["DigitalContractGuid"];
-            if (oDcGuid && oDcGuid.type() == type::k_utf8)
+            bsoncxx::document::element oRoGuid = oDocumentView["ResearcherOrganization"];
+            bsoncxx::document::element oDooGuid = oDocumentView["DataOwnerOrganization"];
+            if ((oDcGuid && oDcGuid.type() == type::k_utf8) && (oDooGuid && oDooGuid.type() == type::k_utf8) && (oRoGuid && oRoGuid.type() == type::k_utf8))
             {
                 std::string strDcGuid = oDcGuid.get_utf8().value.to_string();
+                std::string strDooGuid = oDooGuid.get_utf8().value.to_string();
+                std::string strRoGuid = oRoGuid.get_utf8().value.to_string();
                 bsoncxx::document::element oPlainTextObjectBlobGuid = oDocumentView["PlainTextObjectBlobGuid"];
                 if (oPlainTextObjectBlobGuid && oPlainTextObjectBlobGuid.type() == type::k_utf8)
                 {
@@ -137,7 +141,10 @@ std::vector<Byte> __thiscall DatabaseManager::ListDigitalContracts(
                                 bsoncxx::document::element oObjectBlob = oObjectDocument->view()["ObjectBlob"];
                                 if (oObjectBlob && oObjectBlob.type() == type::k_binary)
                                 {
-                                    StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size);
+                                    StructuredBuffer oObject;
+                                    oObject.PutStructuredBuffer("DigitalContract", StructuredBuffer(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size));
+                                    oObject.PutString("ResearcherOrganization", strRoGuid);
+                                    oObject.PutString("DataOwnerOrganization", strDooGuid);
                                     oListOfDigitalContracts.PutStructuredBuffer(strDcGuid.c_str(), oObject);
                                 }
                             }

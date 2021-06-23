@@ -42,13 +42,16 @@ bool TestPushSafeObject(
     StructuredBuffer oStructuredBufferRequest;
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePushSafeObject);
 
-    oStructuredBufferRequest.PutString("SafeObjectUuid", "safeObjectFileName");
+    oStructuredBufferRequest.PutString("SafeObjectUuid", "{e0d937b9-471e-4d2e-a470-d0c96d21574b}");
     std::string test_code = "print(\"Hello World\")\n";
     oStructuredBufferRequest.PutBuffer("Payload", (Byte *)test_code.c_str(), test_code.length());
 
-    // StructuredBuffer oStructuredBufferOfParameters;
-    // oStructuredBufferOfParameters.PutString("1", "inputParameter");
-    // oStructuredBufferRequest.PutStructuredBuffer("Parameters", oStructuredBufferOfParameters);
+    StructuredBuffer oStructuredBufferOfParameters;
+
+    StructuredBuffer oFirstParameter;
+
+    oStructuredBufferOfParameters.PutStructuredBuffer("{460c2512-9c5e-49bf-b805-691bbc08e65e}", oFirstParameter);
+    oStructuredBufferRequest.PutStructuredBuffer("ParameterList", oStructuredBufferOfParameters);
 
     // oStructuredBufferRequest.PutString("ResultId", "ResultId");
 
@@ -57,17 +60,39 @@ bool TestPushSafeObject(
     return true;
 }
 
-bool TestRunJob(
+bool TestSubmitJob(
     _in TlsNode * poTlsNode
 )
 {
     __DebugFunction();
 
-    std::cout << "Testing Run Job!!" << std::endl;
+    std::cout << "Testing Submit Job!!" << std::endl;
 
     StructuredBuffer oStructuredBufferRequest;
-    // oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::eRunJob);
-    oStructuredBufferRequest.PutString("SafeObjectId", "safeObjectFileName");
+    oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::eSubmitJob);
+    oStructuredBufferRequest.PutString("SafeObjectUuid", "{e0d937b9-471e-4d2e-a470-d0c96d21574b}");
+    oStructuredBufferRequest.PutString("JobUuid", "{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}");
+    ::PutTlsTransaction(poTlsNode, oStructuredBufferRequest);
+
+    return true;
+}
+
+bool TestSetParameters(
+    _in TlsNode * poTlsNode
+)
+{
+    __DebugFunction();
+
+    std::cout << "Testing Set Parameters!!" << std::endl;
+
+    StructuredBuffer oStructuredBufferRequest;
+    oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::eSetParameters);
+    oStructuredBufferRequest.PutString("JobUuid", "{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}");
+    oStructuredBufferRequest.PutString("ParameterUuid", "{460c2512-9c5e-49bf-b805-691bbc08e65e}");
+    oStructuredBufferRequest.PutString("ValueUuid", "{36236adb-6ad5-4735-8265-5fea96c5c9cd}");
+    oStructuredBufferRequest.PutUnsignedInt32("ValuesExpected", 1);
+    oStructuredBufferRequest.PutUnsignedInt32("ValueIndex", 0);
+
     ::PutTlsTransaction(poTlsNode, oStructuredBufferRequest);
 
     return true;
@@ -83,7 +108,7 @@ bool TestPushData(
 
     StructuredBuffer oStructuredBufferRequest;
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePushdata);
-    oStructuredBufferRequest.PutString("DataId", "inputParameter");
+    oStructuredBufferRequest.PutString("DataId", "{36236adb-6ad5-4735-8265-5fea96c5c9cd}");
     std::vector<Byte> stlDataToPush = {'a', 'b', 'c', 'd', 0};
     oStructuredBufferRequest.PutBuffer("Data", stlDataToPush);
 
@@ -155,9 +180,10 @@ int __cdecl main(
         TlsNode * poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 8888);
 
         ::TestPushSafeObject(poTlsNode);
-        // ::TestRunJob(poTlsNode);
+        ::TestSubmitJob(poTlsNode);
+        ::TestSetParameters(poTlsNode);
         ::TestPushData(poTlsNode);
-        ::TestPullData(poTlsNode);
+        // ::TestPullData(poTlsNode);
         // ::TestEndConnection(poTlsNode);
 
         poTlsNode->Release();

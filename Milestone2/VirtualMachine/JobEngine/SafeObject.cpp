@@ -8,14 +8,18 @@
  *
  ********************************************************************************************/
 
-#include "JobEngine.h"
 #include "DebugLibrary.h"
+#include "SafeObject.h"
 
 #include <iostream>
+#include <fstream>
+#include <thread>
 
 #include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#define cout cout << std::this_thread::get_id() << " "
 
 /********************************************************************************************
  *
@@ -45,22 +49,13 @@ void BytesToFile(
  ********************************************************************************************/
 
 SafeObject::SafeObject(
-    _in const StructuredBuffer & c_oStructuredBuffer
+    _in const std::string c_strSafeObjectUuid
     )
 {
     __DebugFunction();
 
     // Get the safe object UUID
-    m_strSafeObjectIdentifier = c_oStructuredBuffer.GetString("SafeObjectUuid");
-
-    // Write the executable file to file system to run
-    ::BytesToFile(m_strSafeObjectIdentifier, c_oStructuredBuffer.GetBuffer("Payload"));
-
-    // Make the file executable
-    ::chmod(m_strSafeObjectIdentifier.c_str(), S_IRWXU);
-
-    // Add the command that is to be executed.
-    m_strCommandToExecute = "python3 " + m_strSafeObjectIdentifier;
+    m_strSafeObjectIdentifier = c_strSafeObjectUuid;
 }
 
 /********************************************************************************************
@@ -75,6 +70,43 @@ SafeObject::~SafeObject(void)
 {
     __DebugFunction();
 
+    // Destructor will just delete the executable file containing the safeObject
+    ::remove(m_strSafeObjectIdentifier.c_str());
+}
+
+/********************************************************************************************
+ *
+ * @class SafeObject
+ * @function SafeObject
+ * @brief Constructor to create a SafeObject object
+ *
+ ********************************************************************************************/
+
+void __thiscall SafeObject::Setup(
+    _in const StructuredBuffer & c_oStructuredBuffer
+    )
+{
+    __DebugFunction();
+
+    // Get the safe object UUID
+    m_strSafeObjectIdentifier = c_oStructuredBuffer.GetString("SafeObjectUuid");
+
+    // Write the executable file to file system to run
+    ::BytesToFile(m_strSafeObjectIdentifier, c_oStructuredBuffer.GetBuffer("Payload"));
+
+    // Make the file executable
+    ::chmod(m_strSafeObjectIdentifier.c_str(), S_IRWXU);
+
+    // Get List of parameters
+    StructuredBuffer oStructuredBufferParameter = c_oStructuredBuffer.GetStructuredBuffer("ParameterList");
+    std::vector<std::string> stlListOfParameters = oStructuredBufferParameter.GetNamesOfElements();
+    for (std::string strParameterName : stlListOfParameters)
+    {
+        m_stlListOfParameters.push_back(strParameterName);
+    }
+
+    // Add the command that is to be executed.
+    m_strCommandToExecute = "python3 " + m_strSafeObjectIdentifier;
 }
 
 /********************************************************************************************
@@ -132,4 +164,51 @@ const std::string & __thiscall SafeObject::GetCommandToExecute(void) const
     __DebugFunction();
 
     return m_strCommandToExecute;
+}
+
+/********************************************************************************************
+ *
+ * @class SafeObject
+ * @function GetSafeObjectIdentifier
+ * @brief Constructor to create a Job object
+ *
+ ********************************************************************************************/
+
+void __thiscall SafeObject::AddJobUuidToQueue(
+        _in const std::string & c_strJobUuid
+    )
+{
+    __DebugFunction();
+
+    m_stlListOfWaitingJobs.push_back(c_strJobUuid);
+}
+
+/********************************************************************************************
+ *
+ * @class SafeObject
+ * @function GetSafeObjectIdentifier
+ * @brief Constructor to create a Job object
+ *
+ ********************************************************************************************/
+
+const std::vector<std::string> & __thiscall SafeObject::GetQueuedJobsUuid(void) const
+{
+    __DebugFunction();
+
+    return m_stlListOfWaitingJobs;
+}
+
+/********************************************************************************************
+ *
+ * @class SafeObject
+ * @function GetSafeObjectIdentifier
+ * @brief Constructor to create a Job object
+ *
+ ********************************************************************************************/
+
+const std::vector<std::string> & __thiscall SafeObject::GetListOfParameters(void) const
+{
+    __DebugFunction();
+
+    return m_stlListOfParameters;
 }

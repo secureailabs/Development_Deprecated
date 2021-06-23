@@ -19,6 +19,8 @@
 
 JobEngine JobEngine::m_oJobEngine;
 
+#define cout cout << std::this_thread::get_id() << " "
+
 int __cdecl main(
     _in int nNumberOfArguments,
     _in char ** pszCommandLineArguments

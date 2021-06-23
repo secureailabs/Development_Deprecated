@@ -51,6 +51,7 @@ Socket * __stdcall ConnectToUnixDomainSocket(
     sSocketAddress.sun_family = AF_UNIX;
     ::strncpy(sSocketAddress.sun_path, c_strUnixDomainSocketPath.c_str(), (sizeof(sSocketAddress.sun_path) - 1));
     // Make sure that any existing linkage in the system is deleted before binding
+    std::cout << "ConnectToUnixDomainSocket(" << c_strUnixDomainSocketPath << ");" << std::endl;
     nReturnCode = ::connect(nSocketDescriptor, (struct sockaddr *) &sSocketAddress, sizeof(sSocketAddress));
     _ThrowBaseExceptionIf((0 != nReturnCode), "connect() failed with errno = %d", errno);
     return new Socket(nSocketDescriptor);

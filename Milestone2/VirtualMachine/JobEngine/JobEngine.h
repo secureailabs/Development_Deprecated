@@ -18,6 +18,8 @@
 #include "StructuredBuffer.h"
 #include "TlsTransactionHelperFunctions.h"
 #include "TlsServer.h"
+#include "SafeObject.h"
+#include "Job.h"
 
 #include <vector>
 #include <string>
@@ -29,6 +31,8 @@
 /********************************************************************************************/
 
 const std::string gc_strHaltAllJobsSignalFilename = "StopAllJobs";
+const std::string gc_strSignalFolderName = "DataSignals";
+const std::string gc_strDataFolderName = "DataFiles";
 
 /********************************************************************************************/
 
@@ -55,86 +59,7 @@ enum class JobStatusSignals
 
 /********************************************************************************************/
 
-class SafeObject
-{
-    public:
-
-        SafeObject(
-            _in const StructuredBuffer & c_oStructuredBuffer
-            );
-        SafeObject(
-            _in const SafeObject & c_oSafeObject
-            );
-        ~SafeObject(void);
-
-        int __thiscall Run(
-            _in const std::string & c_strJobUuid
-            ) const;
-        const std::string & __thiscall GetSafeObjectIdentifier(void) const;
-        const std::string & __thiscall GetCommandToExecute(void) const;
-
-    private:
-
-        // Private member methods
-
-        // Private data members
-        std::string m_strSafeObjectIdentifier;
-        std::string m_strCommandToExecute;
-};
-
-/********************************************************************************************/
-
-class Job
-{
-    public:
-
-        Job(
-            _in std::string strJobId
-            );
-        Job(
-            _in const std::string & c_strJobId,
-            _in const SafeObject * const c_poSafeObject
-            );
-        Job(
-            _in const Job & c_oJob
-            );
-        ~Job(void);
-
-        void __thiscall SetSafeObject(
-            _in const SafeObject * const c_poSafeObjectId
-            );
-        int __thiscall TryRunJob(
-            _in const std::string & c_strParameterFile
-            );
-        void __thiscall SetParameter(
-            _in const std::string & c_strParameterIdentifier,
-            _in const std::string & c_strValueIdentifier,
-            _in unsigned int nExpectedParameters,
-            _in unsigned int nValueIdentifier
-            );
-        const std::vector<std::string> & __thiscall GetInputParameters(void) const;
-        void __thiscall SetOutputFileName(
-            _in const std::string & c_strOutFileName
-            );
-        const std::string & __thiscall GetOutputFileName(void) const;
-        const std::string & __thiscall GetJobId(void) const;
-
-    private:
-
-        // Private member methods
-
-        // Private data members
-        std::string m_strSafeObjectUuid;
-        std::string m_strJobUuid;
-        const SafeObject * m_poSafeObject;
-        std::unordered_map<unsigned int, std::string> m_stlInputParameters;
-        int m_nNumberOfParameters = 0;
-        std::string m_stlOutputFileName;
-};
-
-/********************************************************************************************/
-
-class JobEngine
+class JobEngine : public Object
 {
     public:
 
@@ -161,7 +86,7 @@ class JobEngine
 
         // Private member methods
         JobEngine(void);
-        SafeObject * __thiscall PushSafeObject(
+        void __thiscall PushSafeObject(
             _in const StructuredBuffer & oStructuredBuffer
             );
         void __thiscall PushData(
@@ -188,10 +113,10 @@ class JobEngine
         static JobEngine m_oJobEngine;
         TlsServer * m_poTlsServer;
         TlsNode * m_poTlsNode;
-        std::unordered_map<uint64_t, Job *> m_stlMapOfJobs;
-        std::unordered_map<uint64_t, std::future<SafeObject *>> m_stlMapOfSafeObjects;
-        std::unordered_map<std::string, Job *> m_stlMapOfParameterToJob;
+        std::unordered_map<std::string, Job *> m_stlMapOfJobs;
+        std::mutex m_oMutexOnJobsMap;
+        std::unordered_map<std::string, SafeObject *> m_stlMapOfSafeObjects;
+        std::mutex m_oMutexOnSafeObjectMap;
+        std::unordered_map<std::string, Job *> m_stlMapOfParameterValuesToJob;
         std::unordered_set<std::string> m_stlSetOfPullObjects;
-        std::mutex m_stlMutexPullFiles;
-        std::mutex m_stlMutexParamtereFiles;
 };

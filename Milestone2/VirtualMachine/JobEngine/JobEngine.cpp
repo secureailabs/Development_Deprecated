@@ -27,10 +27,12 @@
 #include <iostream>
 #include <algorithm>
 #include <future>
+#include <filesystem>
 
 // TODO:
 // 3. Add signals from jobs running.
-// 4. Add file signals
+
+#define cout cout << std::this_thread::get_id() << " "
 
 /********************************************************************************************
  *
@@ -43,49 +45,60 @@ void * __stdcall FileSystemWatcherThread(void * poThreadParameter)
 {
     __DebugFunction();
 
-    std::cout << "FileSystemWatcherThread" << std::endl;
-
-    int nINotifyFd = ::inotify_init();
-    _ThrowBaseExceptionIf((0 >= nINotifyFd), "Unable to create a innotify object", nullptr);
-
-    // Add the directory we want to watch
-    int nDirectoryToWatchFd = ::inotify_add_watch(nINotifyFd, "./", IN_CREATE);
-    _ThrowBaseExceptionIf((-1 == nDirectoryToWatchFd), "Could not watch : \"./\"\n",nullptr);
-
-    bool fKeepRunning = true;
-
-    // Allocate a buffer for
-    std::vector<Byte> stlNotifyEvent(sizeof(struct inotify_event) + NAME_MAX + 1);
-
-    // Get the Job Engine Object which has the callback we'd need to call on
-    // every new file creation
-    JobEngine & oJobEngine = JobEngine::Get();
-
-    while(true == fKeepRunning)
+    try
     {
-        // This is a blocking call is only invoked when a file system related event is
-        // is reported in the specified directory
-        int nLengthOfData = ::read(nINotifyFd, stlNotifyEvent.data(), stlNotifyEvent.size());
+        std::cout << "FileSystemWatcherThread" << std::endl;
 
-        struct inotify_event * poInotifyEvent = (struct inotify_event *)stlNotifyEvent.data();
-        if(poInotifyEvent->len && (poInotifyEvent->mask & IN_CREATE))
+        int nINotifyFd = ::inotify_init();
+        _ThrowBaseExceptionIf((0 >= nINotifyFd), "Unable to create a inotify object", nullptr);
+
+        // Add the directory we want to watch
+        int nDirectoryToWatchFd = ::inotify_add_watch(nINotifyFd, gc_strSignalFolderName.c_str(), IN_CREATE);
+        _ThrowBaseExceptionIf((-1 == nDirectoryToWatchFd), "Could not watch : \"./\"\n", nullptr);
+
+        bool fKeepRunning = true;
+
+        // Allocate a buffer for
+        std::vector<Byte> stlNotifyEvent(sizeof(struct inotify_event) + NAME_MAX + 1);
+
+        // Get the Job Engine Object which has the callback we'd need to call on
+        // every new file creation
+        JobEngine & oJobEngine = JobEngine::Get();
+
+        while(true == fKeepRunning)
         {
-            // For everyfile created we call a JobEngine callback function which should
-            // find the most efficient way to handle such a file.
-            std::cout << "FileCreateCallback for " << poInotifyEvent->name << std::endl;
+            // This is a blocking call is only invoked when a file system related event is
+            // is reported in the specified directory
+            int nLengthOfData = ::read(nINotifyFd, stlNotifyEvent.data(), stlNotifyEvent.size());
 
-            oJobEngine.FileCreateCallback(poInotifyEvent->name);
-
-            if (gc_strHaltAllJobsSignalFilename == poInotifyEvent->name)
+            struct inotify_event * poInotifyEvent = (struct inotify_event *)stlNotifyEvent.data();
+            if(poInotifyEvent->len && (poInotifyEvent->mask & IN_CREATE))
             {
-                fKeepRunning = false;
+                // For everyfile created we call a JobEngine callback function which should
+                // find the most efficient way to handle such a file.
+                std::cout << "FileCreateCallback for " << poInotifyEvent->name << std::endl;
+
+                oJobEngine.FileCreateCallback(poInotifyEvent->name);
+
+                if (gc_strHaltAllJobsSignalFilename == poInotifyEvent->name)
+                {
+                    fKeepRunning = false;
+                }
             }
         }
-    }
 
-    // Cleanup the event listener
-    ::inotify_rm_watch( nINotifyFd, nDirectoryToWatchFd);
-    ::close(nINotifyFd);
+        // Cleanup the event listener
+        ::inotify_rm_watch( nINotifyFd, nDirectoryToWatchFd);
+        ::close(nINotifyFd);
+    }
+    catch(const BaseException & oException)
+    {
+        std::cout << oException.GetExceptionMessage() << '\n';
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
 
     return nullptr;
 }
@@ -119,28 +132,6 @@ std::vector<Byte> FileToBytes(
         _ThrowBaseException("Invalid File Path", nullptr);
     }
     return stlFileData;
-}
-
-/********************************************************************************************
- *
- * @function CreatePersistantConnection
- * @brief Gets the singleton instance reference of the JobEngine object
- *
- ********************************************************************************************/
-
-void * __stdcall CreatePersistantConnection(
-    _in void * poParamter
-)
-{
-    __DebugFunction();
-    __DebugAssert(nullptr != poParamter);
-
-    TlsNode * poTlsNode = (TlsNode *)poParamter;
-    JobEngine & oJobEngine = JobEngine::Get();
-    oJobEngine.ListenToRequests(poTlsNode);
-    poTlsNode->Release();
-
-    return nullptr;
 }
 
 /********************************************************************************************
@@ -199,11 +190,25 @@ void JobEngine::StartServer(void)
 
     std::cout << "Starting the Job Engine Server on port 8888" << std::endl;
     m_poTlsServer = new TlsServer(8888);
-    _ThrowIfNull(m_poTlsServer, "Could nor create a Tls server.", nullptr);
+    _ThrowIfNull(m_poTlsServer, "Could not create a Tls server.", nullptr);
 
     // Start listening to requests and fullfill them
     ThreadManager * poThreadManager = ThreadManager::GetInstance();
     // StatusMonitor oStatusMonitor("static void __cdecl InitDataConnector()");
+
+    // Delete existing Directories
+    if (std::filesystem::exists(gc_strSignalFolderName))
+    {
+        _ThrowBaseExceptionIf((true != std::filesystem::remove_all(gc_strSignalFolderName)), "Could not create Signal Files Folder", nullptr);
+    }
+    if (std::filesystem::exists(gc_strDataFolderName))
+    {
+        _ThrowBaseExceptionIf((true != std::filesystem::remove_all(gc_strDataFolderName)), "Could not delete Data Files Folder", nullptr);
+    }
+
+    // Create a folder for data files and signal files.
+    _ThrowBaseExceptionIf((-1 == ::mkdir(gc_strSignalFolderName.c_str(), 0700)), "Could not create Signal Files Folder", nullptr);
+    _ThrowBaseExceptionIf((-1 == ::mkdir(gc_strDataFolderName.c_str(), 0700)), "Could not create Data Folder", nullptr);
 
     // Create a thread to listen to all the files being created and a callback to the JobEngine
     poThreadManager->CreateThread(nullptr, ::FileSystemWatcherThread, (void *)nullptr);
@@ -216,13 +221,12 @@ void JobEngine::StartServer(void)
             m_poTlsNode = m_poTlsServer->Accept();
             if (nullptr != m_poTlsNode)
             {
-                poThreadManager->CreateThread(nullptr, ::CreatePersistantConnection, (void *)m_poTlsNode);
+                this->ListenToRequests(m_poTlsNode);
+                m_poTlsNode->Release();
             }
         }
     } while (true);
     // while (false == oStatusMonitor.IsTerminating());
-
-    std::cout << "Hello World!!" << std::endl;
 }
 
 /********************************************************************************************
@@ -253,8 +257,7 @@ void __thiscall JobEngine::ListenToRequests(
 
         if (EngineRequest::ePushSafeObject == eRequestType)
         {
-            std::string strSafeObjectUuid = oNewRequest.GetString("SafeObjectUuid");
-            m_stlMapOfSafeObjects[::Get64BitHashOfNullTerminatedString(strSafeObjectUuid.c_str(), false)] = std::async(std::launch::async, &JobEngine::PushSafeObject, this, oNewRequest);
+            stlReturn = std::async(std::launch::async, &JobEngine::PushSafeObject, this, oNewRequest);
         }
         else if (EngineRequest::ePushdata == eRequestType)
         {
@@ -298,19 +301,42 @@ void __thiscall JobEngine::ListenToRequests(
  *
  ********************************************************************************************/
 
-SafeObject * __thiscall JobEngine::PushSafeObject(
+void __thiscall JobEngine::PushSafeObject(
     _in const StructuredBuffer & c_oStructuredBuffer
 )
 {
     __DebugFunction();
 
-    SafeObject * poSafeObject = nullptr;
     try
     {
         std::cout << "Submitting a safe object" << std::endl;
 
-        // Create a safe object and add it to the map of Guid and Object
-        poSafeObject = new SafeObject(c_oStructuredBuffer);
+        std::string strSafeObjectUuid = c_oStructuredBuffer.GetString("SafeObjectUuid");
+
+        SafeObject * poSafeObject = nullptr;
+        std::lock_guard<std::mutex> lock(m_oMutexOnSafeObjectMap);
+        if (m_stlMapOfSafeObjects.end() == m_stlMapOfSafeObjects.find(strSafeObjectUuid))
+        {
+            // Create a safe object and add it to the map of Guid and Object
+            std::cout << "Safe Object not found. Creating new " << strSafeObjectUuid << std::endl;
+            poSafeObject = new SafeObject(strSafeObjectUuid);
+            poSafeObject->Setup(c_oStructuredBuffer);
+            // Push the safe object to the list of safeObjects in the engine
+            std::cout << "Adding to list " << strSafeObjectUuid << std::endl;
+            m_stlMapOfSafeObjects.insert(std::make_pair(strSafeObjectUuid, poSafeObject));
+        }
+        else
+        {
+            poSafeObject = m_stlMapOfSafeObjects.at(strSafeObjectUuid);
+            poSafeObject->Setup(c_oStructuredBuffer);
+
+            // Once the safe object setup is complete we notify all the jobs waiting on it
+            for (auto stlJobUuid : poSafeObject->GetQueuedJobsUuid())
+            {
+                auto poJob = m_stlMapOfJobs.at(stlJobUuid);
+                poJob->SetSafeObject(poSafeObject);
+            }
+        }
     }
     catch(BaseException & oBaseException)
     {
@@ -320,7 +346,6 @@ SafeObject * __thiscall JobEngine::PushSafeObject(
     {
         std::cout << "Some exceptional error in " << __func__ << std::endl;
     }
-    return poSafeObject;
 }
 
 /********************************************************************************************
@@ -348,6 +373,9 @@ void __thiscall JobEngine::PushData(
         auto stlFileData = c_oStructuredBuffer.GetBuffer("Data");
         std::copy(stlFileData.begin(), stlFileData.end(), std::ostreambuf_iterator<char>(stlFileToWrite));
         stlFileToWrite.close();
+
+        // Once the file write is complete we create a signal file for the same
+        std::ofstream output(gc_strSignalFolderName + "/" + c_oStructuredBuffer.GetString("DataId"));
     }
     catch(BaseException & oBaseException)
     {
@@ -378,15 +406,12 @@ void __thiscall JobEngine::PullData(
     {
         std::cout << "Pull Data request" << std::endl;
 
-        // Create a lock guard for this scope so that no file is created after the
-        // check for existing file and adding it to the Set later.
-        // It should be ensured that this lock is taken while writing files.
-        const std::lock_guard<std::mutex> lock(m_stlMutexPullFiles);
-
-        // We check if the file already exists, if the file exists already
+        // We check if the signal file already exists, if the file exists already
         // we push it to the orchestrator otherwise we will just register the request and
         // wait for the file to be created in future.
-        if (0 == ::access(c_strFileNametoSend.c_str(), R_OK))
+        std::string strSignalFile = gc_strSignalFolderName + "/" + c_strFileNametoSend;
+
+        if (true == std::filesystem::exists(strSignalFile.c_str()))
         {
             // As soon as the file we requested for is found, we return it to the
             // orchestrator who is waiting asychronously waiting for it.
@@ -397,6 +422,10 @@ void __thiscall JobEngine::PullData(
 
             // TODO: write the file to the socket
             ::PutTlsTransaction(m_poTlsNode, oResponse);
+
+            // We delete the signal file and the data file after we have consumed it.
+            ::remove(strSignalFile.c_str());
+            ::remove(c_strFileNametoSend.c_str());
         }
         else
         {
@@ -431,29 +460,57 @@ void __thiscall JobEngine::SubmitJob(
 
     try
     {
-        std::cout << "Submitting Job " << c_oStructuredBuffer.GetBuffer("JobUuid").data() << " to file " << c_oStructuredBuffer.GetString("DataId") << std::endl;
+        std::cout << "Submitting Job " << c_oStructuredBuffer.GetString("JobUuid") << "with SafeObject " << c_oStructuredBuffer.GetString("SafeObjectUuid") << std::endl;
         fflush(stdout);
 
-        // Get the safe object from the stored list
+        // We find the safeObject if it exists or create an empty object if it does not
         std::string strSafeObjectUuid = c_oStructuredBuffer.GetString("SafeObjectUuid");
-        SafeObject * poSafeObject = m_stlMapOfSafeObjects.at(::Get64BitHashOfNullTerminatedString(strSafeObjectUuid.c_str(), false)).get();
-
-        // check if the job object already exists, if it does just add the SafeObject to it
-        if (m_stlMapOfJobs.end() == m_stlMapOfJobs.find(::Get64BitHashOfNullTerminatedString(c_oStructuredBuffer.GetString("JobUuid").c_str(), false)))
+        bool fIsSafeObjectNew = true;
+        SafeObject * poSafeObject = nullptr;
+        std::lock_guard<std::mutex> lock(m_oMutexOnSafeObjectMap);
+        if (m_stlMapOfSafeObjects.end() == m_stlMapOfSafeObjects.find(strSafeObjectUuid))
         {
-            Job * poJob = new Job(c_oStructuredBuffer.GetString("JobUuid"), poSafeObject);
-            // Add the job the class database
-            m_stlMapOfJobs.insert(std::make_pair(::Get64BitHashOfNullTerminatedString(c_oStructuredBuffer.GetString("JobUuid").c_str(), false), poJob));
+            // Create and Add the SafeObject to the class database
+            std::cout << "Safe Object not found. " << strSafeObjectUuid << std::endl;
+            poSafeObject = new SafeObject(strSafeObjectUuid);
+            m_stlMapOfSafeObjects.insert(std::make_pair(strSafeObjectUuid, poSafeObject));
+
+            // If the SafeObject is not complete yet. i.e. PushSafeObjet has not been called, we add
+            // the Job to the list that waits on SafeObject Creation.
+            poSafeObject->AddJobUuidToQueue(c_oStructuredBuffer.GetString("JobUuid"));
         }
         else
         {
-            Job * poJob = m_stlMapOfJobs.at(::Get64BitHashOfNullTerminatedString(c_oStructuredBuffer.GetString("JobUuid").c_str(), false));
+            poSafeObject = m_stlMapOfSafeObjects.at(strSafeObjectUuid);
+            fIsSafeObjectNew = false;
+        }
+
+        // check if the job object already exists, if it does just add the SafeObject to it
+        Job * poJob = nullptr;
+        if (m_stlMapOfJobs.end() == m_stlMapOfJobs.find(c_oStructuredBuffer.GetString("JobUuid")))
+        {
+            poJob = new Job(c_oStructuredBuffer.GetString("JobUuid"));
+
+            // Add the job the class database
+            m_stlMapOfJobs.insert(std::make_pair(c_oStructuredBuffer.GetString("JobUuid"), poJob));
+        }
+        else
+        {
+            poJob = m_stlMapOfJobs.at(c_oStructuredBuffer.GetString("JobUuid"));
+        }
+
+        // We do not link the job to the safeObject before it is fully created. Since, the incomplete
+        // safe object has the list of unlinked jobs it will call the SetSafeObject for all the jobs it has
+        // on the queue
+        if (false == fIsSafeObjectNew)
+        {
+            std::cout << "Setting up safe object for the job" << std::endl;
             poJob->SetSafeObject(poSafeObject);
         }
     }
     catch(BaseException & oBaseException)
     {
-        std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
+        std::cout << "Submit Job Exception: " << oBaseException.GetExceptionMessage() << std::endl;
     }
     catch(...)
     {
@@ -478,44 +535,39 @@ void __thiscall JobEngine::SetJobParameter(
 
     try
     {
-        std::cout << "Setting a Job Parameter " << c_oStructuredBuffer.GetBuffer("JobUuid").data() << " to file " << c_oStructuredBuffer.GetString("DataId") << std::endl;
+        std::cout << "Setting a Job Parameter " << c_oStructuredBuffer.GetString("JobUuid") << std::endl;
         fflush(stdout);
 
+        // check if the job object already exists, if it does add the parameter
         std::string strJobUuid = c_oStructuredBuffer.GetString("JobUuid");
         Job * poJob = nullptr;
-        // check if the job object already exists, if it does just add the SafeObject to it
-        if (m_stlMapOfJobs.end() == m_stlMapOfJobs.find(::Get64BitHashOfNullTerminatedString(c_oStructuredBuffer.GetString("JobUuid").c_str(), false)))
+        if (m_stlMapOfJobs.end() == m_stlMapOfJobs.find(strJobUuid))
         {
-            poJob = new Job(c_oStructuredBuffer.GetString("JobUuid"));
+            poJob = new Job(strJobUuid);
             _ThrowIfNull(poJob, "Failed to create a job.", nullptr);
             // Add the job the class database
-            m_stlMapOfJobs.insert(std::make_pair(::Get64BitHashOfNullTerminatedString(strJobUuid.c_str(), false), poJob));
+            m_stlMapOfJobs.insert(std::make_pair(strJobUuid, poJob));
         }
         else
         {
             // Get the safe object from the stored list
-            poJob = m_stlMapOfJobs.at(::Get64BitHashOfNullTerminatedString(strJobUuid.c_str(), false));
+            poJob = m_stlMapOfJobs.at(strJobUuid);
             _ThrowIfNull(poJob, "Invalid job Uuid.", nullptr);
         }
 
-        // Create a lock guard for this scope so that no file is created after the
-        // check for existing file and adding it to the Set later.
-        // It should be ensured that this lock is taken while writing files.
-        const std::lock_guard<std::mutex> lock(m_stlMutexParamtereFiles);
+        poJob->SetParameter(c_oStructuredBuffer.GetString("ParameterUuid"), c_oStructuredBuffer.GetString("ValueUuid"), c_oStructuredBuffer.GetUnsignedInt32("ValuesExpected"), c_oStructuredBuffer.GetUnsignedInt32("ValueIndex"));
 
-        // We check if the file already exists, if the file exists already
-        // we push it to the orchestrator otherwise we will just register the request and
-        // wait for the file to be created in future.
-        std::string strParameterFile = c_oStructuredBuffer.GetString("ParameterUuid");
-        if (0 == ::access(strParameterFile.c_str(), R_OK))
-        {
-            // Set the paramter in the job object
-            poJob->SetParameter(c_oStructuredBuffer.GetString("ParameterUuid"), c_oStructuredBuffer.GetString("ValueUuid"), c_oStructuredBuffer.GetUnsignedInt32("ExpectedParameters"), c_oStructuredBuffer.GetUnsignedInt32("ParameterIndex"));
-        }
-        else
+        // If the parameter is a file and does not exist on the file system, we add it as
+        // an dependency for the job and wait for it.
+        std::string strParameterValueFile = c_oStructuredBuffer.GetString("ValueUuid");
+        std::string strParameterValueSignalFile = gc_strSignalFolderName + "/" + strParameterValueFile;
+        if (false == std::filesystem::exists(strParameterValueSignalFile.c_str()))
         {
             // Register the request for now and fulfill it as soon as it is available later
-            m_stlMapOfParameterToJob.insert(std::make_pair(strParameterFile, poJob));
+            m_stlMapOfParameterValuesToJob.insert(std::make_pair(strParameterValueFile, poJob));
+
+            // Add the file to the list of dependencies of the job
+            poJob->AddDependency(strParameterValueFile);
         }
     }
     catch(BaseException & oBaseException)
@@ -555,11 +607,15 @@ void __thiscall JobEngine::FileCreateCallback(
             auto stlUnused = std::async(std::launch::async, &JobEngine::PullData, this, c_strFileCreatedName);
             m_stlSetOfPullObjects.erase(c_strFileCreatedName);
         }
-        else if (m_stlMapOfParameterToJob.end() != m_stlMapOfParameterToJob.find(c_strFileCreatedName))
+        else if (m_stlMapOfParameterValuesToJob.end() != m_stlMapOfParameterValuesToJob.find(c_strFileCreatedName))
         {
-            Job * poJob = m_stlMapOfParameterToJob.at(c_strFileCreatedName);
-            auto stlUnused = std::async(std::launch::async, &Job::TryRunJob, poJob, c_strFileCreatedName);
-            m_stlMapOfParameterToJob.erase(c_strFileCreatedName);
+            Job * poJob = m_stlMapOfParameterValuesToJob.at(c_strFileCreatedName);
+            poJob->RemoveAvailableDependency(c_strFileCreatedName);
+            m_stlMapOfParameterValuesToJob.erase(c_strFileCreatedName);
+        }
+        else
+        {
+            std::cout << "Useless file " << c_strFileCreatedName << std::endl;
         }
     }
     catch(BaseException & oBaseException)

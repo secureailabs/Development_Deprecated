@@ -252,7 +252,7 @@ int main()
                             }
                             case 14:
                             {
-                                if (5 == qwAccessRights) // Check if user is a dataset admin
+                                if (1 == qwAccessRights || 5 == qwAccessRights) // Check if user is a dataset admin
                                 {
                                     bool fSuccess = ::AcceptDigitalContract(strEncodedEosb);
                                     if (true == fSuccess)
@@ -269,7 +269,7 @@ int main()
                             }
                             case 15:
                             {
-                                if (4 == qwAccessRights) // Check if user is a digital contract admin
+                                if (1 == qwAccessRights || 4 == qwAccessRights) // Check if user is a digital contract admin
                                 {
                                     bool fSuccess = ::ActivateDigitalContract(strEncodedEosb);
                                     if (true == fSuccess)

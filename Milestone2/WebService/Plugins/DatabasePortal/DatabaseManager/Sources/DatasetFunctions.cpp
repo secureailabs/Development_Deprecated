@@ -42,7 +42,8 @@ std::vector<Byte> __thiscall DatabaseManager::ListDatasets(
         // Loop through returned documents and add them to the list of datasets
         StructuredBuffer oListOfDatasets;
         for (auto&& oDocumentView : oDsetRecords)
-        {                           
+        {  
+            bsoncxx::document::element oDooGuid = oDocumentView["DataOwnerOrganizationGuid"];                          
             bsoncxx::document::element oDsetGuid = oDocumentView["DatasetGuid"];
             if (oDsetGuid && oDsetGuid.type() == type::k_utf8)
             {                   
@@ -68,6 +69,16 @@ std::vector<Byte> __thiscall DatabaseManager::ListDatasets(
                                 if (oObjectBlob && oObjectBlob.type() == type::k_binary)
                                 {
                                     StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size);
+                                    if (oDooGuid && oDooGuid.type() == type::k_utf8)
+                                    {
+                                        std::string strOrganizationGuid = oDooGuid.get_utf8().value.to_string();
+                                        // Get organization name
+                                        StructuredBuffer oDooName = this->GetOrganizationName(strOrganizationGuid);
+                                        if (200 == oDooName.GetDword("Status")) 
+                                        {
+                                            oObject.PutString("OrganizationName", oDooName.GetString("OrganizationName"));
+                                        }
+                                    } 
                                     oListOfDatasets.PutStructuredBuffer(strDsetGuid.c_str(), oObject);
                                     dwStatus = 200;
                                 }
@@ -129,7 +140,8 @@ std::vector<Byte> __thiscall DatabaseManager::PullDataset(
                                                                                                                     << "DatasetGuid" << strDsetGuid
                                                                                                                     << finalize);
         if (bsoncxx::stdx::nullopt != oDsetDocument)
-        {                                                                                                           
+        {                                                                         
+            bsoncxx::document::element oDooGuid = oDsetDocument->view()["DataOwnerOrganizationGuid"];                                
             bsoncxx::document::element oPlainTextObjectBlobGuid = oDsetDocument->view()["PlainTextObjectBlobGuid"];
             if (oPlainTextObjectBlobGuid && oPlainTextObjectBlobGuid.type() == type::k_utf8)
             {
@@ -151,6 +163,16 @@ std::vector<Byte> __thiscall DatabaseManager::PullDataset(
                             if (oObjectBlob && oObjectBlob.type() == type::k_binary)
                             {
                                 StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size);
+                                if (oDooGuid && oDooGuid.type() == type::k_utf8)
+                                {
+                                    std::string strOrganizationGuid = oDooGuid.get_utf8().value.to_string();
+                                    // Get organization name
+                                    StructuredBuffer oDooName = this->GetOrganizationName(strOrganizationGuid);
+                                    if (200 == oDooName.GetDword("Status")) 
+                                    {
+                                        oObject.PutString("OrganizationName", oDooName.GetString("OrganizationName"));
+                                    }
+                                } 
                                 oResponse.PutStructuredBuffer("Dataset", oObject);
                                 dwStatus = 200;
                             }

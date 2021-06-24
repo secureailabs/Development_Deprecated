@@ -1348,8 +1348,6 @@ void PrintDigitalContracts(
         std::cout << "Contract stage: " << (Dword) oElement.GetFloat64("ContractStage") << std::endl;
         std::cout << "Subscription days: " << (uint64_t) oElement.GetFloat64("SubscriptionDays") << std::endl;
         std::cout << "Dataset guid: " << oElement.GetString("DatasetGuid") << std::endl;
-        std::cout << "Activation date: " << oElement.GetFloat64("ActivationTime") << std::endl;
-        std::cout << "Expiration date: " << oElement.GetFloat64("ExpirationTime") << std::endl;
         std::cout << "Eula: " << oElement.GetString("Eula") << std::endl;
         std::cout << "Legal agreement: " << oElement.GetString("LegalAgreement") << std::endl;
         std::cout << "------------------------------------------------------" << std::endl;

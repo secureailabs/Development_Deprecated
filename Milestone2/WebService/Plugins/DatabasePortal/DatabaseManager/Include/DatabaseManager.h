@@ -98,6 +98,10 @@ class DatabaseManager : public Object
         std::vector<Byte> __thiscall GetBasicOrganizationRecord(
             _in const StructuredBuffer & c_oRequest
             );
+        // Get organization name associated to a guid
+        std::vector<Byte> __thiscall GetOrganizationName(
+            _in const std::string & c_strOrganizationGuid
+            );
         // Fetch basic user record from the database
         std::vector<Byte> __thiscall GetBasicUserRecord(
             _in const StructuredBuffer & c_oRequest

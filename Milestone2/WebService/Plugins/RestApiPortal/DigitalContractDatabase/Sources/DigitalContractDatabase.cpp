@@ -1004,10 +1004,10 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ListDigitalContracts(
             poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
 
             // Read header and body of the response
-            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 3000);
             _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
             unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 3000);
             _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
             // Make sure to release the poTlsNode
             poTlsNode->Release();
@@ -1274,7 +1274,8 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AcceptDigitalContract(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eDatasetAdmin == oUserInfo.GetQword("AccessRights"))
+            Qword qwAccessRights = oUserInfo.GetQword("AccessRights");
+            if ((eDatasetAdmin == qwAccessRights) || (eAdmin == qwAccessRights))
             {
                 // Step 1: Get the digital contract blob and update the structure
                 StructuredBuffer oDcBlob(this->PullDigitalContract(c_oRequest));
@@ -1402,7 +1403,8 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ActivateDigitalContract(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eDigitalContractAdmin == oUserInfo.GetQword("AccessRights"))
+            Qword qwAccessRights = oUserInfo.GetQword("AccessRights");
+            if ((eDigitalContractAdmin == qwAccessRights) || (eAdmin == qwAccessRights))
             {
                 // Step 1: Get the digital contract blob and update the structure
                 StructuredBuffer oDcBlob(this->PullDigitalContract(c_oRequest));

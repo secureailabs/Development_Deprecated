@@ -221,8 +221,11 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
             pbCurrentBodyByte += unRequestDataSizeInBytes;
         }
         _ThrowBaseExceptionIf((0x656e6420 != *((Dword *) pbCurrentBodyByte)), "Invalid request format: Expected [TAG] = 0x656e6420 but got 0x%08X", *((Dword *) pbCurrentBodyByte));
-
+        
         StructuredBuffer oRequestData(stlSerializedRestRequest);
+
+        std::cout << oRequestData.GetString("Verb");
+        std::cout << " " << oRequestData.GetString("Resource") <<std::endl;
 
         // Get the callback functions associated with the 64bithash of the plugin name
         std::string strPluginName = oRequestData.GetString("PluginName");

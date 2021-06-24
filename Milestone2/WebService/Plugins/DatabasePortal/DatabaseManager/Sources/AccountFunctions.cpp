@@ -90,6 +90,72 @@ std::vector<Byte> __thiscall DatabaseManager::GetBasicOrganizationRecord(
 /********************************************************************************************
  *
  * @class DatabaseManager
+ * @function GetOrganizationName
+ * @brief Fetch basic organization name associated with organization guid from the database
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Serialized StructuredBuffer containing organization name
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::GetOrganizationName(
+    _in const std::string & c_strOrganizationGuid
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+
+    try 
+    {
+        // Each client and transaction can only be used in a single thread
+        mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+        // Access SailDatabase
+        mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+        // Access BasicOrganization collection
+        mongocxx::collection oBasicOrganizationCollection = oSailDatabase["BasicOrganization"];
+        // Fetch Basic Organization record associated with the strOrganizationName
+        bool fFound = false;
+        bsoncxx::stdx::optional<bsoncxx::document::value> oBasicOrganization = oBasicOrganizationCollection.find_one(document{} << "OrganizationUuid" << c_strOrganizationGuid << finalize);
+        if (bsoncxx::stdx::nullopt != oBasicOrganization)
+        {
+            fFound = true;
+        }
+
+        if (true == fFound)
+        {
+            // Get values from the document and generate the BasicOrganization StructuredBuffer
+            bsoncxx::document::view oBasicOrganizationView = oBasicOrganization->view();
+            bsoncxx::document::element strOrganizationName = oBasicOrganizationView["OrganizationName"];
+
+            if (strOrganizationName && strOrganizationName.type() == type::k_utf8)
+            {
+                oResponse.PutString("OrganizationName", strOrganizationName.get_utf8().value.to_string());
+                dwStatus = 200;
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+    
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
  * @function GetBasicUserRecord
  * @brief Fetch basic user record associated with the 64bithash from the database
  * @param[in] c_oRequest contains the request body

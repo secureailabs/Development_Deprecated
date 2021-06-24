@@ -1,0 +1,90 @@
+/*********************************************************************************************
+ *
+ * @file JobEngine.h
+ * @author Prawal Gangwar
+ * @date 27 May 2021
+ * @License Private and Confidential. Internal Use Only.
+ * @copyright Copyright (C) 2020 Secure AI Labs, Inc. All Rights Reserved.
+ * @brief Implementation of the JobEngine class to create and run jobs on the Virtual Machine
+ *
+ ********************************************************************************************/
+
+#pragma once
+
+#include "CoreTypes.h"
+#include "Object.h"
+#include "RootOfTrustNode.h"
+#include "Socket.h"
+#include "StructuredBuffer.h"
+#include "SafeObject.h"
+
+#include <vector>
+#include <string>
+#include <fstream>
+#include <future>
+#include <unordered_map>
+#include <unordered_set>
+
+/********************************************************************************************/
+
+enum class JobState
+{
+    eWaiting,
+    eHalted,
+    eFinished,
+    eRunning
+};
+
+/********************************************************************************************/
+
+class Job : public Object
+{
+    public:
+
+        Job(
+            _in std::string strJobId
+            );
+        // We only want one instance of the job to exist, so not copy constructor
+        Job(
+            _in const Job & c_oJob
+            ) = delete;
+        ~Job(void);
+
+        void __thiscall SetSafeObject(
+            _in SafeObject const * c_poSafeObjectId
+            );
+        void __thiscall SetParameter(
+            _in const std::string & c_strParameterIdentifier,
+            _in const std::string & c_strValueIdentifier,
+            _in unsigned int nExpectedParameters,
+            _in unsigned int nValueIdentifier
+            );
+        void __thiscall RemoveAvailableDependency(
+            _in const std::string & strOutFileName
+            ) throw();
+        void __thiscall AddDependency(
+            _in const std::string & strDepedencyName
+            ) throw();
+        void __thiscall SetOutputFileName(
+            _in const std::string & c_strOutFileName
+            ) throw();
+        const std::string & __thiscall GetOutputFileName(void) const throw();
+        const std::string & __thiscall GetJobId(void) const throw();
+        JobState __thiscall GetJobState(void) const throw();
+
+    private:
+
+        // Private member methods
+        bool __thiscall AreAllParametersSet(void) throw();
+        void __thiscall TryRunJob(void);
+
+        // Private data members
+        JobState m_eJobState;
+        StructuredBuffer m_oParameters;
+        std::string m_strJobUuid;
+        SafeObject const * m_poSafeObject;
+        std::vector<std::string> m_stlInputParameters;
+        std::unordered_set<std::string> m_stlSetOfDependencies;
+        std::string m_stlOutputFileName;
+        std::mutex m_oMutexJob;
+};

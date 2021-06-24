@@ -93,6 +93,7 @@ void __thiscall Job::TryRunJob(void)
     __DebugFunction();
 
     std::cout << "Trying to run job.." << std::endl;
+    std::future<int> nProcessExitStatus;
 
     if (true == this->AreAllParametersSet())
     {
@@ -100,9 +101,12 @@ void __thiscall Job::TryRunJob(void)
         if (0 == m_stlSetOfDependencies.size())
         {
             std::cout << "No dependencoes" << std::endl;
-            int nProcessExitStatus = m_poSafeObject->Run(m_strJobUuid);
+            nProcessExitStatus = std::async(std::launch::async, &SafeObject::Run, m_poSafeObject, m_strJobUuid);
         }
     }
+
+    // TODO: Get the JobEngine to perform a cleanup and remove this object
+    // ensuring that no multi-threading memory corruption happens.
 }
 
 /********************************************************************************************
@@ -122,7 +126,6 @@ void __thiscall Job::SetParameter(
 {
     __DebugFunction();
 
-    // TODO: get a different lock for this
     std::lock_guard<std::mutex> lock(m_oMutexJob);
 
     // TODO: think of a better way to do this
@@ -242,6 +245,20 @@ const std::string & __thiscall Job::GetJobId(void) const throw()
     __DebugFunction();
 
     return m_strJobUuid;
+}
+
+/********************************************************************************************
+ *
+ * @class Job
+ * @function Job
+ * @brief Constructor to create a Job object
+ *
+ ********************************************************************************************/
+JobState __thiscall Job::GetJobState(void) const throw()
+{
+    __DebugFunction();
+
+    return m_eJobState;
 }
 
 /********************************************************************************************

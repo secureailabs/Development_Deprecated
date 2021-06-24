@@ -13,8 +13,8 @@
 #include "DebugLibrary.h"
 #include "Exceptions.h"
 #include "StructuredBuffer.h"
-#include "TlsClient.h"
-#include "TlsTransactionHelperFunctions.h"
+#include "IpcTransactionHelperFunctions.h"
+#include "SocketServer.h"
 
 #include <iostream>
 
@@ -32,7 +32,7 @@ enum class EngineRequest
 
 
 bool TestPushSafeObject(
-    _in TlsNode * poTlsNode
+    _in Socket * poSocket
 )
 {
     __DebugFunction();
@@ -43,7 +43,11 @@ bool TestPushSafeObject(
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePushSafeObject);
 
     oStructuredBufferRequest.PutString("SafeObjectUuid", "{e0d937b9-471e-4d2e-a470-d0c96d21574b}");
-    std::string test_code = "print(\"Hello World\")\n";
+    std::string test_code = "print(\"Hello Prawal\")\n";
+    test_code += "f= open(\"{abf0a5ad-21a8-4b91-a4b6-07e09c9d8467}\",\"w+\")\n";
+    test_code += "f.write(\"This is the output\")\n";
+    test_code += "f.close()\n";
+
     oStructuredBufferRequest.PutBuffer("Payload", (Byte *)test_code.c_str(), test_code.length());
 
     StructuredBuffer oStructuredBufferOfParameters;
@@ -55,13 +59,13 @@ bool TestPushSafeObject(
 
     // oStructuredBufferRequest.PutString("ResultId", "ResultId");
 
-    ::PutTlsTransaction(poTlsNode, oStructuredBufferRequest);
+    ::PutIpcTransaction(poSocket, oStructuredBufferRequest);
 
     return true;
 }
 
 bool TestSubmitJob(
-    _in TlsNode * poTlsNode
+    _in Socket * poSocket
 )
 {
     __DebugFunction();
@@ -72,13 +76,13 @@ bool TestSubmitJob(
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::eSubmitJob);
     oStructuredBufferRequest.PutString("SafeObjectUuid", "{e0d937b9-471e-4d2e-a470-d0c96d21574b}");
     oStructuredBufferRequest.PutString("JobUuid", "{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}");
-    ::PutTlsTransaction(poTlsNode, oStructuredBufferRequest);
+    ::PutIpcTransaction(poSocket, oStructuredBufferRequest);
 
     return true;
 }
 
 bool TestSetParameters(
-    _in TlsNode * poTlsNode
+    _in Socket * poSocket
 )
 {
     __DebugFunction();
@@ -93,13 +97,13 @@ bool TestSetParameters(
     oStructuredBufferRequest.PutUnsignedInt32("ValuesExpected", 1);
     oStructuredBufferRequest.PutUnsignedInt32("ValueIndex", 0);
 
-    ::PutTlsTransaction(poTlsNode, oStructuredBufferRequest);
+    ::PutIpcTransaction(poSocket, oStructuredBufferRequest);
 
     return true;
 }
 
 bool TestPushData(
-    _in TlsNode * poTlsNode
+    _in Socket * poSocket
 )
 {
     __DebugFunction();
@@ -112,13 +116,13 @@ bool TestPushData(
     std::vector<Byte> stlDataToPush = {'a', 'b', 'c', 'd', 0};
     oStructuredBufferRequest.PutBuffer("Data", stlDataToPush);
 
-    ::PutTlsTransaction(poTlsNode, oStructuredBufferRequest);
+    ::PutIpcTransaction(poSocket, oStructuredBufferRequest);
 
     return true;
 }
 
 bool TestPullData(
-    _in TlsNode * poTlsNode
+    _in Socket * poSocket
 )
 {
     __DebugFunction();
@@ -127,10 +131,10 @@ bool TestPullData(
 
     StructuredBuffer oStructuredBufferRequest;
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePullData);
-    oStructuredBufferRequest.PutString("Filename", "outputFile");
+    oStructuredBufferRequest.PutString("Filename", "{abf0a5ad-21a8-4b91-a4b6-07e09c9d8467}");
 
     // Send the request and wait for
-    ::PutTlsTransaction(poTlsNode, oStructuredBufferRequest);
+    ::PutIpcTransaction(poSocket, oStructuredBufferRequest);
 
     // In a real use-case scenario the orchestrator will make an async call
     // to get the data file. It will not wait for it. Instead, as soon as it
@@ -140,7 +144,7 @@ bool TestPullData(
 
     // This is just a workaround to test this feature.
     // Put a huge timout so that it can just wait for infinite. 11
-    StructuredBuffer oStrucutredBufferData(::GetTlsTransaction(poTlsNode, 1000000000));
+    StructuredBuffer oStrucutredBufferData(::GetIpcTransaction(poSocket));
 
     std::cout << "Got the data: " << oStrucutredBufferData.GetBuffer("FileData").data() << std::endl;
 
@@ -148,7 +152,7 @@ bool TestPullData(
 }
 
 bool TestEndConnection(
-    _in TlsNode * poTlsNode
+    _in Socket * poSocket
 )
 {
     __DebugFunction();
@@ -159,7 +163,7 @@ bool TestEndConnection(
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::eShutdown);
 
     // Send the request and wait for
-    ::PutTlsTransaction(poTlsNode, oStructuredBufferRequest);
+    ::PutIpcTransaction(poSocket, oStructuredBufferRequest);
 
     return true;
 }
@@ -176,17 +180,31 @@ int __cdecl main(
         // Parse the command line
         StructuredBuffer oCommandLineArguments = ::ParseCommandLineParameters((unsigned int) nNumberOfArguments, (const char **) pszCommandLineArguments);
 
-        std::cout << "Connecting to Job Engine!!" << std::endl;
-        TlsNode * poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 8888);
+        std::cout << "Waiting for connection form Job Engine!!" << std::endl;
+        SocketServer oSocketServer("{164085b7-ef20-4257-bc14-e1e08c908aaa}");
 
-        ::TestPushSafeObject(poTlsNode);
-        ::TestSubmitJob(poTlsNode);
-        ::TestSetParameters(poTlsNode);
-        ::TestPushData(poTlsNode);
-        // ::TestPullData(poTlsNode);
-        // ::TestEndConnection(poTlsNode);
+        Socket * poSocket = nullptr;
+        do
+        {
+            if (true == oSocketServer.WaitForConnection(1000))
+            {
+                poSocket = oSocketServer.Accept();
+                if (nullptr != poSocket)
+                {
+                    _ThrowIfNull(poSocket, "Can't connect to socket client.", nullptr);
+                    break;
+                }
+            }
+        } while (true);
 
-        poTlsNode->Release();
+        ::TestPushSafeObject(poSocket);
+        ::TestSubmitJob(poSocket);
+        ::TestSetParameters(poSocket);
+        ::TestPushData(poSocket);
+        // ::TestPullData(poSocket);
+        // ::TestEndConnection(poSocket);
+
+        poSocket->Release();
     }
 
     catch (BaseException oException)

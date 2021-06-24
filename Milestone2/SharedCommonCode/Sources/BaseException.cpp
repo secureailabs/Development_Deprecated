@@ -30,7 +30,8 @@
  * @brief BaseException class constructor
  *
  ********************************************************************************************/
- 
+#include <iostream>
+
 BaseException::BaseException(
 	_in const char * c_szFilename,
 	_in const char * c_szFunctionName,
@@ -46,9 +47,12 @@ BaseException::BaseException(
 	va_list pListOfArguments;
 	va_start( pListOfArguments, c_szExceptionFormat );
 	unsigned int unSizeInCharactersIncludingNull = ::vsnprintf( nullptr, 0, c_szExceptionFormat, pListOfArguments ) + 1;
+	va_end(pListOfArguments);
+
 	// Unlike most other components who will use the MemoryAllocation library, this component calls
 	// malloc directly. This is to ensure that if the actual MemoryAllocation components throws
 	// an exception, this doesn't lead to an infinite loop.
+	va_start( pListOfArguments, c_szExceptionFormat );
 	m_szExceptionMessage = (char *)::malloc(unSizeInCharactersIncludingNull * sizeof(char));
 	if (nullptr != m_szExceptionMessage)
 	{

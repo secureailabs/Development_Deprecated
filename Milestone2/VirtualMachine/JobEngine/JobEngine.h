@@ -16,8 +16,6 @@
 #include "RootOfTrustNode.h"
 #include "Socket.h"
 #include "StructuredBuffer.h"
-#include "TlsTransactionHelperFunctions.h"
-#include "TlsServer.h"
 #include "SafeObject.h"
 #include "Job.h"
 
@@ -30,7 +28,6 @@
 
 /********************************************************************************************/
 
-const std::string gc_strHaltAllJobsSignalFilename = "StopAllJobs";
 const std::string gc_strSignalFolderName = "DataSignals";
 const std::string gc_strDataFolderName = "DataFiles";
 
@@ -76,7 +73,7 @@ class JobEngine : public Object
 
         void __thiscall StartServer(void);
         void __thiscall ListenToRequests(
-            _in TlsNode * c_poTlsNode
+            _in Socket * poSocket
             );
         void __thiscall FileCreateCallback(
             _in const std::string & c_strFileCreatedFilename
@@ -111,8 +108,7 @@ class JobEngine : public Object
 
         // Private data members
         static JobEngine m_oJobEngine;
-        TlsServer * m_poTlsServer;
-        TlsNode * m_poTlsNode;
+        Socket * m_poSocket;
         std::unordered_map<std::string, Job *> m_stlMapOfJobs;
         std::mutex m_oMutexOnJobsMap;
         std::unordered_map<std::string, SafeObject *> m_stlMapOfSafeObjects;

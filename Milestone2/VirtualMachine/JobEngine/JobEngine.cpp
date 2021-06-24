@@ -8,14 +8,13 @@
  *
  ********************************************************************************************/
 
-#include "Base64Encoder.h"
 #include "JobEngine.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
-#include "TlsServer.h"
 #include "ThreadManager.h"
 #include "StatusMonitor.h"
-#include "64BitHashes.h"
+#include "SocketClient.h"
+#include "IpcTransactionHelperFunctions.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -23,6 +22,7 @@
 #include <sys/inotify.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <limits.h>
 
 #include <iostream>
 #include <algorithm>
@@ -188,44 +188,41 @@ void JobEngine::StartServer(void)
 {
     __DebugFunction();
 
-    std::cout << "Starting the Job Engine Server on port 8888" << std::endl;
-    m_poTlsServer = new TlsServer(8888);
-    _ThrowIfNull(m_poTlsServer, "Could not create a Tls server.", nullptr);
-
     // Start listening to requests and fullfill them
     ThreadManager * poThreadManager = ThreadManager::GetInstance();
     // StatusMonitor oStatusMonitor("static void __cdecl InitDataConnector()");
 
+    std::error_code oErrorCode;
     // Delete existing Directories
     if (std::filesystem::exists(gc_strSignalFolderName))
     {
-        _ThrowBaseExceptionIf((true != std::filesystem::remove_all(gc_strSignalFolderName)), "Could not create Signal Files Folder", nullptr);
+        _ThrowBaseExceptionIf((false == std::filesystem::remove_all(gc_strSignalFolderName, oErrorCode)), "Could not create Signal Files Folder. %s", oErrorCode.message().c_str());
     }
     if (std::filesystem::exists(gc_strDataFolderName))
     {
-        _ThrowBaseExceptionIf((true != std::filesystem::remove_all(gc_strDataFolderName)), "Could not delete Data Files Folder", nullptr);
+        _ThrowBaseExceptionIf((false == std::filesystem::remove_all(gc_strDataFolderName, oErrorCode)), "Could not delete Data Files Folder", nullptr);
+    }
+    if (std::filesystem::exists(gc_strJobsSignalFolderName))
+    {
+        _ThrowBaseExceptionIf((false == std::filesystem::remove_all(gc_strJobsSignalFolderName, oErrorCode)), "Could not delete Data Files Folder", nullptr);
     }
 
     // Create a folder for data files and signal files.
-    _ThrowBaseExceptionIf((-1 == ::mkdir(gc_strSignalFolderName.c_str(), 0700)), "Could not create Signal Files Folder", nullptr);
-    _ThrowBaseExceptionIf((-1 == ::mkdir(gc_strDataFolderName.c_str(), 0700)), "Could not create Data Folder", nullptr);
+    _ThrowBaseExceptionIf((false == std::filesystem::create_directory(gc_strSignalFolderName, oErrorCode)), "Could not create Signal Files Folder", nullptr);
+    _ThrowBaseExceptionIf((false == std::filesystem::create_directory(gc_strDataFolderName, oErrorCode)), "Could not create Data Folder", nullptr);
+    _ThrowBaseExceptionIf((false == std::filesystem::create_directory(gc_strJobsSignalFolderName, oErrorCode)), "Could not create Signal All Jobs Folder", nullptr);
 
     // Create a thread to listen to all the files being created and a callback to the JobEngine
     poThreadManager->CreateThread(nullptr, ::FileSystemWatcherThread, (void *)nullptr);
 
-    std::cout << "Waiting for connection from the orchestrator" << std::endl;
-    do
+    std::cout << "Connecting to socket server on orchestrator..." << std::endl;
+
+    m_poSocket = ::ConnectToUnixDomainSocket("{164085b7-ef20-4257-bc14-e1e08c908aaa}");
+    if (nullptr != m_poSocket)
     {
-        if (true == m_poTlsServer->WaitForConnection(1000))
-        {
-            m_poTlsNode = m_poTlsServer->Accept();
-            if (nullptr != m_poTlsNode)
-            {
-                this->ListenToRequests(m_poTlsNode);
-                m_poTlsNode->Release();
-            }
-        }
-    } while (true);
+        this->ListenToRequests(m_poSocket);
+        m_poSocket->Release();
+    }
     // while (false == oStatusMonitor.IsTerminating());
 }
 
@@ -238,7 +235,7 @@ void JobEngine::StartServer(void)
  ********************************************************************************************/
 
 void __thiscall JobEngine::ListenToRequests(
-    _in TlsNode * c_poTlsNode
+    _in Socket * poSocket
 )
 {
     __DebugFunction();
@@ -249,7 +246,7 @@ void __thiscall JobEngine::ListenToRequests(
     {
         // This should be a blocking call, because we have a persistant connection
         std::cout << "Waiting for request..\n";
-        auto stlSerializedBuffer = ::GetTlsTransaction(c_poTlsNode, 100000000);
+        auto stlSerializedBuffer = ::GetIpcTransaction(poSocket);
         StructuredBuffer oNewRequest(stlSerializedBuffer);
 
         // Get the type of request
@@ -277,7 +274,7 @@ void __thiscall JobEngine::ListenToRequests(
         }
         else if (EngineRequest::eHaltAllJobs == eRequestType)
         {
-            stlReturn = std::async(std::launch::async, &JobEngine::SetJobParameter, this, oNewRequest);
+            stlReturn = std::async(std::launch::async, &JobEngine::HaltAllJobs, this, oNewRequest);
         }
         else if (EngineRequest::eShutdown == eRequestType)
         {
@@ -322,7 +319,6 @@ void __thiscall JobEngine::PushSafeObject(
             poSafeObject = new SafeObject(strSafeObjectUuid);
             poSafeObject->Setup(c_oStructuredBuffer);
             // Push the safe object to the list of safeObjects in the engine
-            std::cout << "Adding to list " << strSafeObjectUuid << std::endl;
             m_stlMapOfSafeObjects.insert(std::make_pair(strSafeObjectUuid, poSafeObject));
         }
         else
@@ -421,7 +417,7 @@ void __thiscall JobEngine::PullData(
             oResponse.PutBuffer("FileData", ::FileToBytes(c_strFileNametoSend));
 
             // TODO: write the file to the socket
-            ::PutTlsTransaction(m_poTlsNode, oResponse);
+            ::PutIpcTransaction(m_poSocket, oResponse);
 
             // We delete the signal file and the data file after we have consumed it.
             ::remove(strSignalFile.c_str());
@@ -655,7 +651,67 @@ void __thiscall JobEngine::SendSignal(
         oResponse.PutString("JobId", c_strJobId);
         oResponse.PutByte("Status", (Byte)eJobStatus);
 
-        // ::PutTlsTransaction(poTlsNode, oResponse);
+        ::PutIpcTransaction(m_poSocket, oResponse);
+    }
+    catch(BaseException & oBaseException)
+    {
+        std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
+    }
+    catch(...)
+    {
+        std::cout << "Some exceptional error in " << __func__ << std::endl;
+    }
+}
+
+/********************************************************************************************
+ *
+ * @class JobEngine
+ * @function RunJob
+ * @brief
+ * @param[in] c_oStructuredBuffer Input Request Params
+ *
+ ********************************************************************************************/
+
+void __thiscall JobEngine::HaltAllJobs(
+    _in const StructuredBuffer & c_strJobId
+)
+{
+    __DebugFunction();
+
+    try
+    {
+        // Ask the listener to stop listening for new Requests for now
+
+
+        // Create a kill running job signal file that will inform all the running jobs to quit
+        std::ofstream output(gc_strJobsSignalFolderName + "/" + gc_strHaltAllJobsSignalFilename);
+
+        // Call destructor on all the job objects as soon as they have killed the running jobs
+        // are are stable
+        while(0 < m_stlMapOfJobs.size())
+        {
+            for (auto oJobMapElement : m_stlMapOfJobs)
+            {
+                JobState eJobState = oJobMapElement.second->GetJobState();
+                if (JobState::eRunning != eJobState)
+                {
+                    oJobMapElement.second->Release();
+                    m_stlMapOfJobs.erase(oJobMapElement.first);
+                }
+            }
+        }
+
+        // Once all the jobs have been stopped and cleared from the Engine, it is safe to remove all
+        // the SafeObjects associated with them
+        for (auto oSafeObjectMapElement : m_stlMapOfSafeObjects)
+        {
+            oSafeObjectMapElement.second->Release();
+            m_stlMapOfJobs.erase(oSafeObjectMapElement.first);
+        }
+
+
+        // Ask the listener to resume listening for new Requests for now
+
     }
     catch(BaseException & oBaseException)
     {

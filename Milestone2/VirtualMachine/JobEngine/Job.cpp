@@ -20,6 +20,7 @@
 #include <iostream>
 #include <algorithm>
 #include <future>
+#include <filesystem>
 
 #define cout cout << std::this_thread::get_id() << " "
 
@@ -77,6 +78,8 @@ void __thiscall Job::SetSafeObject(
     // TODO: get a list of all the parameters
     m_stlInputParameters = c_poSafeObjectId->GetListOfParameters();
 
+    std::cout << "m_stlInputParameters.size() is " << m_stlInputParameters.size() << std::endl;
+
     this->TryRunJob();
 }
 
@@ -101,7 +104,7 @@ void __thiscall Job::TryRunJob(void)
         if (0 == m_stlSetOfDependencies.size())
         {
             std::cout << "No dependencoes" << std::endl;
-            nProcessExitStatus = std::async(std::launch::async, &SafeObject::Run, m_poSafeObject, m_strJobUuid);
+            nProcessExitStatus = std::async(std::launch::async, &SafeObject::Run, m_poSafeObject, m_strJobUuid, m_stlOutputFileName);
         }
     }
 
@@ -117,7 +120,7 @@ void __thiscall Job::TryRunJob(void)
  *
  ********************************************************************************************/
 
-void __thiscall Job::SetParameter(
+bool __thiscall Job::SetParameter(
     _in const std::string & c_strParameterIdentifier,
     _in const std::string & c_strValueIdentifier,
     _in unsigned int nExpectedParameters,
@@ -132,7 +135,7 @@ void __thiscall Job::SetParameter(
     if (true == m_oParameters.IsElementPresent(c_strParameterIdentifier.c_str(), INDEXED_BUFFER_VALUE_TYPE))
     {
         StructuredBuffer oThisParameter = m_oParameters.GetStructuredBuffer(c_strParameterIdentifier.c_str());
-        oThisParameter.PutString(std::to_string(nParameterIndex).c_str(), c_strParameterIdentifier);
+        oThisParameter.PutString(std::to_string(nParameterIndex).c_str(), c_strValueIdentifier);
 
         if (nExpectedParameters == (oThisParameter.GetNamesOfElements().size() - 1))
         {
@@ -144,8 +147,9 @@ void __thiscall Job::SetParameter(
     {
         StructuredBuffer oNewParameter;
         oNewParameter.PutBoolean("AllValueSet", false);
-        oNewParameter.PutString(std::to_string(nParameterIndex).c_str(), c_strParameterIdentifier);
+        oNewParameter.PutString(std::to_string(nParameterIndex).c_str(), c_strValueIdentifier);
 
+        // TODO: Also check if the value is present on the filesystem before marking this as true.
         if (nExpectedParameters == (oNewParameter.GetNamesOfElements().size() - 1))
         {
             oNewParameter.PutBoolean("AllValueSet", true);
@@ -157,8 +161,23 @@ void __thiscall Job::SetParameter(
         m_oParameters.PutStructuredBuffer(c_strParameterIdentifier.c_str(), oNewParameter);
     }
 
-    // Once the parameter is set we try to run the job if all the paramets are set and good to go
-    this->TryRunJob();
+    // If the parameter is a file and does not exist on the file system, we add it as
+    // an dependency for the job and wait for it.
+    std::string strParameterValueSignalFile = "DataSignals/" + c_strValueIdentifier;
+    bool fIsSignalFilePresent = std::filesystem::exists(strParameterValueSignalFile.c_str());
+    if (false == fIsSignalFilePresent)
+    {
+        // Add the file to the list of dependencies of the job
+        std::cout << "Addind dependency" << std::endl;
+        this->AddDependency(c_strValueIdentifier);
+    }
+    else
+    {
+        // Once the parameter is set we try to run the job if all the paramets are set and good to go
+        this->TryRunJob();
+    }
+
+    return fIsSignalFilePresent;
 }
 
 /********************************************************************************************

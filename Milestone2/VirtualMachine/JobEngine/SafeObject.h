@@ -42,7 +42,8 @@ class SafeObject : public Object
             _in const StructuredBuffer & c_oStructuredBuffer
             );
         int __thiscall Run(
-            _in const std::string & c_strJobUuid
+            _in const std::string & c_strJobUuid,
+            _in const std::string & c_strOutFileName
             ) const;
         const std::string & __thiscall GetSafeObjectIdentifier(void) const;
         const std::string & __thiscall GetCommandToExecute(void) const;

@@ -78,6 +78,9 @@ class JobEngine : public Object
         void __thiscall FileCreateCallback(
             _in const std::string & c_strFileCreatedFilename
         );
+        void __thiscall SendSignal(
+            _in const StructuredBuffer & oStructuredBuffer
+            );
 
     private:
 
@@ -100,10 +103,6 @@ class JobEngine : public Object
             );
         void __thiscall HaltAllJobs(
             _in const StructuredBuffer & oStructuredBuffer
-            );
-        void __thiscall SendSignal(
-            _in const std::string & JobId,
-            _in JobStatusSignals eJobStatus
             );
 
         // Private data members

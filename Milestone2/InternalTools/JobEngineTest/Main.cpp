@@ -30,7 +30,6 @@ enum class EngineRequest
     eJobStatusSignal = 7
 };
 
-
 bool TestPushSafeObject(
     _in Socket * poSocket
 )
@@ -47,6 +46,8 @@ bool TestPushSafeObject(
     test_code += "f= open(\"{abf0a5ad-21a8-4b91-a4b6-07e09c9d8467}\",\"w+\")\n";
     test_code += "f.write(\"This is the output\")\n";
     test_code += "f.close()\n";
+    // test_code += "while True:\n";
+    // test_code += "    pass\n";
 
     oStructuredBufferRequest.PutBuffer("Payload", (Byte *)test_code.c_str(), test_code.length());
 
@@ -76,6 +77,7 @@ bool TestSubmitJob(
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::eSubmitJob);
     oStructuredBufferRequest.PutString("SafeObjectUuid", "{e0d937b9-471e-4d2e-a470-d0c96d21574b}");
     oStructuredBufferRequest.PutString("JobUuid", "{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}");
+    oStructuredBufferRequest.PutString("OutFileName", "{abf0a5ad-21a8-4b91-a4b6-07e09c9d8467}");
     ::PutIpcTransaction(poSocket, oStructuredBufferRequest);
 
     return true;
@@ -144,14 +146,14 @@ bool TestPullData(
 
     // This is just a workaround to test this feature.
     // Put a huge timout so that it can just wait for infinite. 11
-    StructuredBuffer oStrucutredBufferData(::GetIpcTransaction(poSocket));
+    // StructuredBuffer oStrucutredBufferData(::GetIpcTransaction(poSocket));
 
-    std::cout << "Got the data: " << oStrucutredBufferData.GetBuffer("FileData").data() << std::endl;
+    // std::cout << "Got the data: " << oStrucutredBufferData.GetBuffer("FileData").data() << std::endl;
 
     return true;
 }
 
-bool TestEndConnection(
+bool TestHaltJobs(
     _in Socket * poSocket
 )
 {
@@ -160,7 +162,7 @@ bool TestEndConnection(
     std::cout << "Testing Server Shut!!" << std::endl;
 
     StructuredBuffer oStructuredBufferRequest;
-    oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::eShutdown);
+    oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::eHaltAllJobs);
 
     // Send the request and wait for
     ::PutIpcTransaction(poSocket, oStructuredBufferRequest);
@@ -201,8 +203,24 @@ int __cdecl main(
         ::TestSubmitJob(poSocket);
         ::TestSetParameters(poSocket);
         ::TestPushData(poSocket);
-        // ::TestPullData(poSocket);
-        // ::TestEndConnection(poSocket);
+        ::TestPullData(poSocket);
+        // ::TestHaltJobs(poSocket);
+        // ::TestVmShutdown(poSocket);
+
+        // After sending all the jobs, wait for the signals
+        do
+        {
+            std::cout << "Waiting for signals..\n";
+            auto stlSerializedBuffer = ::GetIpcTransaction(poSocket);
+            StructuredBuffer oNewRequest(stlSerializedBuffer);
+
+            std::cout << oNewRequest.ToString();
+
+
+            // std::cout << "Signal Received:\n";
+            // std::cout << "SignalType: " << oNewRequest.GetByte("Status") << std::endl;
+            // std::cout << "Job Id: " << oNewRequest.GetString("JobId") << std::endl << std::endl;
+        }while(true);
 
         poSocket->Release();
     }

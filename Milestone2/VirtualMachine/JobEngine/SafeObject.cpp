@@ -11,6 +11,7 @@
 #include "DebugLibrary.h"
 #include "SafeObject.h"
 #include "Exceptions.h"
+#include "JobEngine.h"
 
 #include <iostream>
 #include <fstream>
@@ -24,6 +25,8 @@
 #include <limits.h>
 #include <sys/epoll.h>
 #include <string.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 #define cout cout << std::this_thread::get_id() << " "
 
@@ -112,7 +115,7 @@ void __thiscall SafeObject::Setup(
     }
 
     // Add the command that is to be executed.
-    m_strCommandToExecute = "python3 " + m_strSafeObjectIdentifier;
+    m_strCommandToExecute = m_strSafeObjectIdentifier;
 }
 
 /********************************************************************************************
@@ -124,23 +127,25 @@ void __thiscall SafeObject::Setup(
  ********************************************************************************************/
 
 int __thiscall SafeObject::Run(
-    _in const std::string & c_strJobUuid
+    _in const std::string & c_strJobUuid,
+    _in const std::string & c_strOutFileName
 ) const
 {
     __DebugFunction();
 
     int nProcessExitStatus;
-    // FILE * in = ::popen(m_strCommandToExecute.c_str(), "r");
-
-    // std::string strOutputString;
-    // strOutputString.resize(1024);
-    // ::fread((void *)strOutputString.c_str(), 1, 1024, in);
-    // std::cout << "Run Job Out:\n " << strOutputString << std::endl;
-    // int nProcessExitStatus = ::pclose(in);
-    // std::cout << "Process exit with status: " << nProcessExitStatus << std::endl;
 
     try
     {
+
+        // Get the JobEngine singleton object and send a job start signal to the remote orchestrator
+        JobEngine & oJobEngine = JobEngine::Get();
+
+        StructuredBuffer oStructruedBufferSignal;
+        oStructruedBufferSignal.PutByte("SignalType", (Byte)JobStatusSignals::eJobStart);
+        oStructruedBufferSignal.PutString("JobId", c_strJobUuid);
+        oJobEngine.SendSignal(oStructruedBufferSignal);
+
         pid_t nProcessIdentifier = ::fork();
         _ThrowBaseExceptionIf((-1 == nProcessIdentifier), "Fork has failed with errno = %d", errno);
 
@@ -148,8 +153,7 @@ int __thiscall SafeObject::Run(
         {
             // This is the child process which will run the actual job and write the output to the screen
             // and create a file with the output
-            ::execl("/bin/sh", "/bin/sh", "-c", m_strCommandToExecute.c_str(), NULL);
-            // ::execl("./RestApiPortal", "./RestApiPortal", nullptr);
+            ::execl("/usr/bin/python3", "/usr/bin/python3", m_strCommandToExecute.c_str(), nullptr);
             ::exit(0);
         }
         else
@@ -157,8 +161,6 @@ int __thiscall SafeObject::Run(
             // The parent process will wait for either the child to exit after completion or
             // wait for the halt all jobs from the Job Engine to exit or kill the child process
 
-            std::cout << "This is parent process " << std::endl;
-            fflush(stdout);
             // Use the process file descriptor to wait for the child process to exit
             int nChildProcessFileDescriptor = ::syscall(SYS_pidfd_open, nProcessIdentifier, 0);
             _ThrowBaseExceptionIf((-1 == nChildProcessFileDescriptor), "Failed to get the file descriptor for the child process Errorno: %s.",  ::strerror(errno));
@@ -191,53 +193,50 @@ int __thiscall SafeObject::Run(
             _ThrowBaseExceptionIf((0 != nReturnValue), "epoll_ctl() failed with errno = %d", errno);
 
             // This is a blocking call to infinitely wait for either event
-            struct epoll_event asPollingEvents[2];
+            struct epoll_event asPollingEvents[1];
             std::cout << "Waiting for epoll event to occur.. " << std::endl;
-            int nNumberOfEvents = ::epoll_wait(nPollingFileDescriptor, asPollingEvents, 2, -1);
+            int nNumberOfEvents = ::epoll_wait(nPollingFileDescriptor, asPollingEvents, 1, -1);
 
             if (0 < nNumberOfEvents)
             {
-                // This is when the child process exits
+                // This is when the child process exits itself
                 if (nChildProcessFileDescriptor == asPollingEvents->data.fd)
                 {
-                    std::cout << "the child process exits. :-) \n";
+                    std::cout << "Child died naturally. X-| \n";
+                    ::waitpid(nProcessIdentifier, &nProcessExitStatus, 0);
+                    if (0 == nProcessExitStatus)
+                    {
+                        // On successful completion of the job, write the output signal file
+                        std::ofstream output("DataSignals/" + c_strOutFileName);
+
+                        // Send a job success signal to the orchestrator
+                        oStructruedBufferSignal.PutByte("SignalType", (Byte)JobStatusSignals::eJobDone);
+                        oStructruedBufferSignal.PutString("JobId", c_strJobUuid);
+                        oJobEngine.SendSignal(oStructruedBufferSignal);
+                    }
+                    else
+                    {
+                        // Send a job fail signal to the orchestrator
+                        oStructruedBufferSignal.PutByte("SignalType", (Byte)JobStatusSignals::eJobFail);
+                        oStructruedBufferSignal.PutString("JobId", c_strJobUuid);
+                        oJobEngine.SendSignal(oStructruedBufferSignal);
+                    }
                 }
+                // This is when a kill signal is recevied from the JobEngine
                 else if (nINotifyFd == asPollingEvents->data.fd)
                 {
-                    std::cout << "the kill process exits. :-) \n";
+                    std::cout << "Child killed. X-< \n";
+                    nProcessExitStatus = ::kill(nProcessIdentifier, SIGKILL);
                 }
                 else
                 {
-                    std::cout << "Don't know what is this event." << std::endl;
+                    std::cout << "Unknown event. Should have never hit this." << std::endl;
                 }
             }
             else
             {
                 _ThrowBaseException("Unexpected error while waiting for process to exit", nullptr);
             }
-
-            // // Allocate a buffer for
-            // std::vector<Byte> stlNotifyEvent(sizeof(struct inotify_event) + NAME_MAX + 1);
-            // bool fKeepRunning = true;
-            // while(true == fKeepRunning)
-            // {
-            //     // This is a blocking call is only invoked when a file system related event is
-            //     // is reported in the specified directory
-            //     int nLengthOfData = ::read(nINotifyFd, stlNotifyEvent.data(), stlNotifyEvent.size());
-
-            //     struct inotify_event * poInotifyEvent = (struct inotify_event *)stlNotifyEvent.data();
-            //     if(poInotifyEvent->len && (poInotifyEvent->mask & IN_CREATE))
-            //     {
-            //         // For everyfile created we call a JobEngine callback function which should
-            //         // find the most efficient way to handle such a file.
-            //         std::cout << "FileCreateCallback for " << poInotifyEvent->name << std::endl;
-
-            //         if (gc_strHaltAllJobsSignalFilename == poInotifyEvent->name)
-            //         {
-            //             fKeepRunning = false;
-            //         }
-            //     }
-            // }
 
             // Cleanup the event listener
             ::inotify_rm_watch( nINotifyFd, nDirectoryToWatchFd);
@@ -250,15 +249,16 @@ int __thiscall SafeObject::Run(
             ::close(nPollingFileDescriptor);
         }
     }
-    catch(const std::exception& e)
-    {
-        std::cerr << e.what() << '\n';
-    }
     catch(const BaseException & oBaseException)
     {
         std::cout << oBaseException.GetExceptionMessage() << '\n';
     }
+    catch(const std::exception& e)
+    {
+        std::cout << e.what() << '\n';
+    }
 
+    std::cout << "Process exit with status " << nProcessExitStatus << std::endl;
     return nProcessExitStatus;
 }
 

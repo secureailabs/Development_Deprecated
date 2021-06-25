@@ -280,7 +280,9 @@ void __thiscall JobEngine::ListenToRequests(
         {
             fConnectionIsOpen = false;
             // Send a signal of VM Shutdown to the orceshtrator
-            this->SendSignal("", JobStatusSignals::eJobFail);
+            StructuredBuffer oStructuredBufferShutdown;
+            oStructuredBufferShutdown.PutByte("SignalType", (Byte)JobStatusSignals::eVmShutdown);
+            this->SendSignal(oStructuredBufferShutdown);
         }
         else
         {
@@ -412,12 +414,12 @@ void __thiscall JobEngine::PullData(
             // As soon as the file we requested for is found, we return it to the
             // orchestrator who is waiting asychronously waiting for it.
             StructuredBuffer oResponse;
-            oResponse.PutByte("RequestType", (Byte)EngineRequest::ePushdata);
-            oResponse.PutString("FileName", c_strFileNametoSend);
+            oResponse.PutByte("SignalType", (Byte)JobStatusSignals::ePostValue);
+            oResponse.PutString("ValueName", c_strFileNametoSend);
             oResponse.PutBuffer("FileData", ::FileToBytes(c_strFileNametoSend));
 
             // TODO: write the file to the socket
-            ::PutIpcTransaction(m_poSocket, oResponse);
+            this->SendSignal(oResponse);
 
             // We delete the signal file and the data file after we have consumed it.
             ::remove(strSignalFile.c_str());
@@ -503,6 +505,9 @@ void __thiscall JobEngine::SubmitJob(
             std::cout << "Setting up safe object for the job" << std::endl;
             poJob->SetSafeObject(poSafeObject);
         }
+
+        // Set the name of the output file that the job has to produce
+        poJob->SetOutputFileName(c_oStructuredBuffer.GetString("OutFileName"));
     }
     catch(BaseException & oBaseException)
     {
@@ -551,19 +556,14 @@ void __thiscall JobEngine::SetJobParameter(
             _ThrowIfNull(poJob, "Invalid job Uuid.", nullptr);
         }
 
-        poJob->SetParameter(c_oStructuredBuffer.GetString("ParameterUuid"), c_oStructuredBuffer.GetString("ValueUuid"), c_oStructuredBuffer.GetUnsignedInt32("ValuesExpected"), c_oStructuredBuffer.GetUnsignedInt32("ValueIndex"));
-
         // If the parameter is a file and does not exist on the file system, we add it as
         // an dependency for the job and wait for it.
+        bool fIsValueFilePresent = poJob->SetParameter(c_oStructuredBuffer.GetString("ParameterUuid"), c_oStructuredBuffer.GetString("ValueUuid"), c_oStructuredBuffer.GetUnsignedInt32("ValuesExpected"), c_oStructuredBuffer.GetUnsignedInt32("ValueIndex"));
         std::string strParameterValueFile = c_oStructuredBuffer.GetString("ValueUuid");
-        std::string strParameterValueSignalFile = gc_strSignalFolderName + "/" + strParameterValueFile;
-        if (false == std::filesystem::exists(strParameterValueSignalFile.c_str()))
+        if (false == fIsValueFilePresent)
         {
             // Register the request for now and fulfill it as soon as it is available later
             m_stlMapOfParameterValuesToJob.insert(std::make_pair(strParameterValueFile, poJob));
-
-            // Add the file to the list of dependencies of the job
-            poJob->AddDependency(strParameterValueFile);
         }
     }
     catch(BaseException & oBaseException)
@@ -634,24 +634,16 @@ void __thiscall JobEngine::FileCreateCallback(
  ********************************************************************************************/
 
 void __thiscall JobEngine::SendSignal(
-    _in const std::string & c_strJobId,
-    _in JobStatusSignals eJobStatus
+    _in const StructuredBuffer & c_oStructuredBuffer
 )
 {
     __DebugFunction();
 
     try
     {
-        std::cout << "Send Signal" << std::endl;
-
         // As soon as the file we requested for is found, we return it to the
         // orchestrator who is waiting asychronously waiting for it.
-        StructuredBuffer oResponse;
-        oResponse.PutByte("RequestType", (Byte)EngineRequest::eJobStatusSignal);
-        oResponse.PutString("JobId", c_strJobId);
-        oResponse.PutByte("Status", (Byte)eJobStatus);
-
-        ::PutIpcTransaction(m_poSocket, oResponse);
+        ::PutIpcTransaction(m_poSocket, c_oStructuredBuffer);
     }
     catch(BaseException & oBaseException)
     {
@@ -678,39 +670,43 @@ void __thiscall JobEngine::HaltAllJobs(
 {
     __DebugFunction();
 
+    std::cout << "Halt all jobs" << std::endl;
+
     try
     {
         // Ask the listener to stop listening for new Requests for now
-
 
         // Create a kill running job signal file that will inform all the running jobs to quit
         std::ofstream output(gc_strJobsSignalFolderName + "/" + gc_strHaltAllJobsSignalFilename);
 
         // Call destructor on all the job objects as soon as they have killed the running jobs
         // are are stable
-        while(0 < m_stlMapOfJobs.size())
-        {
-            for (auto oJobMapElement : m_stlMapOfJobs)
-            {
-                JobState eJobState = oJobMapElement.second->GetJobState();
-                if (JobState::eRunning != eJobState)
-                {
-                    oJobMapElement.second->Release();
-                    m_stlMapOfJobs.erase(oJobMapElement.first);
-                }
-            }
-        }
+        // while(0 < m_stlMapOfJobs.size())
+        // {
+        //     for (auto oJobMapElement : m_stlMapOfJobs)
+        //     {
+        //         JobState eJobState = oJobMapElement.second->GetJobState();
+        //         if (JobState::eRunning != eJobState)
+        //         {
+        //             oJobMapElement.second->Release();
+        //             m_stlMapOfJobs.erase(oJobMapElement.first);
+        //         }
+        //     }
+        // }
 
         // Once all the jobs have been stopped and cleared from the Engine, it is safe to remove all
         // the SafeObjects associated with them
-        for (auto oSafeObjectMapElement : m_stlMapOfSafeObjects)
-        {
-            oSafeObjectMapElement.second->Release();
-            m_stlMapOfJobs.erase(oSafeObjectMapElement.first);
-        }
+        // for (auto oSafeObjectMapElement : m_stlMapOfSafeObjects)
+        // {
+        //     oSafeObjectMapElement.second->Release();
+        //     m_stlMapOfJobs.erase(oSafeObjectMapElement.first);
+        // }
 
 
         // Ask the listener to resume listening for new Requests for now
+
+
+        // Delete the signal file, before resume
 
     }
     catch(BaseException & oBaseException)

@@ -53,7 +53,7 @@ class Job : public Object
         void __thiscall SetSafeObject(
             _in SafeObject const * c_poSafeObjectId
             );
-        void __thiscall SetParameter(
+        bool __thiscall SetParameter(
             _in const std::string & c_strParameterIdentifier,
             _in const std::string & c_strValueIdentifier,
             _in unsigned int nExpectedParameters,
@@ -61,9 +61,6 @@ class Job : public Object
             );
         void __thiscall RemoveAvailableDependency(
             _in const std::string & strOutFileName
-            ) throw();
-        void __thiscall AddDependency(
-            _in const std::string & strDepedencyName
             ) throw();
         void __thiscall SetOutputFileName(
             _in const std::string & c_strOutFileName
@@ -77,6 +74,9 @@ class Job : public Object
         // Private member methods
         bool __thiscall AreAllParametersSet(void) throw();
         void __thiscall TryRunJob(void);
+        void __thiscall AddDependency(
+            _in const std::string & strDepedencyName
+            ) throw();
 
         // Private data members
         JobState m_eJobState;

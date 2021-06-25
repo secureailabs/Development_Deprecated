@@ -750,6 +750,11 @@ std::vector<Byte> __thiscall AuditLogManager::AddNonLeafEvent(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -832,6 +837,11 @@ std::vector<Byte> __thiscall AuditLogManager::AddLeafEvent(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oStatus.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -908,6 +918,11 @@ std::vector<Byte> __thiscall AuditLogManager::GetListOfEvents(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oAuditLogs.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -983,6 +998,11 @@ std::vector<Byte> __thiscall AuditLogManager::DigitalContractBranchExists(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oAuditLog.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {

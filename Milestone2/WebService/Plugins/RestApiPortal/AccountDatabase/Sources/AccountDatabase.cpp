@@ -858,6 +858,11 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserRecords(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oAccountRecords.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -1027,6 +1032,11 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -1117,6 +1127,11 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterUser(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -1201,6 +1216,11 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -1285,6 +1305,11 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateOrganizationInformation(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -1372,6 +1397,11 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -1455,6 +1485,11 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizations(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -1538,6 +1573,11 @@ std::vector<Byte> __thiscall AccountDatabase::ListUsers(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -1622,6 +1662,11 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizationUsers(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -1706,6 +1751,11 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteUser(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -1790,6 +1840,11 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteOrganization(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {

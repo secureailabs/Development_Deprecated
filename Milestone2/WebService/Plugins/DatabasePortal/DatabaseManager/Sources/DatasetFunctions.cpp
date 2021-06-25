@@ -13,6 +13,86 @@
 /********************************************************************************************
  *
  * @class DatabaseManager
+ * @function GetDatasetName
+ * @brief Fetch dataset name associated with dataset guid from the database
+ * @param[in] c_oRequest contains the dataset guid
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Serialized StructuredBuffer containing dataset name
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::GetDatasetName(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+
+    try 
+    {
+        std::string strDsetGuid = c_oRequest.GetString("DatasetGuid");
+        // Each client and transaction can only be used in a single thread
+        mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+        // Access SailDatabase
+        mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+        // Fetch the dataset record
+        bsoncxx::stdx::optional<bsoncxx::document::value> oDsetDocument = oSailDatabase["Dataset"].find_one(document{}
+                                                                                                            << "DatasetGuid" << strDsetGuid
+                                                                                                            << finalize);
+        if (bsoncxx::stdx::nullopt != oDsetDocument)
+        {                                                                         
+            bsoncxx::document::element oPlainTextObjectBlobGuid = oDsetDocument->view()["PlainTextObjectBlobGuid"];
+            if (oPlainTextObjectBlobGuid && oPlainTextObjectBlobGuid.type() == type::k_utf8)
+            {
+                std::string strPlainTextObjectBlobGuid = oPlainTextObjectBlobGuid.get_utf8().value.to_string();
+                bsoncxx::stdx::optional<bsoncxx::document::value> oPlainTextObjectBlobDocument = oSailDatabase["PlainTextObjectBlob"].find_one(document{} 
+                                                                                                                                                << "PlainTextObjectBlobGuid" <<  strPlainTextObjectBlobGuid
+                                                                                                                                                << finalize);
+                if (bsoncxx::stdx::nullopt != oPlainTextObjectBlobDocument)
+                {
+                    bsoncxx::document::element oObjectGuid = oPlainTextObjectBlobDocument->view()["ObjectGuid"];
+                    if (oObjectGuid && oObjectGuid.type() == type::k_utf8)
+                    {
+                        std::string strObjectGuid = oObjectGuid.get_utf8().value.to_string();
+                        // Fetch the virtual machine from the Object collection associated with the virtual machine guid
+                        bsoncxx::stdx::optional<bsoncxx::document::value> oObjectDocument = oSailDatabase["Object"].find_one(document{} << "ObjectGuid" << strObjectGuid << finalize);
+                        if (bsoncxx::stdx::nullopt != oObjectDocument)
+                        {
+                            bsoncxx::document::element oObjectBlob = oObjectDocument->view()["ObjectBlob"];
+                            if (oObjectBlob && oObjectBlob.type() == type::k_binary)
+                            {
+                                StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size); 
+                                oResponse.PutString("DatasetName", oObject.GetString("DatasetName"));
+                                dwStatus = 200;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
  * @function ListDatasets
  * @brief Fetch the dataset information
  * @param[in] c_oRequest contains the dataset guid

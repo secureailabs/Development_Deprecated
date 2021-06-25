@@ -26,6 +26,7 @@ typedef enum http_code
     eUnauthorized = 401,
     eForbidden = 403,
     eNotFound = 404,
+    eRequestTimeout = 408,
     eInternalError = 500
 }
 HttpCode;

@@ -749,6 +749,11 @@ std::vector<Byte> __thiscall SailAuthentication::ResetDatabase(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {

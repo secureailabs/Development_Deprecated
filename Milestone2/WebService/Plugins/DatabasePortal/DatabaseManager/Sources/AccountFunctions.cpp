@@ -92,7 +92,7 @@ std::vector<Byte> __thiscall DatabaseManager::GetBasicOrganizationRecord(
  * @class DatabaseManager
  * @function GetOrganizationName
  * @brief Fetch basic organization name associated with organization guid from the database
- * @param[in] c_oRequest contains the request body
+ * @param[in] c_oRequest contains the dataset guid
  * @throw BaseException Error StructuredBuffer element not found
  * @returns Serialized StructuredBuffer containing organization name
  *

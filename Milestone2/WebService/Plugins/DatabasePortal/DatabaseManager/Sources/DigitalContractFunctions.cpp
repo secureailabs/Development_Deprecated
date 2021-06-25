@@ -143,6 +143,18 @@ std::vector<Byte> __thiscall DatabaseManager::ListDigitalContracts(
                                 {
                                     StructuredBuffer oObject;
                                     oObject.PutStructuredBuffer("DigitalContract", StructuredBuffer(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size));
+                                    // Get doo and ro organization names and add them to the response
+                                    StructuredBuffer oRoName = this->GetOrganizationName(strRoGuid);
+                                    if (200 == oRoName.GetDword("Status")) 
+                                    {
+                                        oObject.PutString("ROName", oRoName.GetString("OrganizationName"));
+                                    }
+                                    StructuredBuffer oDooName = this->GetOrganizationName(strDooGuid);
+                                    if (200 == oDooName.GetDword("Status")) 
+                                    {
+                                        oObject.PutString("DOOName", oDooName.GetString("OrganizationName"));
+                                    }
+                                    // Add doo and ro guids
                                     oObject.PutString("ResearcherOrganization", strRoGuid);
                                     oObject.PutString("DataOwnerOrganization", strDooGuid);
                                     oListOfDigitalContracts.PutStructuredBuffer(strDcGuid.c_str(), oObject);
@@ -241,6 +253,18 @@ std::vector<Byte> __thiscall DatabaseManager::PullDigitalContract(
                                 {
                                     StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size);
                                     oResponse.PutStructuredBuffer("DigitalContract", oObject);
+                                    // Get doo and ro organization names and add them to the response
+                                    StructuredBuffer oRoName = this->GetOrganizationName(strRoGuid);
+                                    if (200 == oRoName.GetDword("Status")) 
+                                    {
+                                        oResponse.PutString("ROName", oRoName.GetString("OrganizationName"));
+                                    }
+                                    StructuredBuffer oDooName = this->GetOrganizationName(strDooGuid);
+                                    if (200 == oDooName.GetDword("Status")) 
+                                    {
+                                        oResponse.PutString("DOOName", oDooName.GetString("OrganizationName"));
+                                    }
+                                    // Add doo and ro guids
                                     oResponse.PutString("ResearcherOrganization", strRoGuid);
                                     oResponse.PutString("DataOwnerOrganization", strDooGuid);
                                     dwStatus = 200;

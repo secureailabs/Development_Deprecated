@@ -704,6 +704,11 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetUserInfo(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -1007,7 +1012,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ListDigitalContracts(
             std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 3000);
             _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
             unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 3000);
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
             _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
             // Make sure to release the poTlsNode
             poTlsNode->Release();
@@ -1021,6 +1026,10 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ListDigitalContracts(
                 {
                     StructuredBuffer oDigitalContractRecord = oDigitalContracts.GetStructuredBuffer(strDcGuid.c_str());
                     StructuredBuffer oDigitalContract = this->DeserializeDigitalContract(oDigitalContractRecord.GetStructuredBuffer("DigitalContract").GetBuffer("DigitalContractBlob"));
+                    // Add digital contract, RO guid, and DOO guid to the response
+                    oResponse.PutStructuredBuffer("DigitalContract", oDigitalContract);
+                    oDigitalContract.PutString("ROName", oDigitalContractRecord.GetString("ROName"));
+                    oDigitalContract.PutString("DOOName", oDigitalContractRecord.GetString("DOOName"));
                     oDigitalContract.PutString("ResearcherOrganization", oDigitalContractRecord.GetString("ResearcherOrganization"));
                     oDigitalContract.PutString("DataOwnerOrganization", oDigitalContractRecord.GetString("DataOwnerOrganization"));
                     oDigitalContracts.PutStructuredBuffer(strDcGuid.c_str(), oDigitalContract);
@@ -1034,6 +1043,11 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ListDigitalContracts(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -1109,7 +1123,11 @@ std::vector<Byte> __thiscall DigitalContractDatabase::PullDigitalContract(
             {
                 std::vector<Byte> stlDcBlob = oDatabaseResponse.GetStructuredBuffer("DigitalContract").GetBuffer("DigitalContractBlob");
                 // Deserialize the Digital contract blob and get the DC information structured buffer
-                oResponse.PutStructuredBuffer("DigitalContract", this->DeserializeDigitalContract(stlDcBlob));
+                StructuredBuffer oDigitalContract = this->DeserializeDigitalContract(stlDcBlob);
+                // Add digital contract, RO guid, and DOO guid to the response
+                oResponse.PutStructuredBuffer("DigitalContract", oDigitalContract);
+                oResponse.PutString("ROName", oDatabaseResponse.GetString("ROName"));
+                oResponse.PutString("DOOName", oDatabaseResponse.GetString("DOOName"));
                 oResponse.PutString("ResearcherOrganization", oDatabaseResponse.GetString("ResearcherOrganization"));
                 oResponse.PutString("DataOwnerOrganization", oDatabaseResponse.GetString("DataOwnerOrganization"));
                 dwStatus = 200;
@@ -1120,6 +1138,11 @@ std::vector<Byte> __thiscall DigitalContractDatabase::PullDigitalContract(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -1172,6 +1195,8 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
             std::string strDcGuid = Guid(eDigitalContract).ToString(eHyphensAndCurlyBraces);
             // Get organization guid
             std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
+            // Get dataset guid
+            std::string strDsetGuid = c_oRequest.GetString("DatasetGuid");
             // Create Ssb containing Dc information
             StructuredBuffer oSsb;
             oSsb.PutString("Title", c_oRequest.GetString("Title"));
@@ -1180,26 +1205,21 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
             oSsb.PutString("DigitalContractGuid", strDcGuid);
             oSsb.PutDword("ContractStage", eApplication);
             oSsb.PutUnsignedInt64("SubscriptionDays", c_oRequest.GetUnsignedInt64("SubscriptionDays"));
-            oSsb.PutString("DatasetGuid", c_oRequest.GetString("DatasetGuid"));
+            oSsb.PutString("DatasetGuid", strDsetGuid);
             oSsb.PutString("Eula", SAIL_EULA);
             oSsb.PutString("LegalAgreement", c_oRequest.GetString("LegalAgreement"));
             oSsb.PutUnsignedInt32("DatasetDRMMetadataSize", c_oRequest.GetUnsignedInt32("DatasetDRMMetadataSize"));
             oSsb.PutStructuredBuffer("DatasetDRMMetadata", c_oRequest.GetStructuredBuffer("DatasetDRMMetadata"));
-            // Get digital contract blob
-            std::vector<Byte> stlDigitalContractBlob;
-            this->SerializeDigitalContract(oSsb, stlDigitalContractBlob);
-
+            oSsb.PutUnsignedInt64("LastActivity", ::GetEpochTimeInSeconds());
+            // Get Dataset name from the database
             // Make a Tls connection with the database portal
             poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-            // Create a request to add a digital contract to the database
+            // Create a request to get the digital contract information
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
-            oRequest.PutString("Verb", "POST");
-            oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterDigitalContract");
-            oRequest.PutString("DigitalContractGuid", strDcGuid);
-            oRequest.PutString("ResearcherOrganization", strOrganizationGuid);
-            oRequest.PutString("DataOwnerOrganization", c_oRequest.GetString("DataOwnerOrganization"));
-            oRequest.PutBuffer("DigitalContractBlob", stlDigitalContractBlob);
+            oRequest.PutString("Verb", "GET");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/GetDatasetName");
+            oRequest.PutString("DatasetGuid", strDsetGuid);
             std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
             // Send request packet
             poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -1209,6 +1229,39 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
             _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
             unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
             std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+            // Make sure to release the poTlsNode
+            poTlsNode->Release();
+            poTlsNode = nullptr;
+
+            StructuredBuffer oDatasetName(stlResponse);
+            _ThrowBaseExceptionIf((200 != oDatasetName.GetDword("Status")), "Dataset not found.", nullptr);
+            // Add dataset name to the response
+            oSsb.PutString("DatasetName", oDatasetName.GetString("DatasetName"));                    
+
+            // Get digital contract blob
+            std::vector<Byte> stlDigitalContractBlob;
+            this->SerializeDigitalContract(oSsb, stlDigitalContractBlob);
+
+            // Make a Tls connection with the database portal
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to add a digital contract to the database
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "POST");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterDigitalContract");
+            oRequest.PutString("DigitalContractGuid", strDcGuid);
+            oRequest.PutString("ResearcherOrganization", strOrganizationGuid);
+            oRequest.PutString("DataOwnerOrganization", c_oRequest.GetString("DataOwnerOrganization"));
+            oRequest.PutBuffer("DigitalContractBlob", stlDigitalContractBlob);
+            stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 3000);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
             _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
             // Make sure to release the poTlsNode
             poTlsNode->Release();
@@ -1226,6 +1279,11 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -1297,6 +1355,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AcceptDigitalContract(
                             oSsb.PutUnsignedInt64("RetentionTime", c_oRequest.GetUnsignedInt64("RetentionTime"));
                             oSsb.PutString("EulaAcceptedByDOOAuthorizedUser", SAIL_EULA);
                             oSsb.PutString("LegalAgreement", c_oRequest.GetString("LegalAgreement"));
+                            oSsb.PutUnsignedInt64("LastActivity", ::GetEpochTimeInSeconds());
                             // Serialize the update digital contract blob
                             std::vector<Byte> stlUpdatedSsb;
                             this->SerializeDigitalContract(oSsb, stlUpdatedSsb);
@@ -1355,6 +1414,11 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AcceptDigitalContract(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {
@@ -1430,6 +1494,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ActivateDigitalContract(
                             {
                                 oSsb.PutString("Description", c_oRequest.GetString("Description"));
                             }
+                            oSsb.PutUnsignedInt64("LastActivity", ::GetEpochTimeInSeconds());
                             // Serialize the update digital contract blob
                             std::vector<Byte> stlUpdatedSsb;
                             this->SerializeDigitalContract(oSsb, stlUpdatedSsb);
@@ -1488,6 +1553,11 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ActivateDigitalContract(
     {
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
+        // Add status if it was a dead packet
+        if ("Dead Packet." == oException.GetExceptionMessage())
+        {
+            dwStatus = 408;
+        }
     }
     catch (...)
     {

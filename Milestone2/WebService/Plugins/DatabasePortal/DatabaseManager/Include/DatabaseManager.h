@@ -216,6 +216,11 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Get dataset name associated to a guid
+        std::vector<Byte> __thiscall GetDatasetName(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Fetch list of all available datasets
         std::vector<Byte> __thiscall ListDatasets(
             _in const StructuredBuffer & c_oRequest

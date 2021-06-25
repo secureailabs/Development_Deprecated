@@ -215,6 +215,8 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/Users");
     // Fetch a list of all users for an organizations
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/OrganizationUsers");
+    // Get dataset name associated with the dataset guid
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/GetDatasetName");
     // Fetch list of all datasets
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/ListDatasets");
     // Get a dataset's information
@@ -318,6 +320,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             else if ("/SAIL/DatabaseManager/OrganizationUsers" == strResource)
             {
                 stlResponseBuffer = this->ListOrganizationUsers(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/GetDatasetName" == strResource)
+            {
+                stlResponseBuffer = this->GetDatasetName(c_oRequestStructuredBuffer);
             }
             else if ("/SAIL/DatabaseManager/ListDatasets" == strResource)
             {
@@ -571,8 +577,6 @@ std::vector<Byte> __thiscall DatabaseManager::ResetDatabase(
         mongocxx::pool::entry oClient = m_poMongoPool->acquire();
         // Access SailDatabase
         mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
-
-        oResponse.PutDword("Status", dwStatus);
 
         mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
         {

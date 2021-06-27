@@ -20,7 +20,7 @@
 
 enum class EngineRequest
 {
-    eShutdown = 0,
+    eVmShutdown = 0,
     ePushSafeObject = 1,
     eSubmitJob = 2,
     ePullData = 3,
@@ -135,7 +135,7 @@ bool TestPullData(
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePullData);
     oStructuredBufferRequest.PutString("Filename", "{abf0a5ad-21a8-4b91-a4b6-07e09c9d8467}");
 
-    // Send the request and wait for
+    // Send the request and the response will come as a signal when avaialble
     ::PutIpcTransaction(poSocket, oStructuredBufferRequest);
 
     // In a real use-case scenario the orchestrator will make an async call
@@ -159,7 +159,7 @@ bool TestHaltJobs(
 {
     __DebugFunction();
 
-    std::cout << "Testing Server Shut!!" << std::endl;
+    std::cout << "Testing Halt all Jobs!!" << std::endl;
 
     StructuredBuffer oStructuredBufferRequest;
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::eHaltAllJobs);
@@ -214,12 +214,7 @@ int __cdecl main(
             auto stlSerializedBuffer = ::GetIpcTransaction(poSocket);
             StructuredBuffer oNewRequest(stlSerializedBuffer);
 
-            std::cout << oNewRequest.ToString();
-
-
-            // std::cout << "Signal Received:\n";
-            // std::cout << "SignalType: " << oNewRequest.GetByte("Status") << std::endl;
-            // std::cout << "Job Id: " << oNewRequest.GetString("JobId") << std::endl << std::endl;
+            std::cout << oNewRequest.ToString() << std::endl;
         }while(true);
 
         poSocket->Release();

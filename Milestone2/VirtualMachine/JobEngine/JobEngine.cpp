@@ -15,6 +15,7 @@
 #include "StatusMonitor.h"
 #include "SocketClient.h"
 #include "IpcTransactionHelperFunctions.h"
+#include "JobEngineHelper.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -29,110 +30,7 @@
 #include <future>
 #include <filesystem>
 
-// TODO:
-// 3. Add signals from jobs running.
-
 #define cout cout << std::this_thread::get_id() << " "
-
-/********************************************************************************************
- *
- * @function BytesToFile
- * @brief Creates a file with the content from the buffer
- *
- ********************************************************************************************/
-
-void * __stdcall FileSystemWatcherThread(void * poThreadParameter)
-{
-    __DebugFunction();
-
-    try
-    {
-        std::cout << "FileSystemWatcherThread" << std::endl;
-
-        int nINotifyFd = ::inotify_init();
-        _ThrowBaseExceptionIf((0 >= nINotifyFd), "Unable to create a inotify object", nullptr);
-
-        // Add the directory we want to watch
-        int nDirectoryToWatchFd = ::inotify_add_watch(nINotifyFd, gc_strSignalFolderName.c_str(), IN_CREATE);
-        _ThrowBaseExceptionIf((-1 == nDirectoryToWatchFd), "Could not watch : \"./\"\n", nullptr);
-
-        bool fKeepRunning = true;
-
-        // Allocate a buffer for
-        std::vector<Byte> stlNotifyEvent(sizeof(struct inotify_event) + NAME_MAX + 1);
-
-        // Get the Job Engine Object which has the callback we'd need to call on
-        // every new file creation
-        JobEngine & oJobEngine = JobEngine::Get();
-
-        while(true == fKeepRunning)
-        {
-            // This is a blocking call is only invoked when a file system related event is
-            // is reported in the specified directory
-            int nLengthOfData = ::read(nINotifyFd, stlNotifyEvent.data(), stlNotifyEvent.size());
-
-            struct inotify_event * poInotifyEvent = (struct inotify_event *)stlNotifyEvent.data();
-            if(poInotifyEvent->len && (poInotifyEvent->mask & IN_CREATE))
-            {
-                // For everyfile created we call a JobEngine callback function which should
-                // find the most efficient way to handle such a file.
-                std::cout << "FileCreateCallback for " << poInotifyEvent->name << std::endl;
-
-                oJobEngine.FileCreateCallback(poInotifyEvent->name);
-
-                if (gc_strHaltAllJobsSignalFilename == poInotifyEvent->name)
-                {
-                    fKeepRunning = false;
-                }
-            }
-        }
-
-        // Cleanup the event listener
-        ::inotify_rm_watch( nINotifyFd, nDirectoryToWatchFd);
-        ::close(nINotifyFd);
-    }
-    catch(const BaseException & oException)
-    {
-        std::cout << oException.GetExceptionMessage() << '\n';
-    }
-    catch(const std::exception& e)
-    {
-        std::cerr << e.what() << '\n';
-    }
-
-    return nullptr;
-}
-
-/********************************************************************************************
- *
- * @function BytesToFile
- * @brief Creates a file with the content from the buffer
- *
- ********************************************************************************************/
-
-std::vector<Byte> FileToBytes(
-    const std::string c_strFileName
-)
-{
-    __DebugFunction();
-
-    std::vector<Byte> stlFileData;
-
-    std::ifstream stlFile(c_strFileName.c_str(), (std::ios::in | std::ios::binary | std::ios::ate));
-    if (true == stlFile.good())
-    {
-        unsigned int unFileSizeInBytes = (unsigned int) stlFile.tellg();
-        stlFileData.resize(unFileSizeInBytes);
-        stlFile.seekg(0, std::ios::beg);
-        stlFile.read((char *)stlFileData.data(), unFileSizeInBytes);
-        stlFile.close();
-    }
-    else
-    {
-        _ThrowBaseException("Invalid File Path", nullptr);
-    }
-    return stlFileData;
-}
 
 /********************************************************************************************
  *
@@ -184,46 +82,31 @@ JobEngine::~JobEngine(void)
  *
  ********************************************************************************************/
 
-void JobEngine::StartServer(void)
+void JobEngine::StartServer(
+    _in Socket * poSocket
+)
 {
     __DebugFunction();
+    __DebugAssert(nullptr != poSocket);
 
-    // Start listening to requests and fullfill them
-    ThreadManager * poThreadManager = ThreadManager::GetInstance();
-    // StatusMonitor oStatusMonitor("static void __cdecl InitDataConnector()");
-
-    std::error_code oErrorCode;
-    // Delete existing Directories
-    if (std::filesystem::exists(gc_strSignalFolderName))
+    try
     {
-        _ThrowBaseExceptionIf((false == std::filesystem::remove_all(gc_strSignalFolderName, oErrorCode)), "Could not create Signal Files Folder. %s", oErrorCode.message().c_str());
+        m_poSocket = poSocket;
+
+        // We reset the job engine, it will create all the necessary files and folders necessary
+        this->ResetJobEngine();
+
+        // Start listening to requests and fullfill them
+        this->ListenToRequests();
     }
-    if (std::filesystem::exists(gc_strDataFolderName))
+    catch(BaseException & oBaseException)
     {
-        _ThrowBaseExceptionIf((false == std::filesystem::remove_all(gc_strDataFolderName, oErrorCode)), "Could not delete Data Files Folder", nullptr);
+        std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
     }
-    if (std::filesystem::exists(gc_strJobsSignalFolderName))
+    catch(...)
     {
-        _ThrowBaseExceptionIf((false == std::filesystem::remove_all(gc_strJobsSignalFolderName, oErrorCode)), "Could not delete Data Files Folder", nullptr);
+        std::cout << "Some exceptional error in " << __func__ << std::endl;
     }
-
-    // Create a folder for data files and signal files.
-    _ThrowBaseExceptionIf((false == std::filesystem::create_directory(gc_strSignalFolderName, oErrorCode)), "Could not create Signal Files Folder", nullptr);
-    _ThrowBaseExceptionIf((false == std::filesystem::create_directory(gc_strDataFolderName, oErrorCode)), "Could not create Data Folder", nullptr);
-    _ThrowBaseExceptionIf((false == std::filesystem::create_directory(gc_strJobsSignalFolderName, oErrorCode)), "Could not create Signal All Jobs Folder", nullptr);
-
-    // Create a thread to listen to all the files being created and a callback to the JobEngine
-    poThreadManager->CreateThread(nullptr, ::FileSystemWatcherThread, (void *)nullptr);
-
-    std::cout << "Connecting to socket server on orchestrator..." << std::endl;
-
-    m_poSocket = ::ConnectToUnixDomainSocket("{164085b7-ef20-4257-bc14-e1e08c908aaa}");
-    if (nullptr != m_poSocket)
-    {
-        this->ListenToRequests(m_poSocket);
-        m_poSocket->Release();
-    }
-    // while (false == oStatusMonitor.IsTerminating());
 }
 
 /********************************************************************************************
@@ -234,61 +117,64 @@ void JobEngine::StartServer(void)
  *
  ********************************************************************************************/
 
-void __thiscall JobEngine::ListenToRequests(
-    _in Socket * poSocket
-)
+void __thiscall JobEngine::ListenToRequests(void)
 {
     __DebugFunction();
 
-    bool fConnectionIsOpen = true;
+    m_fIsEngineRunning = true;
     std::future<void> stlReturn;
     do
     {
         // This should be a blocking call, because we have a persistant connection
         std::cout << "Waiting for request..\n";
-        auto stlSerializedBuffer = ::GetIpcTransaction(poSocket);
+        auto stlSerializedBuffer = ::GetIpcTransaction(m_poSocket);
         StructuredBuffer oNewRequest(stlSerializedBuffer);
 
         // Get the type of request
         EngineRequest eRequestType = (EngineRequest)oNewRequest.GetByte("RequestType");
-
-        if (EngineRequest::ePushSafeObject == eRequestType)
+        switch (eRequestType)
         {
-            stlReturn = std::async(std::launch::async, &JobEngine::PushSafeObject, this, oNewRequest);
+            case EngineRequest::ePushSafeObject
+            :
+                stlReturn = std::async(std::launch::async, &JobEngine::PushSafeObject, this, oNewRequest);
+                break;
+            case EngineRequest::ePushdata
+            :
+                stlReturn = std::async(std::launch::async, &JobEngine::PushData, this, oNewRequest);
+                break;
+            case EngineRequest::ePullData
+            :
+                stlReturn = std::async(std::launch::async, &JobEngine::PullData, this, oNewRequest.GetString("Filename"));
+                break;
+            case EngineRequest::eSubmitJob
+            :
+                stlReturn = std::async(std::launch::async, &JobEngine::SubmitJob, this, oNewRequest);
+                break;
+            case EngineRequest::eSetParameters
+            :
+                stlReturn = std::async(std::launch::async, &JobEngine::SetJobParameter, this, oNewRequest);
+                break;
+            case EngineRequest::eHaltAllJobs
+            :
+                // This job does not need to be async, it will block for the cleanup to be performed
+                // before new requests can be accpeted and fulfilled
+                this->ResetJobEngine();
+                break;
+            case EngineRequest::eVmShutdown
+            :
+                {
+                    m_fIsEngineRunning = false;
+                    // Send a signal of VM Shutdown to the orceshtrator
+                    StructuredBuffer oStructuredBufferShutdown;
+                    oStructuredBufferShutdown.PutByte("SignalType", (Byte)JobStatusSignals::eVmShutdown);
+                    this->SendSignal(oStructuredBufferShutdown);
+                }
+                break;
+            default
+            :
+                break;
         }
-        else if (EngineRequest::ePushdata == eRequestType)
-        {
-            stlReturn = std::async(std::launch::async, &JobEngine::PushData, this, oNewRequest);
-        }
-        else if (EngineRequest::ePullData == eRequestType)
-        {
-            stlReturn = std::async(std::launch::async, &JobEngine::PullData, this, oNewRequest.GetString("Filename"));
-        }
-        else if (EngineRequest::eSubmitJob == eRequestType)
-        {
-            stlReturn = std::async(std::launch::async, &JobEngine::SubmitJob, this, oNewRequest);
-        }
-        else if (EngineRequest::eSetParameters == eRequestType)
-        {
-            stlReturn = std::async(std::launch::async, &JobEngine::SetJobParameter, this, oNewRequest);
-        }
-        else if (EngineRequest::eHaltAllJobs == eRequestType)
-        {
-            stlReturn = std::async(std::launch::async, &JobEngine::HaltAllJobs, this, oNewRequest);
-        }
-        else if (EngineRequest::eShutdown == eRequestType)
-        {
-            fConnectionIsOpen = false;
-            // Send a signal of VM Shutdown to the orceshtrator
-            StructuredBuffer oStructuredBufferShutdown;
-            oStructuredBufferShutdown.PutByte("SignalType", (Byte)JobStatusSignals::eVmShutdown);
-            this->SendSignal(oStructuredBufferShutdown);
-        }
-        else
-        {
-
-        }
-    } while (true == fConnectionIsOpen);
+    } while (true == m_fIsEngineRunning);
 }
 
 /********************************************************************************************
@@ -418,7 +304,7 @@ void __thiscall JobEngine::PullData(
             oResponse.PutString("ValueName", c_strFileNametoSend);
             oResponse.PutBuffer("FileData", ::FileToBytes(c_strFileNametoSend));
 
-            // TODO: write the file to the socket
+            // The Pull data response to the orchestrator is sent as a signal with data
             this->SendSignal(oResponse);
 
             // We delete the signal file and the data file after we have consumed it.
@@ -591,27 +477,20 @@ void __thiscall JobEngine::FileCreateCallback(
 {
     __DebugFunction();
 
+    std::future<void> stlUnused;
     try
     {
-        if (gc_strHaltAllJobsSignalFilename == c_strFileCreatedName)
-        {
-
-        }
-        else if (m_stlSetOfPullObjects.end() != m_stlSetOfPullObjects.find(c_strFileCreatedName))
+        if (m_stlSetOfPullObjects.end() != m_stlSetOfPullObjects.find(c_strFileCreatedName))
         {
             // We need to send the file back to the orchestrator, should be done asynchronously
-            auto stlUnused = std::async(std::launch::async, &JobEngine::PullData, this, c_strFileCreatedName);
+            stlUnused = std::async(std::launch::async, &JobEngine::PullData, this, c_strFileCreatedName);
             m_stlSetOfPullObjects.erase(c_strFileCreatedName);
         }
         else if (m_stlMapOfParameterValuesToJob.end() != m_stlMapOfParameterValuesToJob.find(c_strFileCreatedName))
         {
             Job * poJob = m_stlMapOfParameterValuesToJob.at(c_strFileCreatedName);
-            poJob->RemoveAvailableDependency(c_strFileCreatedName);
+            stlUnused = std::async(std::launch::async, &Job::RemoveAvailableDependency, poJob, c_strFileCreatedName);
             m_stlMapOfParameterValuesToJob.erase(c_strFileCreatedName);
-        }
-        else
-        {
-            std::cout << "Useless file " << c_strFileCreatedName << std::endl;
         }
     }
     catch(BaseException & oBaseException)
@@ -664,57 +543,76 @@ void __thiscall JobEngine::SendSignal(
  *
  ********************************************************************************************/
 
-void __thiscall JobEngine::HaltAllJobs(
-    _in const StructuredBuffer & c_strJobId
-)
+void __thiscall JobEngine::ResetJobEngine(void)
 {
     __DebugFunction();
 
-    std::cout << "Halt all jobs" << std::endl;
+    // Create a kill running job signal file that will inform all the running jobs to quit
+    std::ofstream output(gc_strJobsSignalFolderName + "/" + gc_strHaltAllJobsSignalFilename);
 
-    try
+    // Kill all the threads created that belong to the JobEngine thread group
+    ThreadManager * poThreadManager = ThreadManager::GetInstance();
+    if (0 != m_FileListenerId)
     {
-        // Ask the listener to stop listening for new Requests for now
-
-        // Create a kill running job signal file that will inform all the running jobs to quit
-        std::ofstream output(gc_strJobsSignalFolderName + "/" + gc_strHaltAllJobsSignalFilename);
-
-        // Call destructor on all the job objects as soon as they have killed the running jobs
-        // are are stable
-        // while(0 < m_stlMapOfJobs.size())
-        // {
-        //     for (auto oJobMapElement : m_stlMapOfJobs)
-        //     {
-        //         JobState eJobState = oJobMapElement.second->GetJobState();
-        //         if (JobState::eRunning != eJobState)
-        //         {
-        //             oJobMapElement.second->Release();
-        //             m_stlMapOfJobs.erase(oJobMapElement.first);
-        //         }
-        //     }
-        // }
-
-        // Once all the jobs have been stopped and cleared from the Engine, it is safe to remove all
-        // the SafeObjects associated with them
-        // for (auto oSafeObjectMapElement : m_stlMapOfSafeObjects)
-        // {
-        //     oSafeObjectMapElement.second->Release();
-        //     m_stlMapOfJobs.erase(oSafeObjectMapElement.first);
-        // }
-
-
-        // Ask the listener to resume listening for new Requests for now
-
-
-        // Delete the signal file, before resume
-
+        poThreadManager->TerminateThread(m_FileListenerId);
     }
-    catch(BaseException & oBaseException)
+
+    // Call destructor on all the job objects as soon as they have killed the running jobs
+    // are are stable
+    while(0 < m_stlMapOfJobs.size())
     {
-        std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
+        auto oJobMapElement = m_stlMapOfJobs.begin();
+        while (m_stlMapOfJobs.end() != oJobMapElement)
+        {
+            if (JobState::eRunning != oJobMapElement->second->GetJobState())
+            {
+                oJobMapElement->second->Release();
+                oJobMapElement = m_stlMapOfJobs.erase(oJobMapElement);
+            }
+            else
+            {
+                ++oJobMapElement;
+            }
+        }
     }
-    catch(...)
+
+    // Once all the jobs have been stopped and cleared from the Engine, it is safe to remove all
+    // the SafeObjects associated with them
+    auto oSafeObjectMapElement = m_stlMapOfSafeObjects.begin();
+    while (m_stlMapOfSafeObjects.end() != oSafeObjectMapElement)
     {
-        std::cout << "Some exceptional error in " << __func__ << std::endl;
+        oSafeObjectMapElement->second->Release();
+        oSafeObjectMapElement = m_stlMapOfSafeObjects.erase(oSafeObjectMapElement);
     }
+
+    // Erase the list of files that were queued for as part of pull data registration
+    m_stlSetOfPullObjects.clear();
+
+    // Erase the list of files that were queued for jobs to wait on as parameters
+    m_stlMapOfParameterValuesToJob.clear();
+
+    // Delete existing Directories
+    std::error_code oErrorCode;
+    if (std::filesystem::exists(gc_strSignalFolderName))
+    {
+        _ThrowBaseExceptionIf((false == std::filesystem::remove_all(gc_strSignalFolderName, oErrorCode)), "Could not create Signal Files Folder. %s", oErrorCode.message().c_str());
+    }
+    if (std::filesystem::exists(gc_strDataFolderName))
+    {
+        _ThrowBaseExceptionIf((false == std::filesystem::remove_all(gc_strDataFolderName, oErrorCode)), "Could not delete Data Files Folder. %s", oErrorCode.message().c_str());
+    }
+    if (std::filesystem::exists(gc_strJobsSignalFolderName))
+    {
+        _ThrowBaseExceptionIf((false == std::filesystem::remove_all(gc_strJobsSignalFolderName, oErrorCode)), "Could not delete Data Files Folder. %s", oErrorCode.message().c_str());
+    }
+
+    // Create a folder for data files and signal files.
+    _ThrowBaseExceptionIf((false == std::filesystem::create_directory(gc_strSignalFolderName, oErrorCode)), "Could not create Signal Files Folder. %s", oErrorCode.message().c_str());
+    _ThrowBaseExceptionIf((false == std::filesystem::create_directory(gc_strDataFolderName, oErrorCode)), "Could not create Data Folder. %s", oErrorCode.message().c_str());
+    _ThrowBaseExceptionIf((false == std::filesystem::create_directory(gc_strJobsSignalFolderName, oErrorCode)), "Could not create Signal All Jobs Folder. %s", oErrorCode.message().c_str());
+
+    // Create a new thread to listen to all the files being created and a callback to the JobEngine
+    m_FileListenerId = poThreadManager->CreateThread("JobEngineThreads", ::FileSystemWatcherThread, (void *)nullptr);
+
+    std::cout << "..Job Engine reset..\n";
 }

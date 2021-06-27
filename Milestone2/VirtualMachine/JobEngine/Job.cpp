@@ -11,6 +11,7 @@
 #include "Job.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
+#include "JobEngineHelper.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -96,7 +97,7 @@ void __thiscall Job::TryRunJob(void)
     __DebugFunction();
 
     std::cout << "Trying to run job.." << std::endl;
-    std::future<int> nProcessExitStatus;
+    int nProcessExitStatus;
 
     if (true == this->AreAllParametersSet())
     {
@@ -104,7 +105,9 @@ void __thiscall Job::TryRunJob(void)
         if (0 == m_stlSetOfDependencies.size())
         {
             std::cout << "No dependencoes" << std::endl;
-            nProcessExitStatus = std::async(std::launch::async, &SafeObject::Run, m_poSafeObject, m_strJobUuid, m_stlOutputFileName);
+            m_eJobState = JobState::eRunning;
+            nProcessExitStatus = m_poSafeObject->Run(m_strJobUuid, m_stlOutputFileName);
+            m_eJobState = JobState::eFinished;
         }
     }
 
@@ -149,7 +152,6 @@ bool __thiscall Job::SetParameter(
         oNewParameter.PutBoolean("AllValueSet", false);
         oNewParameter.PutString(std::to_string(nParameterIndex).c_str(), c_strValueIdentifier);
 
-        // TODO: Also check if the value is present on the filesystem before marking this as true.
         if (nExpectedParameters == (oNewParameter.GetNamesOfElements().size() - 1))
         {
             oNewParameter.PutBoolean("AllValueSet", true);
@@ -163,7 +165,7 @@ bool __thiscall Job::SetParameter(
 
     // If the parameter is a file and does not exist on the file system, we add it as
     // an dependency for the job and wait for it.
-    std::string strParameterValueSignalFile = "DataSignals/" + c_strValueIdentifier;
+    std::string strParameterValueSignalFile =  gc_strSignalFolderName + "/" + c_strValueIdentifier;
     bool fIsSignalFilePresent = std::filesystem::exists(strParameterValueSignalFile.c_str());
     if (false == fIsSignalFilePresent)
     {

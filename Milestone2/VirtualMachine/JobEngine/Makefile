@@ -17,6 +17,7 @@ OBJDIR=$(ABSROOTDIR)/Binary/Objects
 INCLUDE+=-I$(shell realpath ./)
 INCLUDE+=-I$(shell realpath ../SharedComponents/Include)
 INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
+INCLUDE+=-I$(shell realpath ../DataDomainProcess/Include)
 
 # Add the new source directory here
 SRCDIRS+=$(shell realpath ./)

@@ -1,11 +1,11 @@
 /*********************************************************************************************
  *
- * @file JobEngine.h
+ * @file Job.h
  * @author Prawal Gangwar
  * @date 27 May 2021
  * @License Private and Confidential. Internal Use Only.
  * @copyright Copyright (C) 2020 Secure AI Labs, Inc. All Rights Reserved.
- * @brief Implementation of the JobEngine class to create and run jobs on the Virtual Machine
+ * @brief Implementation of the Job class to create and run jobs on the Virtual Machine
  *
  ********************************************************************************************/
 

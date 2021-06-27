@@ -19,13 +19,6 @@
 
 #include <vector>
 
-/********************************************************************************************/
-
-const std::string gc_strJobsSignalFolderName = "SignalAllJobs";
-const std::string gc_strHaltAllJobsSignalFilename = "StopAllJobs";
-
-/********************************************************************************************/
-
 class SafeObject : public Object
 {
     public:

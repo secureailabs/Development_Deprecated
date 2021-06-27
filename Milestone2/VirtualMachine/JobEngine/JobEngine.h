@@ -18,6 +18,7 @@
 #include "StructuredBuffer.h"
 #include "SafeObject.h"
 #include "Job.h"
+#include "JobEngineHelper.h"
 
 #include <vector>
 #include <string>
@@ -26,16 +27,10 @@
 #include <unordered_map>
 #include <unordered_set>
 
-/********************************************************************************************/
-
-const std::string gc_strSignalFolderName = "DataSignals";
-const std::string gc_strDataFolderName = "DataFiles";
-
-/********************************************************************************************/
 
 enum class EngineRequest
 {
-    eShutdown = 0,
+    eVmShutdown = 0,
     ePushSafeObject = 1,
     eSubmitJob = 2,
     ePullData = 3,
@@ -60,7 +55,7 @@ class JobEngine : public Object
 {
     public:
 
-        // Singleton objects cannot be copied so we delete the copy constructor and = operator
+        // Singleton objects cannot be copied, the copy constructor and = operator are deleted
         JobEngine(
             _in const JobEngine & c_oJobEngine
             ) = delete;
@@ -71,10 +66,10 @@ class JobEngine : public Object
 
         static JobEngine & Get(void);
 
-        void __thiscall StartServer(void);
-        void __thiscall ListenToRequests(
+        void __thiscall StartServer(
             _in Socket * poSocket
-            );
+        );
+        void __thiscall ListenToRequests(void);
         void __thiscall FileCreateCallback(
             _in const std::string & c_strFileCreatedFilename
         );
@@ -101,11 +96,11 @@ class JobEngine : public Object
         void __thiscall SubmitJob(
             _in const StructuredBuffer & oStructuredBuffer
             );
-        void __thiscall HaltAllJobs(
-            _in const StructuredBuffer & oStructuredBuffer
-            );
+        void __thiscall ResetJobEngine(void);
 
         // Private data members
+        uint64_t m_FileListenerId = 0;
+        bool m_fIsEngineRunning;
         static JobEngine m_oJobEngine;
         Socket * m_poSocket;
         std::unordered_map<std::string, Job *> m_stlMapOfJobs;

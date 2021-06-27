@@ -16,6 +16,7 @@
 #include <iostream>
 #include <fstream>
 #include <thread>
+#include <filesystem>
 
 #include <stdio.h>
 #include <sys/stat.h>
@@ -29,25 +30,6 @@
 #include <sys/wait.h>
 
 #define cout cout << std::this_thread::get_id() << " "
-
-/********************************************************************************************
- *
- * @function BytesToFile
- * @brief Creates a file with the content from the buffer
- *
- ********************************************************************************************/
-
-void BytesToFile(
-    _in const std::string c_strFileName,
-    _in const std::vector<Byte> c_stlFileData
-)
-{
-    __DebugFunction();
-
-    std::ofstream stlFileToWrite(c_strFileName, std::ios::out | std::ofstream::binary);
-    std::copy(c_stlFileData.begin(), c_stlFileData.end(), std::ostreambuf_iterator<char>(stlFileToWrite));
-    stlFileToWrite.close();
-}
 
 /********************************************************************************************
  *
@@ -204,10 +186,12 @@ int __thiscall SafeObject::Run(
                 {
                     std::cout << "Child died naturally. X-| \n";
                     ::waitpid(nProcessIdentifier, &nProcessExitStatus, 0);
-                    if (0 == nProcessExitStatus)
+                    // There is a chance that the job failed gracefully and in that case the
+                    // output file was not written, that is a failure case and we send a jobfail
+                    // signal to the remote orcehstrator
+                    if ((0 == nProcessExitStatus) && (true == std::filesystem::exists(c_strOutFileName)))
                     {
-                        // On successful completion of the job, write the output signal file
-                        std::ofstream output("DataSignals/" + c_strOutFileName);
+                        std::ofstream output(gc_strSignalFolderName + "/" + c_strOutFileName);
 
                         // Send a job success signal to the orchestrator
                         oStructruedBufferSignal.PutByte("SignalType", (Byte)JobStatusSignals::eJobDone);
@@ -225,7 +209,7 @@ int __thiscall SafeObject::Run(
                 // This is when a kill signal is recevied from the JobEngine
                 else if (nINotifyFd == asPollingEvents->data.fd)
                 {
-                    std::cout << "Child killed. X-< \n";
+                    std::cout << "Child killed by orchestrator. X-< \n";
                     nProcessExitStatus = ::kill(nProcessIdentifier, SIGKILL);
                 }
                 else

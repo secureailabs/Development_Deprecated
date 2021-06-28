@@ -56,6 +56,10 @@ Job::~Job(void)
 {
     __DebugFunction();
 
+    std::lock_guard<std::mutex> lock(m_oMutexJob);
+
+    std::cout << "Job destructor called\n";
+
 }
 
 /********************************************************************************************
@@ -76,7 +80,6 @@ void __thiscall Job::SetSafeObject(
 
     m_poSafeObject = c_poSafeObjectId;
 
-    // TODO: get a list of all the parameters
     m_stlInputParameters = c_poSafeObjectId->GetListOfParameters();
 
     std::cout << "m_stlInputParameters.size() is " << m_stlInputParameters.size() << std::endl;
@@ -104,7 +107,7 @@ void __thiscall Job::TryRunJob(void)
         std::cout << "All parameters set" << std::endl;
         if (0 == m_stlSetOfDependencies.size())
         {
-            std::cout << "No dependencoes" << std::endl;
+            std::cout << "No dependencies" << std::endl;
             m_eJobState = JobState::eRunning;
             nProcessExitStatus = m_poSafeObject->Run(m_strJobUuid, m_stlOutputFileName);
             m_eJobState = JobState::eFinished;
@@ -192,17 +195,28 @@ bool __thiscall Job::SetParameter(
 
 void __thiscall Job::RemoveAvailableDependency(
     _in const std::string & c_strDependencyName
-    ) throw()
+    )
 {
     __DebugFunction();
 
     std::lock_guard<std::mutex> lock(m_oMutexJob);
 
-    m_stlSetOfDependencies.erase(c_strDependencyName);
-
-    if (0 == m_stlSetOfDependencies.size())
+    try
     {
-        this->TryRunJob();
+        m_stlSetOfDependencies.erase(c_strDependencyName);
+
+        if (0 == m_stlSetOfDependencies.size())
+        {
+            this->TryRunJob();
+        }
+    }
+    catch(const BaseException & oBaseException)
+    {
+        std::cout << oBaseException.GetExceptionMessage() << '\n';
+    }
+    catch(const std::exception& e)
+    {
+        std::cout << e.what() << '\n';
     }
 }
 

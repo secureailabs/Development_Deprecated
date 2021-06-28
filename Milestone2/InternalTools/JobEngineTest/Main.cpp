@@ -42,7 +42,7 @@ bool TestPushSafeObject(
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePushSafeObject);
 
     oStructuredBufferRequest.PutString("SafeObjectUuid", "{e0d937b9-471e-4d2e-a470-d0c96d21574b}");
-    std::string test_code = "print(\"Hello Prawal\")\n";
+    std::string test_code = "print(\"Hello Orchestrator\")\n";
     test_code += "f= open(\"{abf0a5ad-21a8-4b91-a4b6-07e09c9d8467}\",\"w+\")\n";
     test_code += "f.write(\"This is the output\")\n";
     test_code += "f.close()\n";
@@ -204,8 +204,13 @@ int __cdecl main(
         ::TestSetParameters(poSocket);
         ::TestPushData(poSocket);
         ::TestPullData(poSocket);
-        // ::TestHaltJobs(poSocket);
+        ::TestHaltJobs(poSocket);
         // ::TestVmShutdown(poSocket);
+        ::TestPushSafeObject(poSocket);
+        ::TestSubmitJob(poSocket);
+        ::TestSetParameters(poSocket);
+        ::TestPushData(poSocket);
+        ::TestPullData(poSocket);
 
         // After sending all the jobs, wait for the signals
         do
@@ -215,7 +220,7 @@ int __cdecl main(
             StructuredBuffer oNewRequest(stlSerializedBuffer);
 
             std::cout << oNewRequest.ToString() << std::endl;
-        }while(true);
+        } while(true);
 
         poSocket->Release();
     }

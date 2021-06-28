@@ -61,7 +61,7 @@ class Job : public Object
             );
         void __thiscall RemoveAvailableDependency(
             _in const std::string & strOutFileName
-            ) throw();
+            );
         void __thiscall SetOutputFileName(
             _in const std::string & c_strOutFileName
             ) throw();

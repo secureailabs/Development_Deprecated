@@ -99,6 +99,7 @@ class JobEngine : public Object
         void __thiscall ResetJobEngine(void);
 
         // Private data members
+        std::mutex m_oMutexjobEngine;
         uint64_t m_FileListenerId = 0;
         bool m_fIsEngineRunning;
         static JobEngine m_oJobEngine;
@@ -108,5 +109,7 @@ class JobEngine : public Object
         std::unordered_map<std::string, SafeObject *> m_stlMapOfSafeObjects;
         std::mutex m_oMutexOnSafeObjectMap;
         std::unordered_map<std::string, Job *> m_stlMapOfParameterValuesToJob;
+        std::mutex m_oMutexOnParameterValuesToJobMap;
         std::unordered_set<std::string> m_stlSetOfPullObjects;
+        std::mutex m_oMutexOnSetOfPullObjects;
 };

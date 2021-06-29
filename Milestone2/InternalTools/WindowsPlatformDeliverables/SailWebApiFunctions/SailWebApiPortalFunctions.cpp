@@ -394,6 +394,7 @@ extern "C" __declspec(dllexport) unsigned int __cdecl LoadDigitalContracts(void)
         // Send the REST API call to the SAIL Web Api Portal
         std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfSailWebApiPortal, (Word) gs_unPortAddressOfSailWebApiPortal, strVerb, strApiUri, strJsonBody, true);
         // Parse the returning value.
+        stlRestResponse.push_back(0);
         StructuredBuffer oGetDigitalContractsResponse = JsonValue::ParseDataToStructuredBuffer((const char*) stlRestResponse.data());
         // Did the transaction succeed?
         _ThrowBaseExceptionIf((200 != oGetDigitalContractsResponse.GetFloat64("Status")), "Sail Web Api Portal Transaction has failed.", nullptr);

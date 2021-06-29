@@ -49,17 +49,17 @@ namespace MicrosoftAzureVirtualMachineInitializer
             {
                 m_LocationTextBox.Text = registryKey.GetValue("DefaultMicrosoftAzureLocation").ToString();
             }
-            if (true == registryKeyValues.Contains("DefaultMicrosoftVirtualNetwork"))
+            if (true == registryKeyValues.Contains("DefaultMicrosoftOsDiskUrl"))
             {
-                m_VirtualNetworkTextBox.Text = registryKey.GetValue("DefaultMicrosoftVirtualNetwork").ToString();
+                m_OsDiskUrlTextBox.Text = registryKey.GetValue("DefaultMicrosoftOsDiskUrl").ToString();
             }
             if (true == registryKeyValues.Contains("DefaultMicrosoftNetworkSecurityGroup"))
             {
                 m_NetworkSecurityGroupTextBox.Text = registryKey.GetValue("DefaultMicrosoftNetworkSecurityGroup").ToString();
             }
-            if (true == registryKeyValues.Contains("DefaultMicrosoftBaseMachineName"))
+            if (true == registryKeyValues.Contains("DefaultMicrosoftOsDiskStorageAccount"))
             {
-                m_BaseMachineNameTextBox.Text = registryKey.GetValue("DefaultMicrosoftBaseMachineName").ToString();
+                m_osDiskStorageAccountTextBox.Text = registryKey.GetValue("DefaultMicrosoftOsDiskStorageAccount").ToString();
             }
             if (true == registryKeyValues.Contains("DefaultMicrosoftVirtualMachineSize"))
             {
@@ -139,11 +139,11 @@ namespace MicrosoftAzureVirtualMachineInitializer
         /// <summary>
         /// 
         /// </summary>
-        public string AzureVirtualNetwork
+        public string OsDiskUrl
         {
             get
             {
-                return m_VirtualNetworkTextBox.Text;
+                return m_OsDiskUrlTextBox.Text;
             }
         }
 
@@ -161,11 +161,11 @@ namespace MicrosoftAzureVirtualMachineInitializer
         /// <summary>
         /// 
         /// </summary>
-        public string AzureBaseMachineName
+        public string OsDiskStorageAccount
         {
             get
             {
-                return m_BaseMachineNameTextBox.Text;
+                return m_osDiskStorageAccountTextBox.Text;
             }
         }
 
@@ -197,9 +197,9 @@ namespace MicrosoftAzureVirtualMachineInitializer
             registryKey.SetValue("DefaultMicrosoftAzureSubscriptionIdentifier", m_SubscriptionIdentifierTextBox.Text);
             registryKey.SetValue("DefaultMicrosoftAzureResourceGroup", m_ResourceGroupTextBox.Text);
             registryKey.SetValue("DefaultMicrosoftAzureLocation", m_LocationTextBox.Text);
-            registryKey.SetValue("DefaultMicrosoftVirtualNetwork", m_VirtualNetworkTextBox.Text);
+            registryKey.SetValue("DefaultMicrosoftVirtualNetwork", m_OsDiskUrlTextBox.Text);
             registryKey.SetValue("DefaultMicrosoftNetworkSecurityGroup", m_NetworkSecurityGroupTextBox.Text);
-            registryKey.SetValue("DefaultMicrosoftBaseMachineName", m_BaseMachineNameTextBox.Text);
+            registryKey.SetValue("DefaultMicrosoftBaseMachineName", m_osDiskStorageAccountTextBox.Text);
             registryKey.SetValue("DefaultMicrosoftVirtualMachineSize", m_VirtualMachineSizeTextBox.Text);
             registryKey.Close();
             this.DialogResult = DialogResult.OK;
@@ -300,7 +300,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
             EventArgs e
             )
         {
-            if ((0 < m_DatasetFilenameTextBox.Text.Length) && (0 < m_SubscriptionIdentifierTextBox.Text.Length) && (0 < m_ResourceGroupTextBox.Text.Length) && (0 < m_LocationTextBox.Text.Length) && (0 < m_VirtualNetworkTextBox.Text.Length) && (0 < m_NetworkSecurityGroupTextBox.Text.Length))
+            if ((0 < m_DatasetFilenameTextBox.Text.Length) && (0 < m_SubscriptionIdentifierTextBox.Text.Length) && (0 < m_ResourceGroupTextBox.Text.Length) && (0 < m_LocationTextBox.Text.Length) && (0 < m_OsDiskUrlTextBox.Text.Length) && (0 < m_NetworkSecurityGroupTextBox.Text.Length))
             {
                 m_NextButton.Enabled = true;
             }
@@ -320,5 +320,6 @@ namespace MicrosoftAzureVirtualMachineInitializer
         }
 
         private ExceptionsDialog m_ExceptionsDialog;
+
     }
 }

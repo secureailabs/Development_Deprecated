@@ -136,35 +136,6 @@ virtual machine cluster (i.e. shared cluster identifier)
 and all of the virtual machines will be configured to
 use the same digital contract and the same dataset.</value>
   </data>
-  <data name="NetworkInterfaceJson" xml:space="preserve">
-    <value>{
-  "properties": {
-    "enableAcceleratedNetworking": false,
-    "ipConfigurations": [
-      {
-        "name": "{{Name}}",
-        "properties": {
-          "publicIPAddress": {
-            "id": "/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Network/publicIPAddresses/{{IpAddressId}}"
-          },
-          "subnet": {
-            "id": "/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Network/virtualNetworks/{{VirtualNetwork}}/subnets/default"
-          }
-        }
-      }
-    ],
-    "networkSecurityGroup": {
-      "id": "/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Network/networkSecurityGroups/{{NetworkSecurityGroup}}"
-    }
-  },
-  "location": "{{Location}}"
-}</value>
-  </data>
-  <data name="PublicIpJson" xml:space="preserve">
-    <value>{
-    "location": "{{Location}}"
-}</value>
-  </data>
   <data name="ResourceGroupJson" xml:space="preserve">
     <value>{
     "location": "{{Location}}"
@@ -209,61 +180,6 @@ use the same digital contract and the same dataset.</value>
       ]
     }
   }
-}</value>
-  </data>
-  <data name="VirtualMachineFromImageJson" xml:space="preserve">
-    <value>{
-  "location": "{{Location}}",
-  "plan": {
-    "name": "pro-20_04-lts",
-    "publisher": "canonical",
-    "product": "0001-com-ubuntu-pro-focal"
-  },
-  "properties": {
-    "hardwareProfile": {
-      "vmSize": "{{VmSize}}"
-    },
-    "storageProfile": {
-      "imageReference": {
-        "id": "/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Compute/images/{{ImageName}}"
-      },
-      "osDisk": {
-        "caching": "ReadWrite",
-        "managedDisk": {
-          "storageAccountType": "Standard_LRS"
-        },
-        "name": "{{OsDiskName}}",
-        "createOption": "FromImage"
-      }
-    },
-    "osProfile": {
-      "adminUsername": "{{Username}}",
-      "computerName": "{{ComputerName}}",
-      "adminPassword": "{{Password}}"
-    },
-    "networkProfile": {
-      "networkInterfaces": [
-        {
-          "id": "/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Network/networkInterfaces/{{NetworkInterface}}",
-          "properties": {
-            "primary": true
-          }
-        }
-      ]
-    }
-  }
-}</value>
-  </data>
-  <data name="VirtualNetworkJson" xml:space="preserve">
-    <value>{
-    "properties": {
-      "addressSpace": {
-        "addressPrefixes": [
-          "10.0.0.0/16"
-        ]
-      }
-    },
-    "location": "{{Location}}"
 }</value>
   </data>
   <data name="ConfidentialVirtualMachineDeploymentJson" xml:space="preserve">
@@ -336,12 +252,6 @@ use the same digital contract and the same dataset.</value>
         "vmSize": {
             "value": "{{VmSize}}"
         },
-        "networkSecurityGroupId": {
-            "value": "{{NetworkSecurityGroupId}}"
-        },
-        "virtualNetworkId": {
-            "value":"{{VirtualNetworkId}}"
-        },
         "addressPrefix": {
             "value": "10.1.16.0/24"
         },
@@ -357,17 +267,14 @@ use the same digital contract and the same dataset.</value>
         "hyperVGeneration": {
             "value": "V2"
         },
-        "VmImageResourceId": {
-            "value": "{{ImageResourceId}}"
+        "osDiskStorageAccountID": {
+            "value": "{{OsDiskStorageAccountID}}"        
         },
-        "Username": {
-            "value": "{{Username}}"
+        "osDiskURL": {
+           "value": "{{OsDiskUrl}}"  
         },
-        "ComputerName": {
-            "value": "{{ComputerName}}"
-        },
-        "Password": {
-            "value": "{{Password}}"
+        "NetworkSecurityGroupId": {
+           "value": "{{NetworkSecurityGroupId}}"          
         },
         "bootDiagnostics": {
             "value": "false"

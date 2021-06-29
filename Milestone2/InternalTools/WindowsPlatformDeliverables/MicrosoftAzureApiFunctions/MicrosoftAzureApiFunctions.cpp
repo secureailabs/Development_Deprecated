@@ -355,6 +355,7 @@ extern "C" __declspec(dllexport) BSTR __cdecl DeployVirtualMachineAndWait(
         std::string strContent = c_szconfidentialVirtualMachineSpecification;
         std::string strApiVersionDate = "2020-10-01";
         std::vector<Byte> stlResponse = ::MakeMicrosoftAzureApiCall(strVerb, strResource, strHost, strContent, strApiVersionDate, strSubscription, strResourceGroup);
+        stlResponse.push_back(0);
         std::string strResponse = (const char*)stlResponse.data();
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to create a Microsoft Azure public IP address", nullptr);
         _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to create a Microsoft Azure public IP address with error %s", strResponse.c_str());
@@ -369,6 +370,7 @@ extern "C" __declspec(dllexport) BSTR __cdecl DeployVirtualMachineAndWait(
             strContent = "";
             strApiVersionDate = "2021-04-01";
             stlResponse = ::MakeMicrosoftAzureApiCall(strVerb, strResource, strHost, strContent, strApiVersionDate, strSubscription, strResourceGroup);
+            stlResponse.push_back(0);
             strResponse = (const char*)stlResponse.data();
             _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
             _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to get the status of a virtual machine being provisioned with error %s", strResponse.c_str());
@@ -403,6 +405,7 @@ extern "C" __declspec(dllexport) BSTR __cdecl DeployVirtualMachineAndWait(
             strContent = "";
             strApiVersionDate = "2020-12-01";
             stlResponse = ::MakeMicrosoftAzureApiCall(strVerb, strResource, strHost, strContent, strApiVersionDate, strSubscription, strResourceGroup);
+            stlResponse.push_back(0);
             strResponse = (const char*)stlResponse.data();
             _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
             _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to get the status of a virtual machine being provisioned with error %s", strResponse.c_str());
@@ -435,6 +438,7 @@ extern "C" __declspec(dllexport) BSTR __cdecl DeployVirtualMachineAndWait(
         strContent = "";
         strApiVersionDate = "2020-07-01";
         stlResponse = ::MakeMicrosoftAzureApiCall(strVerb, strResource, strHost, strContent, strApiVersionDate, strSubscription, strResourceGroup);
+        stlResponse.push_back(0);
         strResponse = (const char*)stlResponse.data();
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the ip address of a Microsoft Azure virtual machine", nullptr);
         _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to get the ip address of a Microsoft Azure virtual machine with error %s", strResponse.c_str());

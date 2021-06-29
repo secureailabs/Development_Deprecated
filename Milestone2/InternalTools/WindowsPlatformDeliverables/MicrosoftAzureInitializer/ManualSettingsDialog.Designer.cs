@@ -48,17 +48,17 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_SubscriptionIdentifierTextBox = new System.Windows.Forms.TextBox();
             this.m_ResourceGroupTextBox = new System.Windows.Forms.TextBox();
             this.m_LocationTextBox = new System.Windows.Forms.TextBox();
-            this.m_VirtualNetworkTextBox = new System.Windows.Forms.TextBox();
+            this.m_OsDiskUrlTextBox = new System.Windows.Forms.TextBox();
             this.m_NetworkSecurityGroupTextBox = new System.Windows.Forms.TextBox();
             this.m_SubscriptionIdentifierLabel = new System.Windows.Forms.Label();
             this.m_ResourceGroupLabel = new System.Windows.Forms.Label();
             this.m_LocationLabel = new System.Windows.Forms.Label();
-            this.m_VirtualNetworkLabel = new System.Windows.Forms.Label();
+            this.m_osDiskUrlLabel = new System.Windows.Forms.Label();
             this.m_NetworkSecurityGroupLabel = new System.Windows.Forms.Label();
             this.m_RefreshTimer = new System.Windows.Forms.Timer(this.components);
-            this.m_BaseMachineNameTextBox = new System.Windows.Forms.TextBox();
+            this.m_osDiskStorageAccountTextBox = new System.Windows.Forms.TextBox();
             this.m_VirtualMachineSizeTextBox = new System.Windows.Forms.TextBox();
-            this.m_BaseMachineNameLabel = new System.Windows.Forms.Label();
+            this.m_OsDiskStorageAccountLabel = new System.Windows.Forms.Label();
             this.m_VirtualMachineSizeLabel = new System.Windows.Forms.Label();
             this.m_StatusStrip.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.m_SailLogoPictureBox)).BeginInit();
@@ -246,14 +246,14 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_LocationTextBox.Size = new System.Drawing.Size(552, 22);
             this.m_LocationTextBox.TabIndex = 11;
             // 
-            // m_VirtualNetworkTextBox
+            // m_OsDiskUrlTextBox
             // 
-            this.m_VirtualNetworkTextBox.BackColor = System.Drawing.SystemColors.Info;
-            this.m_VirtualNetworkTextBox.Font = new System.Drawing.Font("Consolas", 9F);
-            this.m_VirtualNetworkTextBox.Location = new System.Drawing.Point(281, 178);
-            this.m_VirtualNetworkTextBox.Name = "m_VirtualNetworkTextBox";
-            this.m_VirtualNetworkTextBox.Size = new System.Drawing.Size(552, 22);
-            this.m_VirtualNetworkTextBox.TabIndex = 12;
+            this.m_OsDiskUrlTextBox.BackColor = System.Drawing.SystemColors.Info;
+            this.m_OsDiskUrlTextBox.Font = new System.Drawing.Font("Consolas", 9F);
+            this.m_OsDiskUrlTextBox.Location = new System.Drawing.Point(281, 178);
+            this.m_OsDiskUrlTextBox.Name = "m_OsDiskUrlTextBox";
+            this.m_OsDiskUrlTextBox.Size = new System.Drawing.Size(552, 22);
+            this.m_OsDiskUrlTextBox.TabIndex = 12;
             // 
             // m_NetworkSecurityGroupTextBox
             // 
@@ -294,15 +294,16 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_LocationLabel.Text = "Location";
             this.m_LocationLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
-            // m_VirtualNetworkLabel
+            // m_osDiskUrlLabel
             // 
-            this.m_VirtualNetworkLabel.AutoSize = true;
-            this.m_VirtualNetworkLabel.Location = new System.Drawing.Point(176, 181);
-            this.m_VirtualNetworkLabel.Name = "m_VirtualNetworkLabel";
-            this.m_VirtualNetworkLabel.Size = new System.Drawing.Size(102, 15);
-            this.m_VirtualNetworkLabel.TabIndex = 17;
-            this.m_VirtualNetworkLabel.Text = "Virtual Network Id";
-            this.m_VirtualNetworkLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.m_osDiskUrlLabel.AutoSize = true;
+            this.m_osDiskUrlLabel.Location = new System.Drawing.Point(207, 181);
+            this.m_osDiskUrlLabel.Name = "m_osDiskUrlLabel";
+            this.m_osDiskUrlLabel.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+            this.m_osDiskUrlLabel.Size = new System.Drawing.Size(71, 15);
+            this.m_osDiskUrlLabel.TabIndex = 17;
+            this.m_osDiskUrlLabel.Text = "OS Disk URL";
+            this.m_osDiskUrlLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // m_NetworkSecurityGroupLabel
             // 
@@ -319,14 +320,14 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_RefreshTimer.Enabled = true;
             this.m_RefreshTimer.Tick += new System.EventHandler(this.m_RefreshTimer_Tick);
             // 
-            // m_BaseMachineNameTextBox
+            // m_osDiskStorageAccountTextBox
             // 
-            this.m_BaseMachineNameTextBox.BackColor = System.Drawing.SystemColors.Info;
-            this.m_BaseMachineNameTextBox.Font = new System.Drawing.Font("Consolas", 9F);
-            this.m_BaseMachineNameTextBox.Location = new System.Drawing.Point(281, 234);
-            this.m_BaseMachineNameTextBox.Name = "m_BaseMachineNameTextBox";
-            this.m_BaseMachineNameTextBox.Size = new System.Drawing.Size(552, 22);
-            this.m_BaseMachineNameTextBox.TabIndex = 19;
+            this.m_osDiskStorageAccountTextBox.BackColor = System.Drawing.SystemColors.Info;
+            this.m_osDiskStorageAccountTextBox.Font = new System.Drawing.Font("Consolas", 9F);
+            this.m_osDiskStorageAccountTextBox.Location = new System.Drawing.Point(281, 234);
+            this.m_osDiskStorageAccountTextBox.Name = "m_osDiskStorageAccountTextBox";
+            this.m_osDiskStorageAccountTextBox.Size = new System.Drawing.Size(552, 22);
+            this.m_osDiskStorageAccountTextBox.TabIndex = 19;
             // 
             // m_VirtualMachineSizeTextBox
             // 
@@ -337,15 +338,15 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.m_VirtualMachineSizeTextBox.Size = new System.Drawing.Size(552, 22);
             this.m_VirtualMachineSizeTextBox.TabIndex = 20;
             // 
-            // m_BaseMachineNameLabel
+            // m_OsDiskStorageAccountLabel
             // 
-            this.m_BaseMachineNameLabel.AutoSize = true;
-            this.m_BaseMachineNameLabel.Location = new System.Drawing.Point(198, 238);
-            this.m_BaseMachineNameLabel.Name = "m_BaseMachineNameLabel";
-            this.m_BaseMachineNameLabel.Size = new System.Drawing.Size(80, 15);
-            this.m_BaseMachineNameLabel.TabIndex = 21;
-            this.m_BaseMachineNameLabel.Text = "Base Image Id";
-            this.m_BaseMachineNameLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.m_OsDiskStorageAccountLabel.AutoSize = true;
+            this.m_OsDiskStorageAccountLabel.Location = new System.Drawing.Point(130, 237);
+            this.m_OsDiskStorageAccountLabel.Name = "m_OsDiskStorageAccountLabel";
+            this.m_OsDiskStorageAccountLabel.Size = new System.Drawing.Size(151, 15);
+            this.m_OsDiskStorageAccountLabel.TabIndex = 21;
+            this.m_OsDiskStorageAccountLabel.Text = "OS Disk Storage Account Id";
+            this.m_OsDiskStorageAccountLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // m_VirtualMachineSizeLabel
             // 
@@ -364,16 +365,16 @@ namespace MicrosoftAzureVirtualMachineInitializer
             this.ClientSize = new System.Drawing.Size(847, 351);
             this.ControlBox = false;
             this.Controls.Add(this.m_VirtualMachineSizeLabel);
-            this.Controls.Add(this.m_BaseMachineNameLabel);
+            this.Controls.Add(this.m_OsDiskStorageAccountLabel);
             this.Controls.Add(this.m_VirtualMachineSizeTextBox);
-            this.Controls.Add(this.m_BaseMachineNameTextBox);
+            this.Controls.Add(this.m_osDiskStorageAccountTextBox);
             this.Controls.Add(this.m_NetworkSecurityGroupLabel);
-            this.Controls.Add(this.m_VirtualNetworkLabel);
+            this.Controls.Add(this.m_osDiskUrlLabel);
             this.Controls.Add(this.m_LocationLabel);
             this.Controls.Add(this.m_ResourceGroupLabel);
             this.Controls.Add(this.m_SubscriptionIdentifierLabel);
             this.Controls.Add(this.m_NetworkSecurityGroupTextBox);
-            this.Controls.Add(this.m_VirtualNetworkTextBox);
+            this.Controls.Add(this.m_OsDiskUrlTextBox);
             this.Controls.Add(this.m_LocationTextBox);
             this.Controls.Add(this.m_ResourceGroupTextBox);
             this.Controls.Add(this.m_SubscriptionIdentifierTextBox);
@@ -421,17 +422,17 @@ namespace MicrosoftAzureVirtualMachineInitializer
         private System.Windows.Forms.TextBox m_SubscriptionIdentifierTextBox;
         private System.Windows.Forms.TextBox m_ResourceGroupTextBox;
         private System.Windows.Forms.TextBox m_LocationTextBox;
-        private System.Windows.Forms.TextBox m_VirtualNetworkTextBox;
+        private System.Windows.Forms.TextBox m_OsDiskUrlTextBox;
         private System.Windows.Forms.TextBox m_NetworkSecurityGroupTextBox;
         private System.Windows.Forms.Label m_SubscriptionIdentifierLabel;
         private System.Windows.Forms.Label m_ResourceGroupLabel;
         private System.Windows.Forms.Label m_LocationLabel;
-        private System.Windows.Forms.Label m_VirtualNetworkLabel;
+        private System.Windows.Forms.Label m_osDiskUrlLabel;
         private System.Windows.Forms.Label m_NetworkSecurityGroupLabel;
         private System.Windows.Forms.Timer m_RefreshTimer;
-        private System.Windows.Forms.TextBox m_BaseMachineNameTextBox;
+        private System.Windows.Forms.TextBox m_osDiskStorageAccountTextBox;
         private System.Windows.Forms.TextBox m_VirtualMachineSizeTextBox;
-        private System.Windows.Forms.Label m_BaseMachineNameLabel;
+        private System.Windows.Forms.Label m_OsDiskStorageAccountLabel;
         private System.Windows.Forms.Label m_VirtualMachineSizeLabel;
         private System.Windows.Forms.ToolStripStatusLabel m_ExceptionsToolStripStatusLabel;
     }

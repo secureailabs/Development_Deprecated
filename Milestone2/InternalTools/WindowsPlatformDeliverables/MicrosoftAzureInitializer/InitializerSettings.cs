@@ -46,7 +46,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
                         string datasetIdentifier = SailWebApiPortalInterop.GetDigitalContractProperty(manualSettingsDialog.DigitalContractIdentifier, "DatasetGuid");
                         for (uint index = 0; index < manualSettingsDialog.VirtualMachineCount; index++)
                         {
-                            m_ListOfVirtualMachines.Add(index, new MicrosoftAzureVirtualMachine(clusterIdentifier, manualSettingsDialog.DigitalContractIdentifier, datasetIdentifier, manualSettingsDialog.DatasetFilename, SailWebApiPortalInterop.GetIpAddress(), manualSettingsDialog.AzureSubscriptionIdentifier, manualSettingsDialog.AzureResourceGroup, manualSettingsDialog.AzureLocation, manualSettingsDialog.AzureVirtualNetwork, manualSettingsDialog.AzureNetworkSecurityGroup, manualSettingsDialog.AzureBaseMachineName, manualSettingsDialog.AzureVirtualMachineSize));
+                            m_ListOfVirtualMachines.Add(index, new MicrosoftAzureVirtualMachine(clusterIdentifier, manualSettingsDialog.DigitalContractIdentifier, datasetIdentifier, manualSettingsDialog.DatasetFilename, SailWebApiPortalInterop.GetIpAddress(), manualSettingsDialog.AzureSubscriptionIdentifier, manualSettingsDialog.AzureResourceGroup, manualSettingsDialog.AzureLocation, manualSettingsDialog.OsDiskUrl, manualSettingsDialog.AzureNetworkSecurityGroup, manualSettingsDialog.OsDiskStorageAccount, manualSettingsDialog.AzureVirtualMachineSize));
                         }
                         m_IsConfigured = true;
                     }

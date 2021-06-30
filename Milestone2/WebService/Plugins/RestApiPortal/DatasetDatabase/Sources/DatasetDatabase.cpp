@@ -529,7 +529,7 @@ std::vector<Byte> __thiscall DatasetDatabase::GetListOfAvailableDatasets(
         poTlsNode->Write(stlRequest.data(), stlRequest.size());
 
         // Read header and body of the response
-        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 3000);
         _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
         unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
         std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);

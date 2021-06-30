@@ -209,7 +209,14 @@ std::vector<Byte> __thiscall DatabaseManager::GetBasicUserRecord(
             }
             if (strOrganizationGuid && strOrganizationGuid.type() == type::k_utf8)
             {
-                oBasicUserRecord.PutGuid("OrganizationGuid", Guid(strOrganizationGuid.get_utf8().value.to_string().c_str()));
+                std::string strOrganizationIdentifier = strOrganizationGuid.get_utf8().value.to_string().c_str();
+                oBasicUserRecord.PutGuid("OrganizationGuid", Guid(strOrganizationIdentifier.c_str()));
+                // Get organization name
+                StructuredBuffer oOrganizationName = this->GetOrganizationName(strOrganizationIdentifier);
+                if (200 == oOrganizationName.GetDword("Status")) 
+                {
+                    oBasicUserRecord.PutString("OrganizationName", oOrganizationName.GetString("OrganizationName"));
+                }
             }
             if (dwAccountStatus && dwAccountStatus.type() == type::k_double)
             {
@@ -440,6 +447,10 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterOrganization(
             {
                 std::cout << "Collection transaction exception: " << e.what() << std::endl;
             }
+        }
+        else 
+        {
+            oResponse.PutString("ErrorMessage", "Organization already exists!");
         }
     }
     catch (BaseException oException)

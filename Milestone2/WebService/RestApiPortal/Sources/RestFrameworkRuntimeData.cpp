@@ -353,7 +353,7 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
     {
         ::RegisterException(oBaseException, __func__, __LINE__);
         // send back error message
-        std::string strErrorMessage = "HTTP/1.1 404 NotFound\r\nConnection: close\r\n\r\n";
+        std::string strErrorMessage = "HTTP/1.1 400 BadRequest\r\nConnection: close\r\n\r\n";
         std::cout << "\n\nRest Response:\n\n" << strErrorMessage << std::endl;
         // Send back error
         poTlsNode->Write((const Byte *) strErrorMessage.data(), strErrorMessage.size());

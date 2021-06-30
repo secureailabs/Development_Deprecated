@@ -751,6 +751,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
         StructuredBuffer oStructuredBufferEosb;
         oStructuredBufferEosb.PutGuid("UserId", oStructuredBufferBasicUserRecord.GetGuid("UserGuid"));
         oStructuredBufferEosb.PutGuid("OrganizationGuid", oStructuredBufferBasicUserRecord.GetGuid("OrganizationGuid"));
+        oStructuredBufferEosb.PutString("OrganizationName", oStructuredBufferBasicUserRecord.GetString("OrganizationName"));
         oStructuredBufferEosb.PutGuid("SessionId", Guid());
         oStructuredBufferEosb.PutBuffer("AccountKey", stlAccountKey);
         oStructuredBufferEosb.PutQword("AccessRights", 1);  // 1 is for eEosb access right

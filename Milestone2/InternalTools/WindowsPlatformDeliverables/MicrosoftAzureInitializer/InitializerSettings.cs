@@ -120,9 +120,12 @@ namespace MicrosoftAzureVirtualMachineInitializer
                 singleLineOfText.Trim();
                 if ("# Location" != singleLineOfText) throw new FormatException("Line 3 is invalid. Expecting \"# Location\"");
                 // Line 4
-                singleLineOfText = file.ReadLine();
-                singleLineOfText.Trim();
-                if ("# VirtualNetwork" != singleLineOfText) throw new FormatException("Line 4 is invalid. Expecting \"# VirtualNetwork\"");
+                if (true == isConfidential)
+                {
+                    singleLineOfText = file.ReadLine();
+                    singleLineOfText.Trim();
+                    if ("# VirtualNetwork" != singleLineOfText) throw new FormatException("Line 4 is invalid. Expecting \"# VirtualNetwork\"");
+                }   
                 // Line 5
                 singleLineOfText = file.ReadLine();
                 singleLineOfText.Trim();
@@ -145,10 +148,14 @@ namespace MicrosoftAzureVirtualMachineInitializer
                 }
                 else
                 {
+                    // Line 5
+                    singleLineOfText = file.ReadLine();
+                    singleLineOfText.Trim();
+                    if ("# OsDiskUrl" != singleLineOfText) throw new FormatException("Line 5 is invalid. Expecting \"# OsDiskUrl\"");
                     // Line 6
                     singleLineOfText = file.ReadLine();
                     singleLineOfText.Trim();
-                    if ("# BaseMachineName" != singleLineOfText) throw new FormatException("Line 5 is invalid. Expecting \"# BaseMachineName\"");
+                    if ("# OsDiskStorageAccountID" != singleLineOfText) throw new FormatException("Line 5 is invalid. Expecting \"# OsDiskStorageAccountID\"");
                 }
                 // Line 6
                 singleLineOfText = file.ReadLine();
@@ -162,10 +169,14 @@ namespace MicrosoftAzureVirtualMachineInitializer
                 singleLineOfText = file.ReadLine();
                 singleLineOfText.Trim();
                 string location = singleLineOfText;
-                // Line 9
-                singleLineOfText = file.ReadLine();
-                singleLineOfText.Trim();
-                string virtualNetwork = singleLineOfText;
+                string virtualNetwork = "";
+                if (true == isConfidential)
+                {
+                    // Line 9
+                    singleLineOfText = file.ReadLine();
+                    singleLineOfText.Trim();
+                    virtualNetwork = singleLineOfText;
+                }
                 // Line 10
                 singleLineOfText = file.ReadLine();
                 singleLineOfText.Trim();
@@ -175,7 +186,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
                 string confidentialVmOsDiskUrl = "";
                 string confidentialOsDiskVgmsUrl = "";
                 string osDiskStorageAccount = "";
-                string vmBaseImage = "";
+                string osDiskUrl = "";
                 if (true == isConfidential)
                 {
                     // Line 14
@@ -186,18 +197,18 @@ namespace MicrosoftAzureVirtualMachineInitializer
                     singleLineOfText = file.ReadLine();
                     singleLineOfText.Trim();
                     confidentialOsDiskVgmsUrl = singleLineOfText;
-                    // Line 16
-                    singleLineOfText = file.ReadLine();
-                    singleLineOfText.Trim();
-                    osDiskStorageAccount = singleLineOfText;
                 }
                 else 
                 {
                     // Line 14
                     singleLineOfText = file.ReadLine();
                     singleLineOfText.Trim();
-                    vmBaseImage = singleLineOfText;
+                    osDiskUrl = singleLineOfText;
                 }
+                // Line 16
+                singleLineOfText = file.ReadLine();
+                singleLineOfText.Trim();
+                osDiskStorageAccount = singleLineOfText;
                 singleLineOfText = file.ReadLine();
                 singleLineOfText.Trim();
                 if ("# One or more virtual machine settings using the template. The number of virtual" != singleLineOfText) throw new FormatException("Line 11 is invalid. Expecting \"# One or more virtual machine settings using the template. The number of virtual\"");
@@ -238,7 +249,7 @@ namespace MicrosoftAzureVirtualMachineInitializer
                         }
                         else
                         {
-                            m_ListOfVirtualMachines.Add(index, new MicrosoftAzureVirtualMachine(clusterIdentifier, digitalContractIdentifier, datasetIdentifier, datasetFilename, SailWebApiPortalInterop.GetIpAddress(), subscriptionIdentifier, resourceGroup, location, virtualNetwork, networkSecurityGroup, vmBaseImage, virtualMachineSize));
+                            m_ListOfVirtualMachines.Add(index, new MicrosoftAzureVirtualMachine(clusterIdentifier, digitalContractIdentifier, datasetIdentifier, datasetFilename, SailWebApiPortalInterop.GetIpAddress(), subscriptionIdentifier, resourceGroup, location, osDiskUrl, networkSecurityGroup, osDiskStorageAccount, virtualMachineSize));
                         }
                         index++;
                     }

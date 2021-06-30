@@ -219,7 +219,7 @@ std::vector<Byte> __stdcall RestApiCall(
         ::curl_easy_setopt(psCurl, CURLOPT_CUSTOMREQUEST, c_strVerb.c_str());
         ::curl_easy_setopt(psCurl, CURLOPT_URL, strUrl.c_str());
         ::curl_easy_setopt(psCurl, CURLOPT_POSTFIELDS, c_strContent.c_str());
-
+        ::curl_easy_setopt(psCurl, CURLOPT_TIMEOUT, 0);
         // Disaling the SSL certificate verification
         if (true == fDisableSslCertificateVerification)
         {

@@ -533,6 +533,7 @@ std::vector<Byte> __thiscall SailAuthentication::GetBasicUserInformation(
             StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
             oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
             oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
+            oResponse.PutString("OrganizationName", oEosb.GetString("OrganizationName"));
             // TODO: get user access rights, Username, Title, and Email from the confidential record, for now it can't be decrypted
             oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
             oResponse.PutString("Username", oEosb.GetString("Username"));

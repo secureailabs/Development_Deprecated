@@ -1027,6 +1027,13 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
                 oResponse.PutDword("RootEventStatus", 204);
             }
         }
+        else
+        {
+            if (true == oDatabaseResponse.IsElementPresent("ErrorMessage", ANSI_CHARACTER_STRING_VALUE_TYPE))
+            {
+                oResponse.PutString("ErrorMessage", oDatabaseResponse.GetString("ErrorMessage"));
+            }
+        }
     }
     catch (BaseException oException)
     {

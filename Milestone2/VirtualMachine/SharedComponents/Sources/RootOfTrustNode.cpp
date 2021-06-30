@@ -145,11 +145,11 @@ void __thiscall RootOfTrustNode::RecordAuditEvent(
         // Add the encrypted event data to the audit event
         oTransactionData.PutString("EncryptedEventData", oEncryptedEventData.GetBase64SerializedBuffer());
         // Send the transaction
-        //Socket * poSocket = ::ConnectToUnixDomainSocket(m_strRootOfTrustIpcPath.c_str());
-        //StructuredBuffer oTransactionResponse(::PutIpcTransactionAndGetResponse(poSocket, oTransactionData));
-        //poSocket->Release();
+        Socket * poSocket = ::ConnectToUnixDomainSocket(m_strRootOfTrustIpcPath.c_str());
+        StructuredBuffer oTransactionResponse(::PutIpcTransactionAndGetResponse(poSocket, oTransactionData));
+        poSocket->Release();
     }
-    
+
     catch(BaseException oBaseException)
     {
         ::RegisterException(oBaseException, __func__, __LINE__);

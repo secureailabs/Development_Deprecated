@@ -69,8 +69,7 @@ class RestFrameworkRuntimeData : public Object
         // Wrapper that calls other functions to find the plugin with the best matching API and validates parameters
         int __thiscall ParseRequestContent(
             _in const HttpRequestParser & c_oParser,
-            _in StructuredBuffer * c_poRequestParameters,
-            _out StructuredBuffer * poValidatedRequestData
+            _in StructuredBuffer * c_poRequestParameters
             );
 
         // Find the latest version of the plugin with the best matching API

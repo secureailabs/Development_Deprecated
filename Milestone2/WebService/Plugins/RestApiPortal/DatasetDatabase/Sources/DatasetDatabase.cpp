@@ -302,10 +302,10 @@ void __thiscall DatasetDatabase::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatasetManager/RegisterDataset", oRegisterDataset, 1);
 
     // Sends back list of all available datasets
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatasetManager/ListDatasets", oListDatasets, 0);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatasetManager/ListDatasets", oListDatasets, 1);
 
     // Send back metadata of the dataset associated with the requested DatasetGuid
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatasetManager/PullDataset", oPullDataset, 0);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatasetManager/PullDataset", oPullDataset, 1);
 
     // Deletes a dataset record from the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatasetManager/DeleteDataset", oDeleteDataset, 1);
@@ -449,7 +449,7 @@ std::vector<Byte> __thiscall DatasetDatabase::GetUserInfo(
         std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
 
         StructuredBuffer oDecryptEosbRequest;
-        oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
+        oDecryptEosbRequest.PutDword("TransactionType", 0x00000007);
         oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
 
         // Call CryptographicManager plugin to get the decrypted eosb
@@ -459,7 +459,10 @@ std::vector<Byte> __thiscall DatasetDatabase::GetUserInfo(
         poIpcCryptographicManager = nullptr;
         if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
         {
-            StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
+            StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("UserInformation").GetStructuredBuffer("Eosb"));
+            // Send back the updated Eosb
+            oResponse.PutBuffer("Eosb", oDecryptedEosb.GetBuffer("UpdatedEosb"));
+            // Send back the user information
             oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
             oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
             // TODO: get user access rights from the confidential record, for now it can't be decrypted
@@ -472,7 +475,7 @@ std::vector<Byte> __thiscall DatasetDatabase::GetUserInfo(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -517,32 +520,38 @@ std::vector<Byte> __thiscall DatasetDatabase::GetListOfAvailableDatasets(
 
     try 
     {
-        // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-        // Create a request to list of all datasets
-        StructuredBuffer oRequest;
-        oRequest.PutString("PluginName", "DatabaseManager");
-        oRequest.PutString("Verb", "GET");
-        oRequest.PutString("Resource", "/SAIL/DatabaseManager/ListDatasets");
-        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-        // Send request packet
-        poTlsNode->Write(stlRequest.data(), stlRequest.size());
-
-        // Read header and body of the response
-        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 3000);
-        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-        // Make sure to release the poTlsNode
-        poTlsNode->Release();
-        poTlsNode = nullptr;
-
-        StructuredBuffer oDatabaseResponse(stlResponse);
-        if (200 == oDatabaseResponse.GetDword("Status"))
+        // Get user information to check if the user is a digital contract admin or database admin
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
         {
-            oResponse.PutStructuredBuffer("Datasets", oDatabaseResponse.GetStructuredBuffer("Datasets"));
-            dwStatus = 200;
+            // Make a Tls connection with the database portal
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to list of all datasets
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "GET");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/ListDatasets");
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), stlRequest.size());
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 3000);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+            // Make sure to release the poTlsNode
+            poTlsNode->Release();
+            poTlsNode = nullptr;
+
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (200 == oDatabaseResponse.GetDword("Status"))
+            {
+                oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                oResponse.PutStructuredBuffer("Datasets", oDatabaseResponse.GetStructuredBuffer("Datasets"));
+                dwStatus = 200;
+            }
         }
     }
     catch (BaseException oException)
@@ -550,7 +559,7 @@ std::vector<Byte> __thiscall DatasetDatabase::GetListOfAvailableDatasets(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -595,33 +604,39 @@ std::vector<Byte> __thiscall DatasetDatabase::PullDataset(
 
     try 
     {
-        // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-        // Create a request to get metadata of the dataset
-        StructuredBuffer oRequest;
-        oRequest.PutString("PluginName", "DatabaseManager");
-        oRequest.PutString("Verb", "GET");
-        oRequest.PutString("Resource", "/SAIL/DatabaseManager/PullDataset");
-        oRequest.PutString("DatasetGuid", c_oRequest.GetString("DatasetGuid"));
-        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-        // Send request packet
-        poTlsNode->Write(stlRequest.data(), stlRequest.size());
-
-        // Read header and body of the response
-        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
-        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-        unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-        // Make sure to release the poTlsNode
-        poTlsNode->Release();
-        poTlsNode = nullptr;
-
-        StructuredBuffer oDatabaseResponse(stlResponse);
-        if (200 == oDatabaseResponse.GetDword("Status"))
+        // Get user information to check if the user is a digital contract admin or database admin
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
         {
-            oResponse.PutStructuredBuffer("Dataset", oDatabaseResponse.GetStructuredBuffer("Dataset"));
-            dwStatus = 200;
+            // Make a Tls connection with the database portal
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to get metadata of the dataset
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "GET");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/PullDataset");
+            oRequest.PutString("DatasetGuid", c_oRequest.GetString("DatasetGuid"));
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), stlRequest.size());
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+            // Make sure to release the poTlsNode
+            poTlsNode->Release();
+            poTlsNode = nullptr;
+
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (200 == oDatabaseResponse.GetDword("Status"))
+            {
+                oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                oResponse.PutStructuredBuffer("Dataset", oDatabaseResponse.GetStructuredBuffer("Dataset"));
+                dwStatus = 200;
+            }
         }
     }
     catch (BaseException oException)
@@ -629,7 +644,7 @@ std::vector<Byte> __thiscall DatasetDatabase::PullDataset(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -707,6 +722,7 @@ std::vector<Byte> __thiscall DatasetDatabase::RegisterDataset(
             StructuredBuffer oDatabaseResponse(stlResponse);
             if (204 != oDatabaseResponse.GetDword("Status"))
             {
+                oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                 dwStatus = 201;
             }
         }
@@ -716,7 +732,7 @@ std::vector<Byte> __thiscall DatasetDatabase::RegisterDataset(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -794,6 +810,7 @@ std::vector<Byte> __thiscall DatasetDatabase::DeleteDataset(
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (200 == oDatabaseResponse.GetDword("Status"))
                 {
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                     dwStatus = 200;
                 }
             }
@@ -804,7 +821,7 @@ std::vector<Byte> __thiscall DatasetDatabase::DeleteDataset(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }

@@ -682,7 +682,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetUserInfo(
         std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
 
         StructuredBuffer oDecryptEosbRequest;
-        oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
+        oDecryptEosbRequest.PutDword("TransactionType", 0x00000007);
         oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
 
         // Call CryptographicManager plugin to get the decrypted eosb
@@ -692,7 +692,10 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetUserInfo(
         poIpcCryptographicManager = nullptr;
         if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
         {
-            StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
+            StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("UserInformation").GetStructuredBuffer("Eosb"));
+            // Send back the updated Eosb
+            oResponse.PutBuffer("Eosb", oDecryptedEosb.GetBuffer("UpdatedEosb"));
+            // Send back the user information
             oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
             oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
             // TODO: get user access rights from the confidential record, for now it can't be decrypted
@@ -705,7 +708,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetUserInfo(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -1027,13 +1030,13 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ListDigitalContracts(
                     StructuredBuffer oDigitalContractRecord = oDigitalContracts.GetStructuredBuffer(strDcGuid.c_str());
                     StructuredBuffer oDigitalContract = this->DeserializeDigitalContract(oDigitalContractRecord.GetStructuredBuffer("DigitalContract").GetBuffer("DigitalContractBlob"));
                     // Add digital contract, RO guid, and DOO guid to the response
-                    oResponse.PutStructuredBuffer("DigitalContract", oDigitalContract);
                     oDigitalContract.PutString("ROName", oDigitalContractRecord.GetString("ROName"));
                     oDigitalContract.PutString("DOOName", oDigitalContractRecord.GetString("DOOName"));
                     oDigitalContract.PutString("ResearcherOrganization", oDigitalContractRecord.GetString("ResearcherOrganization"));
                     oDigitalContract.PutString("DataOwnerOrganization", oDigitalContractRecord.GetString("DataOwnerOrganization"));
                     oDigitalContracts.PutStructuredBuffer(strDcGuid.c_str(), oDigitalContract);
                 }
+                oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                 oResponse.PutStructuredBuffer("DigitalContracts", oDigitalContracts);
                 dwStatus = 200;
             }
@@ -1044,7 +1047,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ListDigitalContracts(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -1130,6 +1133,8 @@ std::vector<Byte> __thiscall DigitalContractDatabase::PullDigitalContract(
                 oResponse.PutString("DOOName", oDatabaseResponse.GetString("DOOName"));
                 oResponse.PutString("ResearcherOrganization", oDatabaseResponse.GetString("ResearcherOrganization"));
                 oResponse.PutString("DataOwnerOrganization", oDatabaseResponse.GetString("DataOwnerOrganization"));
+                // Add the updated Eosb
+                oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                 dwStatus = 200;
             }
         }
@@ -1139,7 +1144,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::PullDigitalContract(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -1197,6 +1202,8 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
             std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
             // Get dataset guid
             std::string strDsetGuid = c_oRequest.GetString("DatasetGuid");
+            // Get data owner organization guid
+            std::string strDooGuid = c_oRequest.GetString("DataOwnerOrganization");
             // Create Ssb containing Dc information
             StructuredBuffer oSsb;
             oSsb.PutString("Title", c_oRequest.GetString("Title"));
@@ -1220,6 +1227,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
             oRequest.PutString("Verb", "GET");
             oRequest.PutString("Resource", "/SAIL/DatabaseManager/GetDatasetName");
             oRequest.PutString("DatasetGuid", strDsetGuid);
+            oRequest.PutString("DataOwnerOrganization", strDooGuid);
             std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
             // Send request packet
             poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -1235,7 +1243,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
             poTlsNode = nullptr;
 
             StructuredBuffer oDatasetName(stlResponse);
-            _ThrowBaseExceptionIf((200 != oDatasetName.GetDword("Status")), "Dataset not found.", nullptr);
+            _ThrowBaseExceptionIf((200 != oDatasetName.GetDword("Status")), "Dataset not found. Check dataset and data owner organization information.", nullptr);
             // Add dataset name to the response
             oSsb.PutString("DatasetName", oDatasetName.GetString("DatasetName"));                    
 
@@ -1251,7 +1259,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
             oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterDigitalContract");
             oRequest.PutString("DigitalContractGuid", strDcGuid);
             oRequest.PutString("ResearcherOrganization", strOrganizationGuid);
-            oRequest.PutString("DataOwnerOrganization", c_oRequest.GetString("DataOwnerOrganization"));
+            oRequest.PutString("DataOwnerOrganization", strDooGuid);
             oRequest.PutBuffer("DigitalContractBlob", stlDigitalContractBlob);
             stlRequest = ::CreateRequestPacket(oRequest);
             // Send request packet
@@ -1271,6 +1279,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
             StructuredBuffer oDatabaseResponse(stlResponse);
             if (204 != oDatabaseResponse.GetDword("Status"))
             {
+                oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                 dwStatus = 201;
             }
         }
@@ -1280,10 +1289,11 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
+        oResponse.PutString("ErrorMessage: ", oException.GetExceptionMessage());
     }
     catch (...)
     {
@@ -1403,6 +1413,8 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AcceptDigitalContract(
                                 {
                                     oResponse.PutDword("RootEventStatus", 204);
                                 }
+                                // Add the updated Eosb
+                                oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                             }
                         }
                     }
@@ -1415,7 +1427,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AcceptDigitalContract(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -1542,6 +1554,8 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ActivateDigitalContract(
                                 {
                                     oResponse.PutDword("RootEventStatus", 204);
                                 }
+                                // Add the updated Eosb
+                                oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                             }
                         }
                     }
@@ -1554,7 +1568,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ActivateDigitalContract(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -1608,6 +1622,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDcAuditEvent(
         // Get the root event guid for the user organization
         StructuredBuffer oGetDcBranchEventRequest;
         oGetDcBranchEventRequest.PutDword("TransactionType", 0x00000002);
+        oGetDcBranchEventRequest.PutBuffer("Eosb", stlEosb);
         oGetDcBranchEventRequest.PutString("ParentGuid", "{00000000-0000-0000-0000-000000000000}");
         oGetDcBranchEventRequest.PutString("OrganizationGuid", strOrganizationGuid);
         StructuredBuffer oFilters;

@@ -292,9 +292,20 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
             poRequestParameters = new StructuredBuffer();
         }
 
+        nMatchingPluginIndex = this->ParseRequestContent(oParser, poRequestParameters);
+        _ThrowBaseExceptionIf((-1 == nMatchingPluginIndex), "Resource not found.", nullptr);
+        // Validate request data
         StructuredBuffer oRequestData;
-        nMatchingPluginIndex = this->ParseRequestContent(oParser, poRequestParameters, &oRequestData);
-        _ThrowBaseExceptionIf((-1 == nMatchingPluginIndex), "Invalid request.", nullptr);
+        std::vector<Byte> stlSerializedRestRequest = poRequestParameters->GetSerializedBuffer();
+        bool fValid = this->ValidateRequestData(stlSerializedRestRequest, nMatchingPluginIndex, strResource, &oRequestData);
+        _ThrowBaseExceptionIf((false == fValid), "Invalid request data.", nullptr);
+        // Add verb and resource to the parsed and validated structured buffer
+        oRequestData.PutString("Verb", strVerb);
+        oRequestData.PutString("Resource", strResource);
+
+        // Refresh Eosb
+
+
         // Add required number of unix connections to connections count
         // This count is used by the RestFramework to determine if a new connection can be accepted as new connection means creating a new thread
         qwRequiredNumberOfUnixConnections = oRequestData.GetQword("NumberOfUnixConnections");
@@ -353,7 +364,15 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
     {
         ::RegisterException(oBaseException, __func__, __LINE__);
         // send back error message
-        std::string strErrorMessage = "HTTP/1.1 400 BadRequest\r\nConnection: close\r\n\r\n";
+        std::string strErrorMessage;
+        if (strcmp("Resource not found.",oBaseException.GetExceptionMessage()) == 0)
+        {
+            strErrorMessage = "HTTP/1.1 404 NotFound\r\nConnection: close\r\n\r\n";
+        }
+        else
+        {
+            strErrorMessage = "HTTP/1.1 400 BadRequest\r\nConnection: close\r\n\r\n";
+        }
         std::cout << "\n\nRest Response:\n\n" << strErrorMessage << std::endl;
         // Send back error
         poTlsNode->Write((const Byte *) strErrorMessage.data(), strErrorMessage.size());
@@ -418,16 +437,13 @@ bool __thiscall RestFrameworkRuntimeData::IsTerminationSignalEncountered(void) c
  ********************************************************************************************/
 int __thiscall RestFrameworkRuntimeData::ParseRequestContent(
     _in const HttpRequestParser & c_oParser,
-    _in StructuredBuffer * poRequestParameters,
-    _out StructuredBuffer * poValidatedRequestData
+    _in StructuredBuffer * poRequestParameters
     )
 {
     __DebugFunction();
 
     int nMatchingPluginIndex;
     Qword qwRequestedPluginVersion = 0xFFFFFFFFFFFFFFFF;
-    std::string strVerb = c_oParser.GetHeaderValue("Verb");
-    std::string strResource = c_oParser.GetHeaderValue("Resource");
 
     // Loop through query parameters and add them to poRequestParameters after checking their type
     std::vector<std::string> stlParameterKeys = c_oParser.GetParameterKeys();
@@ -449,16 +465,6 @@ int __thiscall RestFrameworkRuntimeData::ParseRequestContent(
     }
 
     nMatchingPluginIndex = this->FindPlugin(c_oParser, qwRequestedPluginVersion);
-    if (-1 < nMatchingPluginIndex)
-    {
-        // Validate request data
-        std::vector<Byte> stlSerializedRestRequest = poRequestParameters->GetSerializedBuffer();
-        bool fValid = this->ValidateRequestData(stlSerializedRestRequest, nMatchingPluginIndex, strResource, poValidatedRequestData);
-        _ThrowBaseExceptionIf((false == fValid), "Invalid request data.", nullptr);
-        // Add verb and resource to the parsed and validated structured buffer
-        poValidatedRequestData->PutString("Verb", strVerb);
-        poValidatedRequestData->PutString("Resource", strResource);
-    }
 
     return nMatchingPluginIndex;
 }

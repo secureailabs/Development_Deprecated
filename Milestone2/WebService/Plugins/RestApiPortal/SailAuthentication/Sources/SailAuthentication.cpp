@@ -512,7 +512,7 @@ std::vector<Byte> __thiscall SailAuthentication::GetBasicUserInformation(
 
     StructuredBuffer oResponse;
 
-    Dword dwStatus = 404;
+    Dword dwStatus = 401;
     Socket * poIpcCryptographicManager = nullptr;
 
     try 
@@ -520,7 +520,7 @@ std::vector<Byte> __thiscall SailAuthentication::GetBasicUserInformation(
         std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
 
         StructuredBuffer oDecryptEosbRequest;
-        oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
+        oDecryptEosbRequest.PutDword("TransactionType", 0x00000007);
         oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
 
         // Call CryptographicManager plugin to get the decrypted eosb
@@ -530,7 +530,8 @@ std::vector<Byte> __thiscall SailAuthentication::GetBasicUserInformation(
         poIpcCryptographicManager = nullptr;
         if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
         {
-            StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
+            StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("UserInformation").GetStructuredBuffer("Eosb"));
+            // Send back the user information
             oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
             oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
             oResponse.PutString("OrganizationName", oEosb.GetString("OrganizationName"));
@@ -539,6 +540,8 @@ std::vector<Byte> __thiscall SailAuthentication::GetBasicUserInformation(
             oResponse.PutString("Username", oEosb.GetString("Username"));
             oResponse.PutString("Title", oEosb.GetString("Title"));
             oResponse.PutString("Email", oEosb.GetString("Email"));
+            // Send back the updated Eosb
+            oResponse.PutBuffer("Eosb", oDecryptedEosb.GetBuffer("UpdatedEosb"));
             dwStatus = 200;
         }
     }
@@ -751,7 +754,7 @@ std::vector<Byte> __thiscall SailAuthentication::ResetDatabase(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }

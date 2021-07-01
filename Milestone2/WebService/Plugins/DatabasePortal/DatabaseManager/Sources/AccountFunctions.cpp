@@ -650,7 +650,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterUser(
                                         stlWrappedAccountEncryptionKey.data()};
             bsoncxx::document::value oBasicUserDocumentValue = bsoncxx::builder::stream::document{}
                 << "64BitHash" << (double) qw64BitHashPassphrase
-                << "OrganizationUuid" << oRequest.GetString("OrganizationGuid")
+                << "OrganizationUuid" << c_oRequest.GetString("OrganizationGuid")
                 << "UserUuid" << strUserGuid
                 << "AccountStatus" << (double) eNew
                 << "WrappedAccountKey" << oWrappedAccountEncryptionKey

@@ -108,13 +108,14 @@
         "diskName":"[concat(parameters('vmName'), '-osDisk')]",
         "networkInterfaceName":"[concat(parameters('vmName'), '-nic')]",
         "publicIPAddressName":"[concat(parameters('vmName'), '-ip')]",
-        "subnetName":"[concat(parameters('vmName'), 'Subnet')]"
+        "subnetName":"[concat(parameters('vmName'), 'Subnet')]",
+        "virtualNetworkName":"[concat(parameters('vmName'), '-vnet')]"
     },
     "resources":[
         {
             "type": "Microsoft.Network/virtualNetworks",
             "apiVersion": "2020-11-01",
-            "name": "[concat(resourceGroup().name, '-vnet')]",
+            "name": "[variables('virtualNetworkName')]",
             "location":"[resourceGroup().location]",
             "properties": {
                 "addressSpace": {
@@ -140,9 +141,9 @@
         {
             "type": "Microsoft.Network/virtualNetworks/subnets",
             "apiVersion": "2020-11-01",
-            "name": "[concat(resourceGroup().name, '-vnet', '/default')]",
+            "name": "[concat(variables('virtualNetworkName'), '/default')]",
             "dependsOn": [
-                "[resourceId('Microsoft.Network/virtualNetworks', concat(resourceGroup().name, '-vnet'))]"
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]"
             ],
             "properties": {
                 "addressPrefix": "10.0.3.0/24",
@@ -178,7 +179,7 @@
                         "properties":{
                             "privateIPAllocationMethod":"Dynamic",
                             "subnet":{
-                                "id":"[concat(resourceId('Microsoft.Network/virtualNetworks', concat(resourceGroup().name, '-vnet')), '/subnets/default')]"
+                                "id":"[concat(resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName')), '/subnets/default')]"
                             },
                             "publicIpAddress":{
                                 "id":"[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"

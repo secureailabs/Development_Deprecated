@@ -469,7 +469,6 @@ void __thiscall AccountDatabase::InitializePlugin(void)
     oAccessRights.PutByte("ElementType", QWORD_VALUE_TYPE);
     oAccessRights.PutBoolean("IsRequired", true);
     oRegisterUser.PutStructuredBuffer("AccessRights", oAccessRights);
-    oRegisterUser.PutStructuredBuffer("OrganizationGuid", oOrganizationGuid);
 
     // Add parameters for updating user's access rights
     StructuredBuffer oUpdateAccessRight;
@@ -517,12 +516,6 @@ void __thiscall AccountDatabase::InitializePlugin(void)
     oIsHardDelete.PutBoolean("IsRequired", true);
     oDeleteUser.PutStructuredBuffer("IsHardDelete", oIsHardDelete);
 
-    // Add parameters for deleting an organization
-    StructuredBuffer oDeleteOrganization;
-    oDeleteOrganization.PutStructuredBuffer("Eosb", oEosb);
-    oDeleteOrganization.PutStructuredBuffer("OrganizationGuid", oOrganizationGuid);
-    oDeleteOrganization.PutStructuredBuffer("IsHardDelete", oIsHardDelete);
-
     // Takes in an EOSB and returns a list of all organization
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Organizations", oListOrganizations, 1);
     // Takes in an EOSB and returns a list of all users
@@ -543,8 +536,6 @@ void __thiscall AccountDatabase::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/AccountManager/Update/User", oUpdateUser, 1);
     // Delete a user from the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AccountManager/Remove/User", oDeleteUser, 1);
-    // Delete an organization from the database
-    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AccountManager/Remove/Organization", oDeleteOrganization, 1);
 
     // Start the Ipc server
     // Start listening for Ipc connections
@@ -707,10 +698,6 @@ uint64_t __thiscall AccountDatabase::SubmitRequest(
         {
             stlResponseBuffer = this->DeleteUser(c_oRequestStructuredBuffer);
         }
-        else if ("/SAIL/AccountManager/Remove/Organization" == strResource)
-        {
-            stlResponseBuffer = this->DeleteOrganization(c_oRequestStructuredBuffer);
-        }
     }
 
     // Return size of response buffer
@@ -859,7 +846,7 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserRecords(
         ::RegisterException(oException, __func__, __LINE__);
         oAccountRecords.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -908,7 +895,7 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserInfo(
         std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
 
         StructuredBuffer oDecryptEosbRequest;
-        oDecryptEosbRequest.PutDword("TransactionType", 0x00000002);
+        oDecryptEosbRequest.PutDword("TransactionType", 0x00000007);
         oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
 
         // Call CryptographicManager plugin to get the decrypted eosb
@@ -918,11 +905,14 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserInfo(
         poIpcCryptographicManager = nullptr;
         if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
         {
-            StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("Eosb"));
+            StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("UserInformation").GetStructuredBuffer("Eosb"));
+            // Send back the user information
             oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
             oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
             // TODO: get user access rights from the confidential record, for now it can't be decrypted
             oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
+            // Send back the updated Eosb
+            oResponse.PutBuffer("Eosb", oDecryptedEosb.GetBuffer("UpdatedEosb"));
             dwStatus = 200;
         }
     }
@@ -1040,7 +1030,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -1107,6 +1097,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterUser(
                 oRequest.PutString("Verb", "POST");
                 oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterUser");
                 oRequest.PutStructuredBuffer("Request", c_oRequest);
+                oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
                 std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
                 // Send request packet
                 poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -1125,6 +1116,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterUser(
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (204 != oDatabaseResponse.GetDword("Status"))
                 {
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                     dwStatus = 201;
                 }
             }
@@ -1135,7 +1127,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterUser(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -1214,6 +1206,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (204 != oDatabaseResponse.GetDword("Status"))
                 {
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                     dwStatus = 200;
                 }
             }
@@ -1224,7 +1217,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -1303,6 +1296,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateOrganizationInformation(
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (204 != oDatabaseResponse.GetDword("Status"))
                 {
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                     dwStatus = 200;
                 }
             }
@@ -1313,7 +1307,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateOrganizationInformation(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -1395,6 +1389,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (204 != oDatabaseResponse.GetDword("Status"))
                 {
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                     dwStatus = 200;
                 }
             }
@@ -1405,7 +1400,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -1482,8 +1477,9 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizations(
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (404 != oDatabaseResponse.GetDword("Status"))
                 {
-                    dwStatus = 200;
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                     oResponse.PutStructuredBuffer("Organizations", oDatabaseResponse.GetStructuredBuffer("Organizations"));
+                    dwStatus = 200;
                 }
             }
         }
@@ -1493,7 +1489,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizations(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -1570,8 +1566,9 @@ std::vector<Byte> __thiscall AccountDatabase::ListUsers(
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (404 != oDatabaseResponse.GetDword("Status"))
                 {
-                    dwStatus = 200;
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                     oResponse.PutStructuredBuffer("Users", oDatabaseResponse.GetStructuredBuffer("Users"));
+                    dwStatus = 200;
                 }
             }
         }
@@ -1581,7 +1578,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListUsers(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -1659,8 +1656,9 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizationUsers(
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (404 != oDatabaseResponse.GetDword("Status"))
                 {
-                    dwStatus = 200;
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                     oResponse.PutStructuredBuffer("OrganizationUsers", oDatabaseResponse.GetStructuredBuffer("OrganizationUsers"));
+                    dwStatus = 200;
                 }
             }
         }
@@ -1670,7 +1668,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizationUsers(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -1749,6 +1747,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteUser(
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (404 != oDatabaseResponse.GetDword("Status"))
                 {
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                     dwStatus = 200;
                 }
             }
@@ -1759,7 +1758,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteUser(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }
@@ -1838,6 +1837,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteOrganization(
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (404 != oDatabaseResponse.GetDword("Status"))
                 {
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                     dwStatus = 200;
                 }
             }
@@ -1848,7 +1848,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteOrganization(
         ::RegisterException(oException, __func__, __LINE__);
         oResponse.Clear();
         // Add status if it was a dead packet
-        if ("Dead Packet." == oException.GetExceptionMessage())
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
         {
             dwStatus = 408;
         }

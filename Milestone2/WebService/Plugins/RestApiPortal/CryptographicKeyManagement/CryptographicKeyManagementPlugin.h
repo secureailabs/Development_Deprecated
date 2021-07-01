@@ -125,6 +125,9 @@ class CryptographicKeyManagementPlugin : public Object
         std::vector<Byte> __thiscall CreateDigitalSignature(
             _in const StructuredBuffer & c_oStructuredBufferRequest
             );
+        std::vector<Byte> __thiscall GetUserInfoAndUpdateEosb(
+            _in const StructuredBuffer & c_oStructuredBufferRequest
+            );
 
         // private data members
         const Guid m_oPluginGuid;

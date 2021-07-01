@@ -505,6 +505,10 @@ void __thiscall CryptographicKeyManagementPlugin::HandleIpcRequest(
         :
             stlResponse = this->CheckEosbAccessRights(oRequestParameters);
             break;
+        case 0x00000007 // GetUserInfoAndUpdateEosb which registers and unregisters an Eosb
+        :
+            stlResponse = this->GetUserInfoAndUpdateEosb(oRequestParameters);
+            break;
     }
 
     // Send back the response
@@ -1740,6 +1744,61 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::CreateDigitalSign
     }
 
     // Send back the status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function GetUserInfoAndUpdateEosb
+ * @brief Takes in an Eosb, updates it and returns user information
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException on failure
+ * @returns Serialized structuredBuffer containing user information and the updated Eosb
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GetUserInfoAndUpdateEosb(
+    _in const StructuredBuffer & c_oStructuredBufferRequest
+)
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 401;
+
+    try
+    {
+        // Get the user information
+        StructuredBuffer oRegisterEosbResponse(this->RegisterEosb(c_oStructuredBufferRequest));
+        if (201 == oRegisterEosbResponse.GetDword("Status"))
+        {
+            // Unregister or update the Eosb
+            // UnregisterEosb encrypts the Eosb with the current keys
+            StructuredBuffer oUnregisterEosbResponse(this->UnregisterEosb(oRegisterEosbResponse));
+            if (201 == oUnregisterEosbResponse.GetDword("Status"))
+            {
+                oResponse.PutBuffer("UpdatedEosb", oUnregisterEosbResponse.GetBuffer("Eosb"));
+                oResponse.PutStructuredBuffer("UserInformation", oRegisterEosbResponse);
+                dwStatus = 201;
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    // Send back status of the transaction
     oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();

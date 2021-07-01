@@ -33,14 +33,14 @@ std::vector<Byte> __thiscall DatabaseManager::GetDatasetName(
 
     try 
     {
-        std::string strDsetGuid = c_oRequest.GetString("DatasetGuid");
         // Each client and transaction can only be used in a single thread
         mongocxx::pool::entry oClient = m_poMongoPool->acquire();
         // Access SailDatabase
         mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
         // Fetch the dataset record
         bsoncxx::stdx::optional<bsoncxx::document::value> oDsetDocument = oSailDatabase["Dataset"].find_one(document{}
-                                                                                                            << "DatasetGuid" << strDsetGuid
+                                                                                                            << "DatasetGuid" << c_oRequest.GetString("DatasetGuid")
+                                                                                                            << "DataOwnerOrganizationGuid" << c_oRequest.GetString("DataOwnerOrganization")
                                                                                                             << finalize);
         if (bsoncxx::stdx::nullopt != oDsetDocument)
         {                                                                         

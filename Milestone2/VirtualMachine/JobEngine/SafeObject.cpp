@@ -61,6 +61,8 @@ SafeObject::~SafeObject(void)
 {
     __DebugFunction();
 
+    std::cout << "SafeObject destructed" << std::endl;
+
     // Destructor will just delete the executable file containing the safeObject
     ::remove(m_strSafeObjectIdentifier.c_str());
 }
@@ -115,7 +117,7 @@ int __thiscall SafeObject::Run(
 {
     __DebugFunction();
 
-    int nProcessExitStatus;
+    int nProcessExitStatus = -1;
 
     try
     {

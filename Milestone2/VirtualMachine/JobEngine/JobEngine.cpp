@@ -29,9 +29,15 @@
 #include <algorithm>
 #include <future>
 #include <filesystem>
+#include <memory>
 
 #define cout cout << std::this_thread::get_id() << " "
 
+//TODO:
+// 1. There is one case where the job can run even after the JobEngine reset has been called
+// Last paramter set was called.
+// 2. Put all the additional files in the Data folder instead of the cwd, need to delete that
+// during reset.
 /********************************************************************************************
  *
  * @function GetJobEngine
@@ -89,24 +95,13 @@ void JobEngine::StartServer(
     __DebugFunction();
     __DebugAssert(nullptr != poSocket);
 
-    try
-    {
-        m_poSocket = poSocket;
+    m_poSocket = poSocket;
 
-        // We reset the job engine, it will create all the necessary files and folders necessary
-        this->ResetJobEngine();
+    // We reset the job engine, it will create all the necessary files and folders necessary
+    this->ResetJobEngine();
 
-        // Start listening to requests and fullfill them
-        this->ListenToRequests();
-    }
-    catch(BaseException & oBaseException)
-    {
-        std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
-    }
-    catch(...)
-    {
-        std::cout << "Some exceptional error in " << __func__ << std::endl;
-    }
+    // Start listening to requests and fullfill them
+    this->ListenToRequests();
 }
 
 /********************************************************************************************
@@ -198,13 +193,13 @@ void __thiscall JobEngine::PushSafeObject(
 
         std::string strSafeObjectUuid = c_oStructuredBuffer.GetString("SafeObjectUuid");
 
-        SafeObject * poSafeObject = nullptr;
+        std::shared_ptr<SafeObject> poSafeObject = nullptr;
         std::lock_guard<std::mutex> lock(m_oMutexOnSafeObjectMap);
         if (m_stlMapOfSafeObjects.end() == m_stlMapOfSafeObjects.find(strSafeObjectUuid))
         {
             // Create a safe object and add it to the map of Guid and Object
             std::cout << "Safe Object not found. Creating new " << strSafeObjectUuid << std::endl;
-            poSafeObject = new SafeObject(strSafeObjectUuid);
+            poSafeObject = std::make_shared<SafeObject>(strSafeObjectUuid);
             poSafeObject->Setup(c_oStructuredBuffer);
             // Push the safe object to the list of safeObjects in the engine
             m_stlMapOfSafeObjects.insert(std::make_pair(strSafeObjectUuid, poSafeObject));
@@ -355,14 +350,13 @@ void __thiscall JobEngine::SubmitJob(
         // We find the safeObject if it exists or create an empty object if it does not
         std::string strSafeObjectUuid = c_oStructuredBuffer.GetString("SafeObjectUuid");
         bool fIsSafeObjectNew = true;
-        SafeObject * poSafeObject = nullptr;
+        std::shared_ptr<SafeObject> poSafeObject = nullptr;
         std::lock_guard<std::mutex> lock(m_oMutexOnSafeObjectMap);
         if (m_stlMapOfSafeObjects.end() == m_stlMapOfSafeObjects.find(strSafeObjectUuid))
         {
             // Create and Add the SafeObject to the class database
             std::cout << "Safe Object not found. " << strSafeObjectUuid << std::endl;
-            // TODO: use a smart shared pointer to accomplish this.
-            poSafeObject = new SafeObject(strSafeObjectUuid);
+            poSafeObject = std::make_shared<SafeObject>(strSafeObjectUuid);
             m_stlMapOfSafeObjects.insert(std::make_pair(strSafeObjectUuid, poSafeObject));
 
             // If the SafeObject is not complete yet. i.e. PushSafeObjet has not been called, we add
@@ -376,11 +370,11 @@ void __thiscall JobEngine::SubmitJob(
         }
 
         // check if the job object already exists, if it does just add the SafeObject to it
-        Job * poJob = nullptr;
+        std::shared_ptr<Job> poJob = nullptr;
         std::lock_guard<std::mutex> lockJobMap(m_oMutexOnJobsMap);
         if (m_stlMapOfJobs.end() == m_stlMapOfJobs.find(c_oStructuredBuffer.GetString("JobUuid")))
         {
-            poJob = new Job(c_oStructuredBuffer.GetString("JobUuid"));
+            poJob = std::make_shared<Job>(c_oStructuredBuffer.GetString("JobUuid"));
 
             // Add the job the class database
             m_stlMapOfJobs.insert(std::make_pair(c_oStructuredBuffer.GetString("JobUuid"), poJob));
@@ -434,11 +428,11 @@ void __thiscall JobEngine::SetJobParameter(
 
         // check if the job object already exists, if it does add the parameter
         std::string strJobUuid = c_oStructuredBuffer.GetString("JobUuid");
-        Job * poJob = nullptr;
+        std::shared_ptr<Job> poJob = nullptr;
         std::lock_guard<std::mutex> lock(m_oMutexOnJobsMap);
         if (m_stlMapOfJobs.end() == m_stlMapOfJobs.find(strJobUuid))
         {
-            poJob = new Job(strJobUuid);
+            poJob = std::make_shared<Job>(strJobUuid);
             _ThrowIfNull(poJob, "Failed to create a job.", nullptr);
             // Add the job the class database
             m_stlMapOfJobs.insert(std::make_pair(strJobUuid, poJob));
@@ -499,7 +493,7 @@ void __thiscall JobEngine::FileCreateCallback(
         }
         else if (m_stlMapOfParameterValuesToJob.end() != m_stlMapOfParameterValuesToJob.find(c_strFileCreatedName))
         {
-            Job * poJob = m_stlMapOfParameterValuesToJob.at(c_strFileCreatedName);
+            std::shared_ptr<Job> poJob = m_stlMapOfParameterValuesToJob.at(c_strFileCreatedName);
             stlUnused = std::async(std::launch::async, &Job::RemoveAvailableDependency, poJob, c_strFileCreatedName);
             m_stlMapOfParameterValuesToJob.erase(c_strFileCreatedName);
         }
@@ -571,32 +565,12 @@ void __thiscall JobEngine::ResetJobEngine(void)
     // Call destructor on all the job objects as soon as they have killed the running jobs
     // are are stable
     std::lock_guard<std::mutex> lock(m_oMutexOnJobsMap);
-    while(0 < m_stlMapOfJobs.size())
-    {
-        auto oJobMapElement = m_stlMapOfJobs.begin();
-        while (m_stlMapOfJobs.end() != oJobMapElement)
-        {
-            if (JobState::eRunning != oJobMapElement->second->GetJobState())
-            {
-                // oJobMapElement->second->Release();
-                oJobMapElement = m_stlMapOfJobs.erase(oJobMapElement);
-            }
-            else
-            {
-                ++oJobMapElement;
-            }
-        }
-    }
+    m_stlMapOfJobs.clear();
 
     // Once all the jobs have been stopped and cleared from the Engine, it is safe to remove all
     // the SafeObjects associated with them
     std::lock_guard<std::mutex> lockSafeObjectMap(m_oMutexOnSafeObjectMap);
-    auto oSafeObjectMapElement = m_stlMapOfSafeObjects.begin();
-    while (m_stlMapOfSafeObjects.end() != oSafeObjectMapElement)
-    {
-        oSafeObjectMapElement->second->Release();
-        oSafeObjectMapElement = m_stlMapOfSafeObjects.erase(oSafeObjectMapElement);
-    }
+    m_stlMapOfSafeObjects.clear();
 
     // Erase the list of files that were queued for as part of pull data registration
     std::lock_guard<std::mutex> lockSetOfPullObjects(m_oMutexOnSetOfPullObjects);

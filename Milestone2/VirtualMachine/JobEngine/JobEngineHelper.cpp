@@ -66,6 +66,7 @@ void * __stdcall FileSystemWatcherThread(void * poThreadParameter)
                 // find the most efficient way to handle such a file.
                 std::cout << "FileCreateCallback for " << poInotifyEvent->name << std::endl;
 
+                // TODO: this call is blocking, make it non-blocking.
                 oJobEngine.FileCreateCallback(poInotifyEvent->name);
 
                 if (gc_strHaltAllJobsSignalFilename == poInotifyEvent->name)

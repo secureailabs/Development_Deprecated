@@ -51,7 +51,7 @@ class Job : public Object
         ~Job(void);
 
         void __thiscall SetSafeObject(
-            _in SafeObject const * c_poSafeObjectId
+            _in std::shared_ptr<SafeObject> c_poSafeObjectId
             );
         bool __thiscall SetParameter(
             _in const std::string & c_strParameterIdentifier,
@@ -82,7 +82,7 @@ class Job : public Object
         JobState m_eJobState;
         StructuredBuffer m_oParameters;
         std::string m_strJobUuid;
-        SafeObject const * m_poSafeObject;
+        std::shared_ptr<SafeObject> m_poSafeObject;
         std::vector<std::string> m_stlInputParameters;
         std::unordered_set<std::string> m_stlSetOfDependencies;
         std::string m_stlOutputFileName;

@@ -206,11 +206,11 @@ int __cdecl main(
         ::TestPullData(poSocket);
         ::TestHaltJobs(poSocket);
         // ::TestVmShutdown(poSocket);
-        ::TestPushSafeObject(poSocket);
-        ::TestSubmitJob(poSocket);
-        ::TestSetParameters(poSocket);
-        ::TestPushData(poSocket);
-        ::TestPullData(poSocket);
+        // ::TestPushSafeObject(poSocket);
+        // ::TestSubmitJob(poSocket);
+        // ::TestSetParameters(poSocket);
+        // ::TestPushData(poSocket);
+        // ::TestPullData(poSocket);
 
         // After sending all the jobs, wait for the signals
         do

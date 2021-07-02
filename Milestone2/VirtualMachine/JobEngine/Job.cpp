@@ -71,7 +71,7 @@ Job::~Job(void)
  ********************************************************************************************/
 
 void __thiscall Job::SetSafeObject(
-    _in SafeObject const * c_poSafeObjectId
+    _in std::shared_ptr<SafeObject> c_poSafeObjectId
     )
 {
     __DebugFunction();

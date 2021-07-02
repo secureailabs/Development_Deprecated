@@ -104,11 +104,11 @@ class JobEngine : public Object
         bool m_fIsEngineRunning;
         static JobEngine m_oJobEngine;
         Socket * m_poSocket;
-        std::unordered_map<std::string, Job *> m_stlMapOfJobs;
+        std::unordered_map<std::string, std::shared_ptr<Job>> m_stlMapOfJobs;
         std::mutex m_oMutexOnJobsMap;
-        std::unordered_map<std::string, SafeObject *> m_stlMapOfSafeObjects;
+        std::unordered_map<std::string, std::shared_ptr<SafeObject>> m_stlMapOfSafeObjects;
         std::mutex m_oMutexOnSafeObjectMap;
-        std::unordered_map<std::string, Job *> m_stlMapOfParameterValuesToJob;
+        std::unordered_map<std::string, std::shared_ptr<Job>> m_stlMapOfParameterValuesToJob;
         std::mutex m_oMutexOnParameterValuesToJobMap;
         std::unordered_set<std::string> m_stlSetOfPullObjects;
         std::mutex m_oMutexOnSetOfPullObjects;

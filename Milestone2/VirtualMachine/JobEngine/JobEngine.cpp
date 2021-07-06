@@ -38,6 +38,9 @@
 // Last paramter set was called.
 // 2. Put all the additional files in the Data folder instead of the cwd, need to delete that
 // during reset.
+// 3. The SafeObject is not deleted on Job finish/fail. Should it be ? It could be re-used
+// by other jobs as well
+
 /********************************************************************************************
  *
  * @function GetJobEngine
@@ -525,6 +528,14 @@ void __thiscall JobEngine::SendSignal(
 
     try
     {
+        // If the job ended and resulted in a failure or success the entry for that job is cleared
+        // from the local map, the safeObject is not killed as it could be reused eventually.
+        JobStatusSignals eSignalType = (JobStatusSignals)c_oStructuredBuffer.GetByte("SignalType");
+        if ((JobStatusSignals::eJobFail == eSignalType) || (JobStatusSignals::eJobDone == eSignalType))
+        {
+            std::lock_guard<std::mutex> lock(m_oMutexOnJobsMap);
+            m_stlMapOfJobs.erase(c_oStructuredBuffer.GetString("JobUuid"));
+        }
         // As soon as the file we requested for is found, we return it to the
         // orchestrator who is waiting asychronously waiting for it.
         ::PutIpcTransaction(m_poSocket, c_oStructuredBuffer);

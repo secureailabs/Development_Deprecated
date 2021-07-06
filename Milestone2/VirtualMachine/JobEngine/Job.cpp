@@ -275,7 +275,7 @@ const std::string & __thiscall Job::GetOutputFileName(void) const throw()
  * @brief Constructor to create a Job object
  *
  ********************************************************************************************/
-const std::string & __thiscall Job::GetJobId(void) const throw()
+const std::string & __thiscall Job::GetJobUuid(void) const throw()
 {
     __DebugFunction();
 

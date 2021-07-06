@@ -204,7 +204,7 @@ int __cdecl main(
         ::TestSetParameters(poSocket);
         ::TestPushData(poSocket);
         ::TestPullData(poSocket);
-        ::TestHaltJobs(poSocket);
+        // ::TestHaltJobs(poSocket);
         // ::TestVmShutdown(poSocket);
         // ::TestPushSafeObject(poSocket);
         // ::TestSubmitJob(poSocket);

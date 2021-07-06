@@ -42,7 +42,7 @@ class Job : public Object
     public:
 
         Job(
-            _in std::string strJobId
+            _in std::string strJobUuid
             );
         // We only want one instance of the job to exist, so not copy constructor
         Job(
@@ -66,7 +66,7 @@ class Job : public Object
             _in const std::string & c_strOutFileName
             ) throw();
         const std::string & __thiscall GetOutputFileName(void) const throw();
-        const std::string & __thiscall GetJobId(void) const throw();
+        const std::string & __thiscall GetJobUuid(void) const throw();
         JobState __thiscall GetJobState(void) const throw();
 
     private:

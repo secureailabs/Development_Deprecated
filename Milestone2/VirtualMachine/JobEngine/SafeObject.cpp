@@ -127,7 +127,7 @@ int __thiscall SafeObject::Run(
 
         StructuredBuffer oStructruedBufferSignal;
         oStructruedBufferSignal.PutByte("SignalType", (Byte)JobStatusSignals::eJobStart);
-        oStructruedBufferSignal.PutString("JobId", c_strJobUuid);
+        oStructruedBufferSignal.PutString("JobUuid", c_strJobUuid);
         oJobEngine.SendSignal(oStructruedBufferSignal);
 
         pid_t nProcessIdentifier = ::fork();
@@ -197,14 +197,14 @@ int __thiscall SafeObject::Run(
 
                         // Send a job success signal to the orchestrator
                         oStructruedBufferSignal.PutByte("SignalType", (Byte)JobStatusSignals::eJobDone);
-                        oStructruedBufferSignal.PutString("JobId", c_strJobUuid);
+                        oStructruedBufferSignal.PutString("JobUuid", c_strJobUuid);
                         oJobEngine.SendSignal(oStructruedBufferSignal);
                     }
                     else
                     {
                         // Send a job fail signal to the orchestrator
                         oStructruedBufferSignal.PutByte("SignalType", (Byte)JobStatusSignals::eJobFail);
-                        oStructruedBufferSignal.PutString("JobId", c_strJobUuid);
+                        oStructruedBufferSignal.PutString("JobUuid", c_strJobUuid);
                         oJobEngine.SendSignal(oStructruedBufferSignal);
                     }
                 }

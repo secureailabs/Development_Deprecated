@@ -1,0 +1,33 @@
+Version 1.0.0
+	1) Add custom MAA endpoint Uri in CVMTools.ps1 with runtime argument "- -MaaEndpointUri"
+	2) Proivide MHSM Publickey file in CVMTools.ps1 with runtime argument "-PublicKeyFile"
+	3) SB has to be on for this set of tools
+	4) For windows cvm, RDP will be enabled through updated unattendxml file
+
+Version 1.0.1 
+	1) Relative path support added for windows cvm process 
+	2) PCR11 sealing added to windows cvm 
+
+Version 1.0.2
+	1) Windows Recovery Key saved to output folder 
+	2) SKR policy extended 
+	3) BCD edit to make azurified images work 
+	4) Modifications to deploy script to clear components when there is any failure
+	5) Injecting Secure Boot Template manually into VMGS file
+
+Version 1.0.3
+	1) Signed for external customers 
+	2) Updated link for deploy template
+	
+Version 1.0.4 
+	1) Bug fixes 
+	2) Extend SAS expiry
+
+Version 1.0.5
+	1) Secure Boot off option
+	2) No encryption option
+	3) Remove Linux waagent option
+
+Version 1.0.6
+	1) Bug fixes to address VMGS path sanitization 
+	2) Tenant-id added as part of key release policy

@@ -1,0 +1,41 @@
+{
+  "location": "{{Location}}",
+  "plan": {
+    "name": "pro-20_04-lts",
+    "publisher": "canonical",
+    "product": "0001-com-ubuntu-pro-focal"
+  },
+  "properties": {
+    "hardwareProfile": {
+      "vmSize": "{{VmSize}}"
+    },
+    "storageProfile": {
+      "imageReference": {
+        "id": "/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Compute/images/{{ImageName}}"
+      },
+      "osDisk": {
+        "caching": "ReadWrite",
+        "managedDisk": {
+          "storageAccountType": "Standard_LRS"
+        },
+        "name": "{{OsDiskName}}",
+        "createOption": "FromImage"
+      }
+    },
+    "osProfile": {
+      "adminUsername": "{{Username}}",
+      "computerName": "{{ComputerName}}",
+      "adminPassword": "{{Password}}"
+    },
+    "networkProfile": {
+      "networkInterfaces": [
+        {
+          "id": "/subscriptions/{{SubscriptionId}}/resourceGroups/{{ResourceGroup}}/providers/Microsoft.Network/networkInterfaces/{{NetworkInterface}}",
+          "properties": {
+            "primary": true
+          }
+        }
+      ]
+    }
+  }
+}

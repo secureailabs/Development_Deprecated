@@ -1,0 +1,22 @@
+[
+    {
+        "location":"eastus2",
+        "maaEndpoint":"https://sharedeus2.eus2.attest.azure.net/"
+    },
+    {
+        "location":"centralus",
+        "maaEndpoint":"https://sharedcus.cus.attest.azure.net/"
+    },
+    {
+        "location":"eastus",
+        "maaEndpoint":"https://sharedeus.eus.attest.azure.net/"
+    },
+    {
+        "location":"westus",
+        "maaEndpoint":"https://sharedwus.wus.attest.azure.net/"
+    },
+    {
+        "location":"default",
+        "maaEndpoint":"https://sharedeus2.eus2.attest.azure.net/"
+    }
+]

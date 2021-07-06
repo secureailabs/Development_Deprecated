@@ -1,0 +1,250 @@
+{
+    "$schema":"https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+    "contentVersion":"1.0.0.1",
+    "parameters":{
+        "vmName":{
+            "type":"string",
+            "metadata":{
+                "description":"Name of the VM."
+            }
+        },
+        "vmSize":{
+            "type":"string",
+            "defaultValue":"Standard_B4ms",
+            "metadata":{
+                "description":"Size of the VM."
+            }
+        },
+        "addressPrefix":{
+            "type":"string",
+            "defaultValue":"10.1.16.0/24",
+            "metadata":{
+                "description":"VNET address space"
+            }
+        },
+        "subnetPrefix":{
+            "type":"string",
+            "defaultValue":"10.1.16.0/24",
+            "metadata":{
+                "description":"Sets the subnet of the VM."
+            }
+        },
+        "osDiskType":{
+            "type":"string",
+            "defaultValue":"StandardSSD_LRS",
+            "allowedValues":[
+                "Premium_LRS",
+                "StandardSSD_LRS"
+            ],
+            "metadata":{
+                "description":"OS disk type of the VM."
+            }
+        },
+        "osType":{
+            "type":"string",
+            "allowedValues":[
+                "Windows",
+                "Linux"
+            ],
+            "metadata":{
+                "description":"OS type."
+            }
+        },
+        "hyperVGeneration":{
+            "type":"string",
+            "defaultValue":"V2",
+            "allowedValues":[
+                "V1",
+                "V2"
+            ],
+            "metadata":{
+                "description":"Hyper-V Generation."
+            }
+        },
+        "osDiskStorageAccountID": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+              "description": "ID of the OS disk storage account."
+            }
+          },
+        "osDiskURL": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "OS VHD URL."
+            }
+        },
+        "NetworkSecurityGroupId":{
+            "type": "string",
+            "metadata": {
+                "description": "The network security group"
+            }
+        },
+        "bootDiagnostics":{
+            "type":"string",
+            "defaultValue":"false",
+            "allowedValues":[
+                "true",
+                "false"
+            ],
+            "metadata":{
+                "description":"Boot diagnostics setting of the VM."
+            }
+        },
+        "secureBootEnabled":{
+            "type":"string",
+            "defaultValue":"true",
+            "allowedValues":[
+                "true",
+                "false"
+            ],
+            "metadata":{
+                "description":"Secure Boot setting of the VM."
+            }
+        }
+    },
+    "variables":{
+        "diskName":"[concat(parameters('vmName'), '-osDisk')]",
+        "networkInterfaceName":"[concat(parameters('vmName'), '-nic')]",
+        "publicIPAddressName":"[concat(parameters('vmName'), '-ip')]",
+        "subnetName":"[concat(parameters('vmName'), 'Subnet')]",
+        "virtualNetworkName":"[concat(parameters('vmName'), '-vnet')]"
+    },
+    "resources":[
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2020-11-01",
+            "name": "[variables('virtualNetworkName')]",
+            "location":"[resourceGroup().location]",
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "10.0.3.0/24"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "default",
+                        "properties": {
+                            "addressPrefix": "10.0.3.0/24",
+                            "delegations": [],
+                            "privateEndpointNetworkPolicies": "Enabled",
+                            "privateLinkServiceNetworkPolicies": "Enabled"
+                        }
+                    }
+                ],
+                "virtualNetworkPeerings": [],
+                "enableDdosProtection": false
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks/subnets",
+            "apiVersion": "2020-11-01",
+            "name": "[concat(variables('virtualNetworkName'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]"
+            ],
+            "properties": {
+                "addressPrefix": "10.0.3.0/24",
+                "delegations": [],
+                "privateEndpointNetworkPolicies": "Enabled",
+                "privateLinkServiceNetworkPolicies": "Enabled"
+            }
+        },
+        {
+            "type":"Microsoft.Network/publicIPAddresses",
+            "apiVersion":"2019-02-01",
+            "name":"[variables('publicIPAddressName')]",
+            "location":"[resourceGroup().location]",
+            "sku":{
+                "name":"Basic"
+            },
+            "properties":{
+                "publicIpAllocationMethod":"Dynamic"
+            }
+        },
+        {
+            "type":"Microsoft.Network/networkInterfaces",
+            "apiVersion":"2019-07-01",
+            "name":"[variables('networkInterfaceName')]",
+            "location":"[resourceGroup().location]",
+            "dependsOn":[
+                "[concat('Microsoft.Network/publicIpAddresses/', variables('publicIpAddressName'))]"
+            ],
+            "properties":{
+                "ipConfigurations":[
+                    {
+                        "name":"ipConfigNode",
+                        "properties":{
+                            "privateIPAllocationMethod":"Dynamic",
+                            "subnet":{
+                                "id":"[concat(resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName')), '/subnets/default')]"
+                            },
+                            "publicIpAddress":{
+                                "id":"[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+                            }
+                        }
+                    }
+                ],
+                "networkSecurityGroup":{
+                    "id":"[parameters('NetworkSecurityGroupId')]"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Compute/disks",
+            "apiVersion": "2020-12-01",
+            "name": "[variables('diskName')]",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "[parameters('osDiskType')]"
+            },
+            "properties": {
+                "osType": "[parameters('osType')]",
+                "hyperVGeneration": "[parameters('hyperVGeneration')]",
+                "creationData": {
+                    "createOption": "Import",
+                    "storageAccountId": "[parameters('osDiskStorageAccountID')]",
+                    "sourceUri": "[parameters('osDiskURL')]"
+                }
+            }
+          },
+        {
+            "type":"Microsoft.Compute/virtualMachines",
+            "apiVersion":"2020-12-01",
+            "name":"[parameters('vmName')]",
+            "location":"[resourceGroup().location]",
+            "plan": {
+                "name": "pro-20_04-lts",
+                "publisher": "canonical",
+                "product": "0001-com-ubuntu-pro-focal"
+            },
+            "dependsOn":[
+                "[concat('Microsoft.Network/networkInterfaces/', variables('networkInterfaceName'))]",
+                "[concat('Microsoft.Compute/disks/', variables('diskName'))]"
+            ],
+            "properties":{
+                "hardwareProfile":{
+                    "vmSize":"[parameters('vmSize')]"
+                },
+                "storageProfile":{
+                    "osDisk": {
+                        "createOption": "Attach",
+                        "osType": "Linux",
+                        "managedDisk": {
+                            "id": "[resourceId('Microsoft.Compute/disks', variables('diskName'))]"
+                        }
+                    }
+                },
+                "networkProfile":{
+                    "networkInterfaces":[
+                        {
+                            "id":"[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}

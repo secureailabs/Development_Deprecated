@@ -238,9 +238,9 @@ void __thiscall ComputationVM::HandleConnect(
     bool fSuccess = true;
     
     std::cout<<"connect vm"<<std::endl;
-    __DebugAssert(true == oContent.IsElementPresent("Eosb", ANSI_CHARACTER_STRING_VALUE_TYPE));
+    __DebugAssert(true == oContent.IsElementPresent("EOSB", ANSI_CHARACTER_STRING_VALUE_TYPE));
     std::cout<<"present eosb"<<std::endl;
-    std::cout<<oContent.GetString("Eosb")<<std::endl;
+    std::cout<<oContent.GetString("EOSB")<<std::endl;
     
     oResponse.PutString("VMID", m_strVirtualMachineIdentifier);
     oResponse.PutBoolean("Success", fSuccess);
@@ -250,7 +250,7 @@ void __thiscall ComputationVM::HandleConnect(
     oEventData.PutString("Username", "lbart@igr.com");
     oEventData.PutString("OrchestratorIpAddress", "132.34.4.23");
     oEventData.PutString("OrchestratorVersion", "1.0.0");
-    oEventData.PutString("Eosb", oContent.GetString("Eosb"));
+    oEventData.PutString("EOSB", oContent.GetString("EOSB"));
     m_oRootOfTrustNode.RecordAuditEvent("CONNECT_SUCCESS", 0x1111, 0x04, oEventData);
     std::cout<<"connect vm done"<<std::endl;
 }

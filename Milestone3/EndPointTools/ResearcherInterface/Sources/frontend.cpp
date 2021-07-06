@@ -223,6 +223,7 @@ void __thiscall Frontend::SetFrontend(
     std::string strEOSB = Login(strEmail, strPassword);
     
     std::cout<<"Login done"<<std::endl;
+    std::cout<<"EOSB:"<<strEOSB<<std::endl;
 
     StructuredBuffer oBuffer;
     oBuffer.PutInt8("Type", eCONNECT);

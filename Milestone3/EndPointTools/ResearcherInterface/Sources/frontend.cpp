@@ -19,6 +19,7 @@
 #include "ExceptionRegister.h"
 #include "TlsTransactionHelperFunctions.h"
 #include "HttpRequestParser.h"
+#include "CurlRest.h"
 #include "JsonValue.h"
 #include <exception>
 #include <iostream>
@@ -65,8 +66,14 @@ bool ParseFirstLine(
     std::getline(oFirstLineStream, strProtocol, ' ');
     std::getline(oFirstLineStream, strStatus, ' ');
 
-    _ThrowBaseExceptionIf((strStatus.empty()), "ERROR: Invalid request.", nullptr);
-    fSuccess = true;
+    if (!strStatus.empty())
+    {
+        fSuccess = true;
+    }
+    else
+    {
+        _ThrowBaseException("ERROR: Invalid request.", nullptr);
+    }
     _ThrowBaseExceptionIf(("200" != strStatus), "Transaction returned with error code.", nullptr);
 
     return fSuccess;
@@ -83,7 +90,7 @@ bool ParseFirstLine(
 
 std::vector<Byte> GetResponseBody(
     _in const std::string & c_strRequestData,
-    _in TlsNode * poSocket
+    _in TlsNode * poTlsNode
     )
 {
     __DebugFunction();
@@ -103,7 +110,7 @@ std::vector<Byte> GetResponseBody(
         if (0 < unContentLength)
         {
             // Read request content
-            std::vector<Byte> stlBodyData = poSocket->Read(unContentLength, 2000);
+            std::vector<Byte> stlBodyData = poTlsNode->Read(unContentLength, 2000);
             _ThrowBaseExceptionIf((0 == stlBodyData.size()), "Dead Packet.", nullptr);
             std::string strRequestBody = std::string(stlBodyData.begin(), stlBodyData.end());
 
@@ -135,63 +142,26 @@ std::string Login(
     )
 {
     __DebugFunction();
+    //__DebugAssert(0 < strlen(g_szServerIpAddress));
+    //__DebugAssert(0 != g_unPortNumber);
     __DebugAssert(0 < c_strEmail.size());
     __DebugAssert(0 < c_strUserPassword.size());
 
     std::string strEosb;
-    TlsNode * poSocket = nullptr;
-    
+
     try
     {
-        bool fSuccess = false;
-        TlsNode * poSocket = nullptr;
-        poSocket = ::TlsConnectToNetworkSocket(SERVER_IP_ADDRESS, SERVER_PORT);
-
-        std::string strHttpLoginRequest = "POST /SAIL/AuthenticationManager/User/Login?Email="+ c_strEmail +"&Password="+ c_strUserPassword +" HTTP/1.1\r\n"
-                                        "Accept: */*\r\n"
-                                        "Host: localhost:6200\r\n"
-                                        "Connection: keep-alive\r\n"
-                                        "Content-Length: 0\r\n"
-                                        "\r\n";
-
-        // Send request packet
-        poSocket->Write((Byte *) strHttpLoginRequest.data(), (strHttpLoginRequest.size()));
-
-        // Read Header of the Rest response one byte at a time
-        bool fIsEndOfHeader = false;
-        std::vector<Byte> stlHeaderData;
-        while (false == fIsEndOfHeader)
-        {   
-            std::vector<Byte> stlBuffer = poSocket->Read(1, 20000);
-            // Check whether the read was successful or not
-            if (0 < stlBuffer.size())
-            {
-                stlHeaderData.push_back(stlBuffer.at(0));
-                if (4 <= stlHeaderData.size())
-                {
-                    if (("\r\n\r\n" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())) || ("\n\r\n\r" == std::string(stlHeaderData.end() - 4, stlHeaderData.end())))
-                    {
-                        fIsEndOfHeader = true;
-                    }
-                }
-            }
-            else 
-            {
-                fIsEndOfHeader = true;
-            }
-        }
-        _ThrowBaseExceptionIf((0 == stlHeaderData.size()), "Dead Packet.", nullptr);
-
-        std::string strRequestHeader = std::string(stlHeaderData.begin(), stlHeaderData.end());
-        std::vector<Byte> stlSerializedResponse = ::GetResponseBody(strRequestHeader, poSocket);
-        StructuredBuffer oResponse(stlSerializedResponse);
+        std::string strVerb = "POST";
+        std::string strApiUrl = "/SAIL/AuthenticationManager/User/Login?Email="+ c_strEmail +"&Password="+ c_strUserPassword;
+        std::string strJsonBody = "";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(SERVER_IP_ADDRESS, SERVER_PORT, strVerb, strApiUrl, strJsonBody, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error logging in.", nullptr);
         strEosb = oResponse.GetString("Eosb");
-        // Make sure to release the socket
-        poSocket->Release();
-        poSocket = nullptr;
     }
-    
+
     catch(BaseException oBaseException)
     {
         ::RegisterException(oBaseException, __func__, __LINE__);
@@ -201,13 +171,7 @@ std::string Login(
     {
         ::RegisterUnknownException(__func__, __LINE__);
     }
-    
-    if (nullptr != poSocket)
-    {
-        poSocket->Release();
-        poSocket = nullptr;
-    }
-    
+
     return strEosb;
 }
 

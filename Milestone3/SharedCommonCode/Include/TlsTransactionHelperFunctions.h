@@ -38,3 +38,10 @@ extern std::vector<Byte> __stdcall PutTlsTransactionAndGetResponse(
     _in const StructuredBuffer & c_oTransaction,
     _in unsigned int unMillisecondTimeout
     );
+extern std::vector<Byte> __stdcall GetTlsDataBlocking(
+    _in TlsNode * poTlsNode
+    );
+extern void __stdcall SendTlsData(
+    _in TlsNode * poTlsNode,
+    _in const std::vector<Byte> & c_stlSerializedBuffer
+);

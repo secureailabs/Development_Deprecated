@@ -440,7 +440,7 @@ void __thiscall RootOfTrustCore::HandleIncomingTransaction(
 
     std::cout << __func__ << std::endl;
     
-    StructuredBuffer oTransactionParameters(::GetIpcTransaction(poSocket));
+    StructuredBuffer oTransactionParameters(::GetIpcTransaction(poSocket, false));
     std::vector<Byte> stlSerializedResponse;
 
     // By default, ALL incoming transactions must have, at least, a DomainIdentifier

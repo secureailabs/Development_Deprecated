@@ -499,7 +499,7 @@ void __thiscall AuditLogManager::HandleIpcRequest(
 
     std::vector<Byte> stlResponse;
 
-    StructuredBuffer oRequestParameters(::GetIpcTransaction(poSocket));
+    StructuredBuffer oRequestParameters(::GetIpcTransaction(poSocket, false));
 
     Dword dwTransactionType = oRequestParameters.GetDword("TransactionType");
 
@@ -658,7 +658,7 @@ std::vector<Byte> __thiscall AuditLogManager::GetUserInfo(
 
         // Call CryptographicManager plugin to get the decrypted eosb
         poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest, false));
         poIpcCryptographicManager->Release();
         poIpcCryptographicManager = nullptr;
         if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))

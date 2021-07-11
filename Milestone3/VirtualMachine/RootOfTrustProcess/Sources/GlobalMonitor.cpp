@@ -218,7 +218,7 @@ void __thiscall GlobalMonitor::HandleTransaction(
 {
     __DebugFunction();
     
-    StructuredBuffer oTransactionParameters(::GetIpcTransaction(poSocket));
+    StructuredBuffer oTransactionParameters(::GetIpcTransaction(poSocket, false));
     std::vector<Byte> stlSerializedResponse;
     
     // By default, ALL incoming transactions must have, at least, a DomainIdentifier

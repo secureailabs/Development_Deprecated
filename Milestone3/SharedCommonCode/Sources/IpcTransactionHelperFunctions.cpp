@@ -19,19 +19,27 @@
 /********************************************************************************************/
 
 std::vector<Byte> __stdcall GetIpcTransaction(
-    _in Socket * poSocket
+    _in Socket * poSocket,
+    _in bool fIsBlocking
     )
 {
     __DebugFunction();
     __DebugAssert(nullptr != poSocket);
-    
+
     std::vector<Byte> stlSerializedTransactionBuffer;
-    
+
     try
     {
         std::vector<Byte> stlTemporaryBuffer;
-        
-        stlTemporaryBuffer = poSocket->Read(sizeof(Qword), 50000);
+        do
+        {
+            stlTemporaryBuffer = poSocket->Read(sizeof(Qword), 60000);
+            if (0 < stlTemporaryBuffer.size())
+            {
+                fIsBlocking = false;
+            }
+        }
+        while (true == fIsBlocking);
         _ThrowBaseExceptionIf((sizeof(Qword) != stlTemporaryBuffer.size()), "Failed to read data from the Ipc tunnel", nullptr);
         Qword qwHeadMarker = *((Qword *) stlTemporaryBuffer.data());
         _ThrowBaseExceptionIf((0xFFEEDDCCBBAA0099 != qwHeadMarker), "Invalid head marker encountered.", nullptr);
@@ -52,17 +60,17 @@ std::vector<Byte> __stdcall GetIpcTransaction(
         Qword qwTailMarker = *((Qword *) stlTemporaryBuffer.data());
         _ThrowBaseExceptionIf((0x0123456789ABCDEF != qwTailMarker), "Invalid marker encountered.", nullptr);
     }
-    
+
     catch(BaseException oBaseException)
     {
         ::RegisterException(oBaseException, __func__, __LINE__);
     }
-    
+
     catch(...)
     {
         ::RegisterUnknownException(__func__, __LINE__);
     }
-    
+
     return stlSerializedTransactionBuffer;
 }
 
@@ -71,7 +79,7 @@ std::vector<Byte> __stdcall GetIpcTransaction(
 bool __stdcall PutIpcTransaction(
     _in Socket * poSocket,
     _in const std::vector<Byte> c_stlSerializedTransaction
-    ) throw()    
+    ) throw()
 {
     __DebugFunction();
     __DebugAssert(nullptr != poSocket);
@@ -124,7 +132,7 @@ bool __stdcall PutIpcTransaction(
     ) throw()
 {
     __DebugFunction();
-    
+
     return PutIpcTransaction(poSocket, c_oTransaction.GetSerializedBuffer());
 }
 
@@ -132,12 +140,13 @@ bool __stdcall PutIpcTransaction(
 
 std::vector<Byte> __stdcall PutIpcTransactionAndGetResponse(
     _in Socket * poSocket,
-    _in const StructuredBuffer & c_oTransaction
+    _in const StructuredBuffer & c_oTransaction,
+    _in bool fIsBlocking
     )
 {
     __DebugFunction();
-    
+
     _ThrowBaseExceptionIf((false == ::PutIpcTransaction(poSocket, c_oTransaction)), "Failed to send Ipc transaction", nullptr);
-    
-    return ::GetIpcTransaction(poSocket);
+
+    return ::GetIpcTransaction(poSocket, fIsBlocking);
 }

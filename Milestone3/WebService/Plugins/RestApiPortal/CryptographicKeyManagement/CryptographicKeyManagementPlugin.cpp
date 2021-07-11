@@ -475,7 +475,7 @@ void __thiscall CryptographicKeyManagementPlugin::HandleIpcRequest(
 
     std::vector<Byte> stlResponse;
 
-    StructuredBuffer oRequestParameters(::GetIpcTransaction(poSocket));
+    StructuredBuffer oRequestParameters(::GetIpcTransaction(poSocket, false));
 
     Dword dwTransactionType = oRequestParameters.GetDword("TransactionType");
 

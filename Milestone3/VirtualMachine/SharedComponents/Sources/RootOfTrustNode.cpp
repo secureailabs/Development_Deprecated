@@ -41,8 +41,8 @@ RootOfTrustNode::RootOfTrustNode(
     __DebugFunction();
 
     Socket * poSocket = ::ConnectToUnixDomainSocket(c_szIpcPathForInitialization);
-    StructuredBuffer oInitializationData(::GetIpcTransaction(poSocket));
-    
+    StructuredBuffer oInitializationData(::GetIpcTransaction(poSocket, false));
+
     // Get the information
     m_oDomainIdentifier = oInitializationData.GetGuid("YourDomainIdentifier");
     m_strRootOfTrustIpcPath = oInitializationData.GetString("RootOfTrustIpcPath");
@@ -110,7 +110,7 @@ std::vector<Byte> __thiscall RootOfTrustNode::GetDataset(void) const
     StructuredBuffer oTransactionData;
     oTransactionData.PutGuid("DomainIdentifier", m_oDomainIdentifier);
     oTransactionData.PutDword("Transaction", 0x00000006);
-    StructuredBuffer oTransactionResponse(::PutIpcTransactionAndGetResponse(poSocket, oTransactionData));
+    StructuredBuffer oTransactionResponse(::PutIpcTransactionAndGetResponse(poSocket, oTransactionData, false));
     poSocket->Release();
 
     return oTransactionResponse.GetBuffer("Dataset");
@@ -146,7 +146,7 @@ void __thiscall RootOfTrustNode::RecordAuditEvent(
         oTransactionData.PutString("EncryptedEventData", oEncryptedEventData.GetBase64SerializedBuffer());
         // Send the transaction
         Socket * poSocket = ::ConnectToUnixDomainSocket(m_strRootOfTrustIpcPath.c_str());
-        StructuredBuffer oTransactionResponse(::PutIpcTransactionAndGetResponse(poSocket, oTransactionData));
+        StructuredBuffer oTransactionResponse(::PutIpcTransactionAndGetResponse(poSocket, oTransactionData, false));
         poSocket->Release();
     }
 

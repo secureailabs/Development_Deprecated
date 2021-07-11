@@ -604,7 +604,7 @@ void __thiscall AccountDatabase::HandleIpcRequest(
 
     std::vector<Byte> stlResponse;
 
-    StructuredBuffer oRequestParameters(::GetIpcTransaction(poSocket));
+    StructuredBuffer oRequestParameters(::GetIpcTransaction(poSocket, false));
 
     Dword dwTransactionType = oRequestParameters.GetDword("TransactionType");
 
@@ -900,7 +900,7 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserInfo(
 
         // Call CryptographicManager plugin to get the decrypted eosb
         poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest, false));
         poIpcCryptographicManager->Release();
         poIpcCryptographicManager = nullptr;
         if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
@@ -1005,7 +1005,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
             oRootEvent.PutStructuredBuffer("NonLeafEvent", oMetadata);
             // Call AuditLog plugin to register root node event
             poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
-            StructuredBuffer oStatus(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oRootEvent));
+            StructuredBuffer oStatus(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oRootEvent, false));
             poIpcAuditLogManager->Release();
             poIpcAuditLogManager = nullptr;
             if ((0 < oStatus.GetSerializedBufferRawDataSizeInBytes())&&(201 == oStatus.GetDword("Status")))

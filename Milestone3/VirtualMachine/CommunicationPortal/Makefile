@@ -1,5 +1,5 @@
 BUILD_MODE?=debug
-CXXFLAGS=-std=c++17 -fstack-protector -DUNIX -DOS_UNIX -fPIC
+CXXFLAGS=-std=c++17 -fstack-protector -DUNIX -DOS_UNIX
 LDFLAGS=-lpthread -ldl -luuid -lrt -lcrypto -lssl -lcurl
 
 ifeq ($(BUILD_MODE), debug)
@@ -14,20 +14,14 @@ ABSROOTDIR=$(shell realpath $(ROOTDIR))
 OBJDIR=$(ABSROOTDIR)/Binary/Objects
 
 # Add the new include folders here
-INCLUDE+=-I$(shell realpath ./)
-INCLUDE+=-I$(shell realpath ../SharedComponents/Include)
-INCLUDE+=-I$(shell realpath ../CommunicationPortal)
 INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
-INCLUDE+=-I$(shell realpath ../DataDomainProcess/Include)
 
 # Add the new source directory here
-SRCDIRS+=$(shell realpath ./)
-SRCDIRS+=$(shell realpath ../SharedComponents/Sources)
+SRCDIRS+=$(shell realpath .)
 SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
-SOURCES+=$(shell realpath ../CommunicationPortal/CommunicationPortal.cpp)
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
 OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))

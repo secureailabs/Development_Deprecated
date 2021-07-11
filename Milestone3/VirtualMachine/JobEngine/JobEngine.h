@@ -67,7 +67,7 @@ class JobEngine : public Object
         static JobEngine & Get(void);
 
         void __thiscall StartServer(
-            _in Socket * poSocket
+            _in Socket * const poSocket
         );
         void __thiscall ListenToRequests(void);
         void __thiscall FileCreateCallback(

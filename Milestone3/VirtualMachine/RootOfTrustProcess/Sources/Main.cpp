@@ -76,7 +76,7 @@ static RootOfTrustCore __stdcall RunInitializerProcess(void)
         // There is a connection is waiting to be made!!!
         Socket * poSocket = oSocketServer.Accept();
         _ThrowBaseExceptionIf((nullptr == poSocket), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
-        stlSerializedParameters = ::GetIpcTransaction(poSocket);
+        stlSerializedParameters = ::GetIpcTransaction(poSocket, false);
         // Close the connection
         poSocket->Release();
     }
@@ -132,7 +132,7 @@ static void __stdcall RunProcess(
         oInitializationData.PutGuid("YourDomainIdentifier", c_oDomainIdentifier);
         oInitializationData.PutString("RootOfTrustIpcPath", c_oRootOfTrustCore.GetRootOfTrustIpcPath());
         // Write the initialization data to the socket and wait for a response
-        StructuredBuffer oResponse(::PutIpcTransactionAndGetResponse(poSocket, oInitializationData));
+        StructuredBuffer oResponse(::PutIpcTransactionAndGetResponse(poSocket, oInitializationData, false));
         // Close the connection
         poSocket->Release();
         // Throw an exception if one of the core processes failed to get started

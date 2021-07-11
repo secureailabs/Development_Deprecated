@@ -56,7 +56,7 @@ bool TestPushSafeObject(
 
     oStructuredBufferRequest.PutString("SafeObjectUuid", "{e0d937b9-471e-4d2e-a470-d0c96d21574b}");
     std::string test_code = "print(\"Hello Orchestrator\")\n";
-    test_code += "f= open(\"{abf0a5ad-21a8-4b91-a4b6-07e09c9d8467}\",\"w+\")\n";
+    test_code += "f= open(\"{e0d937b9-471e-4d2e-a470-d0c96d21574b}.{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}\",\"w+\")\n";
     test_code += "f.write(\"This is the output\")\n";
     test_code += "f.close()\n";
     // test_code += "while True:\n";
@@ -90,7 +90,6 @@ bool TestSubmitJob(
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::eSubmitJob);
     oStructuredBufferRequest.PutString("SafeObjectUuid", "{e0d937b9-471e-4d2e-a470-d0c96d21574b}");
     oStructuredBufferRequest.PutString("JobUuid", "{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}");
-    oStructuredBufferRequest.PutString("OutFileName", "{abf0a5ad-21a8-4b91-a4b6-07e09c9d8467}");
     ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
 
     return true;
@@ -146,7 +145,7 @@ bool TestPullData(
 
     StructuredBuffer oStructuredBufferRequest;
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePullData);
-    oStructuredBufferRequest.PutString("Filename", "{abf0a5ad-21a8-4b91-a4b6-07e09c9d8467}");
+    oStructuredBufferRequest.PutString("Filename", "{e0d937b9-471e-4d2e-a470-d0c96d21574b}.{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}");
 
     // Send the request and the response will come as a signal when avaialble
     ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);

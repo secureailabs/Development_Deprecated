@@ -101,6 +101,9 @@ void __thiscall DatabaseTools::InitializeMembers(void)
     m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","Telco Customer Churn","Focused customer retention programs","business",GetEpochTimeInSeconds(),1,"N/A"));
     m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","Harvest","A toolkit for extracting posts and post metadata from web forums","computer science,software,programming",GetEpochTimeInSeconds(),1,"N/A"));
     m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","Obesity among adults by country, 1975-2016","Prevalence of obesity among adults","N/A",GetEpochTimeInSeconds(),1,"N/A"));
+    m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","KCA Breast Cancer Dataset - I","Predict whether the cancer is benign or malignant","breast cancer,cancer,healthcare,benign,malignant",GetEpochTimeInSeconds(),1,"N/A"));
+    m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","KCA Breast Cancer Dataset - II","Predict whether the cancer is benign or malignant","breast cancer,cancer,healthcare,benign,malignant",GetEpochTimeInSeconds(),1,"N/A"));
+    m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","KCA Breast Cancer Dataset - III","Predict whether the cancer is benign or malignant","breast cancer,cancer,healthcare,benign,malignant",GetEpochTimeInSeconds(),1,"N/A"));
     // Add digital contracts information
     std::string strLegalAgreement = "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties. "
     "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";  
@@ -194,7 +197,7 @@ void __thiscall DatabaseTools::AddDatasets(void)
     StructuredBuffer oDsetInformation;
     // Register five datasets for the data owner organizations
     // The dataset guids will later be used in the digital contracts
-    for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
+    for (unsigned int unIndex = 0; unIndex < m_stlDatasets.size(); ++unIndex)
     {
         oDsetInformation.PutString("DatasetGuid", m_stlDatasets.at(unIndex).m_strDatasetGuid);
         oDsetInformation.PutString("VersionNumber", m_stlDatasets.at(unIndex).m_strVersionNumber);

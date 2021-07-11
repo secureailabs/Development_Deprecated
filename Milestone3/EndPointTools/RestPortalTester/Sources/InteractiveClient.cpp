@@ -78,7 +78,6 @@ bool ParseFirstLine(
     {
         _ThrowBaseException("ERROR: Invalid request.", nullptr);
     }
-    _ThrowBaseExceptionIf(("200" != strStatus), "Transaction returned with error code.", nullptr);
 
     return fSuccess;
 }
@@ -1054,19 +1053,21 @@ bool RegisterDigitalContract(
     std::string strDescription = ::GetStringInput("Enter description for the digital contract: ", 200, false, c_szValidInputCharacters);
     std::string strVersionNumber = "0x0000000100000001";
     uint64_t unSubscriptionDays = std::stoull(::GetStringInput("Enter your requested subscription period (in days): ", 50, false, c_szValidInputCharacters));
-    std::string strDatasetGuid = Guid(eDataset).ToString(eHyphensAndCurlyBraces);
+    std::string strDatasetGuid = ::GetStringInput("Enter hyphen and curly braces formatted dataset guid: ", 38, false, c_szValidInputCharacters);
     std::string strLegalAgreement = ::GetStringInput("Enter the legal agreement: ", 200, false, c_szValidInputCharacters);
 
     __DebugAssert(38 == strDooGuid.size());
     __DebugAssert(0 < strDescription.size());
     __DebugAssert(0 < unSubscriptionDays);
     __DebugAssert(0 < strLegalAgreement.size());
+    __DebugAssert(38 == strDatasetGuid.size());
 
     StructuredBuffer oDcInformation;
     oDcInformation.PutString("Title", strTitle);
     oDcInformation.PutString("DOOGuid", strDooGuid);
     oDcInformation.PutString("Description", strDescription);
     oDcInformation.PutUnsignedInt64("SubscriptionDays", unSubscriptionDays);
+    oDcInformation.PutString("DatasetGuid", strDatasetGuid);
     oDcInformation.PutString("LegalAgreement", strLegalAgreement);
 
     fSuccess = ::RegisterDigitalContract(c_strEncodedEosb, oDcInformation);
@@ -1147,7 +1148,7 @@ bool AcceptDigitalContract(
     std::string strDcGuid = ::GetStringInput("Enter hyphen and curly braces formatted digital contract guid: ", 38, true, c_szValidInputCharacters);
     std::string strDescription = ::GetStringInput("Add your comment on the digital contract (if any): ", 200, false, c_szValidInputCharacters);
     uint64_t unRetentionTime = std::stoull(::GetStringInput("Enter the retention time: ", 50, false, c_szValidInputCharacters));
-    std::string strLegalAgreement = ::GetStringInput("Enter the legal agreement: ", 200, false, c_szValidInputCharacters);
+    std::string strLegalAgreement = ::GetStringInput("Enter the legal agreement: ", 500, false, c_szValidInputCharacters);
 
     __DebugAssert(0 < strDcGuid.size());
     __DebugAssert(0 < unRetentionTime);
@@ -1155,7 +1156,10 @@ bool AcceptDigitalContract(
 
     StructuredBuffer oDcInformation;
     oDcInformation.PutString("DigitalContractGuid", strDcGuid);
-    oDcInformation.PutString("Description", strDescription);
+    if (0 < strDescription.size())
+    {
+        oDcInformation.PutString("Description", strDescription);
+    }
     oDcInformation.PutUnsignedInt64("RetentionTime", unRetentionTime);
     oDcInformation.PutString("LegalAgreement", strLegalAgreement);
 
@@ -1232,7 +1236,10 @@ bool ActivateDigitalContract(
 
     StructuredBuffer oDcInformation;
     oDcInformation.PutString("DigitalContractGuid", strDcGuid);
-    oDcInformation.PutString("Description", strDescription);
+    if (0 < strDescription.size())
+    {
+        oDcInformation.PutString("Description", strDescription);
+    }
 
     fSuccess = ::ActivateDigitalContract(c_strEncodedEosb, oDcInformation);
 
@@ -1347,6 +1354,10 @@ void PrintDigitalContracts(
         std::cout << "Version number: " << oElement.GetString("VersionNumber") << std::endl;
         std::cout << "Contract stage: " << (Dword) oElement.GetFloat64("ContractStage") << std::endl;
         std::cout << "Subscription days: " << (uint64_t) oElement.GetFloat64("SubscriptionDays") << std::endl;
+        if (true == oElement.IsElementPresent("ExpirationTime", FLOAT64_VALUE_TYPE))
+        {
+            std::cout << "Expiration time: " << (uint64_t) oElement.GetFloat64("ExpirationTime") << std::endl;
+        }
         std::cout << "Dataset guid: " << oElement.GetString("DatasetGuid") << std::endl;
         std::cout << "Eula: " << oElement.GetString("Eula") << std::endl;
         std::cout << "Legal agreement: " << oElement.GetString("LegalAgreement") << std::endl;

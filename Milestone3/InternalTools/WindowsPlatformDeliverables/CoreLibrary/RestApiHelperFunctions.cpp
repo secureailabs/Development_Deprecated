@@ -68,7 +68,8 @@ static size_t __stdcall CurlWriteCallback(
 {
     __DebugFunction();
 
-    unsigned int unNewSizeInBytes = 0;
+    // Store the number of bytes received / taken care of by the callback function
+    unsigned int unNumberOfBytesReceived = 0;
 
     try
     {
@@ -78,13 +79,9 @@ static size_t __stdcall CurlWriteCallback(
             if ((nullptr != c_pbAdditionalData) && (0 < unSizeOfElements) && (0 < unNumberOfElements))
             {
                 // Figure out how many additional bytes will be we appending to the existing response buffer
-                unsigned int unAdditionalSizeInBytes = (unsigned int) (unSizeOfElements * unNumberOfElements);
-                pstlResponseBuffer->insert(pstlResponseBuffer->end(), c_pbAdditionalData, (c_pbAdditionalData + unAdditionalSizeInBytes));
+                unNumberOfBytesReceived = (unsigned int) (unSizeOfElements * unNumberOfElements);
+                pstlResponseBuffer->insert(pstlResponseBuffer->end(), c_pbAdditionalData, (c_pbAdditionalData + unNumberOfBytesReceived));
             }
-
-            // Make sure to return the new size of the response buffer now that new bytes have
-            // been appended to it
-            unNewSizeInBytes = (unsigned int) pstlResponseBuffer->size();
         }
     }
 
@@ -93,7 +90,7 @@ static size_t __stdcall CurlWriteCallback(
         ::RegisterUnknownException(__func__, __LINE__);
     }
 
-    return unNewSizeInBytes;
+    return unNumberOfBytesReceived;
 }
 
 /********************************************************************************************

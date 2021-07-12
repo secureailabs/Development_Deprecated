@@ -1,0 +1,329 @@
+#include <Python.h>
+#include <string>
+#include <vector>
+#include <fstream>
+#include <sstream>
+#include <iterator>
+#include "Guid.h"
+#include "frontend.h"
+
+static Frontend& getFrontend()
+{
+    
+    static Frontend oFrontend = Frontend();
+    return oFrontend;
+}
+
+static PyObject* createguid(PyObject* self, PyObject* args)
+{
+    Guid oGuid;
+    std::string strGuid = oGuid.ToString(eRaw);
+    return Py_BuildValue("s", strGuid.c_str());
+}
+
+static PyObject* vmconnect(PyObject* self, PyObject* args)
+{
+    char* serverIP;
+    char* email;
+    char* password;
+    unsigned int port;
+    std::string strVMID;
+
+    if(!PyArg_ParseTuple(args, "sIss", &serverIP, &port, &email, &password))
+    {
+        return NULL;
+    }
+
+    std::string strIP(serverIP);
+    std::string strEmail(email);
+    std::string strPassword(password);
+    getFrontend().SetFrontend(strIP, port, strVMID, strEmail, strPassword);
+
+    return Py_BuildValue("s", strVMID.c_str());
+}
+
+static PyObject* pulldata(PyObject* self, PyObject* args)
+{
+    char* vmID;
+    char* jobID;
+    char* fnID;
+
+    if(!PyArg_ParseTuple(args, "sss", &vmID, &jobID, &fnID))
+    {
+        return NULL;
+    }
+    
+    std::string strVMID(vmID);
+    std::string strJobID(jobID);
+    std::string strFNID(fnID);
+    //std::vector<std::vector<Byte>> stlOutputList;
+
+    getFrontend().HandlePullData(strVMID, strJobID);
+
+    // PyObject* oOutput = PyList_New(stlOutputList.size());
+    
+    // for(size_t i =0; i<stlOutputList.size(); i++)
+    // {
+    //     void* tmpdata = stlOutputList[i].data();
+    //     PyList_SetItem(oOutput, i, Py_BuildValue("y#", tmpdata, stlOutputList[i].size()));
+    // }
+    
+    // return oOutput;
+    return Py_BuildValue("");
+}
+
+static PyObject* pushdata(PyObject* self, PyObject* args)
+{
+    char* vmID;
+    char* jobID;
+    char* fnID;
+    PyObject* InputList;
+
+    if(!PyArg_ParseTuple(args, "sssO", &vmID, &jobID, &fnID, &InputList))
+    {
+        return NULL;
+    }
+    
+    std::string strVMID(vmID);
+    std::string strJobID(jobID);
+    std::string strFNID(fnID);
+
+    PyObject *iter = PyObject_GetIter(InputList);
+    std::vector<std::vector<Byte>> stlInputs;
+    
+    while (true) 
+    {
+        Byte* tmpInputs;
+        int len;
+
+        PyObject *next = PyIter_Next(iter);
+        if (!next) {
+            break;
+        }
+
+        if(!PyArg_ParseTuple(next, "y#i", &tmpInputs, &len))
+        {
+            return NULL;
+        }
+
+        std::vector<Byte> stlByteElement(tmpInputs, tmpInputs+len);
+        stlInputs.push_back(stlByteElement);
+   }
+
+    getFrontend().HandlePushData(strVMID, strFNID, strJobID, stlInputs);
+
+    return Py_BuildValue("");
+}
+
+static PyObject* setparameter(PyObject* self, PyObject* args)
+{
+    char* vmID;
+    char* jobID;
+    char* fnID;
+    PyObject* oldParamsList;
+    PyObject* newParamsList;
+
+    if(!PyArg_ParseTuple(args, "sssOO", &vmID, &jobID, &fnID, &oldParamsList, &newParamsList))
+    {
+        return NULL;
+    }
+
+    std::string strVMID(vmID);
+    std::string strJobID(jobID);
+    std::string strFNID(fnID);
+
+    PyObject *iter = PyObject_GetIter(oldParamsList);
+    std::vector<std::string> stlOldParams;
+
+    while (true) 
+    {
+        char* tmpParam;
+
+        PyObject *next = PyIter_Next(iter);
+        if (!next) {
+            break;
+        }
+
+        if(!PyArg_ParseTuple(next, "s", &tmpParam))
+        {
+            return NULL;
+        }
+        stlOldParams.push_back(std::string(tmpParam));
+    }
+
+    iter = PyObject_GetIter(newParamsList);
+    std::vector<std::string> stlNewParams;
+
+    while (true) 
+    {
+        char* tmpParam;
+
+        PyObject *next = PyIter_Next(iter);
+        if (!next) {
+            break;
+        }
+
+        if(!PyArg_ParseTuple(next, "s", &tmpParam))
+        {
+            return NULL;
+        }
+        stlNewParams.push_back(std::string(tmpParam));
+    }
+
+    getFrontend().HandleSetParameters(strVMID, strFNID, strJobID, stlOldParams, stlNewParams);
+    return Py_BuildValue("");
+}
+
+// static PyObject* deletedata(PyObject* self, PyObject* args)
+// {
+//     char* vmID;
+//     PyObject* varArray;
+
+//     if(!PyArg_ParseTuple(args, "sO!", &vmID, &PyList_Type, &varArray))
+//     {
+//         return NULL;
+//     }
+    
+//     std::string strVMID(vmID);
+//     int number = PyList_Size(varArray);
+    
+//     std::vector<std::string> stlVarArray;
+//     for(int i =0; i<number; i++)
+//     {
+//         PyObject* strObj = PyList_GetItem(varArray, i);
+//         PyObject * temp_bytes = PyUnicode_AsEncodedString(strObj, "UTF-8", "strict");
+//         char* varstr = PyBytes_AS_STRING(temp_bytes);
+//         stlVarArray.push_back(std::string(varstr));
+//     }
+
+//     getFrontend().HandleDeleteData(strVMID, stlVarArray);
+
+//     return Py_BuildValue("");
+// }
+
+static PyObject* pushfn(PyObject* self, PyObject* args)
+{
+    char* vmID;
+    char* fnID;
+
+    if(!PyArg_ParseTuple(args, "ss", &vmID, &fnID))
+    {
+        return NULL;
+    }
+    
+    std::string strVMID(vmID);
+    std::string strFNID(fnID);
+
+    getFrontend().HandlePushSafeObject(strVMID, strFNID);
+
+    return Py_BuildValue("");
+}
+
+static PyObject* submitjob(PyObject* self, PyObject* args)
+{
+    char* vmID;
+    char* fnID;
+    char* jobID;
+
+    if(!PyArg_ParseTuple(args, "sss", &vmID, &fnID, &jobID))
+    {
+        return NULL;
+    }
+    
+    std::string strVMID(vmID);
+    std::string strFNID(fnID);
+    std::string strJobID(jobID);
+
+    getFrontend().HandleSubmitJob(strVMID, strFNID, strJobID);
+
+    return Py_BuildValue("");
+}
+
+// static PyObject* gettableID(PyObject* self, PyObject* args)
+// {
+//     char* vmID;
+//     std::string strTableID;
+
+//     if(!PyArg_ParseTuple(args, "s", &vmID))
+//     {
+//         return NULL;
+//     }
+    
+//     std::string strVMID(vmID);
+
+//     getFrontend().HandleGetTable(strVMID, strTableID);
+
+//     return Py_BuildValue("s", strTableID.c_str());
+// }
+
+static PyObject* registerfn(PyObject* self, PyObject* args)
+{
+    char* file;
+    int nInputNumber;
+    int nOutputNumber;
+
+    if(!PyArg_ParseTuple(args, "sii", &file, &nInputNumber, &nOutputNumber))
+    {
+        return NULL;
+    }
+
+    std::string strFNID;
+    std::string strFile(file);
+
+    getFrontend().RegisterSafeObject(strFile, nInputNumber, nOutputNumber, strFNID);
+
+    return Py_BuildValue("s", strFNID.c_str());
+}
+
+static PyObject* quit(PyObject* self, PyObject* args)
+{
+    getFrontend().HandleQuit();
+    return Py_BuildValue("");
+}
+
+static PyObject* queryresult(PyObject* self, PyObject* args)
+{
+    char* jobid;
+
+    if(!PyArg_ParseTuple(args, "s", &jobid))
+    {
+        return NULL;
+    }
+
+    std::string strJobID(jobid);
+    std::vector<Byte> stlOutput;
+
+    getFrontend().QueryResult(strJobID, stlOutput);
+    Byte* tmpdata = stlOutput.data();
+    return Py_BuildValue("y#", tmpdata, stlOutput.size());
+}
+
+static PyMethodDef SAILAPIMethods [] =
+{
+    {"createguid", (PyCFunction)createguid, METH_NOARGS, NULL},
+    {"connect", (PyCFunction)vmconnect, METH_VARARGS, NULL},
+    {"pushdata", (PyCFunction)pushdata, METH_VARARGS, NULL},
+    {"pulldata", (PyCFunction)pulldata, METH_VARARGS, NULL},
+    // {"deletedata", (PyCFunction)deletedata, METH_VARARGS, NULL},
+    {"pushfn", (PyCFunction)pushfn, METH_VARARGS, NULL},
+    {"submitjob", (PyCFunction)submitjob, METH_VARARGS, NULL},
+    // {"gettableID", (PyCFunction)gettableID, METH_VARARGS, NULL},
+    {"registersafeobj", (PyCFunction)registerfn, METH_VARARGS, NULL},
+    {"queryresult", (PyCFunction)queryresult, METH_VARARGS, NULL},
+    {"setparameter", (PyCFunction)setparameter, METH_VARARGS, NULL},
+    {"quit", (PyCFunction)quit, METH_VARARGS, NULL},
+    {NULL, NULL, 0, NULL}
+};
+
+static struct PyModuleDef SAILPyAPIModule =
+{
+    PyModuleDef_HEAD_INIT,
+    "SAILPyAPI",
+    NULL,
+    -1,
+    SAILAPIMethods
+};
+
+PyMODINIT_FUNC PyInit_SAILPyAPI(void){
+    return PyModule_Create(&SAILPyAPIModule);
+}

@@ -13,7 +13,8 @@
 #include "StructuredBuffer.h"
 
 extern std::vector<Byte> __stdcall GetIpcTransaction(
-    _in Socket * poSocket
+    _in Socket * poSocket,
+    _in bool fIsBlocking
     );
 extern bool __stdcall PutIpcTransaction(
     _in Socket * poSocket,
@@ -25,5 +26,6 @@ extern bool __stdcall PutIpcTransaction(
     ) throw();
 extern std::vector<Byte> __stdcall PutIpcTransactionAndGetResponse(
     _in Socket * poSocket,
-    _in const StructuredBuffer & c_oTransaction
+    _in const StructuredBuffer & c_oTransaction,
+    _in bool fIsBlocking
     );

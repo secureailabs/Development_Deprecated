@@ -454,7 +454,7 @@ std::vector<Byte> __thiscall DatasetDatabase::GetUserInfo(
 
         // Call CryptographicManager plugin to get the decrypted eosb
         poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest, false));
         poIpcCryptographicManager->Release();
         poIpcCryptographicManager = nullptr;
         if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))

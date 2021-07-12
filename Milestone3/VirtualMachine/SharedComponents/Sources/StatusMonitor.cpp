@@ -47,7 +47,7 @@ StatusMonitor::StatusMonitor(
         oRequest.PutInt32("ThreadIdentifier", (int) ::pthread_self());
         // Send the request
         Socket * poSocket = ::ConnectToUnixDomainSocket("/tmp/{597722ad-5085-435b-81d7-6af3e0510432}");
-        (void) ::PutIpcTransactionAndGetResponse(poSocket, oRequest.GetSerializedBuffer());
+        (void) ::PutIpcTransactionAndGetResponse(poSocket, oRequest.GetSerializedBuffer(), false);
         poSocket->Release();
     }
 
@@ -76,7 +76,7 @@ StatusMonitor::~StatusMonitor(void)
         oRequest.PutGuid("MonitoringIdentifier", m_oStatusMonitorIdentifier);
         // Send the request
         Socket * poSocket = ::ConnectToUnixDomainSocket("/tmp/{597722ad-5085-435b-81d7-6af3e0510432}");
-        (void) ::PutIpcTransactionAndGetResponse(poSocket, oRequest.GetSerializedBuffer());
+        (void) ::PutIpcTransactionAndGetResponse(poSocket, oRequest.GetSerializedBuffer(), false);
         poSocket->Release();
     }
     
@@ -107,7 +107,7 @@ bool __thiscall StatusMonitor::IsTerminating(void) const throw()
         oRequest.PutGuid("MonitoringIdentifier", m_oStatusMonitorIdentifier);
         // Send the request and wait for a response
         Socket * poSocket = ::ConnectToUnixDomainSocket("/tmp/{597722ad-5085-435b-81d7-6af3e0510432}");
-        StructuredBuffer oResponse(::PutIpcTransactionAndGetResponse(poSocket, oRequest.GetSerializedBuffer()));
+        StructuredBuffer oResponse(::PutIpcTransactionAndGetResponse(poSocket, oRequest.GetSerializedBuffer(), false));
         poSocket->Release();
         // Parse the response and extract the terminating signal state
         if ((true == oResponse.IsElementPresent("Success", BOOLEAN_VALUE_TYPE))&&(true == oResponse.IsElementPresent("TerminationSignal", BOOLEAN_VALUE_TYPE)))
@@ -149,7 +149,7 @@ void __thiscall StatusMonitor::SignalTermination(
         (nullptr != c_szReason) ? oRequest.PutString("Reason", c_szReason) : oRequest.PutString("Reason", "Unspecified");
         // Send the request
         Socket * poSocket = ::ConnectToUnixDomainSocket("/tmp/{597722ad-5085-435b-81d7-6af3e0510432}");
-        (void) ::PutIpcTransactionAndGetResponse(poSocket, oRequest.GetSerializedBuffer());
+        (void) ::PutIpcTransactionAndGetResponse(poSocket, oRequest.GetSerializedBuffer(), false);
         poSocket->Release();
     }
     
@@ -193,7 +193,7 @@ void __thiscall StatusMonitor::UpdateStatus(
         oRequest.PutString("Status", szResultingString);
         // Send the request packet
         Socket * poSocket = ::ConnectToUnixDomainSocket("/tmp/{597722ad-5085-435b-81d7-6af3e0510432}");
-        (void) ::PutIpcTransactionAndGetResponse(poSocket, oRequest);
+        (void) ::PutIpcTransactionAndGetResponse(poSocket, oRequest, false);
         poSocket->Release();
     }
     

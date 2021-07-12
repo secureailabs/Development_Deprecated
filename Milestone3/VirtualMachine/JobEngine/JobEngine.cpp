@@ -37,9 +37,11 @@
 // 1. There is one case where the job can run even after the JobEngine reset has been called
 // Last paramter set was called.
 // 2. Put all the additional files in the Data folder instead of the cwd, need to delete that
-// during reset.
+// during reset, need to know how the SafeObect works.
 // 3. The SafeObject is not deleted on Job finish/fail. Should it be ? It could be re-used
 // by other jobs as well
+// 4. Create threads instead of async jobs and in Reset kill all the threads that are running.
+// This will not cause anything to run post ResetEngine
 
 /********************************************************************************************
  *
@@ -125,8 +127,7 @@ void __thiscall JobEngine::ListenToRequests(void)
     {
         // This should be a blocking call, because we have a persistant connection
         std::cout << "Waiting for request..\n";
-        auto stlSerializedBuffer = ::GetIpcTransaction(m_poSocket);
-        StructuredBuffer oNewRequest(stlSerializedBuffer);
+        StructuredBuffer oNewRequest(::GetIpcTransaction(m_poSocket, true));
 
         // Get the type of request
         EngineRequest eRequestType = (EngineRequest)oNewRequest.GetByte("RequestType");
@@ -397,7 +398,7 @@ void __thiscall JobEngine::SubmitJob(
         }
 
         // Set the name of the output file that the job has to produce
-        poJob->SetOutputFileName(c_oStructuredBuffer.GetString("OutFileName"));
+        poJob->SetOutputFileName(c_oStructuredBuffer.GetString("SafeObjectUuid") + "." + c_oStructuredBuffer.GetString("JobUuid"));
     }
     catch(BaseException & oBaseException)
     {

@@ -373,7 +373,7 @@ std::string __thiscall ComputationVM::RetrieveDatasets(void)
     oRequest.PutInt8("RequestType",eGetTableMetadata);
     oRequest.PutUnsignedInt32("TableID", 0);
 
-    std::vector<Byte> stlResponse = ::PutIpcTransactionAndGetResponse(poSocket, oRequest);
+    std::vector<Byte> stlResponse = ::PutIpcTransactionAndGetResponse(poSocket, oRequest, false);
     // Release the socket
     poSocket->Release();
     std::string strResponse;

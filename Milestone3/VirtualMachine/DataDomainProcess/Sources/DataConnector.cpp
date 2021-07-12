@@ -220,7 +220,7 @@ void __thiscall DataConnector::HandleRequestsUntilClose(
         bool fCloseRequest = false;
         while ((true != fCloseRequest) && (false == oStatusMonitor.IsTerminating()))
         {
-            std::vector<Byte> stlRequestBuffer = ::GetIpcTransaction(poSocket);
+            std::vector<Byte> stlRequestBuffer = ::GetIpcTransaction(poSocket, true);
             if (0 < stlRequestBuffer.size())
             {
                 // Respose Structured Buffer

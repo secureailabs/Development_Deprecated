@@ -74,18 +74,25 @@ bool __stdcall IsBoolean(
  * @function EscapeJsonString
  * @brief Escape json string
  * @param[in] c_strData json string
+ * @param[in] fPutInQuotes wrap the string in quotes if true
  * @return escaped string
  *
  ********************************************************************************************/
 
 std::string __stdcall EscapeJsonString(
-    _in const std::string & c_strData
+    _in const std::string & c_strData,
+    _in bool fPutInQuotes
     )
 {
     __DebugFunction();
 
-    std::string strStringValue = "\"";
+    std::string strStringValue;
     std::string::const_iterator itrData = c_strData.begin();
+
+    if (true == fPutInQuotes)
+    {
+        strStringValue = "\"";
+    }
 
     while (c_strData.end() != itrData)
     {
@@ -127,12 +134,26 @@ std::string __stdcall EscapeJsonString(
                 break;
             default
             :
-                strStringValue += szCurrentChar;
+            {
+                if ('\x00' <= *itrData && *itrData <= '\x1f') 
+                {
+                    char chUnicode[20];
+                    snprintf(chUnicode, sizeof(chUnicode), "\\u%04x", *itrData);
+                    strStringValue += std::string(chUnicode);
+                } 
+                else {
+                    strStringValue += szCurrentChar;
+                }
                 break;
+            }
         }
         ++itrData;
     }
-    strStringValue += "\"";
+
+    if (true == fPutInQuotes)
+    {
+        strStringValue += "\"";
+    }
 
     return strStringValue;
 }
@@ -197,6 +218,10 @@ std::string __stdcall UnEscapeJsonString(
                 case 'f'
                 :
                     strStringValue += '\f';
+                    break;
+                case 'u'
+                :
+                    itrData += 4;
                     break;
                 default
                 :

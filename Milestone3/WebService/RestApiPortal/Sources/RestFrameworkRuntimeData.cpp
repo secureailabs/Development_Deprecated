@@ -203,6 +203,8 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
 {
     __DebugFunction();
 
+    std::string strResponseData;
+
     Qword qwRequiredNumberOfUnixConnections = 0;
 
     try
@@ -303,9 +305,6 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
         oRequestData.PutString("Verb", strVerb);
         oRequestData.PutString("Resource", strResource);
 
-        // Refresh Eosb
-
-
         // Add required number of unix connections to connections count
         // This count is used by the RestFramework to determine if a new connection can be accepted as new connection means creating a new thread
         qwRequiredNumberOfUnixConnections = oRequestData.GetQword("NumberOfUnixConnections");
@@ -349,10 +348,8 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
             std::string strResponseString = poResponseJson->ToString();
             Dword dwStatus = oResponseStructuredBuffer.GetDword("Status");
             std::string strResponseHeader = "HTTP/1.1 "+ std::to_string(dwStatus) +" "+ g_stlHttpCodes[dwStatus] +" \r\nContent-Length: " + std::to_string(strResponseString.size()) + "\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";
-            std::string strResponseData(strResponseHeader);
+            strResponseData = strResponseHeader;
             strResponseData += strResponseString;
-            // Send back response data
-            poTlsNode->Write((const Byte *) strResponseData.data(), strResponseData.size());
             // Delete the JsonValue pointer
             poResponseJson->Release();
         }
@@ -363,28 +360,37 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
     catch(BaseException oBaseException)
     {
         ::RegisterException(oBaseException, __func__, __LINE__);
-        // send back error message
-        std::string strErrorMessage;
+        // create error message
         if (strcmp("Resource not found.",oBaseException.GetExceptionMessage()) == 0)
         {
-            strErrorMessage = "HTTP/1.1 404 NotFound\r\nConnection: close\r\n\r\n";
+            strResponseData = "HTTP/1.1 404 NotFound\r\nConnection: close\r\n\r\n";
         }
         else
         {
-            strErrorMessage = "HTTP/1.1 400 BadRequest\r\nConnection: close\r\n\r\n";
+            strResponseData = "HTTP/1.1 400 BadRequest\r\nConnection: close\r\n\r\n";
         }
-        std::cout << "\n\nRest Response:\n\n" << strErrorMessage << std::endl;
-        // Send back error
-        poTlsNode->Write((const Byte *) strErrorMessage.data(), strErrorMessage.size());
+        std::cout << "\n\nRest Response:\n\n" << strResponseData << std::endl;
     }
     catch(...)
     {
         ::RegisterUnknownException(__func__, __LINE__);
-        // send back error message
-        std::string strErrorMessage = "HTTP/1.1 500 InternalServerError\r\nConnection: close\r\n\r\n";
-        std::cout << "\n\nRest Response:\n\n" << strErrorMessage << std::endl;
-        // Send back error
-        poTlsNode->Write((const Byte *) strErrorMessage.data(), strErrorMessage.size());
+        // create error message
+        strResponseData = "HTTP/1.1 500 InternalServerError\r\nConnection: close\r\n\r\n";
+        std::cout << "\n\nRest Response:\n\n" << strResponseData << std::endl;
+    }
+
+    try
+    {
+        // Send back the response data
+        poTlsNode->Write((const Byte *) strResponseData.data(), strResponseData.size());
+    }
+    catch (BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     // Decrement the number of required unix connections by the plugin once the transaction is complete

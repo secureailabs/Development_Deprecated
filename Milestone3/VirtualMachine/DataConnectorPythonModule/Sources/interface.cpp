@@ -25,7 +25,7 @@ static PyObject* ReadBuffer(PyObject* self, PyObject* args)
 
     std::string response;
 
-    std::vector<Byte> stlResponse = ::PutIpcTransactionAndGetResponse(poSocket, oRequest);
+    std::vector<Byte> stlResponse = ::PutIpcTransactionAndGetResponse(poSocket, oRequest, false);
     // Release poSocket
     poSocket->Release();
     if (0 < stlResponse.size())

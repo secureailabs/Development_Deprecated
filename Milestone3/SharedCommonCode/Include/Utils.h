@@ -26,7 +26,8 @@ extern "C" bool __stdcall IsBoolean(
     );
 
 extern "C" std::string __stdcall EscapeJsonString(
-    _in const std::string & c_strData
+    _in const std::string & c_strData,
+    _in bool fPutInQuotes = true
     );
 
 extern "C" std::string __stdcall UnEscapeJsonString(

@@ -521,7 +521,7 @@ void __thiscall DigitalContractDatabase::HandleIpcRequest(
 
     std::vector<Byte> stlResponse;
 
-    StructuredBuffer oRequestParameters(::GetIpcTransaction(poSocket));
+    StructuredBuffer oRequestParameters(::GetIpcTransaction(poSocket, false));
 
     Dword dwTransactionType = oRequestParameters.GetDword("TransactionType");
 
@@ -687,7 +687,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetUserInfo(
 
         // Call CryptographicManager plugin to get the decrypted eosb
         poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest, false));
         poIpcCryptographicManager->Release();
         poIpcCryptographicManager = nullptr;
         if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
@@ -757,7 +757,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetDigitalSignature(
 
     // Call CryptographicManager plugin to get the digital signature blob
     Socket * poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-    StructuredBuffer oPluginResponse(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+    StructuredBuffer oPluginResponse(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest, false));
     poIpcCryptographicManager->Release();
     poIpcCryptographicManager = nullptr;
     if ((0 < oPluginResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oPluginResponse.GetDword("Status")))
@@ -1630,7 +1630,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDcAuditEvent(
         // Call AuditLogManager plugin to get the guid of DC event log
         std::string strDcEventGuid;
         poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
-        StructuredBuffer oAuditLogResponse(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oGetDcBranchEventRequest));
+        StructuredBuffer oAuditLogResponse(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oGetDcBranchEventRequest, false));
         poIpcAuditLogManager->Release();
         poIpcAuditLogManager = nullptr;
         if (200 == oAuditLogResponse.GetDword("Status"))
@@ -1657,7 +1657,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDcAuditEvent(
                 oDcBranchEvent.PutStructuredBuffer("NonLeafEvent", oDcMetadata);
                 // Call AuditLogManager plugin to create a DC event log
                 poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
-                StructuredBuffer oDcEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oDcBranchEvent));
+                StructuredBuffer oDcEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oDcBranchEvent, false));
                 poIpcAuditLogManager->Release();
                 poIpcAuditLogManager = nullptr;
                 _ThrowBaseExceptionIf(((0 > oDcEventLog.GetSerializedBufferRawDataSizeInBytes())&&(201 != oDcEventLog.GetDword("Status"))), "Error creating DC branch event.", nullptr);

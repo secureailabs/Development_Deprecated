@@ -484,7 +484,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetUserInfo(
 
         // Call CryptographicManager plugin to get the decrypted eosb
         poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest));
+        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest, false));
         poIpcCryptographicManager->Release();
         poIpcCryptographicManager = nullptr;
         if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
@@ -638,7 +638,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::VerifyDigitalContract(
         oDigitalContractRequest.PutString("DigitalContractGuid", c_oRequest.GetString("DigitalContractGuid"));
         oDigitalContractRequest.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
         poIpcDigitalContractManager = ::ConnectToUnixDomainSocket("/tmp/{BC5AEAAF-E37E-4605-B074-F9DF2E82CD34}");
-        StructuredBuffer oDigitalContractResponse(::PutIpcTransactionAndGetResponse(poIpcDigitalContractManager, oDigitalContractRequest));
+        StructuredBuffer oDigitalContractResponse(::PutIpcTransactionAndGetResponse(poIpcDigitalContractManager, oDigitalContractRequest, false));
         poIpcDigitalContractManager->Release();
         poIpcDigitalContractManager = nullptr;
         if ((0 < oDigitalContractResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oDigitalContractResponse.GetDword("Status")))
@@ -766,7 +766,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
                 oUpdateEosbRequest.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                 oUpdateEosbRequest.PutQword("AccessRights", eVmEosb); 
                 poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
-                StructuredBuffer oUpdatedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oUpdateEosbRequest));
+                StructuredBuffer oUpdatedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oUpdateEosbRequest, false));
                 poIpcCryptographicManager->Release();
                 poIpcCryptographicManager = nullptr;
                 // Throw base exception if transaction was unsuccessful
@@ -1034,7 +1034,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmAuditEvent(
         // Call AuditLogManager plugin to get the guid of DC event log
         std::string strDcEventGuid;
         poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
-        StructuredBuffer oDCEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oGetDcBranchEventRequest));
+        StructuredBuffer oDCEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oGetDcBranchEventRequest, false));
         poIpcAuditLogManager->Release();
         poIpcAuditLogManager = nullptr;
         _ThrowBaseExceptionIf((0 > oDCEventLog.GetSerializedBufferRawDataSizeInBytes()), "Error checking for DC event", nullptr);
@@ -1060,7 +1060,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmAuditEvent(
             oVmBranchEvent.PutStructuredBuffer("NonLeafEvent", oVmMetadata);
             // Call AuditLogManager plugin to create a Vm event log
             poIpcAuditLogManager = ::ConnectToUnixDomainSocket("/tmp/{F93879F1-7CFD-400B-BAC8-90162028FC8E}");
-            StructuredBuffer oVmEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oVmBranchEvent));
+            StructuredBuffer oVmEventLog(::PutIpcTransactionAndGetResponse(poIpcAuditLogManager, oVmBranchEvent, false));
             poIpcAuditLogManager->Release();
             poIpcAuditLogManager = nullptr;
             if ((0 < oVmEventLog.GetSerializedBufferRawDataSizeInBytes())&&(201 == oVmEventLog.GetDword("Status")))

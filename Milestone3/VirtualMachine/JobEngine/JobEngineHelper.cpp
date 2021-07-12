@@ -163,7 +163,7 @@ std::string DataConnectorGetTable(
     oRequest.PutInt8("RequestType", eGetTable);
     oRequest.PutUnsignedInt32("TableID", unTableId);
 
-    std::vector<Byte> stlResponse = ::PutIpcTransactionAndGetResponse(poSocket, oRequest);
+    std::vector<Byte> stlResponse = ::PutIpcTransactionAndGetResponse(poSocket, oRequest, false);
 
     // Release poSocket
     poSocket->Release();

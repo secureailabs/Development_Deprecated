@@ -29,7 +29,8 @@ enum class EngineRequest
     ePushdata = 4,
     eSetParameters = 5,
     eHaltAllJobs = 6,
-    eJobStatusSignal = 7
+    eJobStatusSignal = 7,
+    eConnectVirtualMachine = 8
 };
 
 void SendRequestToJobEngine(
@@ -41,6 +42,29 @@ void SendRequestToJobEngine(
 
     oStructuredBufferRequest.PutString("EndPoint", "JobEngine");
     ::SendTlsData(poTlsNode, oStructuredBufferRequest.GetSerializedBuffer());
+}
+
+bool TestConnectVm(
+    _in TlsNode * poTlsNode
+)
+{
+    __DebugFunction();
+
+    std::cout << "Testing Connect Virtual Machine!!" << std::endl;
+
+    StructuredBuffer oStructuredBufferRequest;
+    oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::eConnectVirtualMachine);
+    oStructuredBufferRequest.PutString("Eosb", "e0d937b9471e4d2ea470d0c96d21574b");
+    oStructuredBufferRequest.PutString("Username", "user@domain.com");
+    oStructuredBufferRequest.PutString("JobUuid", "{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}");
+
+    ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
+
+    auto stlSerializedBuffer = ::GetTlsDataBlocking(poTlsNode);
+    StructuredBuffer oNewRequest(stlSerializedBuffer);
+    std::cout << oNewRequest.ToString() << std::endl;
+
+    return true;
 }
 
 bool TestPushSafeObject(
@@ -56,7 +80,7 @@ bool TestPushSafeObject(
 
     oStructuredBufferRequest.PutString("SafeObjectUuid", "{e0d937b9-471e-4d2e-a470-d0c96d21574b}");
     std::string test_code = "print(\"Hello Orchestrator\")\n";
-    test_code += "f= open(\"{e0d937b9-471e-4d2e-a470-d0c96d21574b}.{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}\",\"w+\")\n";
+    test_code += "f= open(\"{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}.{b1244b9a-6f02-4866-8e28-a25d5ddc94df}\",\"w+\")\n";
     test_code += "f.write(\"This is the output\")\n";
     test_code += "f.close()\n";
     // test_code += "while True:\n";
@@ -65,13 +89,17 @@ bool TestPushSafeObject(
     oStructuredBufferRequest.PutBuffer("Payload", (Byte *)test_code.c_str(), test_code.length());
 
     StructuredBuffer oStructuredBufferOfParameters;
-
     StructuredBuffer oFirstParameter;
-
+    oFirstParameter.PutString("Metadata", "Will be added in future based on SafeObject");
     oStructuredBufferOfParameters.PutStructuredBuffer("{460c2512-9c5e-49bf-b805-691bbc08e65e}", oFirstParameter);
+
     oStructuredBufferRequest.PutStructuredBuffer("ParameterList", oStructuredBufferOfParameters);
 
-    // oStructuredBufferRequest.PutString("ResultId", "ResultId");
+    StructuredBuffer oStructuredBufferOutputParameter;
+    oStructuredBufferOutputParameter.PutString("Uuid","{b1244b9a-6f02-4866-8e28-a25d5ddc94df}");
+    oStructuredBufferOutputParameter.PutString("Metadata", "todo: will be added in future");
+
+    oStructuredBufferRequest.PutStructuredBuffer("OutputParameter", oStructuredBufferOutputParameter);
 
     ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
 
@@ -145,7 +173,7 @@ bool TestPullData(
 
     StructuredBuffer oStructuredBufferRequest;
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePullData);
-    oStructuredBufferRequest.PutString("Filename", "{e0d937b9-471e-4d2e-a470-d0c96d21574b}.{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}");
+    oStructuredBufferRequest.PutString("Filename", "{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}.{b1244b9a-6f02-4866-8e28-a25d5ddc94df}");
 
     // Send the request and the response will come as a signal when avaialble
     ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
@@ -185,9 +213,10 @@ int __cdecl main(
         std::cout << "Connecting Job Engine!!" << std::endl;
         TlsNode * poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 3500);
 
+        ::TestConnectVm(poTlsNode);
+        ::TestSetParameters(poTlsNode);
         ::TestPushSafeObject(poTlsNode);
         ::TestSubmitJob(poTlsNode);
-        ::TestSetParameters(poTlsNode);
         ::TestPushData(poTlsNode);
         ::TestPullData(poTlsNode);
         // ::TestHaltJobs(poTlsNode);

@@ -19,6 +19,7 @@
 #include "SafeObject.h"
 #include "Job.h"
 #include "JobEngineHelper.h"
+#include "RootOfTrustNode.h"
 
 #include <vector>
 #include <string>
@@ -26,7 +27,6 @@
 #include <future>
 #include <unordered_map>
 #include <unordered_set>
-
 
 enum class EngineRequest
 {
@@ -37,7 +37,8 @@ enum class EngineRequest
     ePushdata = 4,
     eSetParameters = 5,
     eHaltAllJobs = 6,
-    eJobStatusSignal = 7
+    eJobStatusSignal = 7,
+    eConnectVirtualMachine = 8
 };
 
 enum class JobStatusSignals
@@ -68,11 +69,14 @@ class JobEngine : public Object
 
         void __thiscall StartServer(
             _in Socket * const poSocket
-        );
+            );
+        void __thiscall SetRootOfTrustNode(
+                _in RootOfTrustNode * poRootOfTrust
+            );
         void __thiscall ListenToRequests(void);
         void __thiscall FileCreateCallback(
             _in const std::string & c_strFileCreatedFilename
-        );
+            );
         void __thiscall SendSignal(
             _in const StructuredBuffer & oStructuredBuffer
             );
@@ -81,6 +85,9 @@ class JobEngine : public Object
 
         // Private member methods
         JobEngine(void);
+        void __thiscall ConnectVirtualMachine(
+            _in const StructuredBuffer & c_oStructuredBuffer
+            );
         void __thiscall PushSafeObject(
             _in const StructuredBuffer & oStructuredBuffer
             );
@@ -99,10 +106,10 @@ class JobEngine : public Object
         void __thiscall ResetJobEngine(void);
 
         // Private data members
+        static JobEngine m_oJobEngine;
+        RootOfTrustNode * m_poRootOfTrustNode;
         std::mutex m_oMutexjobEngine;
         uint64_t m_FileListenerId = 0;
-        bool m_fIsEngineRunning;
-        static JobEngine m_oJobEngine;
         Socket * m_poSocket;
         std::unordered_map<std::string, std::shared_ptr<Job>> m_stlMapOfJobs;
         std::mutex m_oMutexOnJobsMap;
@@ -112,4 +119,5 @@ class JobEngine : public Object
         std::mutex m_oMutexOnParameterValuesToJobMap;
         std::unordered_set<std::string> m_stlSetOfPullObjects;
         std::mutex m_oMutexOnSetOfPullObjects;
+        std::vector<std::future<void>> m_stlListOfAsyncFutures;
 };

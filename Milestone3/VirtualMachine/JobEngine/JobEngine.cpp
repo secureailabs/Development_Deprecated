@@ -30,6 +30,7 @@
 #include <future>
 #include <filesystem>
 #include <memory>
+#include <optional>
 
 #define cout cout << std::this_thread::get_id() << " "
 
@@ -69,6 +70,7 @@ JobEngine::JobEngine(void)
 {
     __DebugFunction();
 
+    std::cout << "\n\n\nJobEngine constructor called.\n\n\n";
 }
 
 /********************************************************************************************
@@ -112,6 +114,24 @@ void JobEngine::StartServer(
 /********************************************************************************************
  *
  * @class JobEngine
+ * @function ~JobEngine
+ * @brief Destructor for the JobEngine
+ *
+ ********************************************************************************************/
+
+void __thiscall JobEngine::SetRootOfTrustNode(
+    _in RootOfTrustNode * poRootOfTrust
+)
+{
+    __DebugFunction();
+
+    _ThrowIfNull(poRootOfTrust, "Root of Trust Node invalid", nullptr);
+    m_poRootOfTrustNode = poRootOfTrust;
+}
+
+/********************************************************************************************
+ *
+ * @class JobEngine
  * @function ListenToRequests
  * @brief Destructor for the JobEngine
  *
@@ -121,8 +141,7 @@ void __thiscall JobEngine::ListenToRequests(void)
 {
     __DebugFunction();
 
-    m_fIsEngineRunning = true;
-    std::future<void> stlReturn;
+    bool fIsEngineRunning = true;
     do
     {
         // This should be a blocking call, because we have a persistant connection
@@ -133,25 +152,29 @@ void __thiscall JobEngine::ListenToRequests(void)
         EngineRequest eRequestType = (EngineRequest)oNewRequest.GetByte("RequestType");
         switch (eRequestType)
         {
+            case EngineRequest::eConnectVirtualMachine
+            :
+                this->ConnectVirtualMachine(oNewRequest);
+                break;
             case EngineRequest::ePushSafeObject
             :
-                stlReturn = std::async(std::launch::async, &JobEngine::PushSafeObject, this, oNewRequest);
+                m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &JobEngine::PushSafeObject, this, oNewRequest));
                 break;
             case EngineRequest::ePushdata
             :
-                stlReturn = std::async(std::launch::async, &JobEngine::PushData, this, oNewRequest);
+                m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &JobEngine::PushData, this, oNewRequest));
                 break;
             case EngineRequest::ePullData
             :
-                stlReturn = std::async(std::launch::async, &JobEngine::PullData, this, oNewRequest.GetString("Filename"));
+                m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &JobEngine::PullData, this, oNewRequest.GetString("Filename")));
                 break;
             case EngineRequest::eSubmitJob
             :
-                stlReturn = std::async(std::launch::async, &JobEngine::SubmitJob, this, oNewRequest);
+                m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &JobEngine::SubmitJob, this, oNewRequest));
                 break;
             case EngineRequest::eSetParameters
             :
-                stlReturn = std::async(std::launch::async, &JobEngine::SetJobParameter, this, oNewRequest);
+                m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &JobEngine::SetJobParameter, this, oNewRequest));
                 break;
             case EngineRequest::eHaltAllJobs
             :
@@ -162,7 +185,7 @@ void __thiscall JobEngine::ListenToRequests(void)
             case EngineRequest::eVmShutdown
             :
                 {
-                    m_fIsEngineRunning = false;
+                    fIsEngineRunning = false;
                     // Send a signal of VM Shutdown to the orceshtrator
                     StructuredBuffer oStructuredBufferShutdown;
                     oStructuredBufferShutdown.PutByte("SignalType", (Byte)JobStatusSignals::eVmShutdown);
@@ -173,7 +196,41 @@ void __thiscall JobEngine::ListenToRequests(void)
             :
                 break;
         }
-    } while (true == m_fIsEngineRunning);
+    } while (true == fIsEngineRunning);
+}
+
+
+/********************************************************************************************
+ *
+ * @class JobEngine
+ * @function PushSafeObject
+ * @brief
+ * @param[in] c_oStructuredBuffer Inout Request Params
+ *
+ ********************************************************************************************/
+
+void __thiscall JobEngine::ConnectVirtualMachine(
+    _in const StructuredBuffer & c_oStructuredBuffer
+)
+{
+    __DebugFunction();
+
+    Guid oGuidVmId;
+    std::cout << "The Virtual Machine Uuid is " << oGuidVmId.ToString(eHyphensAndCurlyBraces);
+
+    StructuredBuffer oStructuredBufferLoginResponse;
+    oStructuredBufferLoginResponse.PutString("VirtualMachineUuid", oGuidVmId.ToString(eHyphensAndCurlyBraces));
+    oStructuredBufferLoginResponse.PutBoolean("Success", true);
+    ::PutIpcTransaction(m_poSocket, oStructuredBufferLoginResponse);
+
+    // TODO: Update this data
+    StructuredBuffer oEventData;
+    oEventData.PutBoolean("Success", true);
+    oEventData.PutString("Username", c_oStructuredBuffer.GetString("Username"));
+    oEventData.PutString("OrchestratorVersion", "2.0.0");
+    oEventData.PutString("Eosb", c_oStructuredBuffer.GetString("Eosb"));
+
+    m_poRootOfTrustNode->RecordAuditEvent("CONNECT_SUCCESS", 0x1111, 0x04, oEventData);
 }
 
 /********************************************************************************************
@@ -396,9 +453,6 @@ void __thiscall JobEngine::SubmitJob(
             std::cout << "Setting up safe object for the job" << std::endl;
             poJob->SetSafeObject(poSafeObject);
         }
-
-        // Set the name of the output file that the job has to produce
-        poJob->SetOutputFileName(c_oStructuredBuffer.GetString("SafeObjectUuid") + "." + c_oStructuredBuffer.GetString("JobUuid"));
     }
     catch(BaseException & oBaseException)
     {
@@ -484,7 +538,6 @@ void __thiscall JobEngine::FileCreateCallback(
 {
     __DebugFunction();
 
-    std::future<void> stlUnused;
     try
     {
         std::lock_guard<std::mutex> lockParameterValuesToJobMap(m_oMutexOnParameterValuesToJobMap);
@@ -492,13 +545,13 @@ void __thiscall JobEngine::FileCreateCallback(
         if (m_stlSetOfPullObjects.end() != m_stlSetOfPullObjects.find(c_strFileCreatedName))
         {
             // We need to send the file back to the orchestrator, should be done asynchronously
-            stlUnused = std::async(std::launch::async, &JobEngine::PullData, this, c_strFileCreatedName);
+            m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &JobEngine::PullData, this, c_strFileCreatedName));
             m_stlSetOfPullObjects.erase(c_strFileCreatedName);
         }
         else if (m_stlMapOfParameterValuesToJob.end() != m_stlMapOfParameterValuesToJob.find(c_strFileCreatedName))
         {
             std::shared_ptr<Job> poJob = m_stlMapOfParameterValuesToJob.at(c_strFileCreatedName);
-            stlUnused = std::async(std::launch::async, &Job::RemoveAvailableDependency, poJob, c_strFileCreatedName);
+            m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &Job::RemoveAvailableDependency, poJob, c_strFileCreatedName));
             m_stlMapOfParameterValuesToJob.erase(c_strFileCreatedName);
         }
     }
@@ -573,6 +626,12 @@ void __thiscall JobEngine::ResetJobEngine(void)
 
     // Create a kill running job signal file that will inform all the running jobs to quit
     std::ofstream output(gc_strJobsSignalFolderName + "/" + gc_strHaltAllJobsSignalFilename);
+
+    // Next step is the wait for all the async threads in progress to complete or exit
+    // and since the job kill signal already exists, no job will start to run
+    // A destructor called on all the async futures will compelte any pending threads.
+    // Since they are small they will execute in no time, and the job will not run as well.
+    m_stlListOfAsyncFutures.clear();
 
     // Call destructor on all the job objects as soon as they have killed the running jobs
     // are are stable

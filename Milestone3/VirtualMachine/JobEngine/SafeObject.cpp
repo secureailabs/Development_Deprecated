@@ -98,6 +98,9 @@ void __thiscall SafeObject::Setup(
         m_stlListOfParameters.push_back(strParameterName);
     }
 
+    // Get the Output Parameters
+    m_oStructuredBufferOutputParameter = c_oStructuredBuffer.GetStructuredBuffer("OutputParameter");
+
     // Add the command that is to be executed.
     m_strCommandToExecute = m_strSafeObjectIdentifier;
 }
@@ -111,17 +114,17 @@ void __thiscall SafeObject::Setup(
  ********************************************************************************************/
 
 int __thiscall SafeObject::Run(
-    _in const std::string & c_strJobUuid,
-    _in const std::string & c_strOutFileName
+    _in const std::string & c_strJobUuid
 ) const
 {
     __DebugFunction();
 
     int nProcessExitStatus = -1;
 
+    std::string strOutputFileName = c_strJobUuid + "." + m_oStructuredBufferOutputParameter.GetString("Uuid");
+
     try
     {
-
         // Get the JobEngine singleton object and send a job start signal to the remote orchestrator
         JobEngine & oJobEngine = JobEngine::Get();
 
@@ -191,9 +194,9 @@ int __thiscall SafeObject::Run(
                     // There is a chance that the job failed gracefully and in that case the
                     // output file was not written, that is a failure case and we send a jobfail
                     // signal to the remote orcehstrator
-                    if ((0 == nProcessExitStatus) && (true == std::filesystem::exists(c_strOutFileName)))
+                    if ((0 == nProcessExitStatus) && (true == std::filesystem::exists(strOutputFileName)))
                     {
-                        std::ofstream output(gc_strSignalFolderName + "/" + c_strOutFileName);
+                        std::ofstream output(gc_strSignalFolderName + "/" + strOutputFileName);
 
                         // Send a job success signal to the orchestrator
                         oStructruedBufferSignal.PutByte("SignalType", (Byte)JobStatusSignals::eJobDone);

@@ -115,6 +115,19 @@ StructuredBuffer::StructuredBuffer(
 
 /********************************************************************************************/
 
+StructuredBuffer& StructuredBuffer::operator=(
+    const StructuredBuffer & c_oStructuredBuffer
+)
+{
+    __DebugFunction();
+
+    m_qw64BitHash = 0;
+    m_qwComposition64BitHash = 0;
+    this->DeSerialize(c_oStructuredBuffer.GetSerializedBufferRawDataPtr(), c_oStructuredBuffer.GetSerializedBufferRawDataSizeInBytes());
+}
+
+/********************************************************************************************/
+
 StructuredBuffer::~StructuredBuffer(void) throw()
 {
     __DebugFunction();

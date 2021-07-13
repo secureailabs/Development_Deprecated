@@ -51,7 +51,6 @@ Socket * __stdcall ConnectToUnixDomainSocket(
     sSocketAddress.sun_family = AF_UNIX;
     ::strncpy(sSocketAddress.sun_path, c_strUnixDomainSocketPath.c_str(), (sizeof(sSocketAddress.sun_path) - 1));
     // Make sure that any existing linkage in the system is deleted before binding
-    std::cout << "ConnectToUnixDomainSocket(" << c_strUnixDomainSocketPath << ");" << std::endl;
     nReturnCode = ::connect(nSocketDescriptor, (struct sockaddr *) &sSocketAddress, sizeof(sSocketAddress));
     _ThrowBaseExceptionIf((0 != nReturnCode), "connect() failed with errno = %d", errno);
     return new Socket(nSocketDescriptor);
@@ -87,7 +86,6 @@ Socket * __stdcall ConnectToNetworkSocket(
     ::memset(&sSocketAddress, 0, sizeof(sSocketAddress));
     sSocketAddress.sin_family = AF_INET;
     sSocketAddress.sin_port = htons(wPortIdentifier);
-    std::cout << "ConnectToNetworkSocket(" << c_strTargetIpAddress << "," << wPortIdentifier << ");" << std::endl;
     nReturnCode = ::inet_pton(AF_INET, c_strTargetIpAddress.c_str(), &(sSocketAddress.sin_addr));
     _ThrowBaseExceptionIf((1 != nReturnCode), "inet_pton() failed with errno = %d", errno);
 

@@ -109,7 +109,7 @@ void __thiscall Job::TryRunJob(void)
         {
             std::cout << "No dependencies" << std::endl;
             m_eJobState = JobState::eRunning;
-            nProcessExitStatus = m_poSafeObject->Run(m_strJobUuid, m_stlOutputFileName);
+            nProcessExitStatus = m_poSafeObject->Run(m_strJobUuid);
             m_eJobState = JobState::eFinished;
         }
     }
@@ -235,37 +235,6 @@ void __thiscall Job::AddDependency(
     __DebugFunction();
 
     m_stlSetOfDependencies.insert(c_strDependencyName);
-}
-
-/********************************************************************************************
- *
- * @class Job
- * @function Job
- * @brief Constructor to create a Job object
- *
- ********************************************************************************************/
-
-void __thiscall Job::SetOutputFileName(
-    _in const std::string & strOutFileName
-    ) throw()
-{
-    __DebugFunction();
-
-    m_stlOutputFileName = strOutFileName;
-}
-
-/********************************************************************************************
- *
- * @class Job
- * @function Job
- * @brief Constructor to create a Job object
- *
- ********************************************************************************************/
-const std::string & __thiscall Job::GetOutputFileName(void) const throw()
-{
-    __DebugFunction();
-
-    return m_stlOutputFileName;
 }
 
 /********************************************************************************************

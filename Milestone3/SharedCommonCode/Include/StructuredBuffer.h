@@ -123,8 +123,11 @@ class StructuredBuffer : public Object
         StructuredBuffer(
             _in const StructuredBuffer & c_oStructuredBuffer
             );
+        StructuredBuffer& operator=(
+            const StructuredBuffer & c_oStructuredBuffer
+            );
         virtual ~StructuredBuffer(void) throw();
-        
+
         // Remove all element
         void __thiscall Clear(void) throw();
         

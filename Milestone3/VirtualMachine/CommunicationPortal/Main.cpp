@@ -26,6 +26,21 @@
 
 /********************************************************************************************/
 
+void __stdcall RunRootOfTrust(void)
+{
+    __DebugFunction();
+
+    pid_t nProcessIdentifier = ::fork();
+    _ThrowBaseExceptionIf((-1 == nProcessIdentifier), "Fork has failed with errno = %d", errno);
+    // Are we the child process or the parent process?
+    if (0 == nProcessIdentifier)
+    {
+        // We are the child process. Let's just call execl and run the RootOfTrust
+        ::execl("RootOfTrustProcess", "RootOfTrustProcess", nullptr);
+        ::exit(0);
+    }
+}
+
 int main(
     _in int nNumberOfArguments,
     _in char ** pszCommandLineArguments
@@ -35,9 +50,10 @@ int main(
 
     try
     {
-        CommunicationPortal oCommunicationPortal;
+        ::RunRootOfTrust();
 
         // This is a blocking call and won't proceed until all required processes have registered
+        CommunicationPortal oCommunicationPortal;
         oCommunicationPortal.WaitForProcessToRegister();
 
         // Once all processes have registerd we can create a TLS server and start listening to

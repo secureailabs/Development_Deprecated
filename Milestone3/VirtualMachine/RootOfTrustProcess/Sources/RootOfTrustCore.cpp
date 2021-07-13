@@ -550,7 +550,7 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactRecordAuditEvent(
             std::string eventName = oEncryptedData.GetString("EventName");
             if (eventName == "CONNECT_SUCCESS")
             {
-                gs_strResearcherEosb = oEncryptedData.GetString("EOSB");
+                gs_strResearcherEosb = oEncryptedData.GetString("Eosb");
                 this->RegisterResearcherEosb();
             }
         }

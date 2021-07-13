@@ -35,8 +35,7 @@ class SafeObject : public Object
             _in const StructuredBuffer & c_oStructuredBuffer
             );
         int __thiscall Run(
-            _in const std::string & c_strJobUuid,
-            _in const std::string & c_strOutFileName
+            _in const std::string & c_strJobUuid
             ) const;
         const std::string & __thiscall GetSafeObjectIdentifier(void) const;
         const std::string & __thiscall GetCommandToExecute(void) const;
@@ -55,4 +54,5 @@ class SafeObject : public Object
         std::string m_strCommandToExecute;
         std::vector<std::string> m_stlListOfWaitingJobs;
         std::vector<std::string> m_stlListOfParameters;
+        StructuredBuffer m_oStructuredBufferOutputParameter;
 };

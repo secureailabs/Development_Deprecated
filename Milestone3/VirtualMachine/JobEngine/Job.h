@@ -62,10 +62,6 @@ class Job : public Object
         void __thiscall RemoveAvailableDependency(
             _in const std::string & strOutFileName
             );
-        void __thiscall SetOutputFileName(
-            _in const std::string & c_strOutFileName
-            ) throw();
-        const std::string & __thiscall GetOutputFileName(void) const throw();
         const std::string & __thiscall GetJobUuid(void) const throw();
         JobState __thiscall GetJobState(void) const throw();
 
@@ -85,6 +81,5 @@ class Job : public Object
         std::shared_ptr<SafeObject> m_poSafeObject;
         std::vector<std::string> m_stlInputParameters;
         std::unordered_set<std::string> m_stlSetOfDependencies;
-        std::string m_stlOutputFileName;
         std::mutex m_oMutexJob;
 };

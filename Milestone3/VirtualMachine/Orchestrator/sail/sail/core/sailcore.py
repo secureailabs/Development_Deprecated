@@ -43,6 +43,9 @@ def registersafeobj(script, inputnumber, outputnumber):
 def queryresult(jobid):
     return SAILPyAPI.queryresult(jobid)
 
+def queryjobstatus(jobid):
+    return SAILPyAPI.queryjobstatus(jobid)
+
 def quit():
     return SAILPyAPI.quit()
     

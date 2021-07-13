@@ -58,7 +58,7 @@ static PyObject* pulldata(PyObject* self, PyObject* args)
     std::string strFNID(fnID);
     //std::vector<std::vector<Byte>> stlOutputList;
 
-    getFrontend().HandlePullData(strVMID, strJobID);
+    getFrontend().HandlePullData(strVMID, strJobID, strFNID);
 
     // PyObject* oOutput = PyList_New(stlOutputList.size());
     
@@ -255,6 +255,37 @@ static PyObject* submitjob(PyObject* self, PyObject* args)
 
 //     return Py_BuildValue("s", strTableID.c_str());
 // }
+static PyObject* queryjobstatus(PyObject* self, PyObject* args)
+{
+    char* jobid;
+
+    if(!PyArg_ParseTuple(args, "s", &jobid))
+    {
+        return NULL;
+    }
+
+    std::string strJobID(jobid);
+
+    JobStatusSignals oJobStatus = getFrontend().QueryJobStatus(strJobID);
+    std::string strStatus;
+    
+    switch(oJobStatus)
+    {
+        case JobStatusSignals::eJobStart: 
+            strStatus = "Job is running";
+            break;
+        case JobStatusSignals::eJobDone: 
+            strStatus = "Job is done";
+            break;
+        case JobStatusSignals::eJobFail: 
+            strStatus = "Job is failed";
+            break;
+        default:
+            break;
+    }
+    
+    return Py_BuildValue("s", strStatus);
+}
 
 static PyObject* registerfn(PyObject* self, PyObject* args)
 {
@@ -284,18 +315,28 @@ static PyObject* quit(PyObject* self, PyObject* args)
 static PyObject* queryresult(PyObject* self, PyObject* args)
 {
     char* jobid;
+    char* fnid;
 
-    if(!PyArg_ParseTuple(args, "s", &jobid))
+    if(!PyArg_ParseTuple(args, "ss", &jobid, &fnid))
     {
         return NULL;
     }
 
     std::string strJobID(jobid);
-    std::vector<Byte> stlOutput;
+    std::string strFNID(fnid);
+    std::vector<std::vector<Byte>> stlOutput;
 
-    getFrontend().QueryResult(strJobID, stlOutput);
-    Byte* tmpdata = stlOutput.data();
-    return Py_BuildValue("y#", tmpdata, stlOutput.size());
+    getFrontend().QueryResult(strJobID, strFNID, stlOutput);
+
+    PyObject* output = PyList_New(stlOutput.size());
+
+    for(size_t i=0;i<stlOutput.size();i++)
+    {
+        Byte* tmpdata = stlOutput[i].data();
+        PyList_SetItem(output, i, Py_BuildValue("y#", tmpdata, stlOutput.size()));
+    }
+
+    return Py_BuildValue("O", output);
 }
 
 static PyMethodDef SAILAPIMethods [] =
@@ -310,6 +351,7 @@ static PyMethodDef SAILAPIMethods [] =
     // {"gettableID", (PyCFunction)gettableID, METH_VARARGS, NULL},
     {"registersafeobj", (PyCFunction)registerfn, METH_VARARGS, NULL},
     {"queryresult", (PyCFunction)queryresult, METH_VARARGS, NULL},
+    {"queryjobstatus", (PyCFunction)queryjobstatus, METH_VARARGS, NULL},
     {"setparameter", (PyCFunction)setparameter, METH_VARARGS, NULL},
     {"quit", (PyCFunction)quit, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}

@@ -24,8 +24,6 @@
 #include <iostream>
 #include <vector>
 #include <cstdlib>
-#include <fstream>
-#include <sstream>
 
 #ifndef SERVER_IP_ADDRESS
     #define SERVER_PORT 6200
@@ -34,6 +32,7 @@
 
 Frontend::Frontend(void):
     m_stlConnectionMap(),
+    m_stlJobStatusMap(),
     m_stlFNTable(),
     m_stlResultMap(),
     m_fStop(false)
@@ -190,16 +189,44 @@ void __thiscall Frontend::Listener(
         std::vector<Byte> stlResponseBuffer = GetTlsTransaction(poSocket, 100);
         StructuredBuffer oResponse(stlResponseBuffer);
         JobStatusSignals eStatusSignalType = (JobStatusSignals)oResponse.GetByte("SignalType");
+        std::string strJobID = oResponse.GetString("JobUuid");
         
         switch(eStatusSignalType)
         {
-            case JobStatusSignals::eJobStart: break;
-            case JobStatusSignals::eJobDone: break;
-            case JobStatusSignals::eJobFail: break;
-            case JobStatusSignals::ePostValue: break;
+            case JobStatusSignals::eJobStart:
+            {
+                std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
+                m_stlJobStatusMap.emplace(strJobID, JobStatusSignals::eJobStart); 
+                break;
+            }
+            case JobStatusSignals::eJobDone:
+            {
+                std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
+                m_stlJobStatusMap[strJobID] = JobStatusSignals::eJobDone;
+                break;
+            }
+            case JobStatusSignals::eJobFail:
+            {
+                std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
+                m_stlJobStatusMap[strJobID] = JobStatusSignals::eJobFail;
+                break;
+            }
+            case JobStatusSignals::ePostValue:
+            {
+                std::vector<Byte> stlData = oResponse.GetBuffer("FileData");
+                std::string strDataID = oResponse.GetString("ValueName");
+                std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
+                m_stlResultMap.emplace(strDataID, stlData);
+                break;
+            }
             case JobStatusSignals::eVmShutdown: break;
             default: break;
         }
+    }
+
+    for(auto const& i: m_stlConnectionMap)
+    {
+        i.second->Release();
     }
 }
 
@@ -238,7 +265,8 @@ void __thiscall Frontend::SetFrontend(
             StructuredBuffer oResponse(stlResponse);
             strVMID = oResponse.GetString("VMID");
             
-            m_stlConnectionMap.emplace(strVMID, poSocket);
+            std::shared_ptr<TlsNode> stlSocket(poSocket);
+            m_stlConnectionMap.emplace(strVMID, stlSocket);
         }
     }
     
@@ -251,6 +279,9 @@ void __thiscall Frontend::SetFrontend(
     {
         ::RegisterUnknownException(__func__, __LINE__);
     }
+
+    std::thread stlListener(&Frontend::Listener, this, m_stlConnectionMap[strVMID].get());
+    stlListener.detach();
 }
 
 /********************************************************************************************
@@ -276,7 +307,7 @@ void __thiscall Frontend::HandleSubmitJob(
 
     try
     {
-        PutTlsTransaction(m_stlConnectionMap[strVMID], oBuffer);
+        PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
     }
     
     catch(BaseException oBaseException)
@@ -400,7 +431,7 @@ void __thiscall Frontend::HandleQuit(void)
     {   
         try
         {
-            PutTlsTransactionAndGetResponse(i.second, oBuffer, 100);
+            PutTlsTransactionAndGetResponse(i.second.get(), oBuffer, 100);
         }
         
         catch(BaseException oBaseException)
@@ -414,8 +445,8 @@ void __thiscall Frontend::HandleQuit(void)
         }
     }
 
+    std::lock_guard<std::mutex> lock(m_stlFlagMutex);
     m_fStop = true;
-    std::cout<<"Quit success"<<std::endl;
 }
 
 void __thiscall Frontend::HandlePushData(
@@ -439,7 +470,7 @@ void __thiscall Frontend::HandlePushData(
 
         try
         {
-            PutTlsTransaction(m_stlConnectionMap[strVMID], oBuffer);
+            PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
         }
         
         catch(BaseException oBaseException)
@@ -454,6 +485,7 @@ void __thiscall Frontend::HandlePushData(
     }    
 }
 
+//do not know the purpose of "ValuesExpected" and "ValueIndex", disable?
 void __thiscall Frontend::HandleSetParameters(
     _in std::string& strVMID, 
     _in std::string& strFNID, 
@@ -472,7 +504,7 @@ void __thiscall Frontend::HandleSetParameters(
         
         try
         {
-            PutTlsTransaction(m_stlConnectionMap[strVMID], oBuffer);
+            PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
         }
         
         catch(BaseException oBaseException)
@@ -490,39 +522,63 @@ void __thiscall Frontend::HandleSetParameters(
 
 void __thiscall Frontend::HandlePullData(
     _in std::string & strVMID,
-    _in std::string & strJobID
+    _in std::string & strJobID,
+    _in std::string & strFNID
     )
 {
-    StructuredBuffer oBuffer;
-    
-    oBuffer.PutInt8("RequestType", (Byte)EngineRequest::ePullData);
-    oBuffer.PutString("JobUuid", strJobID);
-        
-    try
-    {
-        std::future<std::vector<Byte>> stlFutureResult = std::async(std::launch::async, PutTlsTransactionAndGetResponse, m_stlConnectionMap[strVMID], oBuffer, 100);
-        m_stlResultMap.emplace(strVMID, std::move(stlFutureResult));
-    }
-        
-    catch(BaseException oBaseException)
-    {
-        ::RegisterException(oBaseException, __func__, __LINE__);
-    }
+    std::vector<std::string> stlOutputIDs = m_stlFNTable[strFNID]->GetOutput();
+    std::vector<std::future<std::vector<Byte>>> stlResultArray;
+    //m_stlResultMap.emplace(strJobID, stlResultArray);
 
-    catch(...)
+    for(size_t i=0; i<stlOutputIDs.size(); i++)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        StructuredBuffer oBuffer;
+        
+        std::string strOutputParam = strJobID+stlOutputIDs[i];
+        oBuffer.PutInt8("RequestType", (Byte)EngineRequest::ePullData);
+        oBuffer.PutString("Filename", strOutputParam);
+            
+        try
+        {
+            //std::future<std::vector<Byte>> stlFutureResult = std::async(std::launch::async, PutTlsTransactionAndGetResponse, m_stlConnectionMap[strVMID], oBuffer, 100);
+            PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
+            //m_stlResultMap[strJobID].push_back(stlFutureResult);
+        }
+            
+        catch(BaseException oBaseException)
+        {
+            ::RegisterException(oBaseException, __func__, __LINE__);
+        }
+
+        catch(...)
+        {
+            ::RegisterUnknownException(__func__, __LINE__);
+        }
     }
 }
 
 void __thiscall Frontend::QueryResult(
     _in std::string& strJobID,
-    _inout std::vector<Byte>& stlOutput
+    _in std::string& strFNID,
+    _inout std::vector<std::vector<Byte>>& stlOutput
 )
 {
-    m_stlResultMap[strJobID].wait();
-    StructuredBuffer oOutput(m_stlResultMap[strJobID].get());
-    stlOutput = oOutput.GetBuffer("FileData");
+    std::vector<std::string> stlOutputIDs = m_stlFNTable[strFNID]->GetOutput();
+    for(size_t i=0; i<stlOutputIDs.size(); i++){
+        std::string strDataID = strJobID + stlOutputIDs[i]; 
+        std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
+        StructuredBuffer oOutput(m_stlResultMap[strJobID]);
+        std::vector<Byte> stlOutputParam = oOutput.GetBuffer("FileData");
+        stlOutput.push_back(stlOutputParam);
+    }
+}
+
+JobStatusSignals __thiscall Frontend::QueryJobStatus(
+    _in std::string& strJobID
+)
+{
+    std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
+    return m_stlJobStatusMap[strJobID];
 }
 
 // void __thiscall Frontend::HandleDeleteData(
@@ -569,6 +625,13 @@ void __thiscall Frontend::QueryResult(
 //     }
 // }
 
+//msg field
+//"SafeObjectUuid"
+//"Payload"
+//"InputParameterList"
+//"OutputParameterList"
+//The last two to substitue "ParameterList", need to have a module in structuredbuffer to handle vector of string.
+
 void __thiscall Frontend::HandlePushSafeObject(
     _in std::string & strVMID,
     _in std::string & strFNID
@@ -579,14 +642,14 @@ void __thiscall Frontend::HandlePushSafeObject(
     oBuffer.PutInt8("RequestType", (Byte)EngineRequest::ePushSafeObject);
     
     oBuffer.PutString("SafeObjectUuid", strFNID);
-    oBuffer.PutString("SafeObjectScript", m_stlFNTable[strFNID]->GetScript());
+    oBuffer.PutString("Payload", m_stlFNTable[strFNID]->GetScript());
     
     std::vector<std::string> stlInputIDs = m_stlFNTable[strFNID]->GetInput(); 
     std::vector<std::string> stlOutputIDs = m_stlFNTable[strFNID]->GetOutput(); 
     
     try
     {
-        PutTlsTransaction(m_stlConnectionMap[strVMID], oBuffer);
+        PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
     }
     
     catch(BaseException oBaseException)

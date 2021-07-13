@@ -106,12 +106,17 @@ class Frontend : public Object{
         void __thiscall HandlePullData
         (
             _in std::string& strVMID,
-            _in std::string& strJobID
+            _in std::string& strJobID,
+            _in std::string & strFNID
         );
         void __thiscall QueryResult
         (
             _in std::string& strJobID,
-            _inout std::vector<Byte>& stlOutput
+            _in std::string& strFNID,
+            _inout std::vector<std::vector<Byte>>& stlOutput
+        );
+        JobStatusSignals __thiscall QueryJobStatus(
+            _in std::string& strJobID
         );
         // void __thiscall HandleDeleteData
         // (
@@ -132,12 +137,16 @@ class Frontend : public Object{
         );
         
     private:
-        std::map<std::string, TlsNode*> m_stlConnectionMap;
+        std::map<std::string, std::shared_ptr<TlsNode>> m_stlConnectionMap;
+        std::map<std::string, JobStatusSignals> m_stlJobStatusMap;
         //std::string m_strWebPortalIP;
         //std::string m_strWebPortalPort;
         std::map<std::string, std::unique_ptr<FunctionNode>> m_stlFNTable;
-        std::map<std::string, std::future<std::vector<Byte>>> m_stlResultMap;
+        std::map<std::string, std::vector<Byte>> m_stlResultMap;
         std::string m_strEOSB;
+        std::mutex m_stlResultMapMutex;
+        std::mutex m_stlJobStatusMapMutex;
+        std::mutex m_stlFlagMutex;
         bool m_fStop;
 };
 

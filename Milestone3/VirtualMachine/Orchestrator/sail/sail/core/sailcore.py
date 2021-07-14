@@ -29,7 +29,7 @@ def setparameter(vm, jobID, fnID, newParams, oldParams):
 #     SAILPyAPI.deletedata(varIDs)
 
 def pushsafeobj(vm, safeobjID):
-    return SAILPyAPI.pushfn(vm, safeobjID)
+    return SAILPyAPI.pushsafeobj(vm, safeobjID)
 
 def submitjob(vm, fnID, jobID):
     return SAILPyAPI.submitjob(vm, fnID, jobID)

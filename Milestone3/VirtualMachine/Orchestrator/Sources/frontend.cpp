@@ -247,8 +247,9 @@ void __thiscall Frontend::SetFrontend(
     }
     
     StructuredBuffer oBuffer;
-    oBuffer.PutInt8("RequestType", (Byte)EngineRequest::eConnect);
-    oBuffer.PutString("EOSB", m_strEOSB);
+    oBuffer.PutInt8("RequestType", (Byte)EngineRequest::eConnectVirtualMachine);
+    oBuffer.PutString("Eosb", m_strEOSB);
+    oBuffer.PutString("Username", strEmail);
 
     TlsNode * poSocket = nullptr;
 
@@ -258,12 +259,12 @@ void __thiscall Frontend::SetFrontend(
             poSocket = ::TlsConnectToNetworkSocket(strServerIP.c_str(), wPort);
             _ThrowIfNull(poSocket, "Tls connection error for connectVM", nullptr);
 
-            std::vector<Byte> stlResponse = PutTlsTransactionAndGetResponse(poSocket, oBuffer, 100);
+            std::vector<Byte> stlResponse = PutTlsTransactionAndGetResponse(poSocket, oBuffer, 2*60*1000);
             if(0==stlResponse.size())
                 _ThrowBaseException("No response for connectVM request", nullptr);
 
             StructuredBuffer oResponse(stlResponse);
-            strVMID = oResponse.GetString("VMID");
+            strVMID = oResponse.GetString("VirtualMachineUuid");
             
             std::shared_ptr<TlsNode> stlSocket(poSocket);
             m_stlConnectionMap.emplace(strVMID, stlSocket);
@@ -460,7 +461,7 @@ void __thiscall Frontend::HandlePushData(
 
     for(size_t i=0; i<stlInputIDs.size(); i++)
     {
-        std::string strDataID = strJobID + stlInputIDs[i];
+        std::string strDataID = strJobID + "." + stlInputIDs[i];
 
         StructuredBuffer oBuffer;
     
@@ -534,7 +535,7 @@ void __thiscall Frontend::HandlePullData(
     {
         StructuredBuffer oBuffer;
         
-        std::string strOutputParam = strJobID+stlOutputIDs[i];
+        std::string strOutputParam = strJobID + "." + stlOutputIDs[i];
         oBuffer.PutInt8("RequestType", (Byte)EngineRequest::ePullData);
         oBuffer.PutString("Filename", strOutputParam);
             
@@ -565,7 +566,7 @@ void __thiscall Frontend::QueryResult(
 {
     std::vector<std::string> stlOutputIDs = m_stlFNTable[strFNID]->GetOutput();
     for(size_t i=0; i<stlOutputIDs.size(); i++){
-        std::string strDataID = strJobID + stlOutputIDs[i]; 
+        std::string strDataID = strJobID + "." + stlOutputIDs[i]; 
         std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
         StructuredBuffer oOutput(m_stlResultMap[strJobID]);
         std::vector<Byte> stlOutputParam = oOutput.GetBuffer("FileData");
@@ -646,6 +647,20 @@ void __thiscall Frontend::HandlePushSafeObject(
     
     std::vector<std::string> stlInputIDs = m_stlFNTable[strFNID]->GetInput(); 
     std::vector<std::string> stlOutputIDs = m_stlFNTable[strFNID]->GetOutput(); 
+
+    StructuredBuffer oParams;
+    for(size_t i = 0; i<stlInputIDs.size(); i++)
+    {
+        oParams.PutString(std::to_string(i).c_str(), stlInputIDs[i]);
+    }
+    oBuffer.PutStructuredBuffer("ParameterList", oParams);
+
+    StructuredBuffer oOutputParams;
+    for(size_t i = 0; i<stlOutputIDs.size(); i++)
+    {
+        oOutputParams.PutString(std::to_string(i).c_str(), stlOutputIDs[i]);
+    }
+    oBuffer.PutStructuredBuffer("OutputParameterList", oParams);
     
     try
     {

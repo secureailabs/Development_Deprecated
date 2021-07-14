@@ -17,7 +17,7 @@ static Frontend& getFrontend()
 static PyObject* createguid(PyObject* self, PyObject* args)
 {
     Guid oGuid;
-    std::string strGuid = oGuid.ToString(eRaw);
+    std::string strGuid = oGuid.ToString(eHyphensAndCurlyBraces);
     return Py_BuildValue("s", strGuid.c_str());
 }
 
@@ -201,7 +201,7 @@ static PyObject* setparameter(PyObject* self, PyObject* args)
 //     return Py_BuildValue("");
 // }
 
-static PyObject* pushfn(PyObject* self, PyObject* args)
+static PyObject* pushsafeobj(PyObject* self, PyObject* args)
 {
     char* vmID;
     char* fnID;
@@ -346,7 +346,7 @@ static PyMethodDef SAILAPIMethods [] =
     {"pushdata", (PyCFunction)pushdata, METH_VARARGS, NULL},
     {"pulldata", (PyCFunction)pulldata, METH_VARARGS, NULL},
     // {"deletedata", (PyCFunction)deletedata, METH_VARARGS, NULL},
-    {"pushfn", (PyCFunction)pushfn, METH_VARARGS, NULL},
+    {"pushsafeobj", (PyCFunction)pushsafeobj, METH_VARARGS, NULL},
     {"submitjob", (PyCFunction)submitjob, METH_VARARGS, NULL},
     // {"gettableID", (PyCFunction)gettableID, METH_VARARGS, NULL},
     {"registersafeobj", (PyCFunction)registerfn, METH_VARARGS, NULL},

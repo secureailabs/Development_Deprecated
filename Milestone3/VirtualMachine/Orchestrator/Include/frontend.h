@@ -31,7 +31,7 @@ enum class EngineRequest
     eSetParameters = 5,
     eHaltAllJobs = 6,
     eJobStatusSignal = 7,
-    eConnect = 8
+    eConnectVirtualMachine = 8
 };
 
 enum class JobStatusSignals

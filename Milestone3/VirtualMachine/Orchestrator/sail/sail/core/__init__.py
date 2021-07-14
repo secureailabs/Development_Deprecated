@@ -1,1 +1,1 @@
-from .sailcore import connect, newguid, pushdata, pulldata, pushfn, execjob, registerfn, spawnvms, configVMs
+from .sailcore import connect, newguid, pushdata, pulldata, pushsafeobj, submitjob, registersafeobj, spawnvms, configVMs

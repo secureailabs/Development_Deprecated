@@ -13,17 +13,17 @@ FunctionNode::FunctionNode
     Guid oFNGuid;
     m_nNumberOfInputArgs = nInputNumber;
     m_nNumberOfOutputArgs = nOutputNumber;
-    m_strFNID = oFNGuid.ToString(eRaw);
+    m_strFNID = oFNGuid.ToString(eHyphensAndCurlyBraces);
     
     for(int i=0;i<m_nNumberOfInputArgs;i++)
     {
         Guid oInGuid;
-        m_stlInputArgs.push_back(oInGuid.ToString(eRaw)); 
+        m_stlInputArgs.push_back(oInGuid.ToString(eHyphensAndCurlyBraces)); 
     }
     for(int i=0;i<m_nNumberOfOutputArgs;i++)
     {
         Guid oOutGuid;
-        m_stlOutputArgs.push_back(oOutGuid.ToString(eRaw));
+        m_stlOutputArgs.push_back(oOutGuid.ToString(eHyphensAndCurlyBraces));
     }
     
     std::ifstream stlInputStream;

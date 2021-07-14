@@ -140,7 +140,7 @@ int __thiscall SafeObject::Run(
         {
             // This is the child process which will run the actual job and write the output to the screen
             // and create a file with the output
-            ::execl("/usr/bin/python3", "/usr/bin/python3", m_strCommandToExecute.c_str(), c_strJobUuid.c_str(), "", nullptr);
+            ::execl("/usr/bin/python3", "/usr/bin/python3", m_strCommandToExecute.c_str(), c_strJobUuid.c_str(), "abcd", nullptr);
             ::exit(0);
         }
         else

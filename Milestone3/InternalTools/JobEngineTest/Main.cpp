@@ -19,6 +19,7 @@
 #include "TlsTransactionHelperFunctions.h"
 
 #include <iostream>
+#include <fstream>
 
 enum class EngineRequest
 {
@@ -32,6 +33,36 @@ enum class EngineRequest
     eJobStatusSignal = 7,
     eConnectVirtualMachine = 8
 };
+
+std::string g_strSafeObjectId = "DAA85946F0E244E78771AD35B189E98B";
+std::string g_strParameter0 = "";
+std::string g_strParameter1 = "";
+std::string g_strOutputId = "";
+std::string g_strJobId = "4A4A340EA3ED49D9871418D1B25FC722";
+
+std::vector<Byte> FileToBytes(
+    const std::string c_strFileName
+)
+{
+    __DebugFunction();
+
+    std::vector<Byte> stlFileData;
+
+    std::ifstream stlFile(c_strFileName.c_str(), (std::ios::in | std::ios::binary | std::ios::ate));
+    if (true == stlFile.good())
+    {
+        unsigned int unFileSizeInBytes = (unsigned int) stlFile.tellg();
+        stlFileData.resize(unFileSizeInBytes);
+        stlFile.seekg(0, std::ios::beg);
+        stlFile.read((char *)stlFileData.data(), unFileSizeInBytes);
+        stlFile.close();
+    }
+    else
+    {
+        _ThrowBaseException("Invalid File Path", nullptr);
+    }
+    return stlFileData;
+}
 
 void SendRequestToJobEngine(
     _in TlsNode * poTlsNode,
@@ -77,25 +108,25 @@ bool TestPushSafeObject(
     StructuredBuffer oStructuredBufferRequest;
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePushSafeObject);
 
-    oStructuredBufferRequest.PutString("SafeObjectUuid", "{e0d937b9-471e-4d2e-a470-d0c96d21574b}");
-    std::string test_code = "print(\"Hello Orchestrator\")\n";
-    test_code += "f= open(\"{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}.{b1244b9a-6f02-4866-8e28-a25d5ddc94df}\",\"w+\")\n";
-    test_code += "f.write(\"This is the output\")\n";
-    test_code += "f.close()\n";
-    // test_code += "while True:\n";
-    // test_code += "    pass\n";
+    StructuredBuffer oSafeObject(::FileToBytes(g_strSafeObjectId+".safe"));
 
-    oStructuredBufferRequest.PutBuffer("Payload", (Byte *)test_code.c_str(), test_code.length());
+    oStructuredBufferRequest.PutString("SafeObjectUuid", oSafeObject.GetString("Uuid"));
+    std::string strTestCode = oSafeObject.GetString("Payload");
+    oStructuredBufferRequest.PutBuffer("Payload", (Byte *)strTestCode.c_str(), strTestCode.length());
 
     StructuredBuffer oStructuredBufferOfParameters;
     StructuredBuffer oFirstParameter;
     oFirstParameter.PutString("Metadata", "Will be added in future based on SafeObject");
-    oStructuredBufferOfParameters.PutStructuredBuffer("{460c2512-9c5e-49bf-b805-691bbc08e65e}", oFirstParameter);
+    g_strParameter0 = oSafeObject.GetStructuredBuffer("InputParamters").GetStructuredBuffer("0").GetString("Uuid");
+    g_strParameter1 = oSafeObject.GetStructuredBuffer("InputParamters").GetStructuredBuffer("1").GetString("Uuid");
+    oStructuredBufferOfParameters.PutStructuredBuffer(g_strParameter0.c_str(), oFirstParameter);
+    oStructuredBufferOfParameters.PutStructuredBuffer(g_strParameter1.c_str(), oFirstParameter);
 
     oStructuredBufferRequest.PutStructuredBuffer("ParameterList", oStructuredBufferOfParameters);
 
     StructuredBuffer oStructuredBufferOutputParameter;
-    oStructuredBufferOutputParameter.PutString("Uuid","{b1244b9a-6f02-4866-8e28-a25d5ddc94df}");
+    g_strOutputId = oSafeObject.GetStructuredBuffer("OutputParamter").GetString("Uuid");
+    oStructuredBufferOutputParameter.PutString("Uuid", g_strOutputId);
     oStructuredBufferOutputParameter.PutString("Metadata", "todo: will be added in future");
 
     oStructuredBufferRequest.PutStructuredBuffer("OutputParameter", oStructuredBufferOutputParameter);
@@ -115,8 +146,8 @@ bool TestSubmitJob(
 
     StructuredBuffer oStructuredBufferRequest;
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::eSubmitJob);
-    oStructuredBufferRequest.PutString("SafeObjectUuid", "{e0d937b9-471e-4d2e-a470-d0c96d21574b}");
-    oStructuredBufferRequest.PutString("JobUuid", "{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}");
+    oStructuredBufferRequest.PutString("SafeObjectUuid", g_strSafeObjectId);
+    oStructuredBufferRequest.PutString("JobUuid", g_strJobId);
     ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
 
     return true;
@@ -132,9 +163,18 @@ bool TestSetParameters(
 
     StructuredBuffer oStructuredBufferRequest;
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::eSetParameters);
-    oStructuredBufferRequest.PutString("JobUuid", "{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}");
-    oStructuredBufferRequest.PutString("ParameterUuid", "{460c2512-9c5e-49bf-b805-691bbc08e65e}");
-    oStructuredBufferRequest.PutString("ValueUuid", "{36236adb-6ad5-4735-8265-5fea96c5c9cd}");
+    oStructuredBufferRequest.PutString("JobUuid", g_strJobId);
+    oStructuredBufferRequest.PutString("ParameterUuid", g_strParameter0);
+    oStructuredBufferRequest.PutString("ValueUuid", "EAF3AF0900DB4660A22945ADB27E4205");
+    oStructuredBufferRequest.PutUnsignedInt32("ValuesExpected", 1);
+    oStructuredBufferRequest.PutUnsignedInt32("ValueIndex", 0);
+
+    ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
+
+    oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::eSetParameters);
+    oStructuredBufferRequest.PutString("JobUuid", g_strJobId);
+    oStructuredBufferRequest.PutString("ParameterUuid", g_strParameter1);
+    oStructuredBufferRequest.PutString("ValueUuid", "6C56C7C1F6A94005938B19E58CAA90A8");
     oStructuredBufferRequest.PutUnsignedInt32("ValuesExpected", 1);
     oStructuredBufferRequest.PutUnsignedInt32("ValueIndex", 0);
 
@@ -153,10 +193,13 @@ bool TestPushData(
 
     StructuredBuffer oStructuredBufferRequest;
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePushdata);
-    oStructuredBufferRequest.PutString("DataId", "{36236adb-6ad5-4735-8265-5fea96c5c9cd}");
-    std::vector<Byte> stlDataToPush = {'a', 'b', 'c', 'd', 0};
-    oStructuredBufferRequest.PutBuffer("Data", stlDataToPush);
+    oStructuredBufferRequest.PutString("DataId", "EAF3AF0900DB4660A22945ADB27E4205");
+    oStructuredBufferRequest.PutBuffer("Data", ::FileToBytes("value2"));
+    ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
 
+    oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePushdata);
+    oStructuredBufferRequest.PutString("DataId", "6C56C7C1F6A94005938B19E58CAA90A8");
+    oStructuredBufferRequest.PutBuffer("Data", ::FileToBytes("value3"));
     ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
 
     return true;
@@ -172,7 +215,7 @@ bool TestPullData(
 
     StructuredBuffer oStructuredBufferRequest;
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePullData);
-    oStructuredBufferRequest.PutString("Filename", "{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}.{b1244b9a-6f02-4866-8e28-a25d5ddc94df}");
+    oStructuredBufferRequest.PutString("Filename", g_strJobId+"."+g_strOutputId);
 
     // Send the request and the response will come as a signal when avaialble
     ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
@@ -213,8 +256,8 @@ int __cdecl main(
         TlsNode * poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 3500);
 
         ::TestConnectVm(poTlsNode);
-        ::TestSetParameters(poTlsNode);
         ::TestPushSafeObject(poTlsNode);
+        ::TestSetParameters(poTlsNode);
         ::TestSubmitJob(poTlsNode);
         ::TestPushData(poTlsNode);
         ::TestPullData(poTlsNode);

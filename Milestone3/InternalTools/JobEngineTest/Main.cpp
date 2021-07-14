@@ -56,7 +56,6 @@ bool TestConnectVm(
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::eConnectVirtualMachine);
     oStructuredBufferRequest.PutString("Eosb", "e0d937b9471e4d2ea470d0c96d21574b");
     oStructuredBufferRequest.PutString("Username", "user@domain.com");
-    oStructuredBufferRequest.PutString("JobUuid", "{b89aef4d-35a9-4713-80cb-2ca70ba45ba6}");
 
     ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
 

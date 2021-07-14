@@ -108,9 +108,14 @@ void __thiscall Job::TryRunJob(void)
         if (0 == m_stlSetOfDependencies.size())
         {
             std::cout << "No dependencies" << std::endl;
-            m_eJobState = JobState::eRunning;
+            // If all dependencies are met, the next step is to write the Parameters required for
+            // for the SafeObject to run to the file <JobId>.inputs which will be consumed by the
+            // running Job and later deleted
+            std::cout << m_oParameters.ToString() << std::endl;
+            ::BytesToFile(m_strJobUuid + ".inputs", m_oParameters.GetSerializedBuffer());
+
+            // The SafeObject just requires the JobId and BaseFolder name to run
             nProcessExitStatus = m_poSafeObject->Run(m_strJobUuid);
-            m_eJobState = JobState::eFinished;
         }
     }
 
@@ -249,20 +254,6 @@ const std::string & __thiscall Job::GetJobUuid(void) const throw()
     __DebugFunction();
 
     return m_strJobUuid;
-}
-
-/********************************************************************************************
- *
- * @class Job
- * @function Job
- * @brief Constructor to create a Job object
- *
- ********************************************************************************************/
-JobState __thiscall Job::GetJobState(void) const throw()
-{
-    __DebugFunction();
-
-    return m_eJobState;
 }
 
 /********************************************************************************************

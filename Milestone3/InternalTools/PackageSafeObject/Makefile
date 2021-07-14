@@ -29,6 +29,7 @@ OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))
 
 all: $(OUTPUT)
 	@cp SafeObjectTemplate $(ABSROOTDIR)/Binary/
+	@cp code.py $(ABSROOTDIR)/Binary/
 
 $(OBJDIR)%.o: $(ABSROOTDIR)%.cpp
 	@mkdir -p $(@D)

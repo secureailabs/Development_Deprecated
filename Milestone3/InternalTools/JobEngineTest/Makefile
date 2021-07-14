@@ -28,6 +28,9 @@ OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
 OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))
 
 all: $(OUTPUT)
+	@cp DAA85946F0E244E78771AD35B189E98B.safe $(ABSROOTDIR)/Binary/
+	@cp value2 $(ABSROOTDIR)/Binary/
+	@cp value3 $(ABSROOTDIR)/Binary/
 
 $(OBJDIR)%.o: $(ABSROOTDIR)%.cpp
 	@mkdir -p $(@D)

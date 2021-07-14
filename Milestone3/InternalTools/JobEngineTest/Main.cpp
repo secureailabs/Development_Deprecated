@@ -34,7 +34,7 @@ enum class EngineRequest
     eConnectVirtualMachine = 8
 };
 
-std::string g_strSafeObjectId = "DAA85946F0E244E78771AD35B189E98B";
+std::string g_strSafeObjectId = "D918DF8B49694EA7940B6EA1C16D98C7";
 std::string g_strParameter0 = "";
 std::string g_strParameter1 = "";
 std::string g_strOutputId = "";

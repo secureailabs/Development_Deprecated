@@ -35,13 +35,18 @@ int __cdecl main(
         // Parse the command line
         StructuredBuffer oCommandLineArguments = ::ParseCommandLineParameters((unsigned int) nNumberOfArguments, (const char **) pszCommandLineArguments);
 
+        // First we initialize the RootOfTrustNode. Without that, nothing else matters
+        RootOfTrustNode * poRootOfTrustNode = new RootOfTrustNode(oCommandLineArguments.GetString("ipc").c_str());
+
         // Connect and Register to the Communication module for further communication
-        std::cout << "Connecting to socket server on..." << std::endl;
+        std::cout << "Registering the JobEngine on Communication Server..." << std::endl;
         Socket * const poSocket = CommunicationPortal::RegisterProcess("JobEngine");
 
         // Get the singleton object of the Job Engine
         JobEngine & oJobEngine = JobEngine::Get();
+        oJobEngine.SetRootOfTrustNode(poRootOfTrustNode);
         oJobEngine.StartServer(poSocket);
+        poRootOfTrustNode->Release();
     }
     catch (BaseException oException)
     {

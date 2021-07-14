@@ -395,7 +395,7 @@ int __cdecl main(
             oEventData.PutString("Username", "lbart@igr.com");
             oEventData.PutString("OrchestratorIpAddress", "132.34.4.23");
             oEventData.PutString("OrchestratorVersion", "1.0.0");
-            oEventData.PutString("EOSB", gs_strResearcherAccessToken);
+            oEventData.PutString("Eosb", gs_strResearcherAccessToken);
             ::RecordAuditEvent("CONNECT_SUCCESS", 0x1111, 0x04, oEventData);
             ::sleep(2);
             ////////////////////////////////////////////////////////////////////////////////////////////////

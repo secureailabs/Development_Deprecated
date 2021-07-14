@@ -178,7 +178,7 @@ int __cdecl main(
         // the computation process. The computation process will end up connecting
         // to the root of trust engine and query it for all the information that it needs
         // to initialize itself
-        ::RunProcess("ComputationalDomainProcess", oRootOfTrustCore, oRootOfTrustCore.GetComputationalDomainIdentifier());
+        ::RunProcess("JobEngine", oRootOfTrustCore, oRootOfTrustCore.GetComputationalDomainIdentifier());
         // Make sure to wait for all things 'RootOfTrust' to terminate before exiting
         // the try...catch block since doing so will destroy the RootOfTrust core object
         oRootOfTrustCore.WaitForTermination();

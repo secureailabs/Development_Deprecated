@@ -303,6 +303,7 @@ void __thiscall CommunicationPortal::HandleConnection(
     {
         this->OneTimeConnectionHandler(c_poTlsNode, oStructuredBufferNewRequest);
     }
+    c_poTlsNode->Release();
 }
 
 /********************************************************************************************

@@ -152,11 +152,11 @@ void PackageSafeObject(void)
         // Put this strucuted Buffer in the list of StrucutredBuffers of Paramters
         oInputParameters.PutStructuredBuffer(std::to_string(nInputIndex).c_str(), oParameter);
     }
-    oStructuredBuffer.PutStructuredBuffer("InputParamters", oInputParameters);
+    oStructuredBuffer.PutStructuredBuffer("InputParameters", oInputParameters);
 
     int nNumberOfOutputs = std::stoi(::GetStringInput("Number of Outputs: ", 2, false, gsc_szNumericCharacters).c_str());
 
-    StructuredBuffer oOutputParamter;
+    StructuredBuffer oOutputParameter;
     for (int nOutputIndex = 0; nOutputIndex < nNumberOfOutputs; nOutputIndex++)
     {
         Guid oOutputGuid;
@@ -167,9 +167,9 @@ void PackageSafeObject(void)
 
         ::ReplaceAll(strSafeObjectTemplate, strParameterName, "self.m_"+oOutputGuid.ToString(eRaw));
 
-        oOutputParamter.PutString("Uuid", oOutputGuid.ToString(eRaw));
+        oOutputParameter.PutString("Uuid", oOutputGuid.ToString(eRaw));
     }
-    oStructuredBuffer.PutStructuredBuffer("OutputParamter", oOutputParamter);
+    oStructuredBuffer.PutStructuredBuffer("OutputParameter", oOutputParameter);
     oStructuredBuffer.PutString("Payload", strSafeObjectTemplate);
 
     std::cout << "The Strucutred BUffer is \n" << oStructuredBuffer.ToString();

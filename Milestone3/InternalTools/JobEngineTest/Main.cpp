@@ -117,15 +117,15 @@ bool TestPushSafeObject(
     StructuredBuffer oStructuredBufferOfParameters;
     StructuredBuffer oFirstParameter;
     oFirstParameter.PutString("Metadata", "Will be added in future based on SafeObject");
-    g_strParameter0 = oSafeObject.GetStructuredBuffer("InputParamters").GetStructuredBuffer("0").GetString("Uuid");
-    g_strParameter1 = oSafeObject.GetStructuredBuffer("InputParamters").GetStructuredBuffer("1").GetString("Uuid");
+    g_strParameter0 = oSafeObject.GetStructuredBuffer("InputParameters").GetStructuredBuffer("0").GetString("Uuid");
+    g_strParameter1 = oSafeObject.GetStructuredBuffer("InputParameters").GetStructuredBuffer("1").GetString("Uuid");
     oStructuredBufferOfParameters.PutStructuredBuffer(g_strParameter0.c_str(), oFirstParameter);
     oStructuredBufferOfParameters.PutStructuredBuffer(g_strParameter1.c_str(), oFirstParameter);
 
     oStructuredBufferRequest.PutStructuredBuffer("ParameterList", oStructuredBufferOfParameters);
 
     StructuredBuffer oStructuredBufferOutputParameter;
-    g_strOutputId = oSafeObject.GetStructuredBuffer("OutputParamter").GetString("Uuid");
+    g_strOutputId = oSafeObject.GetStructuredBuffer("OutputParameter").GetString("Uuid");
     oStructuredBufferOutputParameter.PutString("Uuid", g_strOutputId);
     oStructuredBufferOutputParameter.PutString("Metadata", "todo: will be added in future");
 

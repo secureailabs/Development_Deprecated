@@ -63,7 +63,6 @@ class Job : public Object
             _in const std::string & strOutFileName
             );
         const std::string & __thiscall GetJobUuid(void) const throw();
-        JobState __thiscall GetJobState(void) const throw();
 
     private:
 
@@ -75,7 +74,6 @@ class Job : public Object
             ) throw();
 
         // Private data members
-        JobState m_eJobState;
         StructuredBuffer m_oParameters;
         std::string m_strJobUuid;
         std::shared_ptr<SafeObject> m_poSafeObject;

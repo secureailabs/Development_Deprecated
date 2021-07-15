@@ -14,11 +14,11 @@ ABSROOTDIR=$(shell realpath $(ROOTDIR))
 OBJDIR=$(ABSROOTDIR)/Binary/Objects
 
 # Add the new include folders here
-INCLUDE+=-I$(shell realpath ./)
+INCLUDE+=-I$(shell realpath .)
 INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
 
 # Add the new source directory here
-SRCDIRS+=$(shell realpath ./)
+SRCDIRS+=$(shell realpath .)
 SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)
@@ -28,9 +28,8 @@ OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
 OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))
 
 all: $(OUTPUT)
-	@cp C3F45AD59B5A496F86D75122DEDFA0C1.safe $(ABSROOTDIR)/Binary/
-	@cp value2 $(ABSROOTDIR)/Binary/
-	@cp value3 $(ABSROOTDIR)/Binary/
+	@cp SafeObjectTemplate $(ABSROOTDIR)/Binary/
+	@cp code.py $(ABSROOTDIR)/Binary/
 
 $(OBJDIR)%.o: $(ABSROOTDIR)%.cpp
 	@mkdir -p $(@D)

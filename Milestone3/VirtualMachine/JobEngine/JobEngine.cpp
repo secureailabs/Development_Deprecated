@@ -41,8 +41,7 @@
 // during reset, need to know how the SafeObect works.
 // 3. The SafeObject is not deleted on Job finish/fail. Should it be ? It could be re-used
 // by other jobs as well
-// 4. Create threads instead of async jobs and in Reset kill all the threads that are running.
-// This will not cause anything to run post ResetEngine
+// 4. Job Destructor is not called, call it after job fail/finish
 
 /********************************************************************************************
  *
@@ -348,7 +347,7 @@ void __thiscall JobEngine::PullData(
 
     try
     {
-        std::cout << "Pull Data request" << std::endl;
+        std::cout << "Pull Data request " << c_strFileNametoSend << std::endl;
 
         // We check if the signal file already exists, if the file exists already
         // we push it to the orchestrator otherwise we will just register the request and

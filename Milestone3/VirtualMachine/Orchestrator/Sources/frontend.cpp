@@ -22,8 +22,11 @@
 #include "JsonValue.h"
 #include <exception>
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <cstdlib>
+#include <iterator>
+#include <filesystem>
 
 #ifndef SERVER_IP_ADDRESS
     #define SERVER_PORT 6200
@@ -502,6 +505,8 @@ void __thiscall Frontend::HandleSetParameters(
         oBuffer.PutString("JobUuid", strJobID);
         oBuffer.PutString("ParameterUuid", stlOldParams[i]);
         oBuffer.PutString("ValueUuid", stlNewParams[i]);
+        oBuffer.PutUnsignedInt32("ValuesExpected", 1);
+        oBuffer.PutUnsignedInt32("ValueIndex", 0);
         
         try
         {
@@ -528,16 +533,14 @@ void __thiscall Frontend::HandlePullData(
     )
 {
     std::vector<std::string> stlOutputIDs = m_stlFNTable[strFNID]->GetOutput();
-    std::vector<std::future<std::vector<Byte>>> stlResultArray;
-    //m_stlResultMap.emplace(strJobID, stlResultArray);
 
     for(size_t i=0; i<stlOutputIDs.size(); i++)
     {
         StructuredBuffer oBuffer;
+        std::string strOutputFilename = strJobID + "." + stlOutputIDs[i];
         
-        std::string strOutputParam = strJobID + "." + stlOutputIDs[i];
         oBuffer.PutInt8("RequestType", (Byte)EngineRequest::ePullData);
-        oBuffer.PutString("Filename", strOutputParam);
+        oBuffer.PutString("Filename", strOutputFilename);
             
         try
         {
@@ -561,17 +564,13 @@ void __thiscall Frontend::HandlePullData(
 void __thiscall Frontend::QueryResult(
     _in std::string& strJobID,
     _in std::string& strFNID,
-    _inout std::vector<std::vector<Byte>>& stlOutput
+    _inout std::vector<Byte>& stlOutput
 )
 {
-    std::vector<std::string> stlOutputIDs = m_stlFNTable[strFNID]->GetOutput();
-    for(size_t i=0; i<stlOutputIDs.size(); i++){
-        std::string strDataID = strJobID + "." + stlOutputIDs[i]; 
-        std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
-        StructuredBuffer oOutput(m_stlResultMap[strJobID]);
-        std::vector<Byte> stlOutputParam = oOutput.GetBuffer("FileData");
-        stlOutput.push_back(stlOutputParam);
-    }
+    //std::string strOutputID = m_stlFNMap[strFNID]->GetOutput();
+    std::string strDataID = strJobID + "." +strFNID;
+    std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
+    stlOutput = m_stlResultMap[strDataID];
 }
 
 JobStatusSignals __thiscall Frontend::QueryJobStatus(
@@ -644,23 +643,31 @@ void __thiscall Frontend::HandlePushSafeObject(
     
     oBuffer.PutString("SafeObjectUuid", strFNID);
     oBuffer.PutString("Payload", m_stlFNTable[strFNID]->GetScript());
+    oBuffer.PutString("Title", m_stlFNTable[strFNID]->GetTitle());
+    oBuffer.PutString("Description", m_stlFNTable[strFNID]->GetDescription());
     
     std::vector<std::string> stlInputIDs = m_stlFNTable[strFNID]->GetInput(); 
     std::vector<std::string> stlOutputIDs = m_stlFNTable[strFNID]->GetOutput(); 
 
-    StructuredBuffer oParams;
+    StructuredBuffer oInputParams;
     for(size_t i = 0; i<stlInputIDs.size(); i++)
     {
-        oParams.PutString(std::to_string(i).c_str(), stlInputIDs[i]);
+        StructuredBuffer oInputElement;
+        oInputElement.PutString("Uuid", stlInputIDs[i]);
+        //oInputElement.PutString("Description", "");
+        oInputParams.PutStructuredBuffer(std::to_string(i).c_str(), oInputElement);
     }
-    oBuffer.PutStructuredBuffer("ParameterList", oParams);
+    oBuffer.PutStructuredBuffer("InputParameters", oInputParams);
 
     StructuredBuffer oOutputParams;
     for(size_t i = 0; i<stlOutputIDs.size(); i++)
     {
-        oOutputParams.PutString(std::to_string(i).c_str(), stlOutputIDs[i]);
+        StructuredBuffer oOutputElement;
+        oOutputElement.PutString("Uuid", stlOutputIDs[i]);
+        //oInputElement.PutString("Description", "");
+        oOutputParams.PutStructuredBuffer(std::to_string(i).c_str(), oOutputElement);
     }
-    oBuffer.PutStructuredBuffer("OutputParameterList", oParams);
+    oBuffer.PutStructuredBuffer("OutputParameter", oOutputParams);
     
     try
     {
@@ -679,13 +686,21 @@ void __thiscall Frontend::HandlePushSafeObject(
 }
 
 void __thiscall Frontend::RegisterSafeObject(
-    _in std::string& strFilePath,
-    _in int nInputNumber,
-    _in int nOutputNumber,
-    _inout std::string& strFNID
+    _in std::string& strFilePath
     )
 {
-    std::unique_ptr<FunctionNode> poFN = std::make_unique<FunctionNode>(nInputNumber, nOutputNumber, strFilePath);
-    strFNID = poFN->GetFNID();
-    m_stlFNTable.emplace(strFNID, std::move(poFN));
+    for (const auto & entry : std::filesystem::directory_iterator(strFilePath))
+    {
+        std::string strFilename = entry.path().string();
+        std::ifstream stlFNFile;
+        stlFNFile.open(strFilename, std::ios::binary);
+        std::vector<Byte> stlBuffer;
+        stlFNFile.unsetf(std::ios::skipws);
+        stlBuffer.insert(stlBuffer.begin(),std::istream_iterator<Byte>(stlFNFile), std::istream_iterator<Byte>());
+
+        StructuredBuffer oSafeObject(stlBuffer);
+        std::unique_ptr<SafeObject> poFN = std::make_unique<SafeObject>(oSafeObject);
+        std::string strFNID = poFN->GetSafeObjectID();
+        m_stlFNTable.emplace(strFNID, std::move(poFN));
+    }
 }

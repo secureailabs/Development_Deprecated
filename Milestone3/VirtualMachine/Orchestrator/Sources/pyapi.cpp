@@ -287,23 +287,20 @@ static PyObject* queryjobstatus(PyObject* self, PyObject* args)
     return Py_BuildValue("s", strStatus);
 }
 
-static PyObject* registerfn(PyObject* self, PyObject* args)
+static PyObject* registersafeobj(PyObject* self, PyObject* args)
 {
     char* file;
-    int nInputNumber;
-    int nOutputNumber;
 
-    if(!PyArg_ParseTuple(args, "sii", &file, &nInputNumber, &nOutputNumber))
+    if(!PyArg_ParseTuple(args, "s", &file))
     {
         return NULL;
     }
 
-    std::string strFNID;
     std::string strFile(file);
 
-    getFrontend().RegisterSafeObject(strFile, nInputNumber, nOutputNumber, strFNID);
+    getFrontend().RegisterSafeObject(strFile);
 
-    return Py_BuildValue("s", strFNID.c_str());
+    return Py_BuildValue("");
 }
 
 static PyObject* quit(PyObject* self, PyObject* args)
@@ -324,19 +321,19 @@ static PyObject* queryresult(PyObject* self, PyObject* args)
 
     std::string strJobID(jobid);
     std::string strFNID(fnid);
-    std::vector<std::vector<Byte>> stlOutput;
+    std::vector<Byte> stlOutput;
 
     getFrontend().QueryResult(strJobID, strFNID, stlOutput);
 
-    PyObject* output = PyList_New(stlOutput.size());
+    // PyObject* output = PyList_New(stlOutput.size());
 
-    for(size_t i=0;i<stlOutput.size();i++)
-    {
-        Byte* tmpdata = stlOutput[i].data();
-        PyList_SetItem(output, i, Py_BuildValue("y#", tmpdata, stlOutput.size()));
-    }
+    // for(size_t i=0;i<stlOutput.size();i++)
+    // {
+    //     Byte* tmpdata = stlOutput[i].data();
+    //     PyList_SetItem(output, i, Py_BuildValue("y#", tmpdata, stlOutput.size()));
+    // }
 
-    return Py_BuildValue("O", output);
+    return Py_BuildValue("y#", stlOutput, stlOutput.size());
 }
 
 static PyMethodDef SAILAPIMethods [] =
@@ -349,7 +346,7 @@ static PyMethodDef SAILAPIMethods [] =
     {"pushsafeobj", (PyCFunction)pushsafeobj, METH_VARARGS, NULL},
     {"submitjob", (PyCFunction)submitjob, METH_VARARGS, NULL},
     // {"gettableID", (PyCFunction)gettableID, METH_VARARGS, NULL},
-    {"registersafeobj", (PyCFunction)registerfn, METH_VARARGS, NULL},
+    {"registersafeobj", (PyCFunction)registersafeobj, METH_VARARGS, NULL},
     {"queryresult", (PyCFunction)queryresult, METH_VARARGS, NULL},
     {"queryjobstatus", (PyCFunction)queryjobstatus, METH_VARARGS, NULL},
     {"setparameter", (PyCFunction)setparameter, METH_VARARGS, NULL},

@@ -11,7 +11,7 @@
 #pragma once
 
 #include "StructuredBuffer.h"
-#include "function_node.h"
+#include "SafeObject.h"
 #include "TlsNode.h"
 #include "TlsServer.h"
 #include <string>
@@ -113,7 +113,7 @@ class Frontend : public Object{
         (
             _in std::string& strJobID,
             _in std::string& strFNID,
-            _inout std::vector<std::vector<Byte>>& stlOutput
+            _inout std::vector<Byte>& stlOutput
         );
         JobStatusSignals __thiscall QueryJobStatus(
             _in std::string& strJobID
@@ -130,10 +130,7 @@ class Frontend : public Object{
         );
         void __thiscall RegisterSafeObject
         (
-            _in std::string& strFilePath,
-            _in int nInputNumber,
-            _in int nOutputNumber,
-            _inout std::string& strFNID
+            _in std::string& strFilePath
         );
         
     private:
@@ -141,7 +138,7 @@ class Frontend : public Object{
         std::map<std::string, JobStatusSignals> m_stlJobStatusMap;
         //std::string m_strWebPortalIP;
         //std::string m_strWebPortalPort;
-        std::map<std::string, std::unique_ptr<FunctionNode>> m_stlFNTable;
+        std::map<std::string, std::unique_ptr<SafeObject>> m_stlFNTable;
         std::map<std::string, std::vector<Byte>> m_stlResultMap;
         std::string m_strEOSB;
         std::mutex m_stlResultMapMutex;

@@ -126,7 +126,7 @@ bool TestPushSafeObject(
     oStructuredBufferRequest.PutStructuredBuffer("ParameterList", oStructuredBufferOfParameters);
 
     g_strOutputId0 = oSafeObject.GetStructuredBuffer("OutputParameters").GetStructuredBuffer("0").GetString("Uuid");
-    g_strOutputId1 = oSafeObject.GetStructuredBuffer("OutputParameters").GetStructuredBuffer("0").GetString("Uuid");
+    g_strOutputId1 = oSafeObject.GetStructuredBuffer("OutputParameters").GetStructuredBuffer("1").GetString("Uuid");
 
     oStructuredBufferRequest.PutStructuredBuffer("OutputParameters", oSafeObject.GetStructuredBuffer("OutputParameters"));
     ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);

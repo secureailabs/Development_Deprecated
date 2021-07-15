@@ -347,7 +347,7 @@ void __thiscall JobEngine::PullData(
 
     try
     {
-        std::cout << "Pull Data request" << std::endl;
+        std::cout << "Pull Data request " << c_strFileNametoSend << std::endl;
 
         // We check if the signal file already exists, if the file exists already
         // we push it to the orchestrator otherwise we will just register the request and

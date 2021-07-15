@@ -1,4 +1,6 @@
-print("Hello World!!");
-___c___ = ___a___+___b___
-print("Sum of",___a___,"&", ___b___, "is", ___c___)
+print("Hello World!!")
+__s__ = __a__+__b__
+__d__ = __a__-__b__
+print("Sum of",__a__,"&", __b__, "is", __s__)
+print("Difference of",__a__,"&", __b__, "is", __d__)
 

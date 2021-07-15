@@ -102,28 +102,24 @@ void PackageSafeObject(void)
 {
     __DebugFunction();
 
-    Guid oGuid;
-    StructuredBuffer oStructuredBuffer;
+    Guid oSafeObjectGuid;
 
     std::string strTitle = ::GetStringInput("Title : ", 64, false, gsc_szPrintableCharacters);
-    oStructuredBuffer.PutString("Title", strTitle);
-    oStructuredBuffer.PutString("Uuid", oGuid.ToString(eRaw));
-
     std::string strDescription = ::GetStringInput("Description : ", 64, false, gsc_szPrintableCharacters);
-    oStructuredBuffer.PutString("Description", strDescription);
 
+    // The Python code in the file would not have indentation as the template. The file code is just a body
+    // of a function with inputs and possible multiple or none outputs.
     std::string nPythonCode = ::GetStringInput("Python Code Filename: ", 128, false, gsc_szPrintableCharacters);
     std::string strPythonCode = ::ReadFileAsString(nPythonCode);
     ::ReplaceAll(strPythonCode, "\n", "\n        ");
 
-    int nNumberOfInputs = std::stoi(::GetStringInput("Number of Inputs: ", 2, false, gsc_szNumericCharacters).c_str());
-    oStructuredBuffer.PutWord("NumberOfInputs", nNumberOfInputs);
-
+    // Read the SafeObject Template and add the python code to it and make it specific to this SafeObject
     std::string strSafeObjectTemplate = ::ReadFileAsString("SafeObjectTemplate");
     ::ReplaceAll(strSafeObjectTemplate, "{{code}}", strPythonCode);
-    ::ReplaceAll(strSafeObjectTemplate, "{{safeObjectId}}", oGuid.ToString(eRaw));
+    ::ReplaceAll(strSafeObjectTemplate, "{{safeObjectId}}", oSafeObjectGuid.ToString(eRaw));
 
     StructuredBuffer oInputParameters;
+    int nNumberOfInputs = std::stoi(::GetStringInput("Number of Inputs: ", 2, false, gsc_szNumericCharacters).c_str());
     for (int nInputIndex = 0; nInputIndex < nNumberOfInputs; nInputIndex++)
     {
         StructuredBuffer oParameter;
@@ -152,28 +148,48 @@ void PackageSafeObject(void)
         // Put this strucuted Buffer in the list of StrucutredBuffers of Paramters
         oInputParameters.PutStructuredBuffer(std::to_string(nInputIndex).c_str(), oParameter);
     }
-    oStructuredBuffer.PutStructuredBuffer("InputParameters", oInputParameters);
 
+    StructuredBuffer oOutputParameters;
     int nNumberOfOutputs = std::stoi(::GetStringInput("Number of Outputs: ", 2, false, gsc_szNumericCharacters).c_str());
-
-    StructuredBuffer oOutputParameter;
     for (int nOutputIndex = 0; nOutputIndex < nNumberOfOutputs; nOutputIndex++)
     {
+        StructuredBuffer oParameter;
+
         Guid oOutputGuid;
-        ::ReplaceAll(strSafeObjectTemplate, "{{OutputUuid}}", oOutputGuid.ToString(eRaw));
+        std::string strOutputParamterGuid = oOutputGuid.ToString(eRaw);
 
         std::string strToPrint = "Output "+ std::to_string(nOutputIndex) + " Name : ";
         std::string strParameterName = ::GetStringInput(strToPrint.c_str(), 64, false, gsc_szPrintableCharacters);
+        std::string strParameterDescription = ::GetStringInput("Description: ", 512, false, gsc_szPrintableCharacters);
 
         ::ReplaceAll(strSafeObjectTemplate, strParameterName, "self.m_"+oOutputGuid.ToString(eRaw));
 
-        oOutputParameter.PutString("Uuid", oOutputGuid.ToString(eRaw));
+        std::string strStringToSetParameterFile = "OutputFileHandler = open(self.m_JobIdentifier+\"." + strOutputParamterGuid + "\",\"wb\")\n        pickle.dump(self.m_" + strOutputParamterGuid + ", OutputFileHandler)\n        with open(\"DataSignals/\" + self.m_JobIdentifier + \"." + strOutputParamterGuid + "\", 'w') as fp:\n            pass";
+        if (nOutputIndex != (nNumberOfInputs-1))
+        {
+            strStringToSetParameterFile += "\n        {{WriteOutputToFile}}\n";
+        }
+        ::ReplaceAll(strSafeObjectTemplate, "{{WriteOutputToFile}}", strStringToSetParameterFile);
+
+        oParameter.PutString("Uuid", oOutputGuid.ToString(eRaw));
+        oParameter.PutString("Description", strParameterDescription);
+
+        // Put this strucuted Buffer in the list of StrucutredBuffers of Paramters
+        oOutputParameters.PutStructuredBuffer(std::to_string(nOutputIndex).c_str(), oParameter);
     }
-    oStructuredBuffer.PutStructuredBuffer("OutputParameter", oOutputParameter);
+
+    // Now the python code is ready and in a state that it can run independently provided all the paramters
+    // are present on the <JobId>.inputs file
+    StructuredBuffer oStructuredBuffer;
+    oStructuredBuffer.PutString("Title", strTitle);
+    oStructuredBuffer.PutString("Uuid", oSafeObjectGuid.ToString(eRaw));
+    oStructuredBuffer.PutString("Description", strDescription);
+    oStructuredBuffer.PutStructuredBuffer("InputParameters", oInputParameters);
+    oStructuredBuffer.PutStructuredBuffer("OutputParameters", oOutputParameters);
     oStructuredBuffer.PutString("Payload", strSafeObjectTemplate);
 
-    std::cout << "The Strucutred BUffer is \n" << oStructuredBuffer.ToString();
-    ::BytesToFile(oGuid.ToString(eRaw) + ".safe", oStructuredBuffer.GetSerializedBuffer());
+    std::cout << "The Strucutred Buffer is \n" << oStructuredBuffer.ToString();
+    ::BytesToFile(oSafeObjectGuid.ToString(eRaw) + ".safe", oStructuredBuffer.GetSerializedBuffer());
 }
 
 /********************************************************************************************/

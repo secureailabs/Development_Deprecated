@@ -25,9 +25,9 @@ class SAFE_{{safeObjectId}}:
         # LoadInputParameters() should effectively initialize
         # a whole bunch of local variables with data
         # the input parameters can be found in the m_BaseFolder
-        FileContent = open(self.m_JobIdentifier+".inputs", mode='rb').read()
-        # oInputParameters = StructuredBuffer.InitWithSerializedBuffer(FileContent)
-        oInputParameters = json.loads(FileContent)
+        InputData = open(self.m_JobIdentifier+".inputs", mode='rb').read()
+        # oInputParameters = StructuredBuffer.InitWithSerializedBuffer(InputData)
+        oInputParameters = json.loads(InputData)
         {{ParamterSet}}
 
         return True
@@ -53,8 +53,7 @@ class SAFE_{{safeObjectId}}:
         # serialized and saved to disk, etc... This is the function
         # which does all this final work. All output must be
         # written to the m_BaseFolder
-        OutputFileHandler = open(self.m_JobIdentifier+".{{OutputUuid}}","wb")
-        pickle.dump(self.m_{{OutputUuid}}, OutputFileHandler)
+        {{WriteOutputToFile}}
         return True
 
     def SignalDone(self):
@@ -65,6 +64,8 @@ class SAFE_{{safeObjectId}}:
         # Once the job engine detects either files, it can
         # delete them. These files contain NOTHING, their
         # creation alone IS the signal.
+        with open(self.m_JobIdentifier+".output", 'w') as fp:
+            pass
         return True
 
     # Classes can contain other user supplied methods if required, but the

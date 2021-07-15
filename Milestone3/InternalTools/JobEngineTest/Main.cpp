@@ -34,10 +34,11 @@ enum class EngineRequest
     eConnectVirtualMachine = 8
 };
 
-std::string g_strSafeObjectId = "D918DF8B49694EA7940B6EA1C16D98C7";
+std::string g_strSafeObjectId = "C3F45AD59B5A496F86D75122DEDFA0C1";
 std::string g_strParameter0 = "";
 std::string g_strParameter1 = "";
-std::string g_strOutputId = "";
+std::string g_strOutputId0 = "";
+std::string g_strOutputId1 = "";
 std::string g_strJobId = "4A4A340EA3ED49D9871418D1B25FC722";
 
 std::vector<Byte> FileToBytes(
@@ -124,13 +125,10 @@ bool TestPushSafeObject(
 
     oStructuredBufferRequest.PutStructuredBuffer("ParameterList", oStructuredBufferOfParameters);
 
-    StructuredBuffer oStructuredBufferOutputParameter;
-    g_strOutputId = oSafeObject.GetStructuredBuffer("OutputParameter").GetString("Uuid");
-    oStructuredBufferOutputParameter.PutString("Uuid", g_strOutputId);
-    oStructuredBufferOutputParameter.PutString("Metadata", "todo: will be added in future");
+    g_strOutputId0 = oSafeObject.GetStructuredBuffer("OutputParameters").GetStructuredBuffer("0").GetString("Uuid");
+    g_strOutputId1 = oSafeObject.GetStructuredBuffer("OutputParameters").GetStructuredBuffer("0").GetString("Uuid");
 
-    oStructuredBufferRequest.PutStructuredBuffer("OutputParameter", oStructuredBufferOutputParameter);
-
+    oStructuredBufferRequest.PutStructuredBuffer("OutputParameters", oSafeObject.GetStructuredBuffer("OutputParameters"));
     ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
 
     return true;
@@ -213,11 +211,15 @@ bool TestPullData(
 
     std::cout << "Testing Pull Data!!" << std::endl;
 
+    // Send the request and the response will come as a signal when avaialble
     StructuredBuffer oStructuredBufferRequest;
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePullData);
-    oStructuredBufferRequest.PutString("Filename", g_strJobId+"."+g_strOutputId);
+    oStructuredBufferRequest.PutString("Filename", g_strJobId+"."+g_strOutputId0);
+    ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
 
     // Send the request and the response will come as a signal when avaialble
+    oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePullData);
+    oStructuredBufferRequest.PutString("Filename", g_strJobId+"."+g_strOutputId1);
     ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
 
     return true;

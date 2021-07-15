@@ -99,7 +99,7 @@ void __thiscall SafeObject::Setup(
     }
 
     // Get the Output Parameters
-    m_oStructuredBufferOutputParameter = c_oStructuredBuffer.GetStructuredBuffer("OutputParameter");
+    m_oStructuredBufferOutputParameter = c_oStructuredBuffer.GetStructuredBuffer("OutputParameters");
 
     // Add the command that is to be executed.
     m_strCommandToExecute = m_strSafeObjectIdentifier;
@@ -120,8 +120,6 @@ int __thiscall SafeObject::Run(
     __DebugFunction();
 
     int nProcessExitStatus = -1;
-
-    std::string strOutputFileName = c_strJobUuid + "." + m_oStructuredBufferOutputParameter.GetString("Uuid");
 
     try
     {
@@ -194,9 +192,11 @@ int __thiscall SafeObject::Run(
                     // There is a chance that the job failed gracefully and in that case the
                     // output file was not written, that is a failure case and we send a jobfail
                     // signal to the remote orcehstrator
-                    if ((0 == nProcessExitStatus) && (true == std::filesystem::exists(strOutputFileName)))
+                    // TODO: check for all the output files present along with ProcessExitStatus
+                    if ((0 == nProcessExitStatus))
                     {
-                        std::ofstream output(gc_strSignalFolderName + "/" + strOutputFileName);
+                        // This is already done in the SafeObject code
+                        // std::ofstream output(gc_strSignalFolderName + "/" + strOutputFileName);
 
                         // Send a job success signal to the orchestrator
                         oStructruedBufferSignal.PutByte("SignalType", (Byte)JobStatusSignals::eJobDone);

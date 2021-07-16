@@ -37,8 +37,8 @@ def submitjob(vm, fnID, jobID):
 # def gettableID(vm):
 #     return SAILPyAPI.gettableID(vm)
 
-def registersafeobj(script, inputnumber, outputnumber):
-    return SAILPyAPI.registerfn(script, inputnumber, outputnumber)
+def registersafeobj(script):
+    return SAILPyAPI.registersafeobj(script)
 
 def queryresult(jobid):
     return SAILPyAPI.queryresult(jobid)

@@ -136,6 +136,10 @@ extern bool UpdatePassword(
     _in const std::string & c_strEosb
     );
 
+extern bool GetOrganizationInformation(
+    _in const std::string & c_strEosb
+    );
+
 extern bool ListOrganizations(
     _in const std::string & c_strEosb
     );

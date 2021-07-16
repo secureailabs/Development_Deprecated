@@ -94,6 +94,10 @@ class DatabaseManager : public Object
 
     private:
 
+        // Fetch user's organization information from the database
+        std::vector<Byte> __thiscall GetOrganizationInformation(
+            _in const StructuredBuffer & c_oRequest
+            );
         // Fetch basic organization record from the database
         std::vector<Byte> __thiscall GetBasicOrganizationRecord(
             _in const StructuredBuffer & c_oRequest

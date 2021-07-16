@@ -92,6 +92,11 @@ class AccountDatabase : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Given an Eosb, return the user's organization information
+        std::vector<Byte> __thiscall GetOrganizationInformation(
+            _in const StructuredBuffer & c_oRequest
+        );
+
         // Register an organization and the new user as it's super user
         std::vector<Byte> __thiscall RegisterOrganizationAndSuperUser(
             _in const StructuredBuffer & c_oRequest

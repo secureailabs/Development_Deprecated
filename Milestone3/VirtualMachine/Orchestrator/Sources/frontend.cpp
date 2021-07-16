@@ -705,10 +705,15 @@ void __thiscall Frontend::RegisterSafeObject(
     {
         std::string strFilename = entry.path().string();
         std::ifstream stlFNFile;
-        stlFNFile.open(strFilename, std::ios::binary);
+        stlFNFile.open(strFilename, (std::ios::in | std::ios::binary | std::ios::ate));
+        unsigned int unFileSizeInBytes = (unsigned int)stlFNFile.tellg();
         std::vector<Byte> stlBuffer;
-        stlFNFile.unsetf(std::ios::skipws);
-        stlBuffer.insert(stlBuffer.begin(),std::istream_iterator<Byte>(stlFNFile), std::istream_iterator<Byte>());
+        stlBuffer.resize(unFileSizeInBytes);
+        //stlFNFile.unsetf(std::ios::skipws);
+        stlFNFile.seekg(0, std::ios::beg);
+        stlFNFile.read((char*)stlBuffer.data(), unFileSizeInBytes);
+        //stlBuffer.insert(stlBuffer.begin(),std::istream_iterator<Byte>(stlFNFile), std::istream_iterator<Byte>());
+        stlFNFile.close();
 
         StructuredBuffer oSafeObject(stlBuffer);
         std::unique_ptr<SafeObject> poFN = std::make_unique<SafeObject>(oSafeObject);

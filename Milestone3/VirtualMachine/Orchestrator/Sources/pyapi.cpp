@@ -101,7 +101,7 @@ static PyObject* pushdata(PyObject* self, PyObject* args)
             break;
         }
 
-        if(!PyArg_ParseTuple(next, "y#i", &tmpInputs, &len))
+        if(!PyBytes_AsStringAndSize(next, "y#i", &tmpInputs, &len))
         {
             return NULL;
         }
@@ -144,7 +144,7 @@ static PyObject* setparameter(PyObject* self, PyObject* args)
             break;
         }
 
-        if(!PyArg_ParseTuple(next, "s", &tmpParam))
+        if(!PyBytes_AsString(next, "s", &tmpParam))
         {
             return NULL;
         }
@@ -163,7 +163,7 @@ static PyObject* setparameter(PyObject* self, PyObject* args)
             break;
         }
 
-        if(!PyArg_ParseTuple(next, "s", &tmpParam))
+        if(!PyBytes_AsString(next, "s", &tmpParam))
         {
             return NULL;
         }

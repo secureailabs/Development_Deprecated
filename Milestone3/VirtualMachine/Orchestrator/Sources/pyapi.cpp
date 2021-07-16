@@ -94,7 +94,7 @@ static PyObject* pushdata(PyObject* self, PyObject* args)
     while (true) 
     {
         char* tmpInputs;
-        size_t len;
+        long int len;
 
         PyObject *next = PyIter_Next(iter);
         if (!next) {

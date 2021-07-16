@@ -261,13 +261,19 @@ void __thiscall Frontend::SetFrontend(
         if(m_stlConnectionMap.end()==m_stlConnectionMap.find(strVMID)){
             poSocket = ::TlsConnectToNetworkSocket(strServerIP.c_str(), wPort);
             _ThrowIfNull(poSocket, "Tls connection error for connectVM", nullptr);
+            std::cout<<"connect to "<<strServerIP<<" successful"<<std::endl;
 
-            std::vector<Byte> stlResponse = PutTlsTransactionAndGetResponse(poSocket, oBuffer, 2*60*1000);
-            if(0==stlResponse.size())
-                _ThrowBaseException("No response for connectVM request", nullptr);
+            oBuffer.PutString("EndPoint", "JobEngine");
+            SendTlsData(poSocket, oBuffer.GetSerializedBuffer());
+            //std::vector<Byte> stlResponse = PutTlsTransactionAndGetResponse(poSocket, oBuffer, 2*60*1000);
+            //if(0==stlResponse.size())
+            //    _ThrowBaseException("No response for connectVM request", nullptr);
+            std::cout<<"send data to socket"<<std::endl;
 
+            auto stlResponse = GetTlsDataBlocking(poSocket);
             StructuredBuffer oResponse(stlResponse);
             strVMID = oResponse.GetString("VirtualMachineUuid");
+            std::cout<<"receive response"<<std::endl;
             
             std::shared_ptr<TlsNode> stlSocket(poSocket);
             m_stlConnectionMap.emplace(strVMID, stlSocket);
@@ -311,7 +317,8 @@ void __thiscall Frontend::HandleSubmitJob(
 
     try
     {
-        PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
+        //PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
+        SendTlsData(m_stlConnectionMap[strVMID].get(), oBuffer.GetSerializedBuffer());
     }
     
     catch(BaseException oBaseException)
@@ -435,7 +442,8 @@ void __thiscall Frontend::HandleQuit(void)
     {   
         try
         {
-            PutTlsTransactionAndGetResponse(i.second.get(), oBuffer, 100);
+            //PutTlsTransactionAndGetResponse(i.second.get(), oBuffer, 100);
+            SendTlsData(i.second.get(), oBuffer.GetSerializedBuffer());
         }
         
         catch(BaseException oBaseException)
@@ -474,7 +482,8 @@ void __thiscall Frontend::HandlePushData(
 
         try
         {
-            PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
+            //PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
+            SendTlsData(m_stlConnectionMap[strVMID].get(), oBuffer.GetSerializedBuffer());
         }
         
         catch(BaseException oBaseException)
@@ -510,7 +519,8 @@ void __thiscall Frontend::HandleSetParameters(
         
         try
         {
-            PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
+            //PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
+            SendTlsData(m_stlConnectionMap[strVMID].get(), oBuffer.GetSerializedBuffer());
         }
         
         catch(BaseException oBaseException)
@@ -545,8 +555,9 @@ void __thiscall Frontend::HandlePullData(
         try
         {
             //std::future<std::vector<Byte>> stlFutureResult = std::async(std::launch::async, PutTlsTransactionAndGetResponse, m_stlConnectionMap[strVMID], oBuffer, 100);
-            PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
+            //PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
             //m_stlResultMap[strJobID].push_back(stlFutureResult);
+            SendTlsData(m_stlConnectionMap[strVMID].get(), oBuffer.GetSerializedBuffer());
         }
             
         catch(BaseException oBaseException)
@@ -671,7 +682,8 @@ void __thiscall Frontend::HandlePushSafeObject(
     
     try
     {
-        PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
+        //PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
+        SendTlsData(m_stlConnectionMap[strVMID].get(), oBuffer.GetSerializedBuffer());
     }
     
     catch(BaseException oBaseException)

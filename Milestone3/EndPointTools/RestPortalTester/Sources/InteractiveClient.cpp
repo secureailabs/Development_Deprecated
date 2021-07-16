@@ -886,6 +886,163 @@ bool UpdateOrganizationInformation(
 
 /********************************************************************************************/
 
+bool UpdateUserAccessRights(
+    _in const std::string & c_strEncodedEosb
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    std::cout << "************************\n Update User Access Righs \n************************\n" << std::endl;
+    std::string strUserGuid = ::GetStringInput("Enter hyphen and curly braces formatted user guid: ", 38, true, c_szValidInputCharacters);
+    Qword qwAccessRights = std::stoull(::GetStringInput("New access rights [1-5]: ", 1, false, c_szValidInputCharacters));
+
+    __DebugAssert(38 == strUserGuid.size())
+
+    try 
+    {
+        // Create rest request
+        std::string strVerb = "PUT";
+        std::string strApiUrl = "/SAIL/AccountManager/Update/AccessRight?Eosb="+ c_strEncodedEosb;
+        std::string strContent = "{\n    \"UserGuid\": \""+ strUserGuid +"\","
+                                "\n    \"AccessRights\": "+ std::to_string(qwAccessRights) + ""
+                                "\n}";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error updating user access rights.", nullptr);
+        fSuccess = true;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool UpdateUserInformation(
+    _in const std::string & c_strEncodedEosb
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get user information
+    std::cout << "************************\n Update User Information \n************************\n" << std::endl;
+    std::string strUserGuid = ::GetStringInput("Enter hyphen and curly braces formatted user guid: ", 38, true, c_szValidInputCharacters);
+    std::string strName = ::GetStringInput("Enter name: ", 50, false, c_szValidInputCharacters);
+    std::string strTitle = ::GetStringInput("Enter title: ", 50, false, c_szValidInputCharacters);
+    std::string strPhoneNumber = ::GetStringInput("Enter phone number: ", 50, false, c_szValidInputCharacters);
+
+    __DebugAssert(38 == strUserGuid.size())
+    __DebugAssert(0 < strName.size());
+    __DebugAssert(0 < strTitle.size());
+    __DebugAssert(0 < strPhoneNumber.size());
+
+    try 
+    {
+        // Create rest request
+        std::string strVerb = "PUT";
+        std::string strApiUrl = "/SAIL/AccountManager/Update/User?Eosb="+ c_strEncodedEosb;
+        std::string strContent = "{\n    \"UserGuid\": \""+ strUserGuid +"\","
+                                "\n    \"UserInformation\": "
+                                "\n    {"
+                                "\n        \"Name\": \""+ strName +"\","
+                                "\n        \"Title\" : \""+ strTitle +"\","
+                                "\n        \"PhoneNumber\" : \""+ strPhoneNumber +"\""
+                                "\n     }"
+                                "\n}";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error updating user information.", nullptr);
+        fSuccess = true;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool UpdatePassword(
+    _in const std::string & c_strEncodedEosb
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get user information
+    std::cout << "************************\n Update User Password \n************************\n" << std::endl;
+    std::string strEmail = ::GetStringInput("Enter your email address: ", 50, false, c_szValidInputCharacters);
+    std::string strCurrentPassword = ::GetStringInput("Enter your current password: ", 50, true, c_szValidInputCharacters);
+    std::string strNewPassword = ::GetStringInput("Enter new password: ", 50, true, c_szValidInputCharacters);
+
+    __DebugAssert(0 < strEmail.size());
+    __DebugAssert(0 < strCurrentPassword.size());
+    __DebugAssert(0 < strNewPassword.size());
+
+    try 
+    {
+        // Create rest request
+        std::string strVerb = "PATCH";
+        std::string strApiUrl = "/SAIL/AuthenticationManager/User/Password?Eosb="+ c_strEncodedEosb;
+        std::string strContent = "{\n    \"Email\": \""+ strEmail +"\","
+                                "\n    \"CurrentPassword\": \""+ strCurrentPassword +"\","
+                                "\n    \"NewPassword\" : \""+ strNewPassword +"\""
+                                "\n}";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error changing password.", nullptr);
+        fSuccess = true;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
 bool ListOrganizations(
     _in const std::string & c_strEncodedEosb
     )
@@ -941,6 +1098,120 @@ bool ListOrganizations(
 
 /********************************************************************************************/
 
+bool ListAllUsers(
+    _in const std::string & c_strEncodedEosb
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+
+    try 
+    {
+        // Create rest request
+        std::string strVerb = "GET";
+        std::string strApiUrl = "/SAIL/AccountManager/Users?Eosb="+ c_strEncodedEosb;
+        std::string strJsonBody = "";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strJsonBody, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting list of users.", nullptr);
+        fSuccess = true;
+        std::cout << "************************\n List of Users \n************************\n" << std::endl;
+        StructuredBuffer oUsers(oResponse.GetStructuredBuffer("Users"));
+        for (std::string strElement : oUsers.GetNamesOfElements())
+        {
+            StructuredBuffer oElement(oUsers.GetStructuredBuffer(strElement.c_str()));
+            std::cout << "User guid: " << strElement << std::endl;
+            std::cout << "Name: " << oElement.GetString("Username") << std::endl;
+            std::cout << "Title: " << oElement.GetString("Title") << std::endl;
+            std::cout << "Email: " << oElement.GetString("Email") << std::endl;
+            std::cout << "Phone number: " << oElement.GetString("PhoneNumber") << std::endl;
+            std::cout << "Access rights: " << (Qword) oElement.GetFloat64("AccessRights") << std::endl;
+            std::cout << "Time of account creation: " << (uint64_t) oElement.GetFloat64("TimeOfAccountCreation") << std::endl;
+            std::cout << "Account status: " << oElement.GetFloat64("AccountStatus") << std::endl;
+            std::cout << "Organization Uuid: " << oElement.GetString("OrganizationUuid") << std::endl;
+            std::cout << "------------------------------------------------------" << std::endl;
+        }
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool ListOrganizationUsers(
+    _in const std::string & c_strEncodedEosb
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get organization guid
+    std::cout << "************************\n List Organization Users \n************************\n" << std::endl;
+    std::string strOrganizationGuid = ::GetStringInput("Enter hyphen and curly braces formatted organization guid: ", 38, true, c_szValidInputCharacters);
+
+    __DebugAssert(38 == strOrganizationGuid.size())
+
+    try 
+    {
+        // Create rest request
+        std::string strVerb = "GET";
+        std::string strApiUrl = "/SAIL/AccountManager/Organization/Users?Eosb="+ c_strEncodedEosb;
+        std::string strContent = "{\n   \"OrganizationGuid\": \""+ strOrganizationGuid +"\""
+                                "\n}";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting list of users.", nullptr);
+        fSuccess = true;
+        std::cout << "************************\n List of Users \n************************\n" << std::endl;
+        StructuredBuffer oUsers(oResponse.GetStructuredBuffer("OrganizationUsers"));
+        for (std::string strElement : oUsers.GetNamesOfElements())
+        {
+            StructuredBuffer oElement(oUsers.GetStructuredBuffer(strElement.c_str()));
+            std::cout << "User guid: " << strElement << std::endl;
+            std::cout << "Name: " << oElement.GetString("Username") << std::endl;
+            std::cout << "Title: " << oElement.GetString("Title") << std::endl;
+            std::cout << "Email: " << oElement.GetString("Email") << std::endl;
+            std::cout << "Phone number: " << oElement.GetString("PhoneNumber") << std::endl;
+            std::cout << "Access rights: " << (Qword) oElement.GetFloat64("AccessRights") << std::endl;
+            std::cout << "Time of account creation: " << (uint64_t) oElement.GetFloat64("TimeOfAccountCreation") << std::endl;
+            std::cout << "Account status: " << oElement.GetFloat64("AccountStatus") << std::endl;
+            std::cout << "------------------------------------------------------" << std::endl;
+        }
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
 bool DeleteUser(
     _in const std::string & c_strEncodedEosb
     )
@@ -962,14 +1233,59 @@ bool DeleteUser(
         // Create rest request
         std::string strVerb = "DELETE";
         std::string strApiUrl = "/SAIL/AccountManager/Remove/User?Eosb="+ c_strEncodedEosb;
-        std::string strContent = "{\n   \"UserGuid\": \""+ strUserGuid +"\","
-                                "\n    \"IsHardDelete\": true"
+        std::string strContent = "{\n   \"UserGuid\": \""+ strUserGuid +"\""
                                 "\n}";
         // Make the API call and get REST response
         std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
         std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
         StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error deleting user.", nullptr);
+        fSuccess = true;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool RecoverUser(
+    _in const std::string & c_strEncodedEosb
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get user guid
+    std::cout << "************************\n Recover User \n************************\n" << std::endl;
+    std::string strUserGuid = ::GetStringInput("Enter hyphen and curly braces formatted user guid: ", 38, true, c_szValidInputCharacters);
+
+    __DebugAssert(38 == strUserGuid.size())
+
+    try 
+    {
+        // Create rest request
+        std::string strVerb = "PUT";
+        std::string strApiUrl = "/SAIL/AccountManager/Update/RecoverUser?Eosb="+ c_strEncodedEosb;
+        std::string strContent = "{\n   \"UserGuid\": \""+ strUserGuid +"\""
+                                "\n}";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error recovering user.", nullptr);
         fSuccess = true;
     }
     

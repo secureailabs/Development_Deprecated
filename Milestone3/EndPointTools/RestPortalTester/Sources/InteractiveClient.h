@@ -124,11 +124,35 @@ extern bool UpdateOrganizationInformation(
     _in const std::string & c_strEosb
     );
 
+extern bool UpdateUserAccessRights(
+    _in const std::string & c_strEosb
+    );
+
+extern bool UpdateUserInformation(
+    _in const std::string & c_strEosb
+    );
+
+extern bool UpdatePassword(
+    _in const std::string & c_strEosb
+    );
+
 extern bool ListOrganizations(
     _in const std::string & c_strEosb
     );
 
+extern bool ListAllUsers(
+    _in const std::string & c_strEosb
+    );
+
+extern bool ListOrganizationUsers(
+    _in const std::string & c_strEosb
+    );
+
 extern bool DeleteUser(
+    _in const std::string & c_strEosb
+    );
+
+extern bool RecoverUser(
     _in const std::string & c_strEosb
     );
 

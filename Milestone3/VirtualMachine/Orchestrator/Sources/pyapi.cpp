@@ -115,7 +115,7 @@ static PyObject* pushdata(PyObject* self, PyObject* args)
             break;
         }
 
-        char* tmpParam = PyUnicode_AsUTF8(next);
+        const char* tmpParam = PyUnicode_AsUTF8(next);
         stlInputId.push_back(std::string(tmpParam));
     }
 
@@ -150,7 +150,7 @@ static PyObject* setparameter(PyObject* self, PyObject* args)
             break;
         }
 
-        char* tmpParam = PyUnicode_AsUTF8(next);
+        const char* tmpParam = PyUnicode_AsUTF8(next);
         stlParams.push_back(std::string(tmpParam));
     }
 

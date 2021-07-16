@@ -101,7 +101,7 @@ static PyObject* pushdata(PyObject* self, PyObject* args)
             break;
         }
 
-        if(!PyBytes_AsStringAndSize(next, "y#i", &tmpInputs, &len))
+        if(!PyBytes_AsStringAndSize(next, &tmpInputs, &len))
         {
             return NULL;
         }
@@ -137,17 +137,12 @@ static PyObject* setparameter(PyObject* self, PyObject* args)
 
     while (true) 
     {
-        char* tmpParam;
-
         PyObject *next = PyIter_Next(iter);
         if (!next) {
             break;
         }
 
-        if(!PyBytes_AsString(next, "s", &tmpParam))
-        {
-            return NULL;
-        }
+        char* tmpParam = PyBytes_AsString(next)
         stlOldParams.push_back(std::string(tmpParam));
     }
 
@@ -156,17 +151,12 @@ static PyObject* setparameter(PyObject* self, PyObject* args)
 
     while (true) 
     {
-        char* tmpParam;
-
         PyObject *next = PyIter_Next(iter);
         if (!next) {
             break;
         }
 
-        if(!PyBytes_AsString(next, "s", &tmpParam))
-        {
-            return NULL;
-        }
+        char* tmpParam = PyBytes_AsString(next);
         stlNewParams.push_back(std::string(tmpParam));
     }
 

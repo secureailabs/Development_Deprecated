@@ -17,6 +17,7 @@
 #include "SocketServer.h"
 #include "TlsClient.h"
 #include "TlsTransactionHelperFunctions.h"
+#include "FileUtils.h"
 
 #include <iostream>
 #include <fstream>
@@ -40,30 +41,6 @@ std::string g_strParameter1 = "";
 std::string g_strOutputId0 = "";
 std::string g_strOutputId1 = "";
 std::string g_strJobId = "4A4A340EA3ED49D9871418D1B25FC722";
-
-std::vector<Byte> FileToBytes(
-    const std::string c_strFileName
-)
-{
-    __DebugFunction();
-
-    std::vector<Byte> stlFileData;
-
-    std::ifstream stlFile(c_strFileName.c_str(), (std::ios::in | std::ios::binary | std::ios::ate));
-    if (true == stlFile.good())
-    {
-        unsigned int unFileSizeInBytes = (unsigned int) stlFile.tellg();
-        stlFileData.resize(unFileSizeInBytes);
-        stlFile.seekg(0, std::ios::beg);
-        stlFile.read((char *)stlFileData.data(), unFileSizeInBytes);
-        stlFile.close();
-    }
-    else
-    {
-        _ThrowBaseException("Invalid File Path", nullptr);
-    }
-    return stlFileData;
-}
 
 void SendRequestToJobEngine(
     _in TlsNode * poTlsNode,
@@ -109,7 +86,7 @@ bool TestPushSafeObject(
     StructuredBuffer oStructuredBufferRequest;
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePushSafeObject);
 
-    StructuredBuffer oSafeObject(::FileToBytes(g_strSafeObjectId+".safe"));
+    StructuredBuffer oSafeObject(::ReadFileAsByteBuffer(g_strSafeObjectId+".safe"));
 
     oStructuredBufferRequest.PutString("SafeObjectUuid", oSafeObject.GetString("Uuid"));
     std::string strTestCode = oSafeObject.GetString("Payload");
@@ -192,12 +169,12 @@ bool TestPushData(
     StructuredBuffer oStructuredBufferRequest;
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePushdata);
     oStructuredBufferRequest.PutString("DataId", "EAF3AF0900DB4660A22945ADB27E4205");
-    oStructuredBufferRequest.PutBuffer("Data", ::FileToBytes("value2"));
+    oStructuredBufferRequest.PutBuffer("Data", ::ReadFileAsByteBuffer("value2"));
     ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
 
     oStructuredBufferRequest.PutByte("RequestType", (Byte)EngineRequest::ePushdata);
     oStructuredBufferRequest.PutString("DataId", "6C56C7C1F6A94005938B19E58CAA90A8");
-    oStructuredBufferRequest.PutBuffer("Data", ::FileToBytes("value3"));
+    oStructuredBufferRequest.PutBuffer("Data", ::ReadFileAsByteBuffer("value3"));
     ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
 
     return true;

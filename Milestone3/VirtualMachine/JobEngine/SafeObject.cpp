@@ -12,6 +12,7 @@
 #include "SafeObject.h"
 #include "Exceptions.h"
 #include "JobEngine.h"
+#include "FileUtils.h"
 
 #include <iostream>
 #include <fstream>
@@ -85,7 +86,7 @@ void __thiscall SafeObject::Setup(
     m_strSafeObjectIdentifier = c_oStructuredBuffer.GetString("SafeObjectUuid");
 
     // Write the executable file to file system to run
-    ::BytesToFile(m_strSafeObjectIdentifier, c_oStructuredBuffer.GetBuffer("Payload"));
+    ::WriteBytesAsFile(m_strSafeObjectIdentifier, c_oStructuredBuffer.GetBuffer("Payload"));
 
     // Make the file executable
     ::chmod(m_strSafeObjectIdentifier.c_str(), S_IRWXU);

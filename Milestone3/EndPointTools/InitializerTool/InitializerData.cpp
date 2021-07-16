@@ -17,6 +17,7 @@
 #include "StructuredBuffer.h"
 #include "TlsClient.h"
 #include "JsonValue.h"
+#include "FileUtils.h"
 
 #include <iostream>
 #include <fstream>
@@ -25,30 +26,6 @@
 #include <unistd.h>
 
 /********************************************************************************************/
-
-std::vector<Byte> FileToBytes(
-    const std::string c_strFileName
-)
-{
-    __DebugFunction();
-
-    std::vector<Byte> stlFileData;
-
-    std::ifstream stlFile(c_strFileName.c_str(), (std::ios::in | std::ios::binary | std::ios::ate));
-    if (true == stlFile.good())
-    {
-        unsigned int unFileSizeInBytes = (unsigned int) stlFile.tellg();
-        stlFileData.resize(unFileSizeInBytes);
-        stlFile.seekg(0, std::ios::beg);
-        stlFile.read((char *)stlFileData.data(), unFileSizeInBytes);
-        stlFile.close();
-    }
-    else
-    {
-        _ThrowBaseException("Invalid File Path", nullptr);
-    }
-    return stlFileData;
-}
 
 // Singleton Object, can be declared anywhere, but only once
 InitializerData InitializerData::m_oInitializerData;
@@ -328,7 +305,7 @@ unsigned int __thiscall InitializerData::CreateAndInitializeVirtualMachine(
 {
     __DebugFunction();
 
-    std::vector<Byte> stlBinariesPayload = ::FileToBytes("SecureComputationalVirtualMachine.binaries");
+    std::vector<Byte> stlBinariesPayload = ::ReadFileAsByteBuffer("SecureComputationalVirtualMachine.binaries");
     _ThrowBaseExceptionIf((0 == stlBinariesPayload.size()), "Unable to read SecureComputationalVirtualMachine.binaries file", nullptr);
 
     // In case of a failure to provision a Virtual Machine we will try for unVmCreationMaximumAttempts times

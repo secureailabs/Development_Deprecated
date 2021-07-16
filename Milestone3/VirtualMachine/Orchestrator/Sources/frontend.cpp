@@ -189,7 +189,7 @@ void __thiscall Frontend::Listener(
     __DebugFunction();
     while(!m_fStop)
     {
-        std::vector<Byte> stlResponseBuffer = GetTlsTransaction(poSocket, 100);
+        std::vector<Byte> stlResponseBuffer = GetTlsDataBlocking(poSocket);
         StructuredBuffer oResponse(stlResponseBuffer);
         JobStatusSignals eStatusSignalType = (JobStatusSignals)oResponse.GetByte("SignalType");
         std::string strJobID = oResponse.GetString("JobUuid");

@@ -502,10 +502,18 @@ void __thiscall AccountDatabase::InitializePlugin(void)
     StructuredBuffer oUpdateUser;
     oUpdateUser.PutStructuredBuffer("Eosb", oEosb);
     oUpdateUser.PutStructuredBuffer("UserGuid", oUserGuid);
-    oUpdateUser.PutStructuredBuffer("Name", oName);
-    oUpdateUser.PutStructuredBuffer("Title", oTitle);
-    oUpdateUser.PutStructuredBuffer("Email", oEmail);
-    oUpdateUser.PutStructuredBuffer("PhoneNumber", oPhoneNumber);
+    StructuredBuffer oUserInformation;
+    oUserInformation.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
+    oUserInformation.PutBoolean("IsRequired", true);
+    oUserInformation.PutStructuredBuffer("Name", oName);
+    oUserInformation.PutStructuredBuffer("Title", oTitle);
+    oUserInformation.PutStructuredBuffer("PhoneNumber", oPhoneNumber);
+    oUpdateUser.PutStructuredBuffer("UserInformation", oUserInformation);
+
+    // Add parameters for recovering user account
+    StructuredBuffer oRecoverUser;
+    oRecoverUser.PutStructuredBuffer("Eosb", oEosb);
+    oRecoverUser.PutStructuredBuffer("UserGuid", oUserGuid);
 
     // Add parameters for deleting a user
     StructuredBuffer oDeleteUser;
@@ -513,7 +521,7 @@ void __thiscall AccountDatabase::InitializePlugin(void)
     oDeleteUser.PutStructuredBuffer("UserGuid", oUserGuid);
     StructuredBuffer oIsHardDelete;
     oIsHardDelete.PutByte("ElementType", BOOLEAN_VALUE_TYPE);
-    oIsHardDelete.PutBoolean("IsRequired", true);
+    oIsHardDelete.PutBoolean("IsRequired", false);
     oDeleteUser.PutStructuredBuffer("IsHardDelete", oIsHardDelete);
 
     // Takes in an EOSB and returns a list of all organization
@@ -534,6 +542,8 @@ void __thiscall AccountDatabase::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/AccountManager/Update/Organization", oUpdateOrganization, 1);
     // Updates user information, excluding access rights
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/AccountManager/Update/User", oUpdateUser, 1);
+    // Recovers deleted user account
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/AccountManager/Update/RecoverUser", oRecoverUser, 1);
     // Delete a user from the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AccountManager/Remove/User", oDeleteUser, 1);
 
@@ -691,6 +701,10 @@ uint64_t __thiscall AccountDatabase::SubmitRequest(
         {
             stlResponseBuffer = this->UpdateUserInformation(c_oRequestStructuredBuffer);
         }
+        else if ("/SAIL/AccountManager/Update/RecoverUser" == strResource)
+        {
+            stlResponseBuffer = this->RecoverUser(c_oRequestStructuredBuffer);
+        }
     }
     else if ("DELETE" == strVerb)
     {
@@ -792,6 +806,13 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserRecords(
         oBasicRecordRequest.PutString("Verb", "GET");
         oBasicRecordRequest.PutString("Resource", "/SAIL/DatabaseManager/BasicUser");
         oBasicRecordRequest.PutQword("Passphrase", qw64BitHashPassphrase);
+        // Check if its for login transaction
+        // If yes, then check if the DatabaseGateway will check if the account is eNew or eOpen
+        // Otherwise, it will send back an error code
+        if (true == c_oRequest.IsElementPresent("IsLoginTransaction", BOOLEAN_VALUE_TYPE))
+        {
+            oBasicRecordRequest.PutBoolean("IsLoginTransaction", c_oRequest.GetBoolean("IsLoginTransaction"));
+        }
         std::vector<Byte> stlBasicRecordRequest = ::CreateRequestPacket(oBasicRecordRequest);
         // Send request packet
         poTlsNode->Write(stlBasicRecordRequest.data(), (stlBasicRecordRequest.size()));
@@ -906,6 +927,9 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserInfo(
         if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
         {
             StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("UserInformation").GetStructuredBuffer("Eosb"));
+            // Add account encryption key
+            // This encryption key will be used by encrypt and decrypt confidential account records
+            oResponse.PutBuffer("AccountEncryptionKey", oDecryptedEosb.GetBuffer("AccountEncryptionKey"));
             // Send back the user information
             oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
             oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
@@ -1098,6 +1122,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterUser(
                 oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterUser");
                 oRequest.PutStructuredBuffer("Request", c_oRequest);
                 oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+                oRequest.PutBuffer("AccountEncryptionKey", oUserInfo.GetBuffer("AccountEncryptionKey"));
                 std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
                 // Send request packet
                 poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -1174,6 +1199,8 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
     try
     {
         // Get user information to check if the user has admin access rights
+        // Using this user's AccountEncryptionKey will ensure that they trying to update a user from the same organization
+        // Because AccountEncryptionKey will be different for different organizations
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
@@ -1188,6 +1215,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
                 oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateUserRights");
                 oRequest.PutString("UserGuid", c_oRequest.GetString("UserGuid"));
                 oRequest.PutQword("AccessRights", c_oRequest.GetQword("AccessRights"));
+                oRequest.PutBuffer("AccountEncryptionKey", oUserInfo.GetBuffer("AccountEncryptionKey"));
                 std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
                 // Send request packet
                 poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -1263,11 +1291,14 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateOrganizationInformation(
 
     try
     {
+        // Get organization guid
+        std::string strOrganizationGuid = c_oRequest.GetString("OrganizationGuid");
         // Get user information to check if the user has admin access rights
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            // Check if the user is an admin and if the user belongs to the same organization
+            if ((eAdmin == oUserInfo.GetQword("AccessRights")) && (strOrganizationGuid == oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces)))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1276,7 +1307,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateOrganizationInformation(
                 oRequest.PutString("PluginName", "DatabaseManager");
                 oRequest.PutString("Verb", "PUT");
                 oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateOrganizationInformation");
-                oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
+                oRequest.PutString("OrganizationGuid", strOrganizationGuid);
                 oRequest.PutStructuredBuffer("OrganizationInformation", c_oRequest.GetStructuredBuffer("OrganizationInformation"));
                 std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
                 // Send request packet
@@ -1354,13 +1385,13 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
     try
     {
         // Get user information to check if the user has admin access rights or if the Eosb is associated with the userguid
+        // In case of an admin, the AccountEncryptionKey will ensure that they trying to update a user from the same organization
+        // Because AccountEncryptionKey will be different for different organizations
         std::string strUserGuid = c_oRequest.GetString("UserGuid");
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            // TODO: add an or in the if statement to check if user is eAdmin
-            // For now, an admin can't change a user's information
-            if (strUserGuid == oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces))
+            if ((strUserGuid == oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces)) || eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1371,6 +1402,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
                 oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateUserInformation");
                 oRequest.PutString("UserGuid", c_oRequest.GetString("UserGuid"));
                 oRequest.PutStructuredBuffer("UserInformation", c_oRequest.GetStructuredBuffer("UserInformation"));
+                oRequest.PutBuffer("AccountEncryptionKey", oUserInfo.GetBuffer("AccountEncryptionKey"));
                 std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
                 // Send request packet
                 poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -1446,12 +1478,11 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizations(
 
     try 
     {
-        // TODO: Should be Sail admin
-        // For now: Get user information to check if the user has admin access rights
+        // Get user information to check if the user has sail admin access rights
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (eSailAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1535,12 +1566,11 @@ std::vector<Byte> __thiscall AccountDatabase::ListUsers(
 
     try 
     {
-        // TODO: Should be Sail admin
-        // For now: Get user information to check if the user has admin access rights
+        // For now: Get user information to check if the user has sail admin access rights
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (eSailAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1549,6 +1579,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListUsers(
                 oRequest.PutString("PluginName", "DatabaseManager");
                 oRequest.PutString("Verb", "GET");
                 oRequest.PutString("Resource", "/SAIL/DatabaseManager/Users");
+                oRequest.PutBuffer("AccountEncryptionKey", oUserInfo.GetBuffer("AccountEncryptionKey"));
                 std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
                 // Send request packet
                 poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -1625,7 +1656,8 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizationUsers(
     try 
     {
         // Get user information to check if the user has admin access rights
-        // Todo: add an or statement and check if its a sail admin
+        // Using this user's AccountEncryptionKey will ensure that they trying to update a user from the same organization
+        // Because AccountEncryptionKey will be different for different organizations
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
@@ -1639,6 +1671,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizationUsers(
                 oRequest.PutString("Verb", "GET");
                 oRequest.PutString("Resource", "/SAIL/DatabaseManager/OrganizationUsers");
                 oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
+                oRequest.PutBuffer("AccountEncryptionKey", oUserInfo.GetBuffer("AccountEncryptionKey"));
                 std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
                 // Send request packet
                 poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -1658,6 +1691,97 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizationUsers(
                 {
                     oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                     oResponse.PutStructuredBuffer("OrganizationUsers", oDatabaseResponse.GetStructuredBuffer("OrganizationUsers"));
+                    dwStatus = 200;
+                }
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AccountDatabase
+ * @function RecoverUser
+ * @brief Recover a deleted user account in the database
+ * @param[in] c_oRequest contains the user's eosb and user guid
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns status of the transaction
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AccountDatabase::RecoverUser(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    TlsNode * poTlsNode = nullptr;
+
+    try 
+    {
+        // Get user information to check if the user has admin access rights
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            {
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to add a user to the database
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "PUT");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/RecoverUser");
+                oRequest.PutString("UserGuid", c_oRequest.GetString("UserGuid"));
+                // Send Organization Guid of the admin and the DatabaseGateway will check if the admin and the user to be recovered
+                // belong to the same organization
+                oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                poTlsNode = nullptr;
+                
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (404 != oDatabaseResponse.GetDword("Status"))
+                {
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                     dwStatus = 200;
                 }
             }
@@ -1715,7 +1839,6 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteUser(
     try 
     {
         // Get user information to check if the user has admin access rights
-        // Todo: add an or statement and check if its a sail admin
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
@@ -1729,7 +1852,14 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteUser(
                 oRequest.PutString("Verb", "DELETE");
                 oRequest.PutString("Resource", "/SAIL/DatabaseManager/DeleteUser");
                 oRequest.PutString("UserGuid", c_oRequest.GetString("UserGuid"));
-                oRequest.PutBoolean("IsHardDelete", c_oRequest.GetBoolean("IsHardDelete"));
+                if (true == c_oRequest.IsElementPresent("IsHardDelete", BOOLEAN_VALUE_TYPE))
+                {
+                    oRequest.PutBoolean("IsHardDelete", c_oRequest.GetBoolean("IsHardDelete"));
+                }
+                oRequest.PutBuffer("AccountEncryptionKey", oUserInfo.GetBuffer("AccountEncryptionKey"));
+                // Send Organization Guid of the admin and the DatabaseGateway will check if the admin and the user to be deleted
+                // belong to the same organization
+                oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
                 std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
                 // Send request packet
                 poTlsNode->Write(stlRequest.data(), (stlRequest.size()));

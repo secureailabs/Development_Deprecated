@@ -688,8 +688,6 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
         // Not using the Engine fucntion call to generate the key as that is used when the key is
         // generated and stored to the file systems and only the Guid of the Key is returned.
         CryptographicKeyUniquePtr oPasswordDerivedWrapKey = std::make_unique<CryptographicKey>(KeySpec::ePDKDF2, HashAlgorithm::eSHA256, strPassphrase);
-        // Copy it so that it can be used twice, Copy constructor is cheaper
-        CryptographicKeyUniquePtr oPasswordDerivedDecryptKey = std::make_unique<CryptographicKey>(*oPasswordDerivedWrapKey);
 
         // Set the parameters for unwrapping/decrypting the key
         // Password derived keys also derive IV from the same password. So, not needed.
@@ -702,8 +700,11 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
         bool fDecryptStatus = oCryptographicEngine.OperationFinish(oUnwrapKeyOperationId, stlAccountKey);
         _ThrowBaseExceptionIf((false == fDecryptStatus), "Account key Decryption using Password Key failed.", nullptr);
 
+        // Generate account encryption key 
+        CryptographicKeyUniquePtr oAccountEncryptionKey = std::make_unique<CryptographicKey>(KeySpec::ePDKDF2, HashAlgorithm::eSHA256, std::string(stlAccountKey.begin(), stlAccountKey.end()));
+
         // Get the Double Encrypted Confidential User Record and first decrypt it using the
-        // AES-GCM SAIL Secret key and then using the password derived key
+        // AES-GCM SAIL Secret key and then using the account encryption key
         StructuredBuffer oEncryptedUserRecord(oStructuredBufferConfidentialUserRecord.GetBuffer("EncryptedSsb"));
         oDecryptParams.PutBuffer("IV", oEncryptedUserRecord.GetBuffer("IV"));
         oDecryptParams.PutBuffer("TAG", oEncryptedUserRecord.GetBuffer("TAG"));
@@ -730,6 +731,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
             oKeyFile.close();
         }
 
+        // Decrypt confidential record using the sail secret key
         std::vector<Byte> stlUserKeyEncryptedUserRecord;
         OperationID oDecryptionID = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, oSailSecretKey, &oDecryptParams);
         oCryptographicEngine.OperationUpdate(oDecryptionID, oEncryptedUserRecord.GetBuffer("SailKeyEncryptedConfidentialUserRecord"), stlUserKeyEncryptedUserRecord);
@@ -743,8 +745,9 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
         oDecryptParams.RemoveElement("IV");
         oDecryptParams.RemoveElement("TAG");
 
+        // Decrypt the confidential record decrypted by the sail secret key now by using the account encryption key
         std::vector<Byte> stlSerializedPlainTextConfidentialUserRecord;
-        OperationID oUserKeyDecryptionID = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, std::move(oPasswordDerivedDecryptKey), &oDecryptParams);
+        OperationID oUserKeyDecryptionID = oCryptographicEngine.OperationInit(CryptographicOperation::eDecrypt, std::move(oAccountEncryptionKey), &oDecryptParams);
         oCryptographicEngine.OperationUpdate(oUserKeyDecryptionID, stlUserKeyEncryptedUserRecord, stlSerializedPlainTextConfidentialUserRecord);
         fDecryptStatus = oCryptographicEngine.OperationFinish(oUserKeyDecryptionID, stlSerializedPlainTextConfidentialUserRecord);
         _ThrowBaseExceptionIf((false == fDecryptStatus), "Confidential User Record Decryption using User Account Key failed.", nullptr);
@@ -774,10 +777,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     catch (BaseException oException)
     {
         ::RegisterException(oException, __func__, __LINE__);
+        stlEosb.clear();
     }
     catch (...)
     {
         ::RegisterUnknownException(__func__, __LINE__);
+        stlEosb.clear();
     }
 
     return stlEosb;
@@ -1762,7 +1767,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::CreateDigitalSign
 
 std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GetUserInfoAndUpdateEosb(
     _in const StructuredBuffer & c_oStructuredBufferRequest
-)
+    )
 {
     __DebugFunction();
 
@@ -1772,7 +1777,9 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GetUserInfoAndUpd
 
     try
     {
-        // Get the user information
+        // Get the plain text Eosb. It will also have the account key.
+        // Do not expose this function. It is meant for internal use only
+        StructuredBuffer oPlainTextEosb = this->GetPlainTextSsbFromEosb(c_oStructuredBufferRequest.GetBuffer("Eosb"));
         StructuredBuffer oRegisterEosbResponse(this->RegisterEosb(c_oStructuredBufferRequest));
         if (201 == oRegisterEosbResponse.GetDword("Status"))
         {
@@ -1783,6 +1790,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GetUserInfoAndUpd
             {
                 oResponse.PutBuffer("UpdatedEosb", oUnregisterEosbResponse.GetBuffer("Eosb"));
                 oResponse.PutStructuredBuffer("UserInformation", oRegisterEosbResponse);
+                oResponse.PutBuffer("AccountEncryptionKey", oPlainTextEosb.GetBuffer("AccountKey"));
                 dwStatus = 201;
             }
         }

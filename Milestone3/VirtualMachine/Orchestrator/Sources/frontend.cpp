@@ -659,9 +659,11 @@ void __thiscall Frontend::HandlePushSafeObject(
     oBuffer.PutString("EndPoint", "JobEngine");
     
     oBuffer.PutString("SafeObjectUuid", strFNID);
-    oBuffer.PutString("Payload", m_stlFNTable[strFNID]->GetScript());
     oBuffer.PutString("Title", m_stlFNTable[strFNID]->GetTitle());
     oBuffer.PutString("Description", m_stlFNTable[strFNID]->GetDescription());
+
+    std::string strCode =  m_stlFNTable[strFNID]->GetScript();
+    oBuffer.PutBuffer("Payload", (Byte*)strCode.c_str(), strCode.size());
     
     std::vector<std::string> stlInputIDs = m_stlFNTable[strFNID]->GetInput(); 
     std::vector<std::string> stlOutputIDs = m_stlFNTable[strFNID]->GetOutput(); 

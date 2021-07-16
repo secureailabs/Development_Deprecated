@@ -101,11 +101,8 @@ static PyObject* pushdata(PyObject* self, PyObject* args)
             break;
         }
 
-        if(!PyBytes_AsStringAndSize(next, &tmpInputs, &len))
-        {
-            return NULL;
-        }
-
+        PyBytes_AsStringAndSize(next, &tmpInputs, &len);
+        
         std::vector<Byte> stlByteElement((Byte*)tmpInputs, (Byte*)tmpInputs+len);
         stlInputs.push_back(stlByteElement);
    }

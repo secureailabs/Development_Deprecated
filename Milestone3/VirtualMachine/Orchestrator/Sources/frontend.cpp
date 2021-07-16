@@ -465,22 +465,17 @@ void __thiscall Frontend::HandleQuit(void)
 
 void __thiscall Frontend::HandlePushData(
     _in std::string & strVMID,
-    _in std::string & strFNID,
-    _in std::string & strJobID,
+    _in std::vector<std::string>& stlInputIds,
     _in std::vector<std::vector<Byte>> & stlInputVars
     )
 {
-    std::vector<std::string> stlInputIDs = m_stlFNTable[strFNID]->GetInput();
-
-    for(size_t i=0; i<stlInputIDs.size(); i++)
+    for(size_t i=0; i<stlInputIds.size(); i++)
     {
-        std::string strDataID = strJobID + "." + stlInputIDs[i];
-
         StructuredBuffer oBuffer;
     
         oBuffer.PutByte("RequestType", (Byte)EngineRequest::ePushdata);
         oBuffer.PutString("EndPoint", "JobEngine");
-        oBuffer.PutString("DataID", strDataID);
+        oBuffer.PutString("DataId", stlInputIds[i]);
         oBuffer.PutBuffer("Data", stlInputVars[i]);
 
         try
@@ -506,18 +501,19 @@ void __thiscall Frontend::HandleSetParameters(
     _in std::string& strVMID, 
     _in std::string& strFNID, 
     _in std::string& strJobID, 
-    _in std::vector<std::string>stlOldParams, 
-    _in std::vector<std::string>stlNewParams
+    _in std::vector<std::string>stlParams
     )
 {
-    for(size_t i=0; i<stlOldParams.size(); i++)
+    std::vector<std::string> stlInputIds = m_stlFNTable[strFNID]->GetInput();
+
+    for(size_t i=0; i<stlParams.size(); i++)
     {
         StructuredBuffer oBuffer;
         oBuffer.PutByte("RequestType", (Byte)EngineRequest::eSetParameters);
         oBuffer.PutString("EndPoint", "JobEngine");
         oBuffer.PutString("JobUuid", strJobID);
-        oBuffer.PutString("ParameterUuid", stlOldParams[i]);
-        oBuffer.PutString("ValueUuid", stlNewParams[i]);
+        oBuffer.PutString("ParameterUuid", stlInputIds[i]);
+        oBuffer.PutString("ValueUuid", stlParams[i]);
         oBuffer.PutUnsignedInt32("ValuesExpected", 1);
         oBuffer.PutUnsignedInt32("ValueIndex", 0);
         

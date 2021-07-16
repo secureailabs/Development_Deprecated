@@ -91,8 +91,7 @@ class Frontend : public Object{
         void __thiscall HandlePushData
         (
             _in std::string& strVMID,
-            _in std::string& strFNID,
-            _in std::string& strJobID,
+            _in std::vector<std::string>& stlInputIds,
             _in std::vector<std::vector<Byte>> & stlInputVars   
         );
         void __thiscall HandleSetParameters
@@ -100,8 +99,7 @@ class Frontend : public Object{
             _in std::string& strVMID, 
             _in std::string& strFNID, 
             _in std::string& strJobID, 
-            _in std::vector<std::string>stlOldParams, 
-            _in std::vector<std::string>stlNewParams
+            _in std::vector<std::string>stlParams
         );
         void __thiscall HandlePullData
         (

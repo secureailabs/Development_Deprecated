@@ -7,11 +7,14 @@ def connect(serverIP, port, email, password):
 def newguid():
     return SAILPyAPI.createguid()
 
-def pushdata(vm, jobID, fnID, inputList):
+def pushdata(vm, inputList):
     inputs = []
+    dataid = []
     for var in inputList:
         inputs.append(pickle.dumps(var))
-    SAILPyAPI.pushdata(vm, jobID, fnID, inputs)
+        dataid.append(newguid())
+    SAILPyAPI.pushdata(vm, dataid, inputs)
+    return dataid
 
 def pulldata(vm, jobID, fnID):
     # outputs = []
@@ -22,8 +25,8 @@ def pulldata(vm, jobID, fnID):
     # return outputs
     
 
-def setparameter(vm, jobID, fnID, newParams, oldParams):
-    return SAILPyAPI.setparameter(vm, jobID, fnID, newParams, oldParams)
+def setparameter(vm, jobID, fnID, parameterId):
+    return SAILPyAPI.setparameter(vm, jobID, fnID, parameterId)
 
 # def deletedata(vm, varIDs):
 #     SAILPyAPI.deletedata(varIDs)
@@ -40,8 +43,8 @@ def submitjob(vm, fnID, jobID):
 def registersafeobj(script):
     return SAILPyAPI.registersafeobj(script)
 
-def queryresult(jobid):
-    return SAILPyAPI.queryresult(jobid)
+def queryresult(jobid, fnid):
+    return SAILPyAPI.queryresult(jobid, fnid)
 
 def queryjobstatus(jobid):
     return SAILPyAPI.queryjobstatus(jobid)

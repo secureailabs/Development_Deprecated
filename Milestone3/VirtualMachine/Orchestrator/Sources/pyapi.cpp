@@ -75,18 +75,16 @@ static PyObject* pulldata(PyObject* self, PyObject* args)
 static PyObject* pushdata(PyObject* self, PyObject* args)
 {
     char* vmID;
-    char* jobID;
-    char* fnID;
+    PyObject* InputId;
     PyObject* InputList;
 
-    if(!PyArg_ParseTuple(args, "sssO", &vmID, &jobID, &fnID, &InputList))
+    if(!PyArg_ParseTuple(args, "sOO", &vmID, &InputId, &InputList))
     {
         return NULL;
     }
     
     std::string strVMID(vmID);
-    std::string strJobID(jobID);
-    std::string strFNID(fnID);
+
 
     PyObject *iter = PyObject_GetIter(InputList);
     std::vector<std::vector<Byte>> stlInputs;
@@ -102,12 +100,26 @@ static PyObject* pushdata(PyObject* self, PyObject* args)
         }
 
         PyBytes_AsStringAndSize(next, &tmpInputs, &len);
-        
+
         std::vector<Byte> stlByteElement((Byte*)tmpInputs, (Byte*)tmpInputs+len);
         stlInputs.push_back(stlByteElement);
    }
 
-    getFrontend().HandlePushData(strVMID, strFNID, strJobID, stlInputs);
+    iter = PyObject_GetIter(InputId);
+    std::vector<std::string> stlInputId;
+
+    while (true) 
+    {
+        PyObject *next = PyIter_Next(iter);
+        if (!next) {
+            break;
+        }
+
+        char* tmpParam = PyBytes_AsString(next);
+        stlInputId.push_back(std::string(tmpParam));
+    }
+
+    getFrontend().HandlePushData(strVMID, stlInputId, stlInputs);
 
     return Py_BuildValue("");
 }
@@ -117,10 +129,9 @@ static PyObject* setparameter(PyObject* self, PyObject* args)
     char* vmID;
     char* jobID;
     char* fnID;
-    PyObject* oldParamsList;
-    PyObject* newParamsList;
+    PyObject* ParamsList;
 
-    if(!PyArg_ParseTuple(args, "sssOO", &vmID, &jobID, &fnID, &oldParamsList, &newParamsList))
+    if(!PyArg_ParseTuple(args, "sssO", &vmID, &jobID, &fnID, &ParamsList))
     {
         return NULL;
     }
@@ -129,8 +140,8 @@ static PyObject* setparameter(PyObject* self, PyObject* args)
     std::string strJobID(jobID);
     std::string strFNID(fnID);
 
-    PyObject *iter = PyObject_GetIter(oldParamsList);
-    std::vector<std::string> stlOldParams;
+    PyObject *iter = PyObject_GetIter(ParamsList);
+    std::vector<std::string> stlParams;
 
     while (true) 
     {
@@ -140,24 +151,10 @@ static PyObject* setparameter(PyObject* self, PyObject* args)
         }
 
         char* tmpParam = PyBytes_AsString(next);
-        stlOldParams.push_back(std::string(tmpParam));
+        stlParams.push_back(std::string(tmpParam));
     }
 
-    iter = PyObject_GetIter(newParamsList);
-    std::vector<std::string> stlNewParams;
-
-    while (true) 
-    {
-        PyObject *next = PyIter_Next(iter);
-        if (!next) {
-            break;
-        }
-
-        char* tmpParam = PyBytes_AsString(next);
-        stlNewParams.push_back(std::string(tmpParam));
-    }
-
-    getFrontend().HandleSetParameters(strVMID, strFNID, strJobID, stlOldParams, stlNewParams);
+    getFrontend().HandleSetParameters(strVMID, strFNID, strJobID, stlParams);
     return Py_BuildValue("");
 }
 
@@ -271,7 +268,7 @@ static PyObject* queryjobstatus(PyObject* self, PyObject* args)
             break;
     }
     
-    return Py_BuildValue("s", strStatus);
+    return Py_BuildValue("s", strStatus.c_str());
 }
 
 static PyObject* registersafeobj(PyObject* self, PyObject* args)

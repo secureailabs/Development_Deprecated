@@ -19,7 +19,18 @@
 #include <iostream>
 #include <sstream>
 
-/********************************************************************************************/
+/********************************************************************************************
+ *
+ * @function GetTlsTransaction
+ * @brief Function used to get a Tls data packet over network
+ * @param[in] poTlsNode Pointer to the TlsNode object connected to remote node
+ * @param[in] unMillisecondTimeout The timeout for the start of the packet. It should be
+ *              noted that the timout is not the time it will spend to read, this is the
+ *              time spent waiting for the first byte of this transaction.
+ *              If this value is 0, the call waits for a packet indefinitely
+ * @return Byte vector containing the data read.
+ *
+ ********************************************************************************************/
 
 std::vector<Byte> __stdcall GetTlsTransaction(
     _in TlsNode * poTlsNode,
@@ -133,6 +144,16 @@ std::vector<Byte> __stdcall GetTlsTransaction(
     return stlSerializedTransactionBuffer;
 }
 
+/********************************************************************************************
+ *
+ * @function PutTlsTransaction
+ * @brief Function used to send a Tls data packet over network
+ * @param[in] poTlsNode Pointer to the TlsNode object connected to remote node
+ * @param[in] c_stlSerializedBuffer The Byte vector to send
+ * @return true on success, false otherwise
+ *
+ ********************************************************************************************/
+
 bool __stdcall PutTlsTransaction(
     _in TlsNode * poTlsNode,
     _in const std::vector<Byte> & c_stlSerializedBuffer
@@ -184,7 +205,19 @@ bool __stdcall PutTlsTransaction(
     return fSuccess;
 }
 
-/********************************************************************************************/
+/********************************************************************************************
+ *
+ * @function PutTlsTransactionAndGetResponse
+ * @brief Function used to send a Tls data packet over network and receive a response
+ * @param[in] poTlsNode Pointer to the TlsNode object connected to remote node
+ * @param[in] c_oTransaction StructuredBuffer with the request
+ * @param[in] unMillisecondTimeout The timeout for the start of the packet. It should be
+ *              noted that the timout is not the time it will spend to read, this is the
+ *              time spent waiting for the first byte of this transaction.
+ *              If this value is 0, the call waits for a packet indefinitely
+ * @return Byte vector containing the data read.
+ *
+ ********************************************************************************************/
 
 std::vector<Byte> __stdcall PutTlsTransactionAndGetResponse(
     _in TlsNode * poTlsNode,
@@ -199,6 +232,16 @@ std::vector<Byte> __stdcall PutTlsTransactionAndGetResponse(
     return ::GetTlsTransaction(poTlsNode, unMillisecondTimeout);
 }
 
+/********************************************************************************************
+ *
+ * @function PutTlsTransaction
+ * @brief Function used to send a Tls data packet over network
+ * @param[in] poTlsNode Pointer to the TlsNode object connected to remote node
+ * @param[in] c_oTransaction StructuredBuffer with the request
+ * @return true on success, otherwise false
+ *
+ ********************************************************************************************/
+
 bool __stdcall PutTlsTransaction(
     _in TlsNode * poTlsNode,
     _in const StructuredBuffer & c_oTransaction
@@ -210,6 +253,16 @@ bool __stdcall PutTlsTransaction(
 }
 
 /********************************************************************************************/
+
+/********************************************************************************************
+ *
+ * @function PutHttpResponse
+ * @brief Temporary Function used to send a HTTP type Tls data packet over network
+ * @param[in] poTlsNode Pointer to the TlsNode object connected to remote node
+ * @param[in] stlPayload JSON type data to send
+ * @return true on success, otherwise false
+ *
+ ********************************************************************************************/
 
 bool PutHttpResponse(
     TlsNode * poTlsNode,

@@ -347,6 +347,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             {
                 stlResponseBuffer = this->PullVirtualMachine(c_oRequestStructuredBuffer);
             }
+            else if ("/SAIL/DatabaseManager/Organization/Information" == strResource)
+            {
+                stlResponseBuffer = this->GetOrganizationInformation(c_oRequestStructuredBuffer);
+            }
             else
             {
                 _ThrowBaseException("Invalid resource.", nullptr);

@@ -394,6 +394,11 @@ void __thiscall AccountDatabase::InitializePlugin(void)
     oOrganizationGuid.PutBoolean("IsRequired", true);
     oListOrganizationUsers.PutStructuredBuffer("OrganizationGuid", oOrganizationGuid);
 
+    // Add parameters to get an organization's information
+    // Will only process requests from users belonging to the organization
+    StructuredBuffer oGetOrganizationInformation;
+    oGetOrganizationInformation.PutStructuredBuffer("Eosb", oEosb);
+
     // Add parameters for registering an organization and it's super user
     StructuredBuffer oRegisterOrganizationAndUser;
     StructuredBuffer oOrganizationName;
@@ -528,6 +533,8 @@ void __thiscall AccountDatabase::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Organizations", oListOrganizations, 1);
     // Takes in an EOSB and returns a list of all users
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Users", oListUsers, 1);
+    // Takes in an EOSB and returns a list of all organization
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Organization/Information", oGetOrganizationInformation, 1);
     // Takes in an EOSB and returns a list of users associated with specified organization guid
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Organization/Users", oListOrganizationUsers, 1);
     // TODO: take in Sail Eosb
@@ -674,6 +681,10 @@ uint64_t __thiscall AccountDatabase::SubmitRequest(
         else if ("/SAIL/AccountManager/Organization/Users" == strResource)
         {
             stlResponseBuffer = this->ListOrganizationUsers(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/AccountManager/Organization/Information" == strResource)
+        {
+            stlResponseBuffer = this->GetOrganizationInformation(c_oRequestStructuredBuffer);
         }
     }
     else if ("POST" == strVerb)
@@ -957,6 +968,92 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserInfo(
     }
 
     // Add status code for the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AccountDatabase
+ * @function GetOrganizationInformation
+ * @brief Given an Eosb, return the user's organization information
+ * @param[in] c_oRequest contains the request body
+ * @returns StructuredBuffer containing organization information
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AccountDatabase::GetOrganizationInformation(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    TlsNode * poTlsNode = nullptr;
+
+    try
+    {
+        // Get user information to check if the user has admin access rights
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            // Make a Tls connection with the database portal
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to fetch organization information
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "GET");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/Organization/Information");
+            oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+            // Make sure to release the poTlsNode
+            poTlsNode->Release();
+            poTlsNode = nullptr;
+            
+            // Check if the DatabaseGateway processed the transaction or not
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (404 != oDatabaseResponse.GetDword("Status"))
+            {
+                oResponse.PutStructuredBuffer("OrganizationInformation", oDatabaseResponse.GetStructuredBuffer("OrganizationInformation"));
+                oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                dwStatus = 200;
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    // Return status of the transaction
     oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();

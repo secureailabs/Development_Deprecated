@@ -73,6 +73,7 @@ int main()
                             {
                                 // log out
                                 fTerminatedSignalEncountered = true;
+                            break;
                             }
                             case 1:
                             {
@@ -132,6 +133,12 @@ int main()
                             }
                             case 5:
                             {
+                                ::GetOrganizationInformation(strEncodedEosb);
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 6:
+                            {
                                 if (1 == qwAccessRights) // Check if user is an admin
                                 {
                                     bool fSuccess = ::UpdateOrganizationInformation(strEncodedEosb);
@@ -147,7 +154,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 6:
+                            case 7:
                             {
                                 if (1 == qwAccessRights) // Check if user is an admin
                                 {
@@ -164,7 +171,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 7:
+                            case 8:
                             {
                                 bool fSuccess = ::UpdateUserInformation(strEncodedEosb);
                                 if (true == fSuccess)
@@ -174,7 +181,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 8:
+                            case 9:
                             {
                                 bool fSuccess = ::UpdatePassword(strEncodedEosb);
                                 if (true == fSuccess)
@@ -184,7 +191,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 9:
+                            case 10:
                             {
                                 if (1 == qwAccessRights) // Check if user is an admin
                                 {
@@ -201,7 +208,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 10:
+                            case 11:
                             {
                                 if (1 == qwAccessRights) // Check if user is an admin
                                 {
@@ -218,14 +225,14 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 11:
+                            case 12:
                             {
                                 // Register a Vm
                                 std::string strIEosb = ::GetIEosb(strEncodedEosb);
                                 strVmEosb = ::RegisterVirtualMachine(strIEosb, strVmGuid);
                             break;
                             }
-                            case 12:
+                            case 13:
                             {
                                 if (0 == strVmEosb.size())
                                 {
@@ -244,7 +251,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break;
                             }
-                            case 13:
+                            case 14:
                             {
                                 if (0 == strVmEosb.size())
                                 {
@@ -263,7 +270,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break;
                             }
-                            case 14:
+                            case 15:
                             {
                                 std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
                                 // Get list of all events for the organization
@@ -272,7 +279,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break;
                             }
-                            case 15:
+                            case 16:
                             {
                                 std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
                                 std::string strParentGuid = ::GetStringInput("Enter hyphen and curly braces formatted parent guid: ", 38, true, c_szValidInputCharacters);
@@ -289,7 +296,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break;
                             }
-                            case 16:
+                            case 17:
                             {
                                 bool fSuccess = ::RegisterDigitalContract(strEncodedEosb);
                                 if (true == fSuccess)
@@ -299,20 +306,20 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 17:
+                            case 18:
                             {
                                 StructuredBuffer oDigitalContracts(::ListDigitalContracts(strEncodedEosb));
                                 ::PrintDigitalContracts(oDigitalContracts);
                                 WaitForUserToContinue();
                             break; 
                             }
-                            case 18:
+                            case 19:
                             {
                                 ::PullDigitalContract(strEncodedEosb);
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 19:
+                            case 20:
                             {
                                 if (1 == qwAccessRights || 5 == qwAccessRights) // Check if user is a dataset admin
                                 {
@@ -329,7 +336,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 20:
+                            case 21:
                             {
                                 if (1 == qwAccessRights || 4 == qwAccessRights) // Check if user is a digital contract admin
                                 {
@@ -346,7 +353,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 21:
+                            case 22:
                             {
                                 bool fSuccess = ::RegisterDataset(strEncodedEosb);
                                 if (true == fSuccess)
@@ -356,19 +363,19 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 22:
+                            case 23:
                             {
                                 bool fSuccess = ::ListDatasets(strEncodedEosb);
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 23:
+                            case 24:
                             {
                                 bool fSuccess = ::PullDataset(strEncodedEosb);
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 24:
+                            case 25:
                             {
                                 bool fSuccess = ::DeleteDataset(strEncodedEosb);
                                 if (true == fSuccess)
@@ -378,7 +385,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 25:
+                            case 26:
                             {
                                 ::ShutdownPortal(strEncodedEosb);
                                 fTerminatedSignalEncountered = true;
@@ -387,7 +394,7 @@ int main()
                             }
                             default:
                             {
-                                ::ShowErrorMessage("Invalid option. Usage: [0-25]");
+                                ::ShowErrorMessage("Invalid option. Usage: [0-26]");
                             break;
                             }
                         }

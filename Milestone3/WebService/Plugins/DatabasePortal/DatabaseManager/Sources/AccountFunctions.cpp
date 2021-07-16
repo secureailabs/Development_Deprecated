@@ -13,6 +13,91 @@
 /********************************************************************************************
  *
  * @class DatabaseManager
+ * @function GetOrganizationInformation
+ * @brief Fetch organization information associated with organization guid from the database
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Serialized StructuredBuffer containing organization information
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::GetOrganizationInformation(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+
+    try 
+    {
+        std::string strOrganizationGuid = c_oRequest.GetString("OrganizationGuid");
+        // Each client and transaction can only be used in a single thread
+        mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+        // Access SailDatabase
+        mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+        // Get organization confidential document
+        bsoncxx::stdx::optional<bsoncxx::document::value> oConfidentialDocument = oSailDatabase["ConfidentialOrganizationOrUser"].find_one(document{} 
+                                                                                                            << "OrganizationOrUserUuid" << strOrganizationGuid 
+                                                                                                            << finalize);
+        if (bsoncxx::stdx::nullopt != oConfidentialDocument)
+        {
+            mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
+            {
+                bsoncxx::document::element stlEncryptedSsb = oConfidentialDocument->view()["EncryptedSsb"];
+                if (stlEncryptedSsb && stlEncryptedSsb.type() == type::k_binary)
+                {
+                    StructuredBuffer oConfidentialOrganization(stlEncryptedSsb.get_binary().bytes, stlEncryptedSsb.get_binary().size);
+                    // TODO: Once the organization confidential record is encrypted in RegisterOrganization, Decrypt record, and then fetch it
+                    StructuredBuffer oOrganizationInformation;
+                    oOrganizationInformation.PutString("OrganizationName", oConfidentialOrganization.GetString("OrganizationName"));
+                    oOrganizationInformation.PutString("OrganizationAddress", oConfidentialOrganization.GetString("OrganizationAddress"));
+                    oOrganizationInformation.PutString("PrimaryContactName", oConfidentialOrganization.GetString("PrimaryContactName"));
+                    oOrganizationInformation.PutString("PrimaryContactTitle", oConfidentialOrganization.GetString("PrimaryContactTitle"));
+                    oOrganizationInformation.PutString("PrimaryContactEmail", oConfidentialOrganization.GetString("PrimaryContactEmail"));
+                    oOrganizationInformation.PutString("PrimaryContactPhoneNumber", oConfidentialOrganization.GetString("PrimaryContactPhoneNumber"));
+                    oOrganizationInformation.PutString("SecondaryContactName", oConfidentialOrganization.GetString("SecondaryContactName"));
+                    oOrganizationInformation.PutString("SecondaryContactTitle", oConfidentialOrganization.GetString("SecondaryContactTitle"));
+                    oOrganizationInformation.PutString("SecondaryContactEmail", oConfidentialOrganization.GetString("SecondaryContactEmail"));
+                    oOrganizationInformation.PutString("SecondaryContactPhoneNumber", oConfidentialOrganization.GetString("SecondaryContactPhoneNumber"));
+                    // Send back the organization information
+                    oResponse.PutStructuredBuffer("OrganizationInformation", oOrganizationInformation);
+                }
+            };
+            // Create a session and start the transaction
+            mongocxx::client_session oSession = oClient->start_session();
+            try 
+            {
+                oSession.with_transaction(oCallback);
+                dwStatus = 200;
+            }
+            catch (mongocxx::exception& e) 
+            {
+                std::cout << "Collection transaction exception: " << e.what() << std::endl;
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
  * @function GetBasicOrganizationRecord
  * @brief Fetch basic organization record associated with organization name from the database
  * @param[in] c_oRequest contains the request body
@@ -1065,7 +1150,6 @@ std::vector<Byte> __thiscall DatabaseManager::UpdatePassword(
     try 
     {
         std::string strUserGuid = c_oRequest.GetString("UserGuid");
-        std::cout << "suer guid: " << strUserGuid << std::endl;
         std::string strEmail = c_oRequest.GetString("Email");
         std::string strCurrentPassword = c_oRequest.GetString("CurrentPassword");
         std::string strNewPassword = c_oRequest.GetString("NewPassword");

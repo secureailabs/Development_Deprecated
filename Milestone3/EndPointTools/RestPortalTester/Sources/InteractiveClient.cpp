@@ -1043,6 +1043,56 @@ bool UpdatePassword(
 
 /********************************************************************************************/
 
+bool GetOrganizationInformation(
+    _in const std::string & c_strEncodedEosb
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+
+    try 
+    {
+        // Create rest request
+        std::string strVerb = "GET";
+        std::string strApiUrl = "/SAIL/AccountManager/Organization/Information?Eosb="+ c_strEncodedEosb;
+        std::string strJsonBody = "";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strJsonBody, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting organization information.", nullptr);
+        fSuccess = true;
+        std::cout << "************************\n Organization Information \n************************\n" << std::endl;
+        StructuredBuffer oOrganization(oResponse.GetStructuredBuffer("OrganizationInformation"));
+        std::cout << "Organization name: " << oOrganization.GetString("OrganizationName") << std::endl;
+        std::cout << "Organization address: " << oOrganization.GetString("OrganizationAddress") << std::endl;
+        std::cout << "Primary contact name: " << oOrganization.GetString("PrimaryContactName") << std::endl;
+        std::cout << "Primary contact title: " << oOrganization.GetString("PrimaryContactTitle") << std::endl;
+        std::cout << "Primary contact email: " << oOrganization.GetString("PrimaryContactEmail") << std::endl;
+        std::cout << "Primary contact phone #: " << oOrganization.GetString("PrimaryContactPhoneNumber") << std::endl;
+        std::cout << "Secondary contact name: " << oOrganization.GetString("SecondaryContactName") << std::endl;
+        std::cout << "Secondary contact title: " << oOrganization.GetString("SecondaryContactTitle") << std::endl;
+        std::cout << "Secondary contact email: " << oOrganization.GetString("SecondaryContactEmail") << std::endl;
+        std::cout << "Secondary contact phone #: " << oOrganization.GetString("SecondaryContactPhoneNumber") << std::endl;
+        std::cout << "------------------------------------------------------" << std::endl;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
 bool ListOrganizations(
     _in const std::string & c_strEncodedEosb
     )

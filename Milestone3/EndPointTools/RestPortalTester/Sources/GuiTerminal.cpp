@@ -27,27 +27,28 @@ std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strMagenta + "2- Get list of organizations - Sail Admin privileges required!\n" +
             oFontColor.strMagenta + "3- Get list of all users - Sail Admin privileges required!\n" +
             oFontColor.strMagenta + "4- Get list of organization users - Admin privileges required!\n" +
-            oFontColor.strMagenta + "5- Update organization information - Admin privileges required!\n" +
-            oFontColor.strMagenta + "6- Update user's access rights - Admin privileges required!\n" +
-            oFontColor.strMagenta + "7- Update user information\n" +
-            oFontColor.strMagenta + "8- Update password\n" +
-            oFontColor.strMagenta + "9- Delete a user - Admin privileges required!\n" +
-            oFontColor.strMagenta + "10- Recover a user - Admin privileges required!\n" +
-            oFontColor.strCyan + "11- Register a virtual machine\n" +
-            oFontColor.strCyan + "12- Register a virtual machine event for DOO and its leaf events\n" +
-            oFontColor.strCyan + "13- Register a virtual machine event for RO and its leaf events\n" +
-            oFontColor.strCyan + "14- Get list of all events of the organization\n" +
-            oFontColor.strCyan + "15- Get list of events for a specified parent\n" +
-            oFontColor.strBlue + "16- Register a digital contract\n" +
-            oFontColor.strBlue + "17- Get list of all digital contracts of your organization\n" +
-            oFontColor.strBlue + "18- Pull a digital contract\n" +
-            oFontColor.strBlue + "19- Approve a digital contract - Dataset Admin privileges required\n" +
-            oFontColor.strBlue + "10- Activate a digital contract - Digital Contract Admin privileges required\n" +
-            oFontColor.strYellow + "21- Register a dataset\n" +
-            oFontColor.strYellow + "22- Get list of all available datasets\n" +
-            oFontColor.strYellow + "23- Get metadata of desired dataset\n" +
-            oFontColor.strYellow + "24- Delete a dataset - Dataset Admin privileges required!\n" +
-            oFontColor.strRed + "25- Shut down servers\n" +
+            oFontColor.strMagenta + "5- Get organization information\n" +
+            oFontColor.strMagenta + "6- Update organization information - Admin privileges required!\n" +
+            oFontColor.strMagenta + "7- Update user's access rights - Admin privileges required!\n" +
+            oFontColor.strMagenta + "8- Update user information\n" +
+            oFontColor.strMagenta + "9- Update password\n" +
+            oFontColor.strMagenta + "10- Delete a user - Admin privileges required!\n" +
+            oFontColor.strMagenta + "11- Recover a user - Admin privileges required!\n" +
+            oFontColor.strCyan + "12- Register a virtual machine\n" +
+            oFontColor.strCyan + "13- Register a virtual machine event for DOO and its leaf events\n" +
+            oFontColor.strCyan + "14- Register a virtual machine event for RO and its leaf events\n" +
+            oFontColor.strCyan + "15- Get list of all events of the organization\n" +
+            oFontColor.strCyan + "16- Get list of events for a specified parent\n" +
+            oFontColor.strBlue + "17- Register a digital contract\n" +
+            oFontColor.strBlue + "18- Get list of all digital contracts of your organization\n" +
+            oFontColor.strBlue + "19- Pull a digital contract\n" +
+            oFontColor.strBlue + "20- Approve a digital contract - Dataset Admin privileges required\n" +
+            oFontColor.strBlue + "21- Activate a digital contract - Digital Contract Admin privileges required\n" +
+            oFontColor.strYellow + "22- Register a dataset\n" +
+            oFontColor.strYellow + "23- Get list of all available datasets\n" +
+            oFontColor.strYellow + "24- Get metadata of desired dataset\n" +
+            oFontColor.strYellow + "25- Delete a dataset - Dataset Admin privileges required!\n" +
+            oFontColor.strRed + "26- Shut down servers\n" +
             oFontColor.strRed + "0- Logout\n";
 
 /********************************************************************************************/

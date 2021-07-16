@@ -17,7 +17,7 @@ SafeObject::SafeObject
     m_nNumberOfInputArgs = oInput.GetNamesOfElements().size();
     for(int i = 0; i<m_nNumberOfInputArgs; i++)
     {
-        StructuredBuffer oInputElement = oBuffer.GetStructuredBuffer(std::to_string(i).c_str());
+        StructuredBuffer oInputElement = oInput.GetStructuredBuffer(std::to_string(i).c_str());
         m_stlInputArgs.push_back(oInputElement.GetString("Uuid"));
         //m_stlInputDescription.push_back(oInputElement.GetString("Description"));
     }
@@ -26,7 +26,7 @@ SafeObject::SafeObject
     m_nNumberOfOutputArgs = oOutput.GetNamesOfElements().size();
     for(int i = 0; i<m_nNumberOfOutputArgs; i++)
     {
-        StructuredBuffer oOutputElement = oBuffer.GetStructuredBuffer(std::to_string(i).c_str());
+        StructuredBuffer oOutputElement = oOutput.GetStructuredBuffer(std::to_string(i).c_str());
         m_stlOutputArgs.push_back(oOutputElement.GetString("Uuid"));
         //m_stlInputDescription.push_back(oInputElement.GetString("Description"));
     }

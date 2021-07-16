@@ -676,7 +676,7 @@ void __thiscall Frontend::HandlePushSafeObject(
         //oInputElement.PutString("Description", "");
         oInputParams.PutStructuredBuffer(std::to_string(i).c_str(), oInputElement);
     }
-    oBuffer.PutStructuredBuffer("InputParameters", oInputParams);
+    oBuffer.PutStructuredBuffer("ParameterList", oInputParams);
 
     StructuredBuffer oOutputParams;
     for(size_t i = 0; i<stlOutputIDs.size(); i++)
@@ -686,7 +686,7 @@ void __thiscall Frontend::HandlePushSafeObject(
         //oInputElement.PutString("Description", "");
         oOutputParams.PutStructuredBuffer(std::to_string(i).c_str(), oOutputElement);
     }
-    oBuffer.PutStructuredBuffer("OutputParameter", oOutputParams);
+    oBuffer.PutStructuredBuffer("OutputParameters", oOutputParams);
     
     try
     {

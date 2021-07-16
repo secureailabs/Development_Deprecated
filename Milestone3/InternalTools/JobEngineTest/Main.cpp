@@ -50,7 +50,7 @@ void SendRequestToJobEngine(
     __DebugFunction();
 
     oStructuredBufferRequest.PutString("EndPoint", "JobEngine");
-    ::SendTlsData(poTlsNode, oStructuredBufferRequest.GetSerializedBuffer());
+    ::PutTlsTransaction(poTlsNode, oStructuredBufferRequest.GetSerializedBuffer());
 }
 
 bool TestConnectVm(
@@ -68,7 +68,7 @@ bool TestConnectVm(
 
     ::SendRequestToJobEngine(poTlsNode, oStructuredBufferRequest);
 
-    auto stlSerializedBuffer = ::GetTlsDataBlocking(poTlsNode);
+    auto stlSerializedBuffer = ::GetTlsTransaction(poTlsNode, 0);
     StructuredBuffer oNewRequest(stlSerializedBuffer);
     std::cout << oNewRequest.ToString() << std::endl;
 
@@ -247,7 +247,7 @@ int __cdecl main(
         do
         {
             std::cout << "Waiting for signals..\n";
-            auto stlSerializedBuffer = ::GetTlsDataBlocking(poTlsNode);
+            auto stlSerializedBuffer = ::GetTlsTransaction(poTlsNode, 0);
             StructuredBuffer oNewRequest(stlSerializedBuffer);
 
             std::cout << oNewRequest.ToString() << std::endl;

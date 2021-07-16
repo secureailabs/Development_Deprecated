@@ -165,7 +165,7 @@ void __thiscall CommunicationPortal::PersistantConnectionTlsToIpc(
                 }
             }
             std::cout << "Waiting for requests\n";
-            poStructuredBufferMessageToPass = std::make_unique<StructuredBuffer>(::GetTlsDataBlocking(c_poTlsNode));
+            poStructuredBufferMessageToPass = std::make_unique<StructuredBuffer>(::GetTlsTransaction(c_poTlsNode, 0));
         }
         while(fKeepRunning);
     }
@@ -210,7 +210,7 @@ void __thiscall CommunicationPortal::PersistantConnectionIpcToTls(
                 fKeepRunning = false;
             }
         }
-        ::SendTlsData(c_poTlsNode, oStructuredBuffer.GetSerializedBuffer());
+        ::PutTlsTransaction(c_poTlsNode, oStructuredBuffer.GetSerializedBuffer());
     }
     while(fKeepRunning);
 }
@@ -240,13 +240,13 @@ void __thiscall CommunicationPortal::OneTimeConnectionHandler(
             ::PutIpcTransaction(m_stlMapOfProcessToIpcSocket.at(strEndPoint), c_oStructuredBufferNewRequest);
 
             // This wait for response is a non-blocking and must be fulfilled within the required time
-            ::SendTlsData(c_poTlsNode, ::GetIpcTransaction(m_stlMapOfProcessToIpcSocket.at(strEndPoint), false));
+            ::PutTlsTransaction(c_poTlsNode, ::GetIpcTransaction(m_stlMapOfProcessToIpcSocket.at(strEndPoint), false));
         }
         else
         {
             StructuredBuffer oStructuredBufferFailureResponse;
             oStructuredBufferFailureResponse.PutDword("Status", 404);
-            ::SendTlsData(c_poTlsNode, oStructuredBufferFailureResponse.GetSerializedBuffer());
+            ::PutTlsTransaction(c_poTlsNode, oStructuredBufferFailureResponse.GetSerializedBuffer());
         }
     }
     catch(const BaseException& oBaseException)
@@ -280,7 +280,7 @@ void __thiscall CommunicationPortal::HandleConnection(
 
     std::vector<std::thread> stlListOfThreads;
     std::cout << "New Connection.. Waiting for data" << std::endl;
-    StructuredBuffer oStructuredBufferNewRequest(::GetTlsDataBlocking(c_poTlsNode));
+    StructuredBuffer oStructuredBufferNewRequest(::GetTlsTransaction(c_poTlsNode, 0));
 
     // If the connection was established with the JobEngine it will be a persistant connection,
     // otherwise it will be a single transaction function.

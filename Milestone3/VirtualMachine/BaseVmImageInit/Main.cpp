@@ -59,7 +59,7 @@ void __cdecl InitVirtualMachine(
 
                 // Fetch the serialized Structure Buffer from the remote Initializer Tool
 
-                std::vector<Byte> stlPayload = ::GetPayload(poTlsNode, 5*60*1000);
+                std::vector<Byte> stlPayload = ::GetTlsTransaction(poTlsNode, 5*60*1000);
                 _ThrowBaseExceptionIf((0 == stlPayload.size()), "Bad Initialization data", nullptr);
 
                 // deserialize the buffer
@@ -162,7 +162,7 @@ void __cdecl InitVirtualMachine(
             if (nullptr != poTlsNode)
             {
                 JsonValue * poResponseJson = JsonValue::ParseStructuredBufferToJson(oResponseStructuredBuffer);
-                bool fResponseStatus = ::PutResponse(poTlsNode, poResponseJson->ToString());
+                bool fResponseStatus = ::PutHttpResponse(poTlsNode, poResponseJson->ToString());
                 poTlsNode->Release();
             }
         }

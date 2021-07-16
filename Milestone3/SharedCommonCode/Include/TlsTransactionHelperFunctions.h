@@ -12,36 +12,27 @@
 #include "TlsNode.h"
 #include "StructuredBuffer.h"
 
-extern std::vector<Byte> __stdcall GetPayload(
-    TlsNode * poTlsNode,
-    unsigned int unMillisecondTimeout
-);
-extern bool __stdcall PutResponse(
-    TlsNode * poTlsNode,
-    const std::string & stlPayload
-);
-
 extern std::vector<Byte> __stdcall GetTlsTransaction(
     _in TlsNode * poTlsNode,
     _in unsigned int unMillisecondTimeout
     );
+
 extern bool __stdcall PutTlsTransaction(
     _in TlsNode * poTlsNode,
-    _in const std::vector<Byte> c_stlSerializedTransaction
+    _in const std::vector<Byte> & c_stlSerializedTransaction
     ) throw();
 extern bool __stdcall PutTlsTransaction(
     _in TlsNode * poTlsNode,
     _in const StructuredBuffer & c_oTransaction
     ) throw();
+
 extern std::vector<Byte> __stdcall PutTlsTransactionAndGetResponse(
     _in TlsNode * poTlsNode,
     _in const StructuredBuffer & c_oTransaction,
     _in unsigned int unMillisecondTimeout
     );
-extern std::vector<Byte> __stdcall GetTlsDataBlocking(
-    _in TlsNode * poTlsNode
-    );
-extern void __stdcall SendTlsData(
-    _in TlsNode * poTlsNode,
-    _in const std::vector<Byte> & c_stlSerializedBuffer
+
+extern bool __stdcall PutHttpResponse(
+    TlsNode * poTlsNode,
+    const std::string & stlPayload
 );

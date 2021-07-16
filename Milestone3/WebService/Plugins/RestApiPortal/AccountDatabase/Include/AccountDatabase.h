@@ -132,6 +132,11 @@ class AccountDatabase : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Recover a deleted user in the database
+        std::vector<Byte> __thiscall RecoverUser(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Delete a user from the database
         std::vector<Byte> __thiscall DeleteUser(
             _in const StructuredBuffer & c_oRequest

@@ -16,6 +16,7 @@
 #include "TlsServer.h"
 #include "TlsTransactionHelperFunctions.h"
 #include "JsonValue.h"
+#include "FileUtils.h"
 
 #include <iostream>
 #include <iterator>
@@ -24,27 +25,6 @@
 
 #include <sys/stat.h>
 #include <unistd.h>
-
-/********************************************************************************************
- *
- * @function BytesToFile
- * @brief Write the Byte array to a new Binary file
- * @param[in] c_strFileName Name of the file to write data
- * @param[in] c_stlFileData The byte vector to be written to the file
- *
- ********************************************************************************************/
-
-void BytesToFile(
-    _in const std::string c_strFileName,
-    _in const std::vector<Byte> c_stlFileData
-)
-{
-    __DebugFunction();
-
-    std::ofstream stlFileToWrite(c_strFileName, std::ios::out | std::ofstream::binary);
-    std::copy(c_stlFileData.begin(), c_stlFileData.end(), std::ostreambuf_iterator<char>(stlFileToWrite));
-    stlFileToWrite.close();
-}
 
 /********************************************************************************************
  *
@@ -99,7 +79,7 @@ void __cdecl InitVirtualMachine(
                 for (int i = 0; i < stlFilesList.size(); i++)
                 {
                     std::cout << "File " << i << " " << stlFilesList.at(i) << std::endl;
-                    ::BytesToFile(stlFilesList.at(i), oFilesStructuredBuffer.GetBuffer(stlFilesList.at(i).c_str()));
+                    ::WriteBytesAsFile(stlFilesList.at(i), oFilesStructuredBuffer.GetBuffer(stlFilesList.at(i).c_str()));
                     ::chmod(stlFilesList.at(i).c_str(), S_IRWXU);
                 }
                 // There are no non-executable files as of now but would be added sooner or later.

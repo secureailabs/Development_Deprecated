@@ -25,12 +25,3 @@ const std::string gc_strDataFolderName = "DataFiles";
 /********************************************************************************************/
 
 void * __stdcall FileSystemWatcherThread(void * poThreadParameter);
-
-std::vector<Byte> FileToBytes(
-    const std::string c_strFileName
-);
-
-void BytesToFile(
-    _in const std::string c_strFileName,
-    _in const std::vector<Byte> c_stlFileData
-);

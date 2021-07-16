@@ -278,6 +278,13 @@ void __thiscall SailAuthentication::InitializePlugin(void)
     StructuredBuffer oShutdownPortal;
     oShutdownPortal.PutStructuredBuffer("Eosb", oEosb);
 
+    // Add parameters for UpdatePassword resource
+    StructuredBuffer oUpdatePassword;
+    oUpdatePassword.PutStructuredBuffer("Eosb", oEosb);
+    oUpdatePassword.PutStructuredBuffer("Email", oEmail);
+    oUpdatePassword.PutStructuredBuffer("CurrentPassword", oPassword);
+    oUpdatePassword.PutStructuredBuffer("NewPassword", oPassword);
+
     // Verifies user credentials and starts an authenticated session with SAIL SaaS
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuthenticationManager/User/Login", oLoginParameters, 2);
 
@@ -289,6 +296,9 @@ void __thiscall SailAuthentication::InitializePlugin(void)
 
     // Shutdown the portal
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuthenticationManager/ShutdownPortal", oShutdownPortal, 0);
+
+    // Update user password
+    m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/AuthenticationManager/User/Password", oUpdatePassword, 1);
 
     // Reset the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AuthenticationManager/Admin/ResetDatabase", 0);
@@ -342,6 +352,13 @@ uint64_t __thiscall SailAuthentication::SubmitRequest(
         else if ("/SAIL/AuthenticationManager/RemoteAttestationCertificate" == strResource)
         {
             stlResponseBuffer = this->GetRemoteAttestationCertificate(c_oRequestStructuredBuffer);
+        }
+    }
+    else if ("PATCH" == strVerb)
+    {
+        if ("/SAIL/AuthenticationManager/User/Password" == strResource)
+        {
+            stlResponseBuffer = this->UpdatePassword(c_oRequestStructuredBuffer);
         }
     }
     else if ("DELETE" == strVerb)
@@ -409,6 +426,81 @@ uint64_t __thiscall SailAuthentication::SubmitRequest(
     return fSuccess;
  }
 
+ /********************************************************************************************
+ *
+ * @class SailAuthentication
+ * @function GetUserInfo
+ * @brief Take in a full EOSB and send back a StructuredBuffer containing user metadata
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns StructuredBuffer containing user metadata
+ *
+ * @note This function is meant to be use internally only and should not be exposed. Unlike
+ *       GetBasicUserInformation
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall SailAuthentication::GetUserInfo(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    Socket * poIpcCryptographicManager = nullptr;
+
+    try
+    {
+        std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+
+        StructuredBuffer oDecryptEosbRequest;
+        oDecryptEosbRequest.PutDword("TransactionType", 0x00000007);
+        oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
+
+        // Call CryptographicManager plugin to get the decrypted eosb
+        poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest, false));
+        poIpcCryptographicManager->Release();
+        poIpcCryptographicManager = nullptr;
+        if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
+        {
+            StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("UserInformation").GetStructuredBuffer("Eosb"));
+            // Add account encryption key
+            // This encryption key will be used by encrypt and decrypt confidential account records
+            oResponse.PutBuffer("AccountEncryptionKey", oDecryptedEosb.GetBuffer("AccountEncryptionKey"));
+            // Send back the user information
+            oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
+            oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
+            // TODO: get user access rights from the confidential record, for now it can't be decrypted
+            oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
+            // Send back the updated Eosb
+            oResponse.PutBuffer("Eosb", oDecryptedEosb.GetBuffer("UpdatedEosb"));
+            dwStatus = 200;
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poIpcCryptographicManager)
+    {
+        poIpcCryptographicManager->Release();
+    }
+
+    // Add status code for the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
 /********************************************************************************************
  *
  * @class SailAuthentication
@@ -447,6 +539,7 @@ std::vector<Byte> __thiscall SailAuthentication::AuthenticateUserCredentails(
         StructuredBuffer oCredentials;
         oCredentials.PutDword("TransactionType", 0x00000001);
         oCredentials.PutString("Passphrase", strPassphrase);
+        oCredentials.PutBoolean("IsLoginTransaction", true);
         poIpcAccountManager = ::ConnectToUnixDomainSocket("/tmp/{0BE996BF-6966-41EB-B211-2D63C9908289}");
         StructuredBuffer oAccountRecords(::PutIpcTransactionAndGetResponse(poIpcAccountManager, oCredentials, false));
         poIpcAccountManager->Release();
@@ -485,6 +578,102 @@ std::vector<Byte> __thiscall SailAuthentication::AuthenticateUserCredentails(
     if (nullptr != poIpcCryptographicManager)
     {
         poIpcCryptographicManager->Release();
+    }
+
+    // Send back the status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class SailAuthentication
+ * @function UpdatePassword
+ * @brief Update user password
+ * @param[in] c_oRequest contains the old credentials and new credentials
+ * @returns transaction status
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall SailAuthentication::UpdatePassword(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    TlsNode * poTlsNode = nullptr;
+
+    try
+    {
+        // Get user credentials
+        std::string strEmail = c_oRequest.GetString("Email");
+        std::string strCurrentPassword = c_oRequest.GetString("CurrentPassword");
+        std::string strNewPassword = c_oRequest.GetString("NewPassword");
+        
+        // Validate old credentials
+        StructuredBuffer oAuthenticateCredentialsRequest;
+        oAuthenticateCredentialsRequest.PutString("Email", strEmail);
+        oAuthenticateCredentialsRequest.PutString("Password", strCurrentPassword);
+        StructuredBuffer oAuthenticateCredentialsResponse = this->AuthenticateUserCredentails(oAuthenticateCredentialsRequest);
+        _ThrowBaseExceptionIf((404 == oAuthenticateCredentialsResponse.GetDword("Status")), "Current credentials are invalid.", nullptr);
+
+        // Update password and re-encrypt the confidential record
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            // Make a Tls connection with the database portal
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to add a user to the database
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "PATCH");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/User/Password");
+            oRequest.PutString("Email", strEmail);
+            oRequest.PutString("CurrentPassword", strCurrentPassword);
+            oRequest.PutString("NewPassword", strNewPassword);
+            oRequest.PutBuffer("AccountEncryptionKey", oUserInfo.GetBuffer("AccountEncryptionKey"));
+            // Send User Guid of the current user and the DatabaseGateway the credentials are of the same user
+            oRequest.PutString("UserGuid", oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces));
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+            // Make sure to release the poTlsNode
+            poTlsNode->Release();
+            poTlsNode = nullptr;
+            
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (404 != oDatabaseResponse.GetDword("Status"))
+            {
+                oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                dwStatus = 200;
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
     }
 
     // Send back the status of the transaction

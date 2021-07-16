@@ -13,6 +13,7 @@
 #include "Exceptions.h"
 #include "ConsoleInputHelperFunctions.h"
 #include "StructuredBuffer.h"
+#include "FileUtils.h"
 
 #include <iostream>
 #include <vector>
@@ -24,59 +25,6 @@ static const char * gsc_szNumericCharacters = "0123456789";
 static const char * gsc_szIpAddressCharacters = "0123456789.";
 static const char * gsc_szAddRemoveNodeInputCharacters = "aArRdD";
 static const char * gsc_szYesNoInputCharacters = "yYnN";
-
-void BytesToFile(
-    _in const std::string c_strFileName,
-    _in const std::vector<Byte> c_stlFileData
-)
-{
-    __DebugFunction();
-
-    std::ofstream stlFileToWrite(c_strFileName, std::ios::out | std::ofstream::binary);
-    std::copy(c_stlFileData.begin(), c_stlFileData.end(), std::ostreambuf_iterator<char>(stlFileToWrite));
-    stlFileToWrite.close();
-}
-
-std::vector<Byte> FileToBytes(
-    const std::string c_strFileName
-)
-{
-    __DebugFunction();
-
-    std::vector<Byte> stlFileData;
-
-    std::ifstream stlFile(c_strFileName.c_str(), (std::ios::in | std::ios::binary | std::ios::ate));
-    if (true == stlFile.good())
-    {
-        unsigned int unFileSizeInBytes = (unsigned int) stlFile.tellg();
-        stlFileData.resize(unFileSizeInBytes);
-        stlFile.seekg(0, std::ios::beg);
-        stlFile.read((char *)stlFileData.data(), unFileSizeInBytes);
-        stlFile.close();
-    }
-    else
-    {
-        _ThrowBaseException("Invalid File Path: %s", nullptr, c_strFileName.c_str());
-    }
-    return stlFileData;
-}
-
-std::string ReadFileAsString(
-    _in std::string c_strFileName
-)
-{
-    __DebugFunction();
-
-    std::ifstream stlFile(c_strFileName, std::ios::ate);
-    std::streamsize nSizeOfFile = stlFile.tellg();
-    stlFile.seekg(0, std::ios::beg);
-    std::string strFileContent;
-    strFileContent.resize(nSizeOfFile);
-    stlFile.read(strFileContent.data(), nSizeOfFile);
-
-    stlFile.close();
-    return strFileContent;
-}
 
 void __thiscall ReplaceAll(
     _inout std::string & strOriginalString,
@@ -189,7 +137,7 @@ void PackageSafeObject(void)
     oStructuredBuffer.PutString("Payload", strSafeObjectTemplate);
 
     std::cout << "The Strucutred Buffer is \n" << oStructuredBuffer.ToString();
-    ::BytesToFile(oSafeObjectGuid.ToString(eRaw) + ".safe", oStructuredBuffer.GetSerializedBuffer());
+    ::WriteBytesAsFile(oSafeObjectGuid.ToString(eRaw) + ".safe", oStructuredBuffer.GetSerializedBuffer());
 }
 
 /********************************************************************************************/

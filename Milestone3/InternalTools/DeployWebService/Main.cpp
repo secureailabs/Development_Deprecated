@@ -15,6 +15,7 @@
 #include "TlsTransactionHelperFunctions.h"
 #include "ConsoleInputHelperFunctions.h"
 #include "Azure.h"
+#include "FileUtils.h"
 
 #include <iostream>
 
@@ -38,32 +39,6 @@ const std::string gc_strImageName = "WebServiceTemplate0.2Image";
 const std::string gc_strVirtualNetwork = "WebServiceTemplate0.2_group-vnet";
 const std::string gc_strNetworkSecurityGroup = "WebServiceTemplate0.2-nsg";
 const std::string gc_strVirtualMachineSize = "Standard_A8_v2";
-
-/********************************************************************************************/
-
-std::vector<Byte> FileToBytes(
-    const std::string c_strFileName
-)
-{
-    __DebugFunction();
-
-    std::vector<Byte> stlFileData;
-
-    std::ifstream stlFile(c_strFileName.c_str(), (std::ios::in | std::ios::binary | std::ios::ate));
-    if (true == stlFile.good())
-    {
-        unsigned int unFileSizeInBytes = (unsigned int) stlFile.tellg();
-        stlFileData.resize(unFileSizeInBytes);
-        stlFile.seekg(0, std::ios::beg);
-        stlFile.read((char *)stlFileData.data(), unFileSizeInBytes);
-        stlFile.close();
-    }
-    else
-    {
-        _ThrowBaseException("Invalid File Path %s\n", c_strFileName.c_str(), nullptr);
-    }
-    return stlFileData;
-}
 
 /********************************************************************************************/
 
@@ -96,7 +71,7 @@ static void __stdcall CreateVirtualMachine(void)
         {
             fDone = true;
 
-            std::vector<Byte> stlBinariesPayload = ::FileToBytes("WebServicesPortal.binaries");
+            std::vector<Byte> stlBinariesPayload = ::ReadFileAsByteBuffer("WebServicesPortal.binaries");
             _ThrowBaseExceptionIf((0 == stlBinariesPayload.size()), "Unable to read WebServicesPortal.binaries file", nullptr);
 
             std::cout << "---------------------------------------------------------------------------------\n";

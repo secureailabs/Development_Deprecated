@@ -249,6 +249,8 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/UpdateOrganizationInformation");
     // Update user information, excluding access rights
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/UpdateUserInformation");
+    // Recover deleted user account
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/RecoverUser");
     // Update the digital contract when a data owner accepts the digital contract or when a researcher accepts the DC terms from the Data owner organization
     m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DatabaseManager/Update/DigitalContract");
     // Delete a user from the database
@@ -403,6 +405,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             {
                 stlResponseBuffer = this->UpdateUserInformation(c_oRequestStructuredBuffer);
             }
+            else if ("/SAIL/DatabaseManager/RecoverUser" == strResource)
+            {
+                stlResponseBuffer = this->RecoverUser(c_oRequestStructuredBuffer);
+            }
             else
             {
                 _ThrowBaseException("Invalid resource.", nullptr);
@@ -413,6 +419,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             if ("/SAIL/DatabaseManager/Update/DigitalContract" == strResource)
             {
                 stlResponseBuffer = this->UpdateDigitalContract(c_oRequestStructuredBuffer);
+            }
+            if ("/SAIL/DatabaseManager/User/Password" == strResource)
+            {
+                stlResponseBuffer = this->UpdatePassword(c_oRequestStructuredBuffer);
             }
             else
             {

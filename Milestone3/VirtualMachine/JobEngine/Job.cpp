@@ -116,7 +116,7 @@ void __thiscall Job::TryRunJob(void)
             // TODO: this is what will go eventually, but due to some bugs in python implementation
             // StructuredBuffer, we are using the JSON
             // std::cout << m_oParameters.ToString() << std::endl;
-            // ::BytesToFile(m_strJobUuid + ".inputs", m_oParameters.GetSerializedBuffer());
+            // ::WriteBytesAsFile(m_strJobUuid + ".inputs", m_oParameters.GetSerializedBuffer());
 
             std::string strInputsJson = JsonValue::ParseStructuredBufferToJson(m_oParameters)->ToString();
             std::ofstream out(m_strJobUuid + ".inputs");

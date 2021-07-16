@@ -99,56 +99,6 @@ void * __stdcall FileSystemWatcherThread(void * poThreadParameter)
  *
  ********************************************************************************************/
 
-std::vector<Byte> FileToBytes(
-    const std::string c_strFileName
-)
-{
-    __DebugFunction();
-
-    std::vector<Byte> stlFileData;
-
-    std::ifstream stlFile(c_strFileName.c_str(), (std::ios::in | std::ios::binary | std::ios::ate));
-    if (true == stlFile.good())
-    {
-        unsigned int unFileSizeInBytes = (unsigned int) stlFile.tellg();
-        stlFileData.resize(unFileSizeInBytes);
-        stlFile.seekg(0, std::ios::beg);
-        stlFile.read((char *)stlFileData.data(), unFileSizeInBytes);
-        stlFile.close();
-    }
-    else
-    {
-        _ThrowBaseException("Invalid File Path", nullptr);
-    }
-    return stlFileData;
-}
-
-/********************************************************************************************
- *
- * @function BytesToFile
- * @brief Creates a file with the content from the buffer
- *
- ********************************************************************************************/
-
-void BytesToFile(
-    _in const std::string c_strFileName,
-    _in const std::vector<Byte> c_stlFileData
-)
-{
-    __DebugFunction();
-
-    std::ofstream stlFileToWrite(c_strFileName, std::ios::out | std::ofstream::binary);
-    std::copy(c_stlFileData.begin(), c_stlFileData.end(), std::ostreambuf_iterator<char>(stlFileToWrite));
-    stlFileToWrite.close();
-}
-
-/********************************************************************************************
- *
- * @function BytesToFile
- * @brief Creates a file with the content from the buffer
- *
- ********************************************************************************************/
-
 std::string DataConnectorGetTable(
     _in unsigned int unTableId
 )

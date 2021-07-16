@@ -72,8 +72,18 @@ class SailAuthentication : public Object
 
     private:
 
+        // Get user information, for internal use only
+        std::vector<Byte> __thiscall GetUserInfo(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Validate a username/password/organization set of credentials
         std::vector<Byte> __thiscall AuthenticateUserCredentails(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Allow user to update their password
+        std::vector<Byte> __thiscall UpdatePassword(
             _in const StructuredBuffer & c_oRequest
             );
 

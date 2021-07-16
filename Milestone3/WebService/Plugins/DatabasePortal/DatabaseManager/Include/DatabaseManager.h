@@ -175,6 +175,11 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Update user password
+        std::vector<Byte> __thiscall UpdatePassword(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Fetch a list of all organizations
         std::vector<Byte> __thiscall ListOrganizations(
             _in const StructuredBuffer & c_oRequest
@@ -185,6 +190,11 @@ class DatabaseManager : public Object
             );
         // Return a list of users for an organization
         std::vector<Byte> __thiscall ListOrganizationUsers(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Recover a deleted user in the database
+        std::vector<Byte> __thiscall RecoverUser(
             _in const StructuredBuffer & c_oRequest
             );
 

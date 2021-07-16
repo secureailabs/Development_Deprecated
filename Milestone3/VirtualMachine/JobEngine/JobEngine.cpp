@@ -16,6 +16,7 @@
 #include "SocketClient.h"
 #include "IpcTransactionHelperFunctions.h"
 #include "JobEngineHelper.h"
+#include "FileUtils.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -361,7 +362,7 @@ void __thiscall JobEngine::PullData(
             StructuredBuffer oResponse;
             oResponse.PutByte("SignalType", (Byte)JobStatusSignals::ePostValue);
             oResponse.PutString("ValueName", c_strFileNametoSend);
-            oResponse.PutBuffer("FileData", ::FileToBytes(c_strFileNametoSend));
+            oResponse.PutBuffer("FileData", ::ReadFileAsByteBuffer(c_strFileNametoSend));
 
             // The Pull data response to the orchestrator is sent as a signal with data
             this->SendSignal(oResponse);

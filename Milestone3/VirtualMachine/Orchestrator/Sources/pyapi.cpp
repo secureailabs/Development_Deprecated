@@ -93,8 +93,8 @@ static PyObject* pushdata(PyObject* self, PyObject* args)
     
     while (true) 
     {
-        Byte* tmpInputs;
-        int len;
+        char* tmpInputs;
+        size_t len;
 
         PyObject *next = PyIter_Next(iter);
         if (!next) {
@@ -106,7 +106,7 @@ static PyObject* pushdata(PyObject* self, PyObject* args)
             return NULL;
         }
 
-        std::vector<Byte> stlByteElement(tmpInputs, tmpInputs+len);
+        std::vector<Byte> stlByteElement((Byte*)tmpInputs, (Byte*)tmpInputs+len);
         stlInputs.push_back(stlByteElement);
    }
 
@@ -142,7 +142,7 @@ static PyObject* setparameter(PyObject* self, PyObject* args)
             break;
         }
 
-        char* tmpParam = PyBytes_AsString(next)
+        char* tmpParam = PyBytes_AsString(next);
         stlOldParams.push_back(std::string(tmpParam));
     }
 

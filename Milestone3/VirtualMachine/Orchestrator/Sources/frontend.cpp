@@ -250,7 +250,7 @@ void __thiscall Frontend::SetFrontend(
     }
     
     StructuredBuffer oBuffer;
-    oBuffer.PutInt8("RequestType", (Byte)EngineRequest::eConnectVirtualMachine);
+    oBuffer.PutByte("RequestType", (Byte)EngineRequest::eConnectVirtualMachine);
     oBuffer.PutString("Eosb", m_strEOSB);
     oBuffer.PutString("Username", strEmail);
 
@@ -311,7 +311,7 @@ void __thiscall Frontend::HandleSubmitJob(
     )
 {
     StructuredBuffer oBuffer;
-    oBuffer.PutInt8("RequestType", (Byte)EngineRequest::eSubmitJob);
+    oBuffer.PutByte("RequestType", (Byte)EngineRequest::eSubmitJob);
     oBuffer.PutString("SafeObjectUuid", strFNID);
     oBuffer.PutString("JobUuid", strJobID);
 
@@ -436,7 +436,7 @@ void __thiscall Frontend::HandleQuit(void)
 {
     StructuredBuffer oBuffer;
 
-    oBuffer.PutInt8("RequestType", (Byte)EngineRequest::eVmShutdown);
+    oBuffer.PutByte("RequestType", (Byte)EngineRequest::eVmShutdown);
     
     for(auto const& i : m_stlConnectionMap)
     {   
@@ -476,7 +476,7 @@ void __thiscall Frontend::HandlePushData(
 
         StructuredBuffer oBuffer;
     
-        oBuffer.PutInt8("RequestType", (Byte)EngineRequest::ePushdata);
+        oBuffer.PutByte("RequestType", (Byte)EngineRequest::ePushdata);
         oBuffer.PutString("DataID", strDataID);
         oBuffer.PutBuffer("Data", stlInputVars[i]);
 
@@ -510,7 +510,7 @@ void __thiscall Frontend::HandleSetParameters(
     for(size_t i=0; i<stlOldParams.size(); i++)
     {
         StructuredBuffer oBuffer;
-        oBuffer.PutInt8("RequestType", (Byte)EngineRequest::eSetParameters);
+        oBuffer.PutByte("RequestType", (Byte)EngineRequest::eSetParameters);
         oBuffer.PutString("JobUuid", strJobID);
         oBuffer.PutString("ParameterUuid", stlOldParams[i]);
         oBuffer.PutString("ValueUuid", stlNewParams[i]);
@@ -549,7 +549,7 @@ void __thiscall Frontend::HandlePullData(
         StructuredBuffer oBuffer;
         std::string strOutputFilename = strJobID + "." + stlOutputIDs[i];
         
-        oBuffer.PutInt8("RequestType", (Byte)EngineRequest::ePullData);
+        oBuffer.PutByte("RequestType", (Byte)EngineRequest::ePullData);
         oBuffer.PutString("Filename", strOutputFilename);
             
         try
@@ -650,7 +650,7 @@ void __thiscall Frontend::HandlePushSafeObject(
 {
     StructuredBuffer oBuffer;
     
-    oBuffer.PutInt8("RequestType", (Byte)EngineRequest::ePushSafeObject);
+    oBuffer.PutByte("RequestType", (Byte)EngineRequest::ePushSafeObject);
     
     oBuffer.PutString("SafeObjectUuid", strFNID);
     oBuffer.PutString("Payload", m_stlFNTable[strFNID]->GetScript());

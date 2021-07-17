@@ -199,7 +199,8 @@ void __thiscall Frontend::Listener(
             case JobStatusSignals::eJobStart:
             {
                 std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
-                m_stlJobStatusMap.emplace(strJobID, JobStatusSignals::eJobStart); 
+                //m_stlJobStatusMap.emplace(strJobID, JobStatusSignals::eJobStart); 
+                m_stlJobStatusMap[strJobID] = JobStatusSignals::eJobStart;
                 break;
             }
             case JobStatusSignals::eJobDone:
@@ -219,7 +220,8 @@ void __thiscall Frontend::Listener(
                 std::vector<Byte> stlData = oResponse.GetBuffer("FileData");
                 std::string strDataID = oResponse.GetString("ValueName");
                 std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
-                m_stlResultMap.emplace(strDataID, stlData);
+                //m_stlResultMap.emplace(strDataID, stlData);
+                m_stlResultMap[strDataID] = stlData;
                 break;
             }
             case JobStatusSignals::eVmShutdown: break;

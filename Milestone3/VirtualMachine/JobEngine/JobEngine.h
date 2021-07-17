@@ -120,4 +120,5 @@ class JobEngine : public Object
         std::unordered_set<std::string> m_stlSetOfPullObjects;
         std::mutex m_oMutexOnSetOfPullObjects;
         std::vector<std::future<void>> m_stlListOfAsyncFutures;
+        std::mutex m_oMutexOnSendSignal;
 };

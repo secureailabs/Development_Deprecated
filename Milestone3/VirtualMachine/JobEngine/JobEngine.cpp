@@ -592,6 +592,7 @@ void __thiscall JobEngine::SendSignal(
         }
         // As soon as the file we requested for is found, we return it to the
         // orchestrator who is waiting asychronously waiting for it.
+        std::lock_guard<std::mutex> lock(m_oMutexOnSendSignal);
         ::PutIpcTransaction(m_poSocket, c_oStructuredBuffer);
     }
     catch(BaseException & oBaseException)

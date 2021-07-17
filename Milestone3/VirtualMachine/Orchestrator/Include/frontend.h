@@ -111,7 +111,7 @@ class Frontend : public Object{
         (
             _in std::string& strJobID,
             _in std::string& strFNID,
-            _inout std::vector<Byte>& stlOutput
+            _inout std::vector<std::vector<Byte>>& stlOutput
         );
         JobStatusSignals __thiscall QueryJobStatus(
             _in std::string& strJobID

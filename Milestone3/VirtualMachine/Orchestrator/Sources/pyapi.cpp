@@ -305,19 +305,19 @@ static PyObject* queryresult(PyObject* self, PyObject* args)
 
     std::string strJobID(jobid);
     std::string strFNID(fnid);
-    std::vector<Byte> stlOutput;
+    std::vector<std::vector<Byte>> stlOutput;
 
     getFrontend().QueryResult(strJobID, strFNID, stlOutput);
 
-    // PyObject* output = PyList_New(stlOutput.size());
+    PyObject* output = PyList_New(stlOutput.size());
 
-    // for(size_t i=0;i<stlOutput.size();i++)
-    // {
-    //     Byte* tmpdata = stlOutput[i].data();
-    //     PyList_SetItem(output, i, Py_BuildValue("y#", tmpdata, stlOutput.size()));
-    // }
+    for(size_t i=0;i<stlOutput.size();i++)
+    {
+        Byte* tmpdata = stlOutput[i].data();
+        PyList_SetItem(output, i, Py_BuildValue("y#", tmpdata, stlOutput[i].size()));
+    }
 
-    return Py_BuildValue("y#", stlOutput, stlOutput.size());
+    return Py_BuildValue("O", output);
 }
 
 static PyMethodDef SAILAPIMethods [] =

@@ -227,10 +227,11 @@ void __thiscall Frontend::Listener(
         }
     }
 
-    for(auto const& i: m_stlConnectionMap)
-    {
-        i.second->Release();
-    }
+    poSocket->release();
+    // for(auto const& i: m_stlConnectionMap)
+    // {
+    //     i.second->Release();
+    // }
 }
 
 
@@ -576,13 +577,17 @@ void __thiscall Frontend::HandlePullData(
 void __thiscall Frontend::QueryResult(
     _in std::string& strJobID,
     _in std::string& strFNID,
-    _inout std::vector<Byte>& stlOutput
+    _inout std::vector<std::vector<Byte>>& stlOutput
 )
 {
-    //std::string strOutputID = m_stlFNMap[strFNID]->GetOutput();
-    std::string strDataID = strJobID + "." +strFNID;
-    std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
-    stlOutput = m_stlResultMap[strDataID];
+    std::vector<std::string> stlOutputID = m_stlFNMap[strFNID]->GetOutput();
+
+    for(size_t i =0; i<stlOutputID.size(); i++)
+    {
+        std::string strDataID = strJobID + "." + stlOutputID[i];
+        std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
+        stlOutput.push_back(m_stlResultMap[strDataID]);
+    }
 }
 
 JobStatusSignals __thiscall Frontend::QueryJobStatus(

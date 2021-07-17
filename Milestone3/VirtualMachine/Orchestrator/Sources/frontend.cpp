@@ -229,7 +229,7 @@ void __thiscall Frontend::Listener(
         }
     }
 
-    poSocket->release();
+    poSocket->Release();
     // for(auto const& i: m_stlConnectionMap)
     // {
     //     i.second->Release();
@@ -582,7 +582,7 @@ void __thiscall Frontend::QueryResult(
     _inout std::vector<std::vector<Byte>>& stlOutput
 )
 {
-    std::vector<std::string> stlOutputID = m_stlFNMap[strFNID]->GetOutput();
+    std::vector<std::string> stlOutputID = m_stlFNTable[strFNID]->GetOutput();
 
     for(size_t i =0; i<stlOutputID.size(); i++)
     {

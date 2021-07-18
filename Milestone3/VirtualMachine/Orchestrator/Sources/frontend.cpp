@@ -192,12 +192,12 @@ void __thiscall Frontend::Listener(
         std::vector<Byte> stlResponseBuffer = GetTlsTransaction(poSocket, 0);
         StructuredBuffer oResponse(stlResponseBuffer);
         JobStatusSignals eStatusSignalType = (JobStatusSignals)oResponse.GetByte("SignalType");
-        std::string strJobID = oResponse.GetString("JobUuid");
         
         switch(eStatusSignalType)
         {
             case JobStatusSignals::eJobStart:
             {
+                std::string strJobID = oResponse.GetString("JobUuid");
                 std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
                 //m_stlJobStatusMap.emplace(strJobID, JobStatusSignals::eJobStart); 
                 m_stlJobStatusMap[strJobID] = JobStatusSignals::eJobStart;
@@ -205,12 +205,14 @@ void __thiscall Frontend::Listener(
             }
             case JobStatusSignals::eJobDone:
             {
+                std::string strJobID = oResponse.GetString("JobUuid");
                 std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
                 m_stlJobStatusMap[strJobID] = JobStatusSignals::eJobDone;
                 break;
             }
             case JobStatusSignals::eJobFail:
             {
+                std::string strJobID = oResponse.GetString("JobUuid");
                 std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
                 m_stlJobStatusMap[strJobID] = JobStatusSignals::eJobFail;
                 break;

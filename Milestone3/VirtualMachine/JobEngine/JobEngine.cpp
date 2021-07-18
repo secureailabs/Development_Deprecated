@@ -587,7 +587,7 @@ void __thiscall JobEngine::SendSignal(
         JobStatusSignals eSignalType = (JobStatusSignals)c_oStructuredBuffer.GetByte("SignalType");
         if ((JobStatusSignals::eJobFail == eSignalType) || (JobStatusSignals::eJobDone == eSignalType))
         {
-            std::lock_guard<std::mutex> lock(m_oMutexOnJobsMap);
+            // std::lock_guard<std::mutex> lock(m_oMutexOnJobsMap);
             m_stlMapOfJobs.erase(c_oStructuredBuffer.GetString("JobUuid"));
         }
         // As soon as the file we requested for is found, we return it to the

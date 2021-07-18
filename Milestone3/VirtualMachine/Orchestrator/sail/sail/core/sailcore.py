@@ -44,7 +44,11 @@ def registersafeobj(script):
     return SAILPyAPI.registersafeobj(script)
 
 def queryresult(jobid, fnid):
-    return SAILPyAPI.queryresult(jobid, fnid)
+    bytelist =  SAILPyAPI.queryresult(jobid, fnid)
+    reslist = []
+    for buf in bytelist:
+        reslist.append(pickle.loads(buf))
+    return reslist
 
 def queryjobstatus(jobid):
     return SAILPyAPI.queryjobstatus(jobid)

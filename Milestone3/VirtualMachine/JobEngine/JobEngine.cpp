@@ -216,6 +216,15 @@ void __thiscall JobEngine::ConnectVirtualMachine(
     Guid oGuidVmId;
     std::cout << "The Virtual Machine Uuid is " << oGuidVmId.ToString(eHyphensAndCurlyBraces);
 
+    // Get the Set of available Guids from the DataConnector
+    StructuredBuffer oAvailableGuids = ::DataConnectorGetFetchableUuid();
+    StructuredBuffer oStructuredBufferOfGuids = oAvailableGuids.GetStructuredBuffer("Tables");
+    auto oListOfGuids = oStructuredBufferOfGuids.GetNamesOfElements();
+    for (auto strName : oListOfGuids)
+    {
+        m_stlSetOfDataConnectorGuids.insert(std::make_pair(oStructuredBufferOfGuids.GetString(strName.c_str()), std::atoi(strName.c_str())));
+    }
+
     StructuredBuffer oStructuredBufferLoginResponse;
     oStructuredBufferLoginResponse.PutString("VirtualMachineUuid", oGuidVmId.ToString(eHyphensAndCurlyBraces));
     oStructuredBufferLoginResponse.PutBoolean("Success", true);
@@ -501,6 +510,17 @@ void __thiscall JobEngine::SetJobParameter(
             // Get the safe object from the stored list
             poJob = m_stlMapOfJobs.at(strJobUuid);
             _ThrowIfNull(poJob, "Invalid job Uuid.", nullptr);
+        }
+
+        // Check if the requested data is a dataset from the DataConnector.
+        if (m_stlSetOfDataConnectorGuids.end() != m_stlSetOfDataConnectorGuids.find(c_oStructuredBuffer.GetString("ValueUuid")))
+        {
+            // This means that the valueId is to be fetched from the DataConnector
+            // and written to the file system
+            ::DataConnectorGetTable(c_oStructuredBuffer.GetString("ValueUuid"), m_stlSetOfDataConnectorGuids.at(c_oStructuredBuffer.GetString("ValueUuid")));
+
+            // Assuming the file was successfully written to the file system, create a signal file for the same
+            std::ofstream output(gc_strSignalFolderName + "/" + c_oStructuredBuffer.GetString("ValueUuid"));
         }
 
         // If the parameter is a file and does not exist on the file system, we add it as

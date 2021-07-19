@@ -95,3 +95,25 @@ void WriteBytesAsFile(
     std::copy(c_stlFileData.begin(), c_stlFileData.end(), std::ostreambuf_iterator<char>(stlFileToWrite));
     stlFileToWrite.close();
 }
+
+/********************************************************************************************
+ *
+ * @function WriteStringAsFile
+ * @brief Create a new file with the string data
+ * @param[in] c_strFileName File to be created
+ * @param[in] c_strFileData String to Write
+ *
+ ********************************************************************************************/
+
+void WriteStringAsFile(
+    _in const std::string c_strFileName,
+    _in const std::string c_strFileData
+)
+{
+    __DebugFunction();
+
+    std::ofstream stlOutFile(c_strFileName);
+    stlOutFile << c_strFileData;
+    stlOutFile.close();
+}
+

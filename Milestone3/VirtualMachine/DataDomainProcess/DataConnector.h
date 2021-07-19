@@ -30,7 +30,8 @@ enum CSVRequest
     eGetTable,
     eGetDatasetMetadata,
     eGetTableMetadata,
-    eCloseFile
+    eCloseFile,
+    eGetUuids
 };
 
 /********************************************************************************************/
@@ -72,6 +73,7 @@ class DataConnector
             ) const;
 
         // Private data members
+        StructuredBuffer m_oAllDatasetIds;
         RootOfTrustNode * m_poRootOfTrustNode;
         StructuredBuffer * m_poDataSetMetaDataStructuredBuffer;
         std::vector<StructuredBuffer> m_stlTableMetaData;

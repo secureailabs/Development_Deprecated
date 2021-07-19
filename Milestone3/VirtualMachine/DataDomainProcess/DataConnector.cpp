@@ -139,6 +139,7 @@ bool __thiscall DataConnector::LoadAndVerify(
     stlDatasetFile.read((char *)stlMetaDataStructuredBuffer.data(), m_unMetaDataSizeInBytes);
     m_poDataSetMetaDataStructuredBuffer = new StructuredBuffer(stlMetaDataStructuredBuffer);
     std::cout << "Dataset Metadata\n" << m_poDataSetMetaDataStructuredBuffer->ToString();
+    m_oAllDatasetIds.PutString("DatasetUuid", m_poDataSetMetaDataStructuredBuffer->GetString("UUID"));
     int32_t nNumberOfTables = m_poDataSetMetaDataStructuredBuffer->GetInt32("NumberTables");
 
     // Convert the metadata offset Byte buffer to uin64_t vector
@@ -151,6 +152,7 @@ bool __thiscall DataConnector::LoadAndVerify(
     std::vector<uint64_t> stlTableMetadataSizeArray(nNumberOfTables);
     ::memcpy(stlTableMetadataSizeArray.data(), stlTableMetadataSizeBuffer.data(), stlTableMetadataSizeBuffer.size());
 
+    StructuredBuffer oTableMetadata;
     // Seek to each tables metadata and store the StructuredBuffer into the class member
     for (unsigned int unTableID = 0; unTableID < nNumberOfTables; unTableID++)
     {
@@ -159,7 +161,10 @@ bool __thiscall DataConnector::LoadAndVerify(
         stlDatasetFile.read((char *)stlTempTableMetadata.data(), stlTableMetadataSizeArray[unTableID]);
         m_stlTableMetaData.push_back(StructuredBuffer(stlTempTableMetadata));
         std::cout << "Table Metadata\n" << StructuredBuffer(stlTempTableMetadata).ToString();
+        oTableMetadata.PutString(std::to_string(unTableID).c_str(), m_stlTableMetaData.at(unTableID).GetGuid("Guid").ToString(eRaw));
     }
+    m_oAllDatasetIds.PutStructuredBuffer("Tables", oTableMetadata);
+    std::cout << "\nDataIds\n" << m_oAllDatasetIds.ToString();
 
     // Read each table and store it in a 3D vector of tables
     for (unsigned int unTableID = 0; unTableID < nNumberOfTables; unTableID++)
@@ -316,8 +321,16 @@ void __thiscall DataConnector::HandleRequestsUntilClose(
                     {
                         oDataResponse.PutBoolean("Status", true);
                         fCloseRequest = true;
-                        
+
                         m_poRootOfTrustNode->RecordAuditEvent("DATASET_CLOSE", 0x1100, 0x01, oDataResponse);
+                    }
+                    else if (eGetUuids == requestType)
+                    {
+                        oDataResponse.PutBoolean("Status", true);
+                        oDataResponse.PutStructuredBuffer("ResponseData", m_oAllDatasetIds);
+                        fCloseRequest = true;
+
+                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_TABLE_GET_GUID", 0x1100, 0x01, oDataResponse);
                     }
                     else
                     {

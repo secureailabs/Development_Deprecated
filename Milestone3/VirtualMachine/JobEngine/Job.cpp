@@ -185,7 +185,7 @@ bool __thiscall Job::SetParameter(
     if (false == fIsSignalFilePresent)
     {
         // Add the file to the list of dependencies of the job
-        std::cout << "Addind dependency" << std::endl;
+        std::cout << "Adding dependency" << std::endl;
         this->AddDependency(c_strValueIdentifier);
     }
     else

@@ -14,12 +14,14 @@
 #include "SocketClient.h"
 #include "DataConnector.h"
 #include "IpcTransactionHelperFunctions.h"
+#include "FileUtils.h"
 
 #include <sys/inotify.h>
 #include <unistd.h>
 #include <limits.h>
 
 #include <iostream>
+#include <filesystem>
 
 /********************************************************************************************
  *
@@ -96,6 +98,7 @@ void * __stdcall FileSystemWatcherThread(void * poThreadParameter)
  ********************************************************************************************/
 
 std::string DataConnectorGetTable(
+    _in std::string strTableUuid,
     _in unsigned int unTableId
 )
 {
@@ -123,5 +126,51 @@ std::string DataConnectorGetTable(
         std::cout << "Failed to read response" << std::endl;
     }
 
+    // TODO: use StrucutredBuffer instead of pickle
+    // After the data is received as a csv string, it is pickeled and put in a file
+    ::WriteStringAsFile(strTableUuid + ".string", strResponse);
+    std::string strPythonCmdToExec = "python3 -c \"import pickle\nimport pandas as pd\ndf = pd.read_csv('" + strTableUuid + ".string')\nOutputFileHandler = open('" + strTableUuid + "','wb')\npickle.dump(df, OutputFileHandler)\"";
+    ::system(strPythonCmdToExec.c_str());
+
+    // Delete the temporary strings file
+    std::filesystem::remove(strTableUuid + ".string");
+
     return strResponse;
+}
+
+/********************************************************************************************
+ *
+ * @function BytesToFile
+ * @brief Creates a file with the content from the buffer
+ *
+ ********************************************************************************************/
+
+StructuredBuffer DataConnectorGetFetchableUuid(void)
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponseSb;
+
+    Socket * poSocket =  ::ConnectToUnixDomainSocket("/tmp/{0bd8a254-49e4-4b86-b1b8-f353c18013c5}");
+
+    StructuredBuffer oRequest;
+    oRequest.PutInt8("RequestType", eGetUuids);
+    oRequest.PutUnsignedInt32("TableID", 0);
+
+    std::vector<Byte> stlResponse = ::PutIpcTransactionAndGetResponse(poSocket, oRequest, false);
+
+    // Release poSocket
+    poSocket->Release();
+
+    if (0 < stlResponse.size())
+    {
+        StructuredBuffer oResponse(stlResponse);
+        oResponseSb = oResponse.GetStructuredBuffer("ResponseData");
+    }
+    else
+    {
+        std::cout << "Failed to read response" << std::endl;
+    }
+
+    return oResponseSb;
 }

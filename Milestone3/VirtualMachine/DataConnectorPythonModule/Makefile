@@ -21,7 +21,7 @@ INCLUDE := -isystem$(PYTHONINC)
 INCLUDE+=-I$(shell realpath ./Sources)
 INCLUDE+=-I$(shell realpath ../SharedComponents/Include)
 INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
-INCLUDE+=-I$(shell realpath ../DataDomainProcess/Include)
+INCLUDE+=-I$(shell realpath ../DataDomainProcess)
 
 # Add the new source directory here
 SRCDIRS+=$(shell realpath ./Sources)

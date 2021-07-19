@@ -18,7 +18,7 @@ INCLUDE+=-I$(shell realpath ./)
 INCLUDE+=-I$(shell realpath ../SharedComponents/Include)
 INCLUDE+=-I$(shell realpath ../CommunicationPortal)
 INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
-INCLUDE+=-I$(shell realpath ../DataDomainProcess/Include)
+INCLUDE+=-I$(shell realpath ../DataDomainProcess)
 
 # Add the new source directory here
 SRCDIRS+=$(shell realpath ./)

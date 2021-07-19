@@ -26,3 +26,8 @@ void __stdcall WriteBytesAsFile(
     _in const std::string c_strFileName,
     _in const std::vector<Byte> c_stlFileData
 );
+
+void WriteStringAsFile(
+    _in const std::string c_strFileName,
+    _in const std::string c_strFileData
+);

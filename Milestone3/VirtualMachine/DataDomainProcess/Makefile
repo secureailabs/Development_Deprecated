@@ -14,12 +14,12 @@ ABSROOTDIR=$(shell realpath $(ROOTDIR))
 OBJDIR=$(ABSROOTDIR)/Binary/Objects
 
 # Add the new include folders here
-INCLUDE+=-I$(shell realpath ./Include)
+INCLUDE+=-I$(shell realpath .)
 INCLUDE+=-I$(shell realpath ../SharedComponents/Include)
 INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
 
 # Add the new source directory here
-SRCDIRS+=$(shell realpath ./Sources)
+SRCDIRS+=$(shell realpath .)
 SRCDIRS+=$(shell realpath ../SharedComponents/Sources)
 SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
 

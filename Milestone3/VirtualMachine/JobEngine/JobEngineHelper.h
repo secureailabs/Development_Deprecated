@@ -25,3 +25,10 @@ const std::string gc_strDataFolderName = "DataFiles";
 /********************************************************************************************/
 
 void * __stdcall FileSystemWatcherThread(void * poThreadParameter);
+
+StructuredBuffer DataConnectorGetFetchableUuid(void);
+
+std::string DataConnectorGetTable(
+    _in std::string strTableUuid,
+    _in unsigned int unTableId
+);

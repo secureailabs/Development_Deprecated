@@ -42,7 +42,7 @@ void __stdcall PackageComputeServices()
     // Prepare the payload to send to the VM
     StructuredBuffer oPayloadToVm;
     // The instruction to execute after all the files are uploaded on the VM
-    oPayloadToVm.PutString("Entrypoint", "./RootOfTrustProcess");
+    oPayloadToVm.PutString("Entrypoint", "./CommunicationPortal");
 
     // Set the type of VM, either it runs Computation or WebService
     oPayloadToVm.PutString("VirtualMachineType", "Computation");
@@ -50,11 +50,11 @@ void __stdcall PackageComputeServices()
     // A nested Structured Buffer containing all the executable files
     StructuredBuffer oFilesToPut;
     oFilesToPut.PutBuffer("RootOfTrustProcess", ::ReadFileAsByteBuffer("RootOfTrustProcess"));
+    oFilesToPut.PutBuffer("CommunicationPortal", ::ReadFileAsByteBuffer("CommunicationPortal"));
     oFilesToPut.PutBuffer("InitializerProcess", ::ReadFileAsByteBuffer("InitializerProcess"));
     oFilesToPut.PutBuffer("SignalTerminationProcess", ::ReadFileAsByteBuffer("SignalTerminationProcess"));
     oFilesToPut.PutBuffer("DataDomainProcess", ::ReadFileAsByteBuffer("DataDomainProcess"));
-    oFilesToPut.PutBuffer("ComputationalDomainProcess", ::ReadFileAsByteBuffer("ComputationalDomainProcess"));
-    oFilesToPut.PutBuffer("/usr/local/lib/python3.8/dist-packages/_DataConnector.so", ::ReadFileAsByteBuffer("libDataConnector.so"));
+    oFilesToPut.PutBuffer("JobEngine", ::ReadFileAsByteBuffer("JobEngine"));
 
     oPayloadToVm.PutStructuredBuffer("ExecutableFiles", oFilesToPut);
 

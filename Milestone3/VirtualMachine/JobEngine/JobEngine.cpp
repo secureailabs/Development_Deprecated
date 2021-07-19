@@ -33,8 +33,6 @@
 #include <memory>
 #include <optional>
 
-#define cout cout << std::this_thread::get_id() << " "
-
 //TODO:
 // 1. There is one case where the job can run even after the JobEngine reset has been called
 // Last paramter set was called.
@@ -189,7 +187,7 @@ void __thiscall JobEngine::ListenToRequests(void)
                     // Send a signal of VM Shutdown to the orceshtrator
                     StructuredBuffer oStructuredBufferShutdown;
                     oStructuredBufferShutdown.PutByte("SignalType", (Byte)JobStatusSignals::eVmShutdown);
-                    this->SendSignal(oStructuredBufferShutdown);
+                    this->SendMessageToOrchestrator(oStructuredBufferShutdown);
                 }
                 break;
             default
@@ -203,9 +201,9 @@ void __thiscall JobEngine::ListenToRequests(void)
 /********************************************************************************************
  *
  * @class JobEngine
- * @function PushSafeObject
- * @brief
- * @param[in] c_oStructuredBuffer Inout Request Params
+ * @function ConnectVirtualMachine
+ * @brief Register the Eosb of the Orchestrator user for login
+ * @param[in] c_oStructuredBuffer
  *
  ********************************************************************************************/
 
@@ -221,7 +219,7 @@ void __thiscall JobEngine::ConnectVirtualMachine(
     StructuredBuffer oStructuredBufferLoginResponse;
     oStructuredBufferLoginResponse.PutString("VirtualMachineUuid", oGuidVmId.ToString(eHyphensAndCurlyBraces));
     oStructuredBufferLoginResponse.PutBoolean("Success", true);
-    ::PutIpcTransaction(m_poSocket, oStructuredBufferLoginResponse);
+    this->SendMessageToOrchestrator(oStructuredBufferLoginResponse);
 
     // TODO: Update this data
     StructuredBuffer oEventData;
@@ -237,8 +235,8 @@ void __thiscall JobEngine::ConnectVirtualMachine(
  *
  * @class JobEngine
  * @function PushSafeObject
- * @brief
- * @param[in] c_oStructuredBuffer Inout Request Params
+ * @brief Push the details of the SafeObject needed by the job to run
+ * @param[in] c_oStructuredBuffer StrucutredBuffer containing
  *
  ********************************************************************************************/
 
@@ -296,8 +294,8 @@ void __thiscall JobEngine::PushSafeObject(
  *
  * @class JobEngine
  * @function PushData
- * @brief
- * @param[in] c_oStructuredBuffer Input Request Params
+ * @brief Create a file on the filesystem with the DataId and Data provided
+ * @param[in] c_oStructuredBuffer Strucutred Buffer containing data and an ID attched to it
  *
  ********************************************************************************************/
 
@@ -334,9 +332,10 @@ void __thiscall JobEngine::PushData(
 /********************************************************************************************
  *
  * @class JobEngine
- * @function RunJob
- * @brief
- * @param[in] c_oStructuredBuffer Input Request Params
+ * @function PullData
+ * @brief Register a request from the Orchestrator and send the requested
+ *      file as soon as is available
+ * @param[in] c_strFileNametoSend File name requested by the Orchestrator
  *
  ********************************************************************************************/
 
@@ -350,10 +349,13 @@ void __thiscall JobEngine::PullData(
     {
         std::cout << "Pull Data request " << c_strFileNametoSend << std::endl;
 
-        // We check if the signal file already exists, if the file exists already
-        // we push it to the orchestrator otherwise we will just register the request and
-        // wait for the file to be created in future.
         std::string strSignalFile = gc_strSignalFolderName + "/" + c_strFileNametoSend;
+
+        // Check if the signal file already exists, if the file exists already exists
+        // push it to the orchestrator otherwise just register the request and
+        // wait for the file to be created in future.
+        std::lock_guard<std::mutex> lockSetOfPullObjects(m_oMutexOnSetOfPullObjects);
+        m_stlSetOfPullObjects.insert(c_strFileNametoSend);
 
         if (true == std::filesystem::exists(strSignalFile.c_str()))
         {
@@ -365,17 +367,14 @@ void __thiscall JobEngine::PullData(
             oResponse.PutBuffer("FileData", ::ReadFileAsByteBuffer(c_strFileNametoSend));
 
             // The Pull data response to the orchestrator is sent as a signal with data
-            this->SendSignal(oResponse);
+            this->SendMessageToOrchestrator(oResponse);
+
+            // Remove the file from the set
+            m_stlSetOfPullObjects.erase(c_strFileNametoSend);
 
             // We delete the signal file and the data file after we have consumed it.
             ::remove(strSignalFile.c_str());
             ::remove(c_strFileNametoSend.c_str());
-        }
-        else
-        {
-            // Register the request for now and fulfill it as soon as it is available later
-            std::lock_guard<std::mutex> lockSetOfPullObjects(m_oMutexOnSetOfPullObjects);
-            m_stlSetOfPullObjects.insert(c_strFileNametoSend);
         }
     }
     catch(BaseException & oBaseException)
@@ -391,9 +390,9 @@ void __thiscall JobEngine::PullData(
 /********************************************************************************************
  *
  * @class JobEngine
- * @function PushData
- * @brief
- * @param[in] c_oStructuredBuffer Input Request Params
+ * @function SubmitJob
+ * @brief Submit a Job and the corresponding SafeObjecctId to run the Job.
+ * @param[in] c_oStructuredBuffer StructuredBuffer consting the JobUuid and SafeObjectUuid
  *
  ********************************************************************************************/
 
@@ -467,9 +466,11 @@ void __thiscall JobEngine::SubmitJob(
 /********************************************************************************************
  *
  * @class JobEngine
- * @function PushData
- * @brief
- * @param[in] c_oStructuredBuffer Input Request Params
+ * @function SetJobParameter
+ * @brief Inform the job about the ValueId where it can find the value for a designated
+ *      parameter
+ * @param[in] c_oStructuredBuffer StructuredBuffer consting the JobUuid, ParamterUuid and a
+ *          corresponding ValueUuid along with index and number of values for that paramter
  *
  ********************************************************************************************/
 
@@ -526,9 +527,9 @@ void __thiscall JobEngine::SetJobParameter(
 /********************************************************************************************
  *
  * @class JobEngine
- * @function PushData
- * @brief
- * @param[in] c_oStructuredBuffer Input Request Params
+ * @function FileCreateCallback
+ * @brief A callback function for every new file signal that is created in the Signals folder
+ * @param[in] c_strFileCreatedName Name of the signal file that is created
  *
  ********************************************************************************************/
 
@@ -538,21 +539,36 @@ void __thiscall JobEngine::FileCreateCallback(
 {
     __DebugFunction();
 
+    bool fIsParameterValue = false;
+
     try
     {
-        std::lock_guard<std::mutex> lockParameterValuesToJobMap(m_oMutexOnParameterValuesToJobMap);
-        std::lock_guard<std::mutex> lockSetOfPullObjects(m_oMutexOnSetOfPullObjects);
-        if (m_stlSetOfPullObjects.end() != m_stlSetOfPullObjects.find(c_strFileCreatedName))
+        // The scope is defined for the lock to free up as soon as it is not needed anymore.
+        // Taking up two locks at the same time is risky and should be avoided to prevent deadlocks.
+        // The mutex needed to be locked before the start of the if condition, hence a forced scope
         {
-            // We need to send the file back to the orchestrator, should be done asynchronously
-            m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &JobEngine::PullData, this, c_strFileCreatedName));
-            m_stlSetOfPullObjects.erase(c_strFileCreatedName);
+            std::lock_guard<std::mutex> lockParameterValuesToJobMap(m_oMutexOnParameterValuesToJobMap);
+            if(m_stlMapOfParameterValuesToJob.end() != m_stlMapOfParameterValuesToJob.find(c_strFileCreatedName))
+            {
+                std::shared_ptr<Job> poJob = m_stlMapOfParameterValuesToJob.at(c_strFileCreatedName);
+                m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &Job::RemoveAvailableDependency, poJob, c_strFileCreatedName));
+                m_stlMapOfParameterValuesToJob.erase(c_strFileCreatedName);
+                fIsParameterValue = true;
+            }
         }
-        else if (m_stlMapOfParameterValuesToJob.end() != m_stlMapOfParameterValuesToJob.find(c_strFileCreatedName))
+
+        // Since the new file could either be a pull object or a valueId needed by a job,
+        // there is an additional check to ensure that it was not a job parameter value
+        if (false == fIsParameterValue)
         {
-            std::shared_ptr<Job> poJob = m_stlMapOfParameterValuesToJob.at(c_strFileCreatedName);
-            m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &Job::RemoveAvailableDependency, poJob, c_strFileCreatedName));
-            m_stlMapOfParameterValuesToJob.erase(c_strFileCreatedName);
+            std::lock_guard<std::mutex> lockSetOfPullObjects(m_oMutexOnSetOfPullObjects);
+            if (m_stlSetOfPullObjects.end() != m_stlSetOfPullObjects.find(c_strFileCreatedName))
+            {
+                // Send the file back to the orchestrator asynchronously
+                // The mutex locked up here will not block the next PullData call because it is async
+                // and the mutex will be unlocked just after the call.
+                m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &JobEngine::PullData, this, c_strFileCreatedName));
+            }
         }
     }
     catch(BaseException & oBaseException)
@@ -568,13 +584,16 @@ void __thiscall JobEngine::FileCreateCallback(
 /********************************************************************************************
  *
  * @class JobEngine
- * @function RunJob
- * @brief
- * @param[in] c_oStructuredBuffer Input Request Params
+ * @function SendMessageToOrchestrator
+ * @brief Send StructuredBuffer encoded messages to the Orchestrator
+ * @param[in] c_oStructuredBuffer StrucutredBuffer message to send
+ * @note This is the only function that must be used to send messages to the remote
+ *      Orchestrator. It ensure that the IpcSocket write is locked before being used and
+ *      does not end up in a race condition when being used by multiple threads.
  *
  ********************************************************************************************/
 
-void __thiscall JobEngine::SendSignal(
+void __thiscall JobEngine::SendMessageToOrchestrator(
     _in const StructuredBuffer & c_oStructuredBuffer
 )
 {
@@ -582,17 +601,22 @@ void __thiscall JobEngine::SendSignal(
 
     try
     {
-        // If the job ended and resulted in a failure or success the entry for that job is cleared
-        // from the local map, the safeObject is not killed as it could be reused eventually.
-        JobStatusSignals eSignalType = (JobStatusSignals)c_oStructuredBuffer.GetByte("SignalType");
-        if ((JobStatusSignals::eJobFail == eSignalType) || (JobStatusSignals::eJobDone == eSignalType))
+        // The message to send could be a signal or a simple packet like the response to
+        // the connect call made. This is the only function on the JobEngine which is supposed
+        // to send Ipc Messages to the Communication Module. It takes a lock so that the IPC does not
+        // run into race conditions.
+        if (c_oStructuredBuffer.IsElementPresent("SignalType", BYTE_VALUE_TYPE))
         {
-            // std::lock_guard<std::mutex> lock(m_oMutexOnJobsMap);
-            m_stlMapOfJobs.erase(c_oStructuredBuffer.GetString("JobUuid"));
+            // If the job ended and resulted in a failure or success the entry for that job is cleared
+            // from the local map, the safeObject is not killed as it could be reused eventually.
+            JobStatusSignals eSignalType = (JobStatusSignals)c_oStructuredBuffer.GetByte("SignalType");
+            if ((JobStatusSignals::eJobFail == eSignalType) || (JobStatusSignals::eJobDone == eSignalType))
+            {
+                // std::lock_guard<std::mutex> lock(m_oMutexOnJobsMap);
+                m_stlMapOfJobs.erase(c_oStructuredBuffer.GetString("JobUuid"));
+            }
         }
-        // As soon as the file we requested for is found, we return it to the
-        // orchestrator who is waiting asychronously waiting for it.
-        std::lock_guard<std::mutex> lock(m_oMutexOnSendSignal);
+        std::lock_guard<std::mutex> lock(m_oMutexOnIpcSocket);
         ::PutIpcTransaction(m_poSocket, c_oStructuredBuffer);
     }
     catch(BaseException & oBaseException)
@@ -608,9 +632,9 @@ void __thiscall JobEngine::SendSignal(
 /********************************************************************************************
  *
  * @class JobEngine
- * @function RunJob
- * @brief
- * @param[in] c_oStructuredBuffer Input Request Params
+ * @function ResetJobEngine
+ * @brief Reset the Job Engine to it's original fresh state with no jobs and safe objects
+ *      in the queue
  *
  ********************************************************************************************/
 

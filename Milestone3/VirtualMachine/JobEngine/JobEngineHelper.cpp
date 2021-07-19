@@ -21,8 +21,6 @@
 
 #include <iostream>
 
-#define cout cout << std::this_thread::get_id() << " "
-
 /********************************************************************************************
  *
  * @function BytesToFile
@@ -65,8 +63,6 @@ void * __stdcall FileSystemWatcherThread(void * poThreadParameter)
                 // For everyfile created we call a JobEngine callback function which should
                 // find the most efficient way to handle such a file.
                 std::cout << "FileCreateCallback for " << poInotifyEvent->name << std::endl;
-
-                // TODO: this call is blocking, make it non-blocking.
                 oJobEngine.FileCreateCallback(poInotifyEvent->name);
 
                 if (gc_strHaltAllJobsSignalFilename == poInotifyEvent->name)

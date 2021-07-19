@@ -24,8 +24,6 @@
 #include <future>
 #include <filesystem>
 
-#define cout cout << std::this_thread::get_id() << " "
-
 /********************************************************************************************
  *
  * @class Job

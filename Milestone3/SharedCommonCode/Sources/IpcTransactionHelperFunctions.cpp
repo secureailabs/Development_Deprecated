@@ -98,15 +98,14 @@ bool __stdcall PutIpcTransaction(
             Qword qwTailMarker = 0x0123456789ABCDEF;
             unsigned int unSizeInBytesOfSerializedBuffer = (unsigned int) c_stlSerializedTransaction.size();
             unsigned int unNumberOfBytesWritten = 0;
-            
             unNumberOfBytesWritten = (unsigned int) poSocket->Write((const Byte *) &qwHeadMarker, sizeof(qwHeadMarker));
-            _ThrowBaseExceptionIf((sizeof(qwHeadMarker) != unNumberOfBytesWritten), "Failed to write the expected number of bytes into the Ipc tunnel", nullptr);
+            _ThrowBaseExceptionIf((sizeof(qwHeadMarker) != unNumberOfBytesWritten), "Failed to write the expected number of bytes into the Ipc tunnel. errno: %d", errno);
             unNumberOfBytesWritten = (unsigned int) poSocket->Write((const Byte *) &unSizeInBytesOfSerializedBuffer, sizeof(unSizeInBytesOfSerializedBuffer));
-            _ThrowBaseExceptionIf((sizeof(unSizeInBytesOfSerializedBuffer) != unNumberOfBytesWritten), "Failed to write the expected number of bytes into the Ipc tunnel", nullptr);
+            _ThrowBaseExceptionIf((sizeof(unSizeInBytesOfSerializedBuffer) != unNumberOfBytesWritten), "Failed to write the expected number of bytes into the Ipc tunnelerrno: %d", errno);
             unNumberOfBytesWritten = poSocket->Write((const Byte *) c_stlSerializedTransaction.data(), unSizeInBytesOfSerializedBuffer);
-            _ThrowBaseExceptionIf((unSizeInBytesOfSerializedBuffer != unNumberOfBytesWritten), "Failed to write the expected number of bytes into the Ipc tunnel", nullptr);
+            _ThrowBaseExceptionIf((unSizeInBytesOfSerializedBuffer != unNumberOfBytesWritten), "Failed to write the expected number of bytes into the Ipc tunnelerrno: %d", errno);
             unNumberOfBytesWritten = (unsigned int) poSocket->Write((const Byte *) &qwTailMarker, sizeof(qwTailMarker));
-            _ThrowBaseExceptionIf((sizeof(qwTailMarker) != unNumberOfBytesWritten), "Failed to write the expected number of bytes into the Ipc tunnel", nullptr);
+            _ThrowBaseExceptionIf((sizeof(qwTailMarker) != unNumberOfBytesWritten), "Failed to write the expected number of bytes into the Ipc tunnelerrno: %d", errno);
             fSuccess = true;
         }
     }
@@ -115,7 +114,7 @@ bool __stdcall PutIpcTransaction(
     {
         ::RegisterException(oBaseException, __func__, __LINE__);
     }
-    
+
     catch(...)
     {
         ::RegisterUnknownException(__func__, __LINE__);

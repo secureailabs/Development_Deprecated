@@ -21,8 +21,6 @@
 
 JobEngine JobEngine::m_oJobEngine;
 
-#define cout cout << std::this_thread::get_id() << " "
-
 int __cdecl main(
     _in int nNumberOfArguments,
     _in char ** pszCommandLineArguments
@@ -46,6 +44,7 @@ int __cdecl main(
         JobEngine & oJobEngine = JobEngine::Get();
         oJobEngine.SetRootOfTrustNode(poRootOfTrustNode);
         oJobEngine.StartServer(poSocket);
+
         poRootOfTrustNode->Release();
     }
     catch (BaseException oException)

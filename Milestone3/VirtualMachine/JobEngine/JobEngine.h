@@ -73,11 +73,10 @@ class JobEngine : public Object
         void __thiscall SetRootOfTrustNode(
                 _in RootOfTrustNode * poRootOfTrust
             );
-        void __thiscall ListenToRequests(void);
         void __thiscall FileCreateCallback(
             _in const std::string & c_strFileCreatedFilename
             );
-        void __thiscall SendSignal(
+        void __thiscall SendMessageToOrchestrator(
             _in const StructuredBuffer & oStructuredBuffer
             );
 
@@ -85,6 +84,7 @@ class JobEngine : public Object
 
         // Private member methods
         JobEngine(void);
+        void __thiscall ListenToRequests(void);
         void __thiscall ConnectVirtualMachine(
             _in const StructuredBuffer & c_oStructuredBuffer
             );
@@ -120,5 +120,5 @@ class JobEngine : public Object
         std::unordered_set<std::string> m_stlSetOfPullObjects;
         std::mutex m_oMutexOnSetOfPullObjects;
         std::vector<std::future<void>> m_stlListOfAsyncFutures;
-        std::mutex m_oMutexOnSendSignal;
+        std::mutex m_oMutexOnIpcSocket;
 };

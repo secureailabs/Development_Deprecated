@@ -50,6 +50,7 @@ int main(
 
     try
     {
+        // The RootofTrustProcess must be run before Communication Portal and must register wit it
         ::RunRootOfTrust();
 
         // This is a blocking call and won't proceed until all required processes have registered

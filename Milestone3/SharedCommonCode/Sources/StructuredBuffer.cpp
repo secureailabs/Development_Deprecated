@@ -124,6 +124,7 @@ StructuredBuffer& StructuredBuffer::operator=(
     m_qw64BitHash = 0;
     m_qwComposition64BitHash = 0;
     this->DeSerialize(c_oStructuredBuffer.GetSerializedBufferRawDataPtr(), c_oStructuredBuffer.GetSerializedBufferRawDataSizeInBytes());
+    return *this;
 }
 
 /********************************************************************************************/

@@ -164,7 +164,6 @@ void __thiscall CommunicationPortal::PersistantConnectionTlsToIpc(
                     ::PutIpcTransaction(m_stlMapOfProcessToIpcSocket.at(strEndpointName), *poStructuredBufferMessageToPass);
                 }
             }
-            std::cout << "Waiting for requests\n";
             poStructuredBufferMessageToPass = std::make_unique<StructuredBuffer>(::GetTlsTransaction(c_poTlsNode, 0));
         }
         while(fKeepRunning);
@@ -278,32 +277,43 @@ void __thiscall CommunicationPortal::HandleConnection(
 {
     __DebugFunction();
 
-    std::vector<std::thread> stlListOfThreads;
-    std::cout << "New Connection.. Waiting for data" << std::endl;
-    StructuredBuffer oStructuredBufferNewRequest(::GetTlsTransaction(c_poTlsNode, 0));
-
-    // If the connection was established with the JobEngine it will be a persistant connection,
-    // otherwise it will be a single transaction function.
-    std::string strEndPoint = oStructuredBufferNewRequest.GetString("EndPoint");
-    if ("JobEngine" == strEndPoint)
+    try
     {
-        // A new thread is created for the reading requests on the TlsNode and forwarding them
-        // to the IPC connection while forwarding the data read on IPC connection will be handled
-        // in this thread.
-        std::thread oThreadTlsToIpc = std::thread(&CommunicationPortal::PersistantConnectionTlsToIpc, this, c_poTlsNode, oStructuredBufferNewRequest);
+        std::vector<std::thread> stlListOfThreads;
+        std::cout << "New Connection.. Waiting for data" << std::endl;
+        StructuredBuffer oStructuredBufferNewRequest(::GetTlsTransaction(c_poTlsNode, 0));
 
-        // This is blocking call and will exit only when the end connection signal is received via IPC
-        // from the JobEngine
-        this->PersistantConnectionIpcToTls(m_stlMapOfProcessToIpcSocket.at(strEndPoint), c_poTlsNode);
+        // If the connection was established with the JobEngine it will be a persistant connection,
+        // otherwise it will be a single transaction function.
+        std::string strEndPoint = oStructuredBufferNewRequest.GetString("EndPoint");
+        if ("JobEngine" == strEndPoint)
+        {
+            // A new thread is created for the reading requests on the TlsNode and forwarding them
+            // to the IPC connection while forwarding the data read on IPC connection will be handled
+            // in this thread.
+            std::thread oThreadTlsToIpc = std::thread(&CommunicationPortal::PersistantConnectionTlsToIpc, this, c_poTlsNode, oStructuredBufferNewRequest);
 
-        // Kill the other thread which was listening to requests on TlsNode and passing on to the IPC.
-        oThreadTlsToIpc.~thread();
+            // This is blocking call and will exit only when the end connection signal is received via IPC
+            // from the JobEngine
+            this->PersistantConnectionIpcToTls(m_stlMapOfProcessToIpcSocket.at(strEndPoint), c_poTlsNode);
+
+            // Kill the other thread which was listening to requests on TlsNode and passing on to the IPC.
+            oThreadTlsToIpc.~thread();
+        }
+        else
+        {
+            this->OneTimeConnectionHandler(c_poTlsNode, oStructuredBufferNewRequest);
+        }
+        c_poTlsNode->Release();
     }
-    else
+    catch(const BaseException& oBaseException)
     {
-        this->OneTimeConnectionHandler(c_poTlsNode, oStructuredBufferNewRequest);
+        std::cout << "EXCEPTION: " << oBaseException.GetExceptionMessage() << '\n';
     }
-    c_poTlsNode->Release();
+    catch(const std::exception& e)
+    {
+        std::cout <<"EXCEPTION: " << e.what() << '\n';
+    }
 }
 
 /********************************************************************************************

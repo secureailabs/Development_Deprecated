@@ -30,8 +30,6 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-#define cout cout << std::this_thread::get_id() << " "
-
 /********************************************************************************************
  *
  * @class SafeObject
@@ -130,7 +128,7 @@ int __thiscall SafeObject::Run(
         StructuredBuffer oStructruedBufferSignal;
         oStructruedBufferSignal.PutByte("SignalType", (Byte)JobStatusSignals::eJobStart);
         oStructruedBufferSignal.PutString("JobUuid", c_strJobUuid);
-        oJobEngine.SendSignal(oStructruedBufferSignal);
+        oJobEngine.SendMessageToOrchestrator(oStructruedBufferSignal);
 
         pid_t nProcessIdentifier = ::fork();
         _ThrowBaseExceptionIf((-1 == nProcessIdentifier), "Fork has failed with errno = %d", errno);
@@ -202,14 +200,14 @@ int __thiscall SafeObject::Run(
                         // Send a job success signal to the orchestrator
                         oStructruedBufferSignal.PutByte("SignalType", (Byte)JobStatusSignals::eJobDone);
                         oStructruedBufferSignal.PutString("JobUuid", c_strJobUuid);
-                        oJobEngine.SendSignal(oStructruedBufferSignal);
+                        oJobEngine.SendMessageToOrchestrator(oStructruedBufferSignal);
                     }
                     else
                     {
                         // Send a job fail signal to the orchestrator
                         oStructruedBufferSignal.PutByte("SignalType", (Byte)JobStatusSignals::eJobFail);
                         oStructruedBufferSignal.PutString("JobUuid", c_strJobUuid);
-                        oJobEngine.SendSignal(oStructruedBufferSignal);
+                        oJobEngine.SendMessageToOrchestrator(oStructruedBufferSignal);
                     }
                 }
                 // This is when a kill signal is recevied from the JobEngine

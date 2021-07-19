@@ -138,6 +138,7 @@ bool __thiscall DataConnector::LoadAndVerify(
     std::vector<Byte> stlMetaDataStructuredBuffer(m_unMetaDataSizeInBytes);
     stlDatasetFile.read((char *)stlMetaDataStructuredBuffer.data(), m_unMetaDataSizeInBytes);
     m_poDataSetMetaDataStructuredBuffer = new StructuredBuffer(stlMetaDataStructuredBuffer);
+    std::cout << "Dataset Metadata\n" << m_poDataSetMetaDataStructuredBuffer->ToString();
     int32_t nNumberOfTables = m_poDataSetMetaDataStructuredBuffer->GetInt32("NumberTables");
 
     // Convert the metadata offset Byte buffer to uin64_t vector
@@ -157,6 +158,7 @@ bool __thiscall DataConnector::LoadAndVerify(
         std::vector<Byte> stlTempTableMetadata(stlTableMetadataSizeArray[unTableID]);
         stlDatasetFile.read((char *)stlTempTableMetadata.data(), stlTableMetadataSizeArray[unTableID]);
         m_stlTableMetaData.push_back(StructuredBuffer(stlTempTableMetadata));
+        std::cout << "Table Metadata\n" << StructuredBuffer(stlTempTableMetadata).ToString();
     }
 
     // Read each table and store it in a 3D vector of tables

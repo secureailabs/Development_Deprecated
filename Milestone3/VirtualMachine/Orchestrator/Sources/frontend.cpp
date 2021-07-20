@@ -279,9 +279,15 @@ void __thiscall Frontend::SetFrontend(
             StructuredBuffer oResponse(stlResponse);
             strVMID = oResponse.GetString("VirtualMachineUuid");
 
+            std::vector<std::string> stlDataGuid;
             StructuredBuffer oDataset = oResponse.GetStructuredBuffer("Dataset");
-            std::vector<std::string> stlGuidList = oDataset.GetStructuredBuffer("Tables").GetNamesOfElements();
-            m_stlDataTableMap.emplace(strVMID, stlGuidList);
+            std::vector<std::string> stlNameList = oDataset.GetStructuredBuffer("Tables").GetNamesOfElements();
+            for(size_t i = 0 ; i<stlNameList.size(); i++)
+            {
+                stlDataGuid.push_back(oDataset.GetStructuredBuffer("Tables").GetString(stlNameList[i].c_str()));
+            }
+
+            m_stlDataTableMap.emplace(strVMID, stlDataGuid);
 
             std::shared_ptr<TlsNode> stlSocket(poSocket);
             m_stlConnectionMap.emplace(strVMID, stlSocket);

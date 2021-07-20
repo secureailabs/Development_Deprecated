@@ -113,7 +113,7 @@ void PackageSafeObject(void)
         ::ReplaceAll(strSafeObjectTemplate, strParameterName, "self.m_"+oOutputGuid.ToString(eRaw));
 
         std::string strStringToSetParameterFile = "OutputFileHandler = open(self.m_JobIdentifier+\"." + strOutputParamterGuid + "\",\"wb\")\n        pickle.dump(self.m_" + strOutputParamterGuid + ", OutputFileHandler)\n        with open(\"DataSignals/\" + self.m_JobIdentifier + \"." + strOutputParamterGuid + "\", 'w') as fp:\n            pass";
-        if (nOutputIndex != (nNumberOfInputs-1))
+        if (nOutputIndex != (nNumberOfOutputs-1))
         {
             strStringToSetParameterFile += "\n        {{WriteOutputToFile}}\n";
         }

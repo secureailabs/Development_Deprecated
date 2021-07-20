@@ -116,6 +116,9 @@ class Frontend : public Object{
         JobStatusSignals __thiscall QueryJobStatus(
             _in std::string& strJobID
         );
+        std::vector<std::string> __thiscall QueryDataset(
+            _in std::string& strVMID
+        );
         // void __thiscall HandleDeleteData
         // (
         //     _in std::string& strVMID,
@@ -134,6 +137,7 @@ class Frontend : public Object{
     private:
         std::map<std::string, std::shared_ptr<TlsNode>> m_stlConnectionMap;
         std::map<std::string, JobStatusSignals> m_stlJobStatusMap;
+        std::map<std::string, std::vector<std::string>> m_stlDataTableMap;
         //std::string m_strWebPortalIP;
         //std::string m_strWebPortalPort;
         std::map<std::string, std::unique_ptr<SafeObject>> m_stlFNTable;

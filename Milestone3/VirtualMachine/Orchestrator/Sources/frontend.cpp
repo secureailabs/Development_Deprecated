@@ -36,6 +36,7 @@
 Frontend::Frontend(void):
     m_stlConnectionMap(),
     m_stlJobStatusMap(),
+    m_stlDataTableMap(),
     m_stlFNTable(),
     m_stlResultMap(),
     m_fStop(false)
@@ -273,12 +274,14 @@ void __thiscall Frontend::SetFrontend(
             //std::vector<Byte> stlResponse = PutTlsTransactionAndGetResponse(poSocket, oBuffer, 2*60*1000);
             //if(0==stlResponse.size())
             //    _ThrowBaseException("No response for connectVM request", nullptr);
-            std::cout<<"send data to socket"<<std::endl;
 
             auto stlResponse = GetTlsTransaction(poSocket, 0);
             StructuredBuffer oResponse(stlResponse);
             strVMID = oResponse.GetString("VirtualMachineUuid");
-            std::cout<<"receive response"<<std::endl;
+
+            StructuredBuffer oDataset = oResponse.GetStructuredBuffer("Dataset");
+            std::vector<std::string> stlGuidList = oDataset.GetStructuredBuffer("Tables").GetNamesOfElements();
+            m_stlDataTableMap.emplace(strVMID, stlGuidList);
 
             std::shared_ptr<TlsNode> stlSocket(poSocket);
             m_stlConnectionMap.emplace(strVMID, stlSocket);
@@ -600,6 +603,13 @@ JobStatusSignals __thiscall Frontend::QueryJobStatus(
 {
     std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
     return m_stlJobStatusMap[strJobID];
+}
+
+std::vector<std::string> __thiscall Frontend::QueryDataset(
+    _in std::string& strVMID
+)
+{
+    return m_stlDataTableMap[strVMID];
 }
 
 // void __thiscall Frontend::HandleDeleteData(

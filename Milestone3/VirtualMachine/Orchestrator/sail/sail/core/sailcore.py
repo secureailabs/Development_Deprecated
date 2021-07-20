@@ -53,6 +53,9 @@ def queryresult(jobid, fnid):
 def queryjobstatus(jobid):
     return SAILPyAPI.queryjobstatus(jobid)
 
+def querydata(vmid):
+    return SAILPyAPI.querydata(vmid)
+
 def quit():
     return SAILPyAPI.quit()
     

@@ -320,6 +320,30 @@ static PyObject* queryresult(PyObject* self, PyObject* args)
     return Py_BuildValue("O", output);
 }
 
+static PyObject* querydata(PyObject* self, PyObject* args)
+{
+    char* vmid;
+
+    if(!PyArg_ParseTuple(args, "s", &vmid))
+    {
+        return NULL;
+    }
+
+    std::string strVMID(vmid);
+
+    std::vector<std::string> stlDataTableIDs = getFrontend().QueryDataset(strVMID);
+
+    PyObject* output = PyList_New(stlDataTableIDs.size());
+
+    for(size_t i=0;i<stlDataTableIDs.size();i++)
+    {
+        const char* tmpdata = stlDataTableIDs[i].c_str();
+        PyList_SetItem(output, i, Py_BuildValue("s", tmpdata));
+    }
+
+    return Py_BuildValue("O", output);
+}
+
 static PyMethodDef SAILAPIMethods [] =
 {
     {"createguid", (PyCFunction)createguid, METH_NOARGS, NULL},
@@ -332,6 +356,7 @@ static PyMethodDef SAILAPIMethods [] =
     // {"gettableID", (PyCFunction)gettableID, METH_VARARGS, NULL},
     {"registersafeobj", (PyCFunction)registersafeobj, METH_VARARGS, NULL},
     {"queryresult", (PyCFunction)queryresult, METH_VARARGS, NULL},
+    {"querydata", (PyCFunction)querydata, METH_VARARGS, NULL},
     {"queryjobstatus", (PyCFunction)queryjobstatus, METH_VARARGS, NULL},
     {"setparameter", (PyCFunction)setparameter, METH_VARARGS, NULL},
     {"quit", (PyCFunction)quit, METH_VARARGS, NULL},

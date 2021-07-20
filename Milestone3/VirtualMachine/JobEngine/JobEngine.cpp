@@ -228,6 +228,7 @@ void __thiscall JobEngine::ConnectVirtualMachine(
     StructuredBuffer oStructuredBufferLoginResponse;
     oStructuredBufferLoginResponse.PutString("VirtualMachineUuid", oGuidVmId.ToString(eHyphensAndCurlyBraces));
     oStructuredBufferLoginResponse.PutBoolean("Success", true);
+    oStructuredBufferLoginResponse.PutStructuredBuffer("Dataset", oAvailableGuids);
     this->SendMessageToOrchestrator(oStructuredBufferLoginResponse);
 
     // TODO: Update this data

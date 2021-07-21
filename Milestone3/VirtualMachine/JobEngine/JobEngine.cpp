@@ -258,35 +258,51 @@ void __thiscall JobEngine::PushSafeObject(
 
     try
     {
+        bool fIsSafeObjectNew = true;
         std::cout << "Submitting a safe object" << std::endl;
-
         std::string strSafeObjectUuid = c_oStructuredBuffer.GetString("SafeObjectUuid");
-
         std::shared_ptr<SafeObject> poSafeObject = nullptr;
-        std::lock_guard<std::mutex> lock(m_oMutexOnSafeObjectMap);
-        if (m_stlMapOfSafeObjects.end() == m_stlMapOfSafeObjects.find(strSafeObjectUuid))
-        {
-            // Create a safe object and add it to the map of Guid and Object
-            std::cout << "Safe Object not found. Creating new " << strSafeObjectUuid << std::endl;
-            poSafeObject = std::make_shared<SafeObject>(strSafeObjectUuid);
-            poSafeObject->Setup(c_oStructuredBuffer);
-            // Push the safe object to the list of safeObjects in the engine
-            m_stlMapOfSafeObjects.insert(std::make_pair(strSafeObjectUuid, poSafeObject));
-        }
-        else
-        {
-            poSafeObject = m_stlMapOfSafeObjects.at(strSafeObjectUuid);
-            poSafeObject->Setup(c_oStructuredBuffer);
 
-            // Once the safe object setup is complete we notify all the jobs waiting on it
-            std::lock_guard<std::mutex> lock(m_oMutexOnJobsMap);
-            for (auto stlJobUuid : poSafeObject->GetQueuedJobsUuid())
+        // Defining the scope of the lock only for where it is needed. Free it up as
+        // soon as it's purpose is finished. Also, there is chance that a job could run
+        // after this which maybe blocking and and must not acquire a mutex potentially
+        // leading to a deadlock.
+        {
+            std::lock_guard<std::mutex> lock(m_oMutexOnSafeObjectMap);
+            // It may happen that a reference was already made to the safeObject by it's
+            // Uuid possibly in SubmitJob, if that is the case, an empty SafeObject object
+            // already exists with no additional data except for it's Uuid, so the setup
+            // function would just do that.
+            if (m_stlMapOfSafeObjects.end() == m_stlMapOfSafeObjects.find(strSafeObjectUuid))
             {
-                if (m_stlMapOfJobs.end() != m_stlMapOfJobs.find(stlJobUuid))
-                {
-                    auto poJob = m_stlMapOfJobs.at(stlJobUuid);
-                    poJob->SetSafeObject(poSafeObject);
-                }
+                // Create a safe object and add it to the map of Guid and Object
+                poSafeObject = std::make_shared<SafeObject>(strSafeObjectUuid);
+                poSafeObject->Setup(c_oStructuredBuffer);
+
+                // Push the safe object to the list of safeObjects in the engine
+                m_stlMapOfSafeObjects.insert(std::make_pair(strSafeObjectUuid, poSafeObject));
+            }
+            else
+            {
+                poSafeObject = m_stlMapOfSafeObjects.at(strSafeObjectUuid);
+                poSafeObject->Setup(c_oStructuredBuffer);
+
+                fIsSafeObjectNew = false;
+            }
+        }
+        // Once the safe object setup is complete, notify all the jobs waiting on it
+        if (false == fIsSafeObjectNew)
+        {
+            for (auto strJobUuid : poSafeObject->GetQueuedJobsUuid())
+            {
+                // A check if the JobUuid is present is not performed here
+                // because it should be present. If it is not present, there is
+                // something else wrong somewhere else
+                auto poJob = m_stlMapOfJobs.at(strJobUuid);
+                // TODO: if multiple jobs are waiting on the safeObject, it is possible that
+                // this call will be blocked as the job may start to run. Fix this, to run multiple
+                // jobs with the same SafeObject run in parallel.
+                poJob->SetSafeObject(poSafeObject);
             }
         }
     }
@@ -415,51 +431,58 @@ void __thiscall JobEngine::SubmitJob(
     try
     {
         std::cout << "Submitting Job " << c_oStructuredBuffer.GetString("JobUuid") << "with SafeObject " << c_oStructuredBuffer.GetString("SafeObjectUuid") << std::endl;
-        fflush(stdout);
 
         // We find the safeObject if it exists or create an empty object if it does not
         std::string strSafeObjectUuid = c_oStructuredBuffer.GetString("SafeObjectUuid");
         bool fIsSafeObjectNew = true;
-        std::shared_ptr<SafeObject> poSafeObject = nullptr;
-        std::lock_guard<std::mutex> lock(m_oMutexOnSafeObjectMap);
-        if (m_stlMapOfSafeObjects.end() == m_stlMapOfSafeObjects.find(strSafeObjectUuid))
-        {
-            // Create and Add the SafeObject to the class database
-            std::cout << "Safe Object not found. " << strSafeObjectUuid << std::endl;
-            poSafeObject = std::make_shared<SafeObject>(strSafeObjectUuid);
-            m_stlMapOfSafeObjects.insert(std::make_pair(strSafeObjectUuid, poSafeObject));
 
-            // If the SafeObject is not complete yet. i.e. PushSafeObjet has not been called, we add
-            // the Job to the list that waits on SafeObject Creation.
-            poSafeObject->AddJobUuidToQueue(c_oStructuredBuffer.GetString("JobUuid"));
-        }
-        else
+        // If the safeObject is already present in the JobEngine database, use that one
+        // but if the safeObject was not pushed already, a new empty safeObject is created
+        std::shared_ptr<SafeObject> poSafeObject = nullptr;
+
+        // There is a forced scope defined for this lock on the mutex to avoid taking up
+        // two locks at the same time which can cause a possible deadlock
         {
-            poSafeObject = m_stlMapOfSafeObjects.at(strSafeObjectUuid);
-            fIsSafeObjectNew = false;
+            std::lock_guard<std::mutex> lock(m_oMutexOnSafeObjectMap);
+            if (m_stlMapOfSafeObjects.end() == m_stlMapOfSafeObjects.find(strSafeObjectUuid))
+            {
+                // Create and Add the SafeObject to the class database
+                poSafeObject = std::make_shared<SafeObject>(strSafeObjectUuid);
+                m_stlMapOfSafeObjects.insert(std::make_pair(strSafeObjectUuid, poSafeObject));
+
+                // If the SafeObject is not complete yet. i.e. PushSafeObjet has not been called, we add
+                // the Job to the list that waits on SafeObject Creation.
+                poSafeObject->AddJobUuidToQueue(c_oStructuredBuffer.GetString("JobUuid"));
+            }
+            else
+            {
+                poSafeObject = m_stlMapOfSafeObjects.at(strSafeObjectUuid);
+                fIsSafeObjectNew = false;
+            }
         }
 
         // check if the job object already exists, if it does just add the SafeObject to it
         std::shared_ptr<Job> poJob = nullptr;
-        std::lock_guard<std::mutex> lockJobMap(m_oMutexOnJobsMap);
-        if (m_stlMapOfJobs.end() == m_stlMapOfJobs.find(c_oStructuredBuffer.GetString("JobUuid")))
         {
-            poJob = std::make_shared<Job>(c_oStructuredBuffer.GetString("JobUuid"));
+            std::lock_guard<std::mutex> lock(m_oMutexOnJobsMap);
+            if (m_stlMapOfJobs.end() == m_stlMapOfJobs.find(c_oStructuredBuffer.GetString("JobUuid")))
+            {
+                poJob = std::make_shared<Job>(c_oStructuredBuffer.GetString("JobUuid"));
 
-            // Add the job the class database
-            m_stlMapOfJobs.insert(std::make_pair(c_oStructuredBuffer.GetString("JobUuid"), poJob));
-        }
-        else
-        {
-            poJob = m_stlMapOfJobs.at(c_oStructuredBuffer.GetString("JobUuid"));
+                // Add the job the class database
+                m_stlMapOfJobs.insert(std::make_pair(c_oStructuredBuffer.GetString("JobUuid"), poJob));
+            }
+            else
+            {
+                poJob = m_stlMapOfJobs.at(c_oStructuredBuffer.GetString("JobUuid"));
+            }
         }
 
-        // We do not link the job to the safeObject before it is fully created. Since, the incomplete
+        // Do not link the job to the safeObject before it is fully created. Since, the incomplete
         // safe object has the list of unlinked jobs it will call the SetSafeObject for all the jobs it has
         // on the queue
         if (false == fIsSafeObjectNew)
         {
-            std::cout << "Setting up safe object for the job" << std::endl;
             poJob->SetSafeObject(poSafeObject);
         }
     }
@@ -493,24 +516,29 @@ void __thiscall JobEngine::SetJobParameter(
     try
     {
         std::cout << "Setting a Job Parameter " << c_oStructuredBuffer.GetString("JobUuid") << std::endl;
-        fflush(stdout);
 
         // check if the job object already exists, if it does add the parameter
         std::string strJobUuid = c_oStructuredBuffer.GetString("JobUuid");
         std::shared_ptr<Job> poJob = nullptr;
-        std::lock_guard<std::mutex> lock(m_oMutexOnJobsMap);
-        if (m_stlMapOfJobs.end() == m_stlMapOfJobs.find(strJobUuid))
+
+        // To avoid locking two mutex simultaneously in the same thread, a scope is forced
+        // so that the mutex is unlocked at the end of the scope and the chances of deadlock
+        // are mitigated
         {
-            poJob = std::make_shared<Job>(strJobUuid);
-            _ThrowIfNull(poJob, "Failed to create a job.", nullptr);
-            // Add the job the class database
-            m_stlMapOfJobs.insert(std::make_pair(strJobUuid, poJob));
-        }
-        else
-        {
-            // Get the safe object from the stored list
-            poJob = m_stlMapOfJobs.at(strJobUuid);
-            _ThrowIfNull(poJob, "Invalid job Uuid.", nullptr);
+            std::lock_guard<std::mutex> lock(m_oMutexOnJobsMap);
+            if (m_stlMapOfJobs.end() == m_stlMapOfJobs.find(strJobUuid))
+            {
+                poJob = std::make_shared<Job>(strJobUuid);
+                _ThrowIfNull(poJob, "Failed to create a job.", nullptr);
+                // Add the job the class database
+                m_stlMapOfJobs.insert(std::make_pair(strJobUuid, poJob));
+            }
+            else
+            {
+                // Get the safe object from the stored list
+                poJob = m_stlMapOfJobs.at(strJobUuid);
+                _ThrowIfNull(poJob, "Invalid job Uuid.", nullptr);
+            }
         }
 
         // Check if the requested data is a dataset from the DataConnector.
@@ -531,7 +559,7 @@ void __thiscall JobEngine::SetJobParameter(
         if (false == fIsValueFilePresent)
         {
             // Register the request for now and fulfill it as soon as it is available later
-            std::lock_guard<std::mutex> lockParameterValuesToJobMap(m_oMutexOnParameterValuesToJobMap);
+            std::lock_guard<std::mutex> lock(m_oMutexOnParameterValuesToJobMap);
             m_stlMapOfParameterValuesToJob.insert(std::make_pair(strParameterValueFile, poJob));
         }
     }
@@ -633,7 +661,7 @@ void __thiscall JobEngine::SendMessageToOrchestrator(
             JobStatusSignals eSignalType = (JobStatusSignals)c_oStructuredBuffer.GetByte("SignalType");
             if ((JobStatusSignals::eJobFail == eSignalType) || (JobStatusSignals::eJobDone == eSignalType))
             {
-                // std::lock_guard<std::mutex> lock(m_oMutexOnJobsMap);
+                std::lock_guard<std::mutex> lock(m_oMutexOnJobsMap);
                 m_stlMapOfJobs.erase(c_oStructuredBuffer.GetString("JobUuid"));
             }
         }

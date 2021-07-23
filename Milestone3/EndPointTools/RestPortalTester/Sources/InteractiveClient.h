@@ -229,6 +229,26 @@ extern bool DeleteDataset(
     _in const std::string & c_strEosb
     );
 
+extern bool RegisterAzureTemplate(
+    _in const std::string & c_strEosb
+    );
+
+extern bool ListAzureTemplates(
+    _in const std::string & c_strEosb
+    );
+
+extern bool PullAzureTemplate(
+    _in const std::string & c_strEosb
+    );
+
+extern bool UpdateAzureTemplate(
+    _in const std::string & c_strEosb
+    );
+
+extern bool DeleteAzureTemplate(
+    _in const std::string & c_strEosb
+    );
+
 extern std::vector<Byte> GetRemoteAttestationCertificate(void);
 
 extern void ShutdownPortal(

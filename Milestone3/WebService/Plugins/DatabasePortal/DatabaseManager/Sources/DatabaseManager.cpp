@@ -227,6 +227,10 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/PullDigitalContract");
     // Get a virtual machine's information
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/PullVirtualMachine");
+    // Get an azure settings template
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/PullAzureTemplate");
+    // Get a list of azure settings templates for an organization
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/ListAzureTemplates");
     // Add a non-leaf audit log event
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/NonLeafEvent");
     // Add a leaf audit log event
@@ -241,6 +245,8 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterVirtualMachine");
     // Takes in an EOSB and create a digital contract for a chosen dataset
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterDigitalContract");
+    // Takes in an EOSB and registers an azure settings template
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterAzureTemplate");
     // Shuts down the server
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/ShutdownPortal");
     // Update user's access rights
@@ -251,6 +257,8 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/UpdateUserInformation");
     // Recover deleted user account
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/RecoverUser");
+    // Update an azure settings template
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/UpdateAzureTemplate");
     // Update the digital contract when a data owner accepts the digital contract or when a researcher accepts the DC terms from the Data owner organization
     m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DatabaseManager/Update/DigitalContract");
     // Delete a user from the database
@@ -259,6 +267,8 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/DeleteOrganization");
     // Delete a dataset record from the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/DeleteDataset");
+    // Delete an Azure template record from the database
+    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/DeleteAzureTemplate");
     // Reset the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/ResetDatabase");
 }
@@ -351,6 +361,14 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             {
                 stlResponseBuffer = this->GetOrganizationInformation(c_oRequestStructuredBuffer);
             }
+            else if ("/SAIL/DatabaseManager/PullAzureTemplate" == strResource)
+            {
+                stlResponseBuffer = this->PullAzureTemplate(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/ListAzureTemplates" == strResource)
+            {
+                stlResponseBuffer = this->ListAzureTemplates(c_oRequestStructuredBuffer);
+            }
             else
             {
                 _ThrowBaseException("Invalid resource.", nullptr);
@@ -386,6 +404,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             {
                 stlResponseBuffer = this->RegisterDigitalContract(c_oRequestStructuredBuffer);
             }
+            else if ("/SAIL/DatabaseManager/RegisterAzureTemplate" == strResource)
+            {
+                stlResponseBuffer = this->RegisterAzureTemplate(c_oRequestStructuredBuffer);
+            }
             else if ("/SAIL/DatabaseManager/ShutdownPortal" == strResource)
             {
                 stlResponseBuffer = this->ShutdownPortal(c_oRequestStructuredBuffer);
@@ -412,6 +434,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             else if ("/SAIL/DatabaseManager/RecoverUser" == strResource)
             {
                 stlResponseBuffer = this->RecoverUser(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/UpdateAzureTemplate" == strResource)
+            {
+                stlResponseBuffer = this->UpdateAzureTemplate(c_oRequestStructuredBuffer);
             }
             else
             {
@@ -446,6 +472,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             else if ("/SAIL/DatabaseManager/DeleteDataset" == strResource)
             {
                 stlResponseBuffer = this->DeleteDataset(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/DeleteAzureTemplate" == strResource)
+            {
+                stlResponseBuffer = this->DeleteAzureTemplate(c_oRequestStructuredBuffer);
             }
             else if ("/SAIL/DatabaseManager/ResetDatabase" == strResource)
             {

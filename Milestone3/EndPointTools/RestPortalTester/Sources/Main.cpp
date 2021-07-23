@@ -387,6 +387,48 @@ int main()
                             }
                             case 26:
                             {
+                                bool fSuccess = ::RegisterAzureTemplate(strEncodedEosb);
+                                if (true == fSuccess)
+                                {
+                                    ::ShowSuccessMessage("Azure template registered!");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 27:
+                            {
+                                bool fSuccess = ::ListAzureTemplates(strEncodedEosb);
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 28:
+                            {
+                                bool fSuccess = ::PullAzureTemplate(strEncodedEosb);
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 29:
+                            {
+                                bool fSuccess = ::UpdateAzureTemplate(strEncodedEosb);
+                                if (true == fSuccess)
+                                {
+                                    ::ShowSuccessMessage("Azure template updated!");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 30:
+                            {
+                                bool fSuccess = ::DeleteAzureTemplate(strEncodedEosb);
+                                if (true == fSuccess)
+                                {
+                                    ::ShowSuccessMessage("Azure template deleted!");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 31:
+                            {
                                 ::ShutdownPortal(strEncodedEosb);
                                 fTerminatedSignalEncountered = true;
                                 break;
@@ -394,7 +436,7 @@ int main()
                             }
                             default:
                             {
-                                ::ShowErrorMessage("Invalid option. Usage: [0-26]");
+                                ::ShowErrorMessage("Invalid option. Usage: [0-31]");
                             break;
                             }
                         }

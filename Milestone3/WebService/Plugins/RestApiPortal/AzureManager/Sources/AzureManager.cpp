@@ -1,0 +1,959 @@
+/*********************************************************************************************
+ *
+ * @file AzureManager.cpp
+ * @author Shabana Akhtar Baig
+ * @date 21 Jul 2021
+ * @License Private and Confidential. Internal Use Only.
+ * @copyright Copyright (C) 2020 Secure AI Labs, Inc. All Rights Reserved.
+ * @brief
+ ********************************************************************************************/
+
+#include "AzureManager.h"
+#include "IpcTransactionHelperFunctions.h"
+#include "SocketClient.h"
+#include "TlsClient.h"
+
+static AzureManager * gs_oAzureManager = nullptr;
+
+/********************************************************************************************
+ *
+ * @function CreateRequestPacket
+ * @brief Create a Tls request packet to send to the database portal
+ * @param[in] c_oRequest StructuredBuffer containing the request parameters
+ * @return Serialized request packet
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __stdcall CreateRequestPacket(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    unsigned int unSerializedBufferSizeInBytes = sizeof(Dword) + sizeof(uint32_t) + c_oRequest.GetSerializedBufferRawDataSizeInBytes() + sizeof(Dword);
+
+    std::vector<Byte> stlSerializedBuffer(unSerializedBufferSizeInBytes);
+    Byte * pbSerializedBuffer = (Byte *) stlSerializedBuffer.data();
+
+    // The format of the request data is:
+    //
+    // +------------------------------------------------------------------------------------+
+    // | [Dword] 0x436f6e74                                                                 |
+    // +------------------------------------------------------------------------------------+
+    // | [uint32_t] SizeInBytesOfRestRequestStructuredBuffer                                |
+    // +------------------------------------------------------------------------------------+
+    // | [SizeInBytesOfRestRequestStructuredBuffer] RestRequestStructuredBuffer             |
+    // +------------------------------------------------------------------------------------+
+    // | [Dword] 0x656e6420                                                                 |
+    // +------------------------------------------------------------------------------------+
+
+    *((Dword *) pbSerializedBuffer) = 0x436f6e74;
+    pbSerializedBuffer += sizeof(Dword);
+    *((uint32_t *) pbSerializedBuffer) = (uint32_t) c_oRequest.GetSerializedBufferRawDataSizeInBytes();
+    pbSerializedBuffer += sizeof(uint32_t);
+    ::memcpy((void *) pbSerializedBuffer, (const void *) c_oRequest.GetSerializedBufferRawDataPtr(), c_oRequest.GetSerializedBufferRawDataSizeInBytes());
+    pbSerializedBuffer += c_oRequest.GetSerializedBufferRawDataSizeInBytes();
+    *((Dword *) pbSerializedBuffer) = 0x656e6420;
+
+    return stlSerializedBuffer;
+}
+
+/********************************************************************************************
+ *
+ * @function GetAzureManager
+ * @brief Create a singleton object of AzureManager class
+ * @throw OutOfMemoryException If there isn't enough memory left to create a new instance
+ * @return Return the singleton object of AzureManager class
+ *
+ ********************************************************************************************/
+
+AzureManager * __stdcall GetAzureManager(void)
+{
+    __DebugFunction();
+
+    if (nullptr == gs_oAzureManager)
+    {
+        gs_oAzureManager = new AzureManager();
+        _ThrowOutOfMemoryExceptionIfNull(gs_oAzureManager);
+    }
+
+    return gs_oAzureManager;
+}
+
+/********************************************************************************************
+ *
+ * @function ShutdownAzureManager
+ * @brief Release the object resources and set global static pointer to NULL
+ *
+ ********************************************************************************************/
+
+void __stdcall ShutdownAzureManager(void)
+{
+    __DebugFunction();
+
+    if (nullptr != gs_oAzureManager)
+    {
+        gs_oAzureManager->TerminateSignalEncountered();
+        gs_oAzureManager->Release();
+        gs_oAzureManager = nullptr;
+    }
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function AzureManager
+ * @brief Constructor
+ *
+ ********************************************************************************************/
+
+AzureManager::AzureManager(void)
+{
+    __DebugFunction();
+
+    m_sMutex = PTHREAD_MUTEX_INITIALIZER;
+    m_unNextAvailableIdentifier = 0;
+    m_fTerminationSignalEncountered = false;
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function AzureManager
+ * @brief Copy Constructor
+ * @param[in] c_oAzureManager Another instance of the class
+ * @note
+ *      This constructor triggers an assertion failure if called.
+ *
+ ********************************************************************************************/
+
+AzureManager::AzureManager(
+    _in const AzureManager & c_oAzureManager
+    )
+{
+    __DebugFunction();
+    __DebugAssert(false);
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function ~AzureManager
+ * @brief Destructor
+ *
+ ********************************************************************************************/
+
+AzureManager::~AzureManager(void)
+{
+    __DebugFunction();
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function GetName
+ * @brief Fetch the name of the plugin
+ * @return Name of the plugin
+ *
+ ********************************************************************************************/
+
+const char * __thiscall AzureManager::GetName(void) const throw()
+{
+    __DebugFunction();
+
+    static const char * sc_szName = "AzureManager";
+
+    return sc_szName;
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function GetUuid
+ * @brief Fetch the UUID of the plugin
+ * @return UUID of the plugin
+ *
+ ********************************************************************************************/
+
+const char * __thiscall AzureManager::GetUuid(void) const throw()
+{
+    __DebugFunction();
+
+    static const char * sc_szUuid = "{B39B82EB-ABC6-4C29-887D-0E954D03307D}";
+
+    return sc_szUuid;
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function GetVersion
+ * @brief Fetch the current version of the plugin
+ * @return Version of the plugin
+ *
+ ********************************************************************************************/
+
+Qword __thiscall AzureManager::GetVersion(void) const throw()
+{
+    __DebugFunction();
+
+    return 0x0000000100000001;
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function GetDictionarySerializedBuffer
+ * @brief Fetch the serialized buffer of the plugin's dictionary
+ * @return Serialized buffer of the plugin's dictionary
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AzureManager::GetDictionarySerializedBuffer(void) const throw()
+{
+    __DebugFunction();
+
+    return m_oDictionary.GetSerializedDictionary();
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function TerminateSignalEncountered
+ * @brief Set termination signal
+ *
+ ********************************************************************************************/
+
+void __thiscall AzureManager::TerminateSignalEncountered(void)
+{
+    __DebugFunction();
+
+    m_fTerminationSignalEncountered = true;
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function InitializePlugin
+ * @brief Initializer that initializes the plugin's dictionary
+ *
+ ********************************************************************************************/
+
+void __thiscall AzureManager::InitializePlugin(void)
+{
+    __DebugFunction();
+
+    // Add parameters for RegisterTemplate resource
+    StructuredBuffer oRegisterTemplate;
+    StructuredBuffer oEosb;
+    oEosb.PutByte("ElementType", BUFFER_VALUE_TYPE);
+    oEosb.PutBoolean("IsRequired", true);
+    oRegisterTemplate.PutStructuredBuffer("Eosb", oEosb);
+    StructuredBuffer oTemplateData;
+    oTemplateData.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
+    oTemplateData.PutBoolean("IsRequired", true);
+    StructuredBuffer oSubscriptionId;
+    oSubscriptionId.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oSubscriptionId.PutBoolean("IsRequired", true);
+    oTemplateData.PutStructuredBuffer("SubscriptionID", oSubscriptionId);
+    StructuredBuffer oSecret;
+    oSecret.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oSecret.PutBoolean("IsRequired", true);
+    oTemplateData.PutStructuredBuffer("Secret", oSecret);
+    StructuredBuffer oTenantId;
+    oTenantId.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oTenantId.PutBoolean("IsRequired", true);
+    oTemplateData.PutStructuredBuffer("TenantID", oTenantId);
+    StructuredBuffer oApplicationId;
+    oApplicationId.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oApplicationId.PutBoolean("IsRequired", true);
+    oTemplateData.PutStructuredBuffer("ApplicationID", oApplicationId);
+    StructuredBuffer oResourceGroup;
+    oResourceGroup.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oResourceGroup.PutBoolean("IsRequired", true);
+    oTemplateData.PutStructuredBuffer("ResourceGroup", oResourceGroup);
+    StructuredBuffer oVirtualNetwork;
+    oVirtualNetwork.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oVirtualNetwork.PutBoolean("IsRequired", true);
+    oTemplateData.PutStructuredBuffer("VirtualNetwork", oVirtualNetwork);
+    StructuredBuffer oName;
+    oName.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oName.PutBoolean("IsRequired", true);
+    oTemplateData.PutStructuredBuffer("Name", oName);
+    StructuredBuffer oDescription;
+    oDescription.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oDescription.PutBoolean("IsRequired", true);
+    oTemplateData.PutStructuredBuffer("Description", oDescription);
+    oRegisterTemplate.PutStructuredBuffer("TemplateData", oTemplateData);
+
+    // Add parameters for ListTemplates resource
+    StructuredBuffer oListTemplates;
+    oListTemplates.PutStructuredBuffer("Eosb", oEosb);
+
+    // Add parameters for PullTemplate resource
+    StructuredBuffer oPullTemplate;
+    oPullTemplate.PutStructuredBuffer("Eosb", oEosb);
+    StructuredBuffer oTemplateGuid;
+    oTemplateGuid.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oTemplateGuid.PutBoolean("IsRequired", true);
+    oPullTemplate.PutStructuredBuffer("TemplateGuid", oTemplateGuid);
+
+    // Add parameters for UpdateTemplate
+    StructuredBuffer oUpdateTemplate;
+    oUpdateTemplate.PutStructuredBuffer("Eosb", oEosb);
+    oUpdateTemplate.PutStructuredBuffer("TemplateGuid", oTemplateGuid);
+    oUpdateTemplate.PutStructuredBuffer("TemplateData", oTemplateData);
+
+    // Add parameters for DeleteTemplate
+    StructuredBuffer oDeleteTemplate;
+    oDeleteTemplate.PutStructuredBuffer("Eosb", oEosb);
+    oDeleteTemplate.PutStructuredBuffer("TemplateGuid", oTemplateGuid);
+
+    // Stores azure settings template in the database
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AzureManager/RegisterTemplate", oRegisterTemplate, 1);
+
+    // Sends back list of all available azure settings templates
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AzureManager/ListTemplates", oListTemplates, 1);
+
+    // Send back azure settings template associated with the requested TemplateGuid
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AzureManager/PullTemplate", oPullTemplate, 1);
+
+    // Updates an azure setting template in the database
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/AzureManager/UpdateTemplate", oUpdateTemplate, 1);
+
+    // Deletes an azure setting template from the database
+    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AzureManager/DeleteTemplate", oDeleteTemplate, 1);
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function SubmitRequest
+ * @brief Method called by flat function SubmitRequest when a client requests for the plugin's resource
+ * @param[in] c_oRequestStructuredBuffer points to the request body
+ * @param[out] punSerializedResponseSizeInBytes stores the size of the response
+ * @throw BaseException Element not found
+ * @throw BaseException Error generating challenge nonce
+ * @returns a 64 bit unique transaction identifier
+ *
+ ********************************************************************************************/
+
+uint64_t __thiscall AzureManager::SubmitRequest(
+    _in const StructuredBuffer & c_oRequestStructuredBuffer,
+    _out unsigned int * punSerializedResponseSizeInBytes
+    )
+{
+    __DebugFunction();
+
+    uint64_t un64Identifier = 0xFFFFFFFFFFFFFFFF;
+    std::string strVerb = c_oRequestStructuredBuffer.GetString("Verb");
+    std::string strResource = c_oRequestStructuredBuffer.GetString("Resource");
+    // TODO: As an optimization, we should make sure to convert strings into 64 bit hashes
+    // in order to speed up comparison. String comparisons WAY expensive.
+    std::vector<Byte> stlResponseBuffer;
+
+    // Route to the requested resource
+    if ("GET" == strVerb)
+    {
+        if ("/SAIL/AzureManager/ListTemplates" == strResource)
+        {
+            stlResponseBuffer = this->GetListOfAzureSettingsTemplates(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/AzureManager/PullTemplate" == strResource)
+        {
+            stlResponseBuffer = this->PullAzureSettingsTemplate(c_oRequestStructuredBuffer);
+        }
+    }
+    else if ("POST" == strVerb)
+    {
+        if ("/SAIL/AzureManager/RegisterTemplate" == strResource)
+        {
+            stlResponseBuffer = this->RegisterAzureSettingsTemplate(c_oRequestStructuredBuffer);
+        }
+    }
+    else if ("PUT" == strVerb)
+    {
+        if ("/SAIL/AzureManager/UpdateTemplate" == strResource)
+        {
+            stlResponseBuffer = this->UpdateAzureSettingsTemplate(c_oRequestStructuredBuffer);
+        }
+    }
+    else if ("DELETE" == strVerb)
+    {
+        if ("/SAIL/AzureManager/DeleteTemplate" == strResource)
+        {
+            stlResponseBuffer = this->DeleteAzureSettingsTemplate(c_oRequestStructuredBuffer);
+        }
+    }
+
+    // Return size of response buffer
+    *punSerializedResponseSizeInBytes = stlResponseBuffer.size();
+    __DebugAssert(0 < *punSerializedResponseSizeInBytes);
+
+    // Save the response buffer and increment transaction identifier which will be assigned to the next transaction
+    ::pthread_mutex_lock(&m_sMutex);
+    if (0xFFFFFFFFFFFFFFFF == m_unNextAvailableIdentifier)
+    {
+        m_unNextAvailableIdentifier = 0;
+    }
+    un64Identifier = m_unNextAvailableIdentifier;
+    m_unNextAvailableIdentifier++;
+    m_stlCachedResponse[un64Identifier] = stlResponseBuffer;
+    ::pthread_mutex_unlock(&m_sMutex);
+
+    return un64Identifier;
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function GetResponse
+ * @brief Method called by flat function GetResponse to get plugin's response
+ * @param[in] un64Identifier is the transaction identifier
+ * @param[out] c_pbSerializedResponseBuffer points to the GetResponse
+ * @params[in] unSerializedResponseBufferSizeInBytes is used to verify the request
+ * @returns a boolean that represents status of the request
+ *
+********************************************************************************************/
+
+bool __thiscall AzureManager::GetResponse(
+    _in uint64_t un64Identifier,
+    _out Byte * pbSerializedResponseBuffer,
+    _in unsigned int unSerializedResponseBufferSizeInBytes
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0xFFFFFFFFFFFFFFFF != un64Identifier);
+    __DebugAssert(nullptr != pbSerializedResponseBuffer);
+    __DebugAssert(0 < unSerializedResponseBufferSizeInBytes);
+
+    bool fSuccess = false;
+
+    ::pthread_mutex_lock(&m_sMutex);
+    if (m_stlCachedResponse.end() != m_stlCachedResponse.find(un64Identifier))
+    {
+        __DebugAssert(0 < m_stlCachedResponse[un64Identifier].size());
+
+        ::memcpy((void *) pbSerializedResponseBuffer, (const void *) m_stlCachedResponse[un64Identifier].data(), m_stlCachedResponse[un64Identifier].size());
+        m_stlCachedResponse.erase(un64Identifier);
+        fSuccess = true;
+    }
+    ::pthread_mutex_unlock(&m_sMutex);
+
+    return fSuccess;
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function GetUserInfo
+ * @brief Take in a full EOSB and send back a StructuredBuffer containing user metadata
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns StructuredBuffer containing user metadata
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AzureManager::GetUserInfo(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    Socket * poIpcCryptographicManager = nullptr;
+
+    try
+    {
+        std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+
+        StructuredBuffer oDecryptEosbRequest;
+        oDecryptEosbRequest.PutDword("TransactionType", 0x00000007);
+        oDecryptEosbRequest.PutBuffer("Eosb", stlEosb);
+
+        // Call CryptographicManager plugin to get the decrypted eosb
+        poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+        StructuredBuffer oDecryptedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oDecryptEosbRequest, false));
+        poIpcCryptographicManager->Release();
+        poIpcCryptographicManager = nullptr;
+        if ((0 < oDecryptedEosb.GetSerializedBufferRawDataSizeInBytes())&&(201 == oDecryptedEosb.GetDword("Status")))
+        {
+            StructuredBuffer oEosb(oDecryptedEosb.GetStructuredBuffer("UserInformation").GetStructuredBuffer("Eosb"));
+            // Send back the updated Eosb
+            oResponse.PutBuffer("Eosb", oDecryptedEosb.GetBuffer("UpdatedEosb"));
+            // Send back the user information
+            oResponse.PutGuid("UserGuid", oEosb.GetGuid("UserId"));
+            oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
+            // TODO: get user access rights from the confidential record, for now it can't be decrypted
+            oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
+            dwStatus = 200;
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poIpcCryptographicManager)
+    {
+        poIpcCryptographicManager->Release();
+    }
+
+    // Add status code for the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function GetListOfAzureSettingsTemplates
+ * @brief Send back a list of all available azure settings templates of an organization
+ * @param[in] c_oRequest contains the request body
+ * @returns StructuredBuffer containing list of all available azure settings templates of an organization
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AzureManager::GetListOfAzureSettingsTemplates(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    TlsNode * poTlsNode = nullptr;
+
+    try 
+    {
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            {
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to list of all available azure settings templates of an organization
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "GET");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/ListAzureTemplates");
+                oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), stlRequest.size());
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 3000);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                poTlsNode = nullptr;
+
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (200 == oDatabaseResponse.GetDword("Status"))
+                {
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                    oResponse.PutStructuredBuffer("Templates", oDatabaseResponse.GetStructuredBuffer("Templates"));
+                    dwStatus = 200;
+                }
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function PullAzureSettingsTemplate
+ * @brief Get azure settings template associated with the GUID
+ * @param[in] c_oRequest contains the request body
+ * @returns StructuredBuffer containing azure settings template associated with the GUID
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AzureManager::PullAzureSettingsTemplate(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    TlsNode * poTlsNode = nullptr;
+
+    try 
+    {
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            {
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to get azure settings template
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "GET");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/PullAzureTemplate");
+                oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+                oRequest.PutString("TemplateGuid", c_oRequest.GetString("TemplateGuid"));
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), stlRequest.size());
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                poTlsNode = nullptr;
+
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (200 == oDatabaseResponse.GetDword("Status"))
+                {
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                    oResponse.PutStructuredBuffer("Template", oDatabaseResponse.GetStructuredBuffer("Template"));
+                    dwStatus = 200;
+                }
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function RegisterAzureSettingsTemplate
+ * @brief Take in full EOSB and register azure settings template
+ * @param[in] c_oRequest contains EOSB and the azure settings template information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Request status
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AzureManager::RegisterAzureSettingsTemplate(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    TlsNode * poTlsNode = nullptr;
+
+    try 
+    {
+        StructuredBuffer oUserInfo = this->GetUserInfo(c_oRequest);
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            {
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to add azure settings template to the database
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "POST");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterAzureTemplate");
+                oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+                oRequest.PutStructuredBuffer("TemplateData", c_oRequest.GetStructuredBuffer("TemplateData"));
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                poTlsNode = nullptr;
+                
+                // Check if DatabaseManager registered the template or not
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (204 != oDatabaseResponse.GetDword("Status"))
+                {
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                    dwStatus = 201;
+                }
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    // Send back status and database uuid
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function UpdateAzureSettingsTemplate
+ * @brief Take in full EOSB and update azure settings template in the database
+ * @param[in] c_oRequest contains EOSB and the template information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Request status
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AzureManager::UpdateAzureSettingsTemplate(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    TlsNode * poTlsNode = nullptr;
+
+    try 
+    {
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            {
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to update the azure settings template
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "PUT");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateAzureTemplate");
+                oRequest.PutString("TemplateGuid", c_oRequest.GetString("TemplateGuid"));
+                oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+                oRequest.PutStructuredBuffer("TemplateData", c_oRequest.GetStructuredBuffer("TemplateData"));
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), stlRequest.size());
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                poTlsNode = nullptr;
+
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (200 == oDatabaseResponse.GetDword("Status"))
+                {
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                    dwStatus = 200;
+                }
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function DeleteAzureSettingsTemplate
+ * @brief Take in full EOSB of an admin and delete the template from the database
+ * @param[in] c_oRequest contains EOSB of the admin and the template UUID
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Request status
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall AzureManager::DeleteAzureSettingsTemplate(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    TlsNode * poTlsNode = nullptr;
+
+    try 
+    {
+        // Verify that the user is an Admin
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            {
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to delete the template
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "DELETE");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/DeleteAzureTemplate");
+                oRequest.PutString("TemplateGuid", c_oRequest.GetString("TemplateGuid"));
+                oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), stlRequest.size());
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                poTlsNode = nullptr;
+
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (200 == oDatabaseResponse.GetDword("Status"))
+                {
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                    dwStatus = 200;
+                }
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}

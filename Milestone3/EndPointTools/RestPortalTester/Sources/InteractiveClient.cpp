@@ -1515,10 +1515,18 @@ bool AcceptDigitalContract(
     std::string strDescription = ::GetStringInput("Add your comment on the digital contract (if any): ", 200, false, c_szValidInputCharacters);
     uint64_t unRetentionTime = std::stoull(::GetStringInput("Enter the retention time: ", 50, false, c_szValidInputCharacters));
     std::string strLegalAgreement = ::GetStringInput("Enter the legal agreement: ", 500, false, c_szValidInputCharacters);
+    std::string strHostForVm = ::GetStringInput("Enter the host responsible for VM: ", 50, false, c_szValidInputCharacters);
+    uint64_t un64NoOfVM = std::stoull(::GetStringInput("Enter the number of required VMs: ", 50, false, c_szValidInputCharacters));
+    uint64_t un64NoOfVCPU = std::stoull(::GetStringInput("Enter the number of VCPUs: ", 50, false, c_szValidInputCharacters));
+    std::string strHostRegion = ::GetStringInput("Enter the region to run the VM's: ", 500, false, c_szValidInputCharacters);
 
     __DebugAssert(0 < strDcGuid.size());
     __DebugAssert(0 < unRetentionTime);
     __DebugAssert(0 < strLegalAgreement.size());
+    __DebugAssert(0 < strHostForVm.size());
+    __DebugAssert(0 < un64NoOfVM);
+    __DebugAssert(0 < un64NoOfVCPU);
+    __DebugAssert(0 < strHostRegion.size());
 
     StructuredBuffer oDcInformation;
     oDcInformation.PutString("DigitalContractGuid", strDcGuid);
@@ -1528,6 +1536,10 @@ bool AcceptDigitalContract(
     }
     oDcInformation.PutUnsignedInt64("RetentionTime", unRetentionTime);
     oDcInformation.PutString("LegalAgreement", strLegalAgreement);
+    oDcInformation.PutString("HostForVirtualMachines", strHostForVm);
+    oDcInformation.PutUnsignedInt64("NumberOfVirtualMachines", un64NoOfVM);
+    oDcInformation.PutUnsignedInt64("NumberOfVCPU", un64NoOfVCPU);
+    oDcInformation.PutString("HostRegion", strHostRegion);
 
     fSuccess = ::AcceptDigitalContract(c_strEncodedEosb, oDcInformation);
 
@@ -1556,7 +1568,11 @@ bool AcceptDigitalContract(
             strContent += "\n    \"Description\": \""+ c_oDcInformation.GetString("Description") +"\",";
         }
         strContent +=   "\n    \"RetentionTime\": "+ std::to_string(c_oDcInformation.GetUnsignedInt64("RetentionTime")) +","
-                        "\n    \"LegalAgreement\": \""+ c_oDcInformation.GetString("LegalAgreement") +"\""
+                        "\n    \"LegalAgreement\": \""+ c_oDcInformation.GetString("LegalAgreement") +"\","
+                        "\n    \"HostForVirtualMachines\": \""+ c_oDcInformation.GetString("HostForVirtualMachines") +"\","
+                        "\n    \"NumberOfVirtualMachines\": "+ std::to_string(c_oDcInformation.GetUnsignedInt64("NumberOfVirtualMachines")) +","
+                        "\n    \"NumberOfVCPU\": "+ std::to_string(c_oDcInformation.GetUnsignedInt64("NumberOfVCPU")) +","
+                        "\n    \"HostRegion\": \""+ c_oDcInformation.GetString("HostRegion") +"\""
                         "\n}";
         // Make the API call and get REST response
         std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
@@ -1727,6 +1743,22 @@ void PrintDigitalContracts(
         std::cout << "Dataset guid: " << oElement.GetString("DatasetGuid") << std::endl;
         std::cout << "Eula: " << oElement.GetString("Eula") << std::endl;
         std::cout << "Legal agreement: " << oElement.GetString("LegalAgreement") << std::endl;
+        if (true == oElement.IsElementPresent("HostForVirtualMachines", ANSI_CHARACTER_STRING_VALUE_TYPE))
+        {
+            std::cout << "Host for Virtual Machines: " << oElement.GetString("HostForVirtualMachines") << std::endl;
+        }
+        if (true == oElement.IsElementPresent("NumberOfVirtualMachines", FLOAT64_VALUE_TYPE))
+        {
+            std::cout << "Number of required VMs: " << (uint64_t) oElement.GetFloat64("NumberOfVirtualMachines") << std::endl;
+        }
+        if (true == oElement.IsElementPresent("NumberOfVCPU", FLOAT64_VALUE_TYPE))
+        {
+            std::cout << "Number of required VCPUs: " << (uint64_t) oElement.GetFloat64("NumberOfVCPU") << std::endl;
+        }
+        if (true == oElement.IsElementPresent("HostRegion", ANSI_CHARACTER_STRING_VALUE_TYPE))
+        {
+            std::cout << "VMs Location: " << oElement.GetString("HostRegion") << std::endl;
+        }
         std::cout << "------------------------------------------------------" << std::endl;
     }
 }
@@ -2034,6 +2066,308 @@ bool DeleteDataset(
         std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
         StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error deleting the dataset record.", nullptr);
+        fSuccess = true;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool RegisterAzureTemplate(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get Azure template information
+    std::cout << "************************\n Register Azure Template \n************************\n" << std::endl;
+    std::string strName = ::GetStringInput("Enter template name: ", 50, false, c_szValidInputCharacters);
+    std::string strDescription = ::GetStringInput("Enter description: ", 50, false, c_szValidInputCharacters);
+    std::string strSubscriptionId = ::GetStringInput("Enter subscription ID: ", 50, false, c_szValidInputCharacters);
+    std::string strSecret = ::GetStringInput("Enter secret: ", 50, false, c_szValidInputCharacters);
+    std::string strTenantId = ::GetStringInput("Enter tenant ID: ", 50, false, c_szValidInputCharacters);
+    std::string strApplicationId = ::GetStringInput("Enter application ID: ", 50, false, c_szValidInputCharacters);
+    std::string strResourceGroup = ::GetStringInput("Enter resource group: ", 50, false, c_szValidInputCharacters);
+    std::string strVirtualNetwork = ::GetStringInput("Enter virtual network: ", 50, false, c_szValidInputCharacters);
+
+    __DebugAssert(0 < strName.size());
+    __DebugAssert(0 < strDescription.size());
+    __DebugAssert(0 < strSubscriptionId.size());
+    __DebugAssert(0 < strSecret.size());
+    __DebugAssert(0 < strTenantId.size());
+    __DebugAssert(0 < strApplicationId.size());
+    __DebugAssert(0 < strResourceGroup.size());
+    __DebugAssert(0 < strVirtualNetwork.size());
+
+    try
+    {
+        // Create rest request
+        std::string strVerb = "POST";
+        std::string strApiUrl = "/SAIL/AzureManager/RegisterTemplate?Eosb="+ c_strEosb;
+        std::string strContent = "{\n   \"TemplateData\": {"
+                                "\n   \"Name\": \""+ strName +"\","
+                                "\n   \"Description\": \""+ strDescription +"\","
+                                "\n   \"SubscriptionID\": \""+ strSubscriptionId +"\","
+                                "\n   \"Secret\": \""+ strSecret +"\","
+                                "\n   \"TenantID\": \""+ strTenantId +"\","
+                                "\n   \"ApplicationID\": \""+ strApplicationId +"\","
+                                "\n   \"ResourceGroup\": \""+ strResourceGroup +"\","
+                                "\n   \"VirtualNetwork\": \""+ strVirtualNetwork +"\""
+                                "\n   }"
+                                "\n}";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error registering the Azure template.", nullptr);
+        fSuccess = true;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool ListAzureTemplates(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    try
+    {
+        // Create rest request
+        std::string strVerb = "GET";
+        std::string strApiUrl = "/SAIL/AzureManager/ListTemplates?Eosb="+ c_strEosb;
+        std::string strJsonBody = "";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strJsonBody, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error fetching available Azure templates.", nullptr);
+        fSuccess = true;
+        std::cout << "************************\n List of Azure templates \n************************\n" << std::endl;
+        StructuredBuffer oTemplates(oResponse.GetStructuredBuffer("Templates"));
+        for (std::string strElement : oTemplates.GetNamesOfElements())
+        {
+            StructuredBuffer oElement(oTemplates.GetStructuredBuffer(strElement.c_str()));
+            std::cout << "Guid: " << strElement << std::endl;
+            std::cout << "Name: " << oElement.GetString("Name") << std::endl;
+            std::cout << "Description: " << oElement.GetString("Description") << std::endl;
+            std::cout << "Subscription ID: " << oElement.GetString("SubscriptionID") << std::endl;
+            std::cout << "Secret: " << oElement.GetString("Secret") << std::endl;
+            std::cout << "Tenant ID: " << oElement.GetString("TenantID") << std::endl;
+            std::cout << "Application ID: " << oElement.GetString("ApplicationID") << std::endl;
+            std::cout << "Resource Group: " << oElement.GetString("ResourceGroup") << std::endl;
+            std::cout << "Virtual Network: " << oElement.GetString("VirtualNetwork") << std::endl;
+            std::cout << "------------------------------------------------------" << std::endl;
+        }
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool PullAzureTemplate(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get dataset information
+    std::cout << "************************\n Pull Azure template \n************************\n" << std::endl;
+    std::string strTemplateGuid = ::GetStringInput("Enter hyphen and curly braces formatted template guid: ", 38, true, c_szValidInputCharacters);
+
+    __DebugAssert(38 == strTemplateGuid.size());
+
+    try
+    {
+        // Create rest request
+        std::string strVerb = "GET";
+        std::string strApiUrl = "/SAIL/AzureManager/PullTemplate?Eosb="+ c_strEosb;
+        std::string strContent = "{\n   \"TemplateGuid\": \""+ strTemplateGuid +"\""
+                                "\n}";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting the Azure template information.", nullptr);
+        fSuccess = true;
+        StructuredBuffer oTemplate(oResponse.GetStructuredBuffer("Template"));
+        std::cout << "Guid: " << oTemplate.GetString("TemplateGuid") << std::endl;
+        std::cout << "Name: " << oTemplate.GetString("Name") << std::endl;
+        std::cout << "Description: " << oTemplate.GetString("Description") << std::endl;
+        std::cout << "Subscription ID: " << oTemplate.GetString("SubscriptionID") << std::endl;
+        std::cout << "Secret: " << oTemplate.GetString("Secret") << std::endl;
+        std::cout << "Tenant ID: " << oTemplate.GetString("TenantID") << std::endl;
+        std::cout << "Application ID: " << oTemplate.GetString("ApplicationID") << std::endl;
+        std::cout << "Resource Group: " << oTemplate.GetString("ResourceGroup") << std::endl;
+        std::cout << "Virtual Network: " << oTemplate.GetString("VirtualNetwork") << std::endl;
+        std::cout << "------------------------------------------------------" << std::endl;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool UpdateAzureTemplate(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get Azure template information
+    std::cout << "************************\n Update Azure Template \n************************\n" << std::endl;
+    std::string strTemplateGuid = ::GetStringInput("Enter hyphen and curly braces formatted template guid: ", 38, true, c_szValidInputCharacters);
+    std::string strName = ::GetStringInput("Enter template name: ", 50, false, c_szValidInputCharacters);
+    std::string strDescription = ::GetStringInput("Enter description: ", 50, false, c_szValidInputCharacters);
+    std::string strSubscriptionId = ::GetStringInput("Enter subscription ID: ", 50, false, c_szValidInputCharacters);
+    std::string strSecret = ::GetStringInput("Enter secret: ", 50, false, c_szValidInputCharacters);
+    std::string strTenantId = ::GetStringInput("Enter tenant ID: ", 50, false, c_szValidInputCharacters);
+    std::string strApplicationId = ::GetStringInput("Enter application ID: ", 50, false, c_szValidInputCharacters);
+    std::string strResourceGroup = ::GetStringInput("Enter resource group: ", 50, false, c_szValidInputCharacters);
+    std::string strVirtualNetwork = ::GetStringInput("Enter virtual network: ", 50, false, c_szValidInputCharacters);
+
+    __DebugAssert(38 == strTemplateGuid.size());
+    __DebugAssert(0 < strName.size());
+    __DebugAssert(0 < strDescription.size());
+    __DebugAssert(0 < strSubscriptionId.size());
+    __DebugAssert(0 < strSecret.size());
+    __DebugAssert(0 < strTenantId.size());
+    __DebugAssert(0 < strApplicationId.size());
+    __DebugAssert(0 < strResourceGroup.size());
+    __DebugAssert(0 < strVirtualNetwork.size());
+
+    try
+    {
+        // Create rest request
+        std::string strVerb = "PUT";
+        std::string strApiUrl = "/SAIL/AzureManager/UpdateTemplate?Eosb="+ c_strEosb;
+        std::string strContent = "{\n   \"TemplateGuid\": \""+ strTemplateGuid +"\","
+                                "\n   \"TemplateData\": {"
+                                "\n   \"Name\": \""+ strName +"\","
+                                "\n   \"Description\": \""+ strDescription +"\","
+                                "\n   \"SubscriptionID\": \""+ strSubscriptionId +"\","
+                                "\n   \"Secret\": \""+ strSecret +"\","
+                                "\n   \"TenantID\": \""+ strTenantId +"\","
+                                "\n   \"ApplicationID\": \""+ strApplicationId +"\","
+                                "\n   \"ResourceGroup\": \""+ strResourceGroup +"\","
+                                "\n   \"VirtualNetwork\": \""+ strVirtualNetwork +"\""
+                                "\n   }"
+                                "\n}";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error updating the Azure template.", nullptr);
+        fSuccess = true;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool DeleteAzureTemplate(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get template information
+    std::cout << "************************\n Delete Azure Template \n************************\n" << std::endl;
+    std::string strTemplateGuid = ::GetStringInput("Enter hyphen and curly braces formatted template guid: ", 38, true, c_szValidInputCharacters);
+
+    __DebugAssert(38 == strTemplateGuid.size());
+
+    try
+    {
+        // Create rest request
+        std::string strVerb = "DELETE";
+        std::string strApiUrl = "/SAIL/AzureManager/DeleteTemplate?Eosb="+ c_strEosb;
+        std::string strContent = "{\n   \"TemplateGuid\": \""+ strTemplateGuid +"\""
+                                "\n}";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error deleting the template.", nullptr);
         fSuccess = true;
     }
     

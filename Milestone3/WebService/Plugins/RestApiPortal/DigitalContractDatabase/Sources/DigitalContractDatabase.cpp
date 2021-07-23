@@ -427,6 +427,22 @@ void __thiscall DigitalContractDatabase::InitializePlugin(void)
     oRetentionTime.PutBoolean("IsRequired", true);
     oDcAcceptance.PutStructuredBuffer("RetentionTime", oRetentionTime);
     oDcAcceptance.PutStructuredBuffer("LegalAgreement", oLegalAgreement);
+    StructuredBuffer oHostForVM;
+    oHostForVM.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oHostForVM.PutBoolean("IsRequired", true);
+    oDcAcceptance.PutStructuredBuffer("HostForVirtualMachines", oHostForVM);
+    StructuredBuffer oNumberOfVM;
+    oNumberOfVM.PutByte("ElementType", UINT64_VALUE_TYPE);
+    oNumberOfVM.PutBoolean("IsRequired", true);
+    oDcAcceptance.PutStructuredBuffer("NumberOfVirtualMachines", oNumberOfVM);
+    StructuredBuffer oNumberOfVCPUs;
+    oNumberOfVCPUs.PutByte("ElementType", UINT64_VALUE_TYPE);
+    oNumberOfVCPUs.PutBoolean("IsRequired", true);
+    oDcAcceptance.PutStructuredBuffer("NumberOfVCPU", oNumberOfVCPUs);
+    StructuredBuffer oHostRegion;
+    oHostRegion.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oHostRegion.PutBoolean("IsRequired", true);
+    oDcAcceptance.PutStructuredBuffer("HostRegion", oHostRegion);
 
     // Add parameters for digital contract activation
     StructuredBuffer oDcActivation;
@@ -1366,6 +1382,10 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AcceptDigitalContract(
                             oSsb.PutString("EulaAcceptedByDOOAuthorizedUser", SAIL_EULA);
                             oSsb.PutString("LegalAgreement", c_oRequest.GetString("LegalAgreement"));
                             oSsb.PutUnsignedInt64("LastActivity", ::GetEpochTimeInSeconds());
+                            oSsb.PutString("HostForVirtualMachines", c_oRequest.GetString("HostForVirtualMachines"));
+                            oSsb.PutUnsignedInt64("NumberOfVirtualMachines", c_oRequest.GetUnsignedInt64("NumberOfVirtualMachines"));
+                            oSsb.PutUnsignedInt64("NumberOfVCPU", c_oRequest.GetUnsignedInt64("NumberOfVCPU"));
+                            oSsb.PutString("HostRegion", c_oRequest.GetString("HostRegion"));
                             // Serialize the update digital contract blob
                             std::vector<Byte> stlUpdatedSsb;
                             this->SerializeDigitalContract(oSsb, stlUpdatedSsb);

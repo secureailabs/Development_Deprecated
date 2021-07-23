@@ -119,13 +119,21 @@ typedef struct DigitalContractInformation
     std::string m_strLegalAgreement;
     uint64_t m_unRetentionTime;
     std::string m_strDescription;
+    std::string m_strHostForVM;
+    uint64_t m_un64NoOfVM;
+    uint64_t m_un64NoOfVCPU;
+    std::string m_strHostRegion;
 
     DigitalContractInformation(
         _in const std::string & c_strTitle,
         _in uint64_t unSubscriptionDays, 
         _in const std::string & c_strLegalAgreement,
         _in uint64_t unRetentionTime,
-        _in const std::string & c_strDescription
+        _in const std::string & c_strDescription,
+        _in const std::string c_strHostForVM,
+        _in uint64_t un64NoOfVM,
+        _in uint64_t un64NoOfVCPU,
+        _in const std::string c_strHostRegion
         )
     {
         m_strTitle = c_strTitle;
@@ -133,6 +141,10 @@ typedef struct DigitalContractInformation
         m_strLegalAgreement = c_strLegalAgreement;
         m_unRetentionTime = unRetentionTime;
         m_strDescription = c_strDescription;
+        m_strHostForVM = c_strHostForVM;
+        m_un64NoOfVM = un64NoOfVM;
+        m_un64NoOfVCPU = un64NoOfVCPU;
+        m_strHostRegion = c_strHostRegion;
     }
 } 
 DigitalContractInformation;

@@ -255,6 +255,31 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Fetch list of azure settings templates
+        std::vector<Byte> __thiscall ListAzureTemplates(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch an azure settings template
+        std::vector<Byte> __thiscall PullAzureTemplate(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Register an azure settings template
+        std::vector<Byte> __thiscall RegisterAzureTemplate(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update an azure settings template
+        std::vector<Byte> __thiscall UpdateAzureTemplate(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Delete an azure settings template
+        std::vector<Byte> __thiscall DeleteAzureTemplate(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Shutdown the server
         std::vector<Byte> __thiscall ShutdownPortal(
             _in const StructuredBuffer & c_oRequest

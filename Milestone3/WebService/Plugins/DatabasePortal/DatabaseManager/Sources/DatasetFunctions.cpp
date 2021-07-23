@@ -57,7 +57,6 @@ std::vector<Byte> __thiscall DatabaseManager::GetDatasetName(
                     if (oObjectGuid && oObjectGuid.type() == type::k_utf8)
                     {
                         std::string strObjectGuid = oObjectGuid.get_utf8().value.to_string();
-                        // Fetch the virtual machine from the Object collection associated with the virtual machine guid
                         bsoncxx::stdx::optional<bsoncxx::document::value> oObjectDocument = oSailDatabase["Object"].find_one(document{} << "ObjectGuid" << strObjectGuid << finalize);
                         if (bsoncxx::stdx::nullopt != oObjectDocument)
                         {
@@ -141,7 +140,6 @@ std::vector<Byte> __thiscall DatabaseManager::ListDatasets(
                         if (oObjectGuid && oObjectGuid.type() == type::k_utf8)
                         {
                             std::string strObjectGuid = oObjectGuid.get_utf8().value.to_string();
-                            // Fetch the virtual machine from the Object collection associated with the virtual machine guid
                             bsoncxx::stdx::optional<bsoncxx::document::value> oObjectDocument = oSailDatabase["Object"].find_one(document{} << "ObjectGuid" << strObjectGuid << finalize);
                             if (bsoncxx::stdx::nullopt != oObjectDocument)
                             {
@@ -235,7 +233,6 @@ std::vector<Byte> __thiscall DatabaseManager::PullDataset(
                     if (oObjectGuid && oObjectGuid.type() == type::k_utf8)
                     {
                         std::string strObjectGuid = oObjectGuid.get_utf8().value.to_string();
-                        // Fetch the virtual machine from the Object collection associated with the virtual machine guid
                         bsoncxx::stdx::optional<bsoncxx::document::value> oObjectDocument = oSailDatabase["Object"].find_one(document{} << "ObjectGuid" << strObjectGuid << finalize);
                         if (bsoncxx::stdx::nullopt != oObjectDocument)
                         {

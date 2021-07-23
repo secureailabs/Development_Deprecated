@@ -48,7 +48,12 @@ std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strYellow + "23- Get list of all available datasets\n" +
             oFontColor.strYellow + "24- Get metadata of desired dataset\n" +
             oFontColor.strYellow + "25- Delete a dataset - Dataset Admin privileges required!\n" +
-            oFontColor.strRed + "26- Shut down servers\n" +
+            oFontColor.strBlue + "26- Register an Azure settings template - Admin privileges required!\n" +
+            oFontColor.strBlue + "27- Get list of Azure settings template - Admin privileges required!\n" +
+            oFontColor.strBlue + "28- Get an Azure settings template - Admin privileges required!\n" +
+            oFontColor.strBlue + "29- Update Azure settings template - Admin privileges required!\n" +
+            oFontColor.strBlue + "30- Delete Azure settings template - Admin privileges required!\n" +
+            oFontColor.strRed + "31- Shut down servers\n" +
             oFontColor.strRed + "0- Logout\n";
 
 /********************************************************************************************/

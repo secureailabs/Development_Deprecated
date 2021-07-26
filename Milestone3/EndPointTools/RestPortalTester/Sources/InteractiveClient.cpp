@@ -1003,11 +1003,9 @@ bool UpdatePassword(
 
     // Get user information
     std::cout << "************************\n Update User Password \n************************\n" << std::endl;
-    std::string strEmail = ::GetStringInput("Enter your email address: ", 50, false, c_szValidInputCharacters);
     std::string strCurrentPassword = ::GetStringInput("Enter your current password: ", 50, true, c_szValidInputCharacters);
     std::string strNewPassword = ::GetStringInput("Enter new password: ", 50, true, c_szValidInputCharacters);
 
-    __DebugAssert(0 < strEmail.size());
     __DebugAssert(0 < strCurrentPassword.size());
     __DebugAssert(0 < strNewPassword.size());
 
@@ -1016,8 +1014,7 @@ bool UpdatePassword(
         // Create rest request
         std::string strVerb = "PATCH";
         std::string strApiUrl = "/SAIL/AuthenticationManager/User/Password?Eosb="+ c_strEncodedEosb;
-        std::string strContent = "{\n    \"Email\": \""+ strEmail +"\","
-                                "\n    \"CurrentPassword\": \""+ strCurrentPassword +"\","
+        std::string strContent = "{\n    \"CurrentPassword\": \""+ strCurrentPassword +"\","
                                 "\n    \"NewPassword\" : \""+ strNewPassword +"\""
                                 "\n}";
         // Make the API call and get REST response

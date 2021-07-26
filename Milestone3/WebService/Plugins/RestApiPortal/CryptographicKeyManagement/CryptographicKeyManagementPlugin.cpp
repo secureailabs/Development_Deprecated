@@ -767,6 +767,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
         oStructuredBufferEosb.PutString("Username", oPlainTextConfidentialUserRecord.GetString("Username"));
         oStructuredBufferEosb.PutString("Title", oPlainTextConfidentialUserRecord.GetString("Title"));
         oStructuredBufferEosb.PutString("Email", oPlainTextConfidentialUserRecord.GetString("Email"));
+        oStructuredBufferEosb.PutString("PhoneNumber", oPlainTextConfidentialUserRecord.GetString("PhoneNumber"));
         oStructuredBufferEosb.PutQword("UserAccessRights", oPlainTextConfidentialUserRecord.GetQword("AccessRights"));
         oStructuredBufferEosb.PutUnsignedInt64("Timestamp", oPlainTextConfidentialUserRecord.GetUnsignedInt64("TimeOfAccountCreation"));
         oStructuredBufferEosb.PutGuid("UserRootKeyId", oPlainTextConfidentialUserRecord.GetGuid("UserRootKeyGuid"));

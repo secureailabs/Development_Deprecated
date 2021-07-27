@@ -429,6 +429,16 @@ int main()
                             }
                             case 31:
                             {
+                                bool fSuccess = ::AssociateDigitalContractWithAzureTemplate(strEncodedEosb);
+                                if (true == fSuccess)
+                                {
+                                    ::ShowSuccessMessage("Digital contract(s) associated with the template!");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 32:
+                            {
                                 StructuredBuffer oUserInformation = ::GetBasicUserInformation(strEncodedEosb);
                                 std::cout << "User Information : \n";
                                 std::cout << "User name : " << oUserInformation.GetString("Username") << "\n";
@@ -438,7 +448,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break;
                             }
-                            case 32:
+                            case 33:
                             {
                                 ::ShutdownPortal(strEncodedEosb);
                                 fTerminatedSignalEncountered = true;

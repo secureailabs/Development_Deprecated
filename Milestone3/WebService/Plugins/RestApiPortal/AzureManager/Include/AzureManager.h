@@ -18,6 +18,9 @@
 #include "PluginDictionary.h"
 #include "RestFrameworkSharedFunctions.h"
 #include "StructuredBuffer.h"
+#include "Socket.h"
+#include "SocketServer.h"
+#include "ThreadManager.h"
 
 #include <pthread.h>
 #include <string.h>
@@ -64,6 +67,17 @@ class AzureManager : public Object
             _in uint64_t un64Identifier,
             _out Byte * pbSerializedResponseBuffer,
             _in unsigned int unSerializedResponseBufferSizeInBytes
+            );
+
+        // Start the Ipc server
+        void __thiscall RunIpcServer(
+            _in SocketServer * poIpcServer,
+            _in ThreadManager * poThreadManager
+        );
+
+        // Handle an incoming Ipc request and call the relevant function based on the identifier
+        void __thiscall HandleIpcRequest(
+            _in Socket * poSocket
             );
 
     private:

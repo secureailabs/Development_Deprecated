@@ -249,6 +249,10 @@ extern bool DeleteAzureTemplate(
     _in const std::string & c_strEosb
     );
 
+extern bool AssociateDigitalContractWithAzureTemplate(
+    _in const std::string & c_strEosb
+    );
+
 extern std::vector<Byte> GetRemoteAttestationCertificate(void);
 
 extern void ShutdownPortal(

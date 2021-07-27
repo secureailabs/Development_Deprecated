@@ -1757,6 +1757,10 @@ void PrintDigitalContracts(
         {
             std::cout << "VMs Location: " << oElement.GetString("HostRegion") << std::endl;
         }
+        if (true == oElement.IsElementPresent("AzureTemplateGuid", ANSI_CHARACTER_STRING_VALUE_TYPE))
+        {
+            std::cout << "Azure template guid: " << oElement.GetString("AzureTemplateGuid") << std::endl;
+        }
         std::cout << "------------------------------------------------------" << std::endl;
     }
 }
@@ -2366,6 +2370,73 @@ bool DeleteAzureTemplate(
         std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
         StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error deleting the template.", nullptr);
+        fSuccess = true;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool AssociateDigitalContractWithAzureTemplate(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    try
+    {
+        // Create rest request
+        std::string strVerb = "PATCH";
+        std::string strApiUrl = "/SAIL/DigitalContractManager/AssociateWithAzureTemplate?Eosb="+ c_strEosb;
+        std::string strContent = "{\n    \"ListOfDigitalContracts\": [";
+        // Get user input
+        std::cout << "************************\n Associate Digital Contract(s) with an Azure Template \n************************\n" << std::endl;
+        std::string strTemplateGuid = ::GetStringInput("Enter hyphen and curly braces formatted template guid: ", 38, false, c_szValidInputCharacters);
+        int nEnd = 1;
+        while (1 == nEnd)
+        {
+            std::string strDcGuid = ::GetStringInput("Enter hyphen and curly braces formatted digital contract guid: ", 38, false, c_szValidInputCharacters);
+            __DebugAssert(38 == strDcGuid.size());
+            strContent += "\n   \""+ strDcGuid;
+            nEnd = stoi(::GetStringInput("Do you want to add another digital contract guid to the list? [0, 1] ", 1, false, c_szValidInputCharacters));
+            if (1 == nEnd)
+            {
+                strContent += "\",";
+            }
+            else 
+            {
+                strContent += "\"";
+            }
+        }
+
+        __DebugAssert(38 == strTemplateGuid.size());
+
+        strContent += "\n    ],"
+                    "\n   \"AzureTemplateGuid\": \""+ strTemplateGuid +"\""
+                    "\n}";
+
+
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error processing the transaction.", nullptr);
         fSuccess = true;
     }
     

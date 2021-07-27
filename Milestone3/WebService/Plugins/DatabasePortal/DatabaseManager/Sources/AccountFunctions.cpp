@@ -972,7 +972,11 @@ std::vector<Byte> __thiscall DatabaseManager::UpdateOrganizationInformation(
         bsoncxx::stdx::optional<bsoncxx::document::value> oConfidentialDocument = oSailDatabase["ConfidentialOrganizationOrUser"].find_one(document{} 
                                                                                                             << "OrganizationOrUserUuid" << strOrganizationGuid 
                                                                                                             << finalize);
-        if (bsoncxx::stdx::nullopt != oConfidentialDocument)
+        // Get organization basic document
+        bsoncxx::stdx::optional<bsoncxx::document::value> oBasicDocument = oSailDatabase["BasicOrganization"].find_one(document{} 
+                                                                                                            << "OrganizationUuid" << strOrganizationGuid 
+                                                                                                            << finalize);
+        if ((bsoncxx::stdx::nullopt != oConfidentialDocument) && (bsoncxx::stdx::nullopt != oBasicDocument))
         {
             mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
             {
@@ -999,9 +1003,14 @@ std::vector<Byte> __thiscall DatabaseManager::UpdateOrganizationInformation(
                         uint32_t(oConfidentialOrganization.GetSerializedBufferRawDataSizeInBytes()),
                         oConfidentialOrganization.GetSerializedBufferRawDataPtr()
                     };
+                    // Update the confidential record
                     oSailDatabase["ConfidentialOrganizationOrUser"].update_one(*poSession, document{} << "OrganizationOrUserUuid" << strOrganizationGuid << finalize,
                                                         document{} << "$set" << open_document <<
                                                         "EncryptedSsb" << oNewEncryptedSsb << close_document << finalize);
+                    // Update the basic record
+                    oSailDatabase["BasicOrganization"].update_one(*poSession, document{} << "OrganizationUuid" << strOrganizationGuid << finalize,
+                                                        document{} << "$set" << open_document <<
+                                                        "OrganizationName" << oOrganizationInformation.GetString("OrganizationName") << close_document << finalize);
                 }
             };
             // Create a session and start the transaction

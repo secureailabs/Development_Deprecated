@@ -104,6 +104,12 @@ class CryptographicKeyManagementPlugin : public Object
         std::vector<Byte> __thiscall UnregisterEosb(
             _in const StructuredBuffer & c_stlRequest
             );
+        std::vector<Byte> __thiscall UpdateUserAccessRights(
+            _in const StructuredBuffer & c_stlRequest
+            );
+        std::vector<Byte> __thiscall UpdateUserInformation(
+            _in const StructuredBuffer & c_stlRequest
+            );
         std::vector<Byte> __thiscall ModifyEosbAccessRights(
             _in const StructuredBuffer & c_oRequest
             );

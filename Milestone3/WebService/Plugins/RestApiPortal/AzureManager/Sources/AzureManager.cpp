@@ -10,10 +10,135 @@
 
 #include "AzureManager.h"
 #include "IpcTransactionHelperFunctions.h"
+#include "SmartMemoryAllocator.h"
 #include "SocketClient.h"
+#include "ThreadManager.h"
 #include "TlsClient.h"
 
 static AzureManager * gs_oAzureManager = nullptr;
+
+static SmartMemoryAllocator gs_oMemoryAllocator;
+
+/********************************************************************************************
+ *
+ * @struct IpcServerParameters
+ * @brief Struct used to pass in parameters to StartServerThread()
+ *
+ ********************************************************************************************/
+
+typedef struct
+{
+    ThreadManager * poThreadManager;        /* Pointer to thread manager object */
+    SocketServer * poIpcServer;          /* Pointer to socket server instance */
+}
+IpcServerParameters;
+
+/********************************************************************************************
+ *
+ * @function StartIpcServerThread
+ * @brief Starts up ipc server thread
+ * @param[in] poVoidThreadParameter void pointer to IpcServerParameters instance
+ * @return A null pointer
+ *
+ ********************************************************************************************/
+
+static void * __stdcall StartIpcServerThread(
+    _in void * poVoidThreadParameter
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poVoidThreadParameter);
+
+    IpcServerParameters * poIpcServerParameters = (IpcServerParameters *) poVoidThreadParameter;
+    __DebugAssert(nullptr != poIpcServerParameters->poThreadManager);
+    __DebugAssert(nullptr != poIpcServerParameters->poIpcServer);
+
+    try
+    {
+        AzureManager * poAzureManager = ::GetAzureManager();
+        poAzureManager->RunIpcServer(poIpcServerParameters->poIpcServer, poIpcServerParameters->poThreadManager);
+    }
+    
+    catch (BaseException oException)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
+                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    catch (...)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    poIpcServerParameters->poIpcServer->Release();
+    gs_oMemoryAllocator.Deallocate(poVoidThreadParameter);
+
+    return nullptr;
+}
+
+/********************************************************************************************
+ *
+ * @function StartIpcThread
+ * @brief Starts up a connection thread
+ * @param[in] poVoidThreadParameter void pointer to socket instance
+ * @return A null pointer
+ *
+ ********************************************************************************************/
+
+static void * __stdcall StartIpcThread(
+    _in void * poVoidThreadParameter
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poVoidThreadParameter);
+    
+    Socket * poIpcSocket = (Socket *) poVoidThreadParameter;
+
+    try
+    {
+        AzureManager * poAzureManager = ::GetAzureManager();
+        poAzureManager->HandleIpcRequest(poIpcSocket);
+    }
+    
+    catch (BaseException oException)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
+                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    catch (...)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    poIpcSocket->Release();
+
+    ::pthread_exit(nullptr);
+}
 
 /********************************************************************************************
  *
@@ -144,6 +269,10 @@ AzureManager::AzureManager(
 AzureManager::~AzureManager(void)
 {
     __DebugFunction();
+
+    // Wait for all threads in the group to terminate
+    ThreadManager * poThreadManager = ThreadManager::GetInstance();
+    poThreadManager->JoinThreadGroup("AzureManagerPluginGroup");
 }
 
 /********************************************************************************************
@@ -177,7 +306,7 @@ const char * __thiscall AzureManager::GetUuid(void) const throw()
 {
     __DebugFunction();
 
-    static const char * sc_szUuid = "{B39B82EB-ABC6-4C29-887D-0E954D03307D}";
+    static const char * sc_szUuid = "{CE450136-BCDC-439A-9024-01940F0DA951}";
 
     return sc_szUuid;
 }
@@ -321,6 +450,91 @@ void __thiscall AzureManager::InitializePlugin(void)
 
     // Deletes an azure setting template from the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AzureManager/DeleteTemplate", oDeleteTemplate, 1);
+
+    // Start the Ipc server
+    // Start listening for Ipc connections
+    ThreadManager * poThreadManager = ThreadManager::GetInstance();
+    SocketServer * poIpcServer = new SocketServer("/tmp/{4B56D0E0-7A38-40C1-839A-B9BBCDDFE521}");
+    IpcServerParameters * poIpcServerParameters = (IpcServerParameters *) gs_oMemoryAllocator.Allocate(sizeof(IpcServerParameters), true);
+    _ThrowOutOfMemoryExceptionIfNull(poIpcServer);
+
+    // Initialize IpcServerParameters struct
+    poIpcServerParameters->poThreadManager = poThreadManager;
+    poIpcServerParameters->poIpcServer = poIpcServer;
+    poThreadManager->CreateThread("AzureManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function RunIpcServer
+ * @brief Run Ipc server for incoming Ipc requests
+ * @param[in] poIpcServer Pointer to Socket server
+ * @param[in] poThreadManager Pointer to the thread manager object
+ *
+ ********************************************************************************************/
+
+void __thiscall AzureManager::RunIpcServer(
+    _in SocketServer * poIpcServer,
+    _in ThreadManager * poThreadManager
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poIpcServer);
+
+    while (false == m_fTerminationSignalEncountered)
+    {
+        // Wait for connection
+        if (true == poIpcServer->WaitForConnection(1000))
+        {
+            Socket * poSocket = poIpcServer->Accept();
+            if (nullptr != poSocket)
+            {
+                pthread_t connectionThread;
+                int nStatus = ::pthread_create(&connectionThread, nullptr, StartIpcThread, (void *) poSocket);
+                _ThrowBaseExceptionIf((0 != nStatus), "Error creating a thread with nStatus: %d.", nStatus);
+                // Detach the thread as it terminates on its own by calling pthread_exit
+                // Detaching the thread will make sure that the system recycles its underlying resources automatically
+                ::pthread_detach(connectionThread);
+            }
+        }
+    }
+}
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function HandleIpcRequest
+ * @brief Handles an incoming Ipc request and call the relevant function based on the identifier
+ * @param[in] poSocket Pointer to socket instance
+ *
+ ********************************************************************************************/
+void __thiscall AzureManager::HandleIpcRequest(
+    _in Socket * poSocket
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poSocket);
+
+    std::vector<Byte> stlResponse;
+
+    StructuredBuffer oRequestParameters(::GetIpcTransaction(poSocket, false));
+
+    Dword dwTransactionType = oRequestParameters.GetDword("TransactionType");
+
+    switch (dwTransactionType)
+    {
+        case 0x00000001 // PullAzureSettingsTemplate
+        :
+            stlResponse = this->PullAzureSettingsTemplate(oRequestParameters);
+            break;
+    }
+
+    // Send back the response
+    if ((0 < stlResponse.size())&&(false == ::PutIpcTransaction(poSocket, stlResponse)))
+    {
+        _ThrowBaseException("Error: Sending back Ipc response filed", nullptr);
+    }
 }
 
 /********************************************************************************************

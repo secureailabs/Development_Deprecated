@@ -509,6 +509,14 @@ void __thiscall CryptographicKeyManagementPlugin::HandleIpcRequest(
         :
             stlResponse = this->GetUserInfoAndUpdateEosb(oRequestParameters);
             break;
+        case 0x00000008 // UpdateUserAccessRights
+        :
+            stlResponse = this->UpdateUserAccessRights(oRequestParameters);
+            break;
+        case 0x00000009 // UpdateUserInformation
+        :
+            stlResponse = this->UpdateUserInformation(oRequestParameters);
+            break;
     }
 
     // Send back the response
@@ -1130,6 +1138,114 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::UnregisterEosb(
     oResponseEosb.PutDword("Status", dwStatus);
 
     return oResponseEosb.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function UpdateUserAccessRights
+ * @brief Decrypt the Eosb, update the user access rights and return the encrypted Eosb
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException on failure
+ * @returns Serialized buffer containing the updated Eosb
+ * @note For internal user by plugins only
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::UpdateUserAccessRights(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+
+    try 
+    {
+        std::vector<Byte> stlEncryptedEsob = c_oRequest.GetBuffer("Eosb");
+        // Get plain text Eosb
+        StructuredBuffer oPlainTextEosb(this->GetPlainTextSsbFromEosb(stlEncryptedEsob));
+        // Update the user access rights
+        oPlainTextEosb.PutQword("UserAccessRights", c_oRequest.GetQword("UserAccessRights"));
+        // Encrypt the updated Eosb
+        std::vector<Byte> stlUpdatedEosb = this->CreateEosbFromPlainSsb(oPlainTextEosb.GetSerializedBuffer());
+        // Add Updated Eosb to the response
+        oResponse.PutBuffer("UpdatedEosb", stlUpdatedEosb);
+        dwStatus = 200;
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+        dwStatus = 500;
+    }
+
+    // Add status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function UpdateUserInformation
+ * @brief Decrypt the Eosb, update the user information and return the encrypted Eosb
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException on failure
+ * @returns Serialized buffer containing the updated Eosb
+ * @note For internal use by plugins only
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::UpdateUserInformation(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+
+    try 
+    {
+        std::vector<Byte> stlEncryptedEsob = c_oRequest.GetBuffer("Eosb");
+        // Get plain text Eosb
+        StructuredBuffer oPlainTextEosb(this->GetPlainTextSsbFromEosb(stlEncryptedEsob));
+        // Update the user information
+        oPlainTextEosb.PutString("Username", c_oRequest.GetString("Username"));
+        oPlainTextEosb.PutString("Title", c_oRequest.GetString("Title"));
+        oPlainTextEosb.PutString("PhoneNumber", c_oRequest.GetString("PhoneNumber"));
+        // Encrypt the updated Eosb
+        std::vector<Byte> stlUpdatedEosb = this->CreateEosbFromPlainSsb(oPlainTextEosb.GetSerializedBuffer());
+        // Add Updated Eosb to the response
+        oResponse.PutBuffer("UpdatedEosb", stlUpdatedEosb);
+        dwStatus = 200;
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+        dwStatus = 500;
+    }
+
+    // Add status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
 }
 
 /********************************************************************************************

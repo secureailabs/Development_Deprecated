@@ -429,9 +429,19 @@ int main()
                             }
                             case 31:
                             {
+                                StructuredBuffer oUserInformation = ::GetBasicUserInformation(strEncodedEosb);
+                                std::cout << "User Information : \n";
+                                std::cout << "User name : " << oUserInformation.GetString("Username") << "\n";
+                                std::cout << "User access rights : " << oUserInformation.GetQword("AccessRights") << "\n";
+                                std::cout << "Title : " << oUserInformation.GetString("Title") << "\n";
+                                std::cout << "Phone Number : " << oUserInformation.GetString("PhoneNumber") << "\n";
+                                ::WaitForUserToContinue();
+                            break;
+                            }
+                            case 32:
+                            {
                                 ::ShutdownPortal(strEncodedEosb);
                                 fTerminatedSignalEncountered = true;
-                                break;
                             break;
                             }
                             default:

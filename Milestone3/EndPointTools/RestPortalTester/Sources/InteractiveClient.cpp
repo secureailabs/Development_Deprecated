@@ -206,6 +206,7 @@ std::vector<Byte> GetBasicUserInformation(
         oUserInformation.PutString("Username", oResponse.GetString("Username"));
         oUserInformation.PutString("Title", oResponse.GetString("Title"));
         oUserInformation.PutString("Email", oResponse.GetString("Email"));
+        oUserInformation.PutString("PhoneNumber", oResponse.GetString("PhoneNumber"));
     }
     
     catch(BaseException oBaseException)

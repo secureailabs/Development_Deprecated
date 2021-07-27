@@ -53,7 +53,8 @@ std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strBlue + "28- Get an Azure settings template - Admin privileges required!\n" +
             oFontColor.strBlue + "29- Update Azure settings template - Admin privileges required!\n" +
             oFontColor.strBlue + "30- Delete Azure settings template - Admin privileges required!\n" +
-            oFontColor.strRed + "31- Shut down servers\n" +
+            oFontColor.strMagenta + "31- Get user information\n" +
+            oFontColor.strRed + "32- Shut down servers\n" +
             oFontColor.strRed + "0- Logout\n";
 
 /********************************************************************************************/

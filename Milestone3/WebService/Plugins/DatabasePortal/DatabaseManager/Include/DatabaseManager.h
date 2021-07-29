@@ -94,26 +94,6 @@ class DatabaseManager : public Object
 
     private:
 
-        // Fetch user's organization information from the database
-        std::vector<Byte> __thiscall GetOrganizationInformation(
-            _in const StructuredBuffer & c_oRequest
-            );
-        // Fetch basic organization record from the database
-        std::vector<Byte> __thiscall GetBasicOrganizationRecord(
-            _in const StructuredBuffer & c_oRequest
-            );
-        // Get organization name associated to a guid
-        std::vector<Byte> __thiscall GetOrganizationName(
-            _in const std::string & c_strOrganizationGuid
-            );
-        // Fetch basic user record from the database
-        std::vector<Byte> __thiscall GetBasicUserRecord(
-            _in const StructuredBuffer & c_oRequest
-            );
-        // Fetch confidential user record from the database
-        std::vector<Byte> __thiscall GetConfidentialUserRecord(
-            _in const StructuredBuffer & c_oRequest
-            );
         // Given an organization guid fetch digital contract event guid, if exists
         std::vector<Byte> __thiscall DigitalContractBranchExists(
             _in const StructuredBuffer & c_oRequest
@@ -134,11 +114,6 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
-        // Fetch the virtual machine information
-        std::vector<Byte> __thiscall PullVirtualMachine(
-            _in const StructuredBuffer & c_oRequest
-            );
-
         // Store root/branch event in the database
         std::vector<Byte> __thiscall AddNonLeafEvent(
             _in const StructuredBuffer & c_oRequest
@@ -147,6 +122,48 @@ class DatabaseManager : public Object
         std::vector<Byte> __thiscall AddLeafEvent(
             _in const StructuredBuffer & c_oRequest
             );
+
+        // Fetch the virtual machine information
+        std::vector<Byte> __thiscall PullVirtualMachine(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch the virtual machines' ip addresses associated with a digital contract
+        std::vector<Byte> __thiscall ListOfVmIpAddressesAssociatedWithDc(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Add metadata of a new virtual machine to the database
+        std::vector<Byte> __thiscall RegisterVirtualMachine(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update metadata of virtual machine in the database
+        std::vector<Byte> __thiscall UpdateVirtualMachine(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch user's organization information from the database
+        std::vector<Byte> __thiscall GetOrganizationInformation(
+            _in const StructuredBuffer & c_oRequest
+            );
+        // Fetch basic organization record from the database
+        std::vector<Byte> __thiscall GetBasicOrganizationRecord(
+            _in const StructuredBuffer & c_oRequest
+            );
+        // Get organization name associated to a guid
+        std::vector<Byte> __thiscall GetOrganizationName(
+            _in const std::string & c_strOrganizationGuid
+            );
+        // Fetch basic user record from the database
+        std::vector<Byte> __thiscall GetBasicUserRecord(
+            _in const StructuredBuffer & c_oRequest
+            );
+        // Fetch confidential user record from the database
+        std::vector<Byte> __thiscall GetConfidentialUserRecord(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Add a new organization to the database and call AddSuperUser() to add the organziation's super user
         std::vector<Byte> __thiscall RegisterOrganization(
             _in const StructuredBuffer & c_oRequest
@@ -159,10 +176,6 @@ class DatabaseManager : public Object
             );
         // Add a new user to the database
         std::vector<Byte> __thiscall RegisterUser(
-            _in const StructuredBuffer & c_oRequest
-            );
-        // Add metadata of a new virtual machine to the database
-        std::vector<Byte> __thiscall RegisterVirtualMachine(
             _in const StructuredBuffer & c_oRequest
             );
 

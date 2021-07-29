@@ -18,6 +18,129 @@
 
 static VirtualMachineManager * gs_oVirtualMachineManager = nullptr;
 
+static SmartMemoryAllocator gs_oMemoryAllocator;
+
+/********************************************************************************************
+ *
+ * @struct IpcServerParameters
+ * @brief Struct used to pass in parameters to StartServerThread()
+ *
+ ********************************************************************************************/
+
+typedef struct
+{
+    ThreadManager * poThreadManager;        /* Pointer to thread manager object */
+    SocketServer * poIpcServer;          /* Pointer to socket server instance */
+}
+IpcServerParameters;
+
+/********************************************************************************************
+ *
+ * @function StartIpcServerThread
+ * @brief Starts up ipc server thread
+ * @param[in] poVoidThreadParameter void pointer to IpcServerParameters instance
+ * @return A null pointer
+ *
+ ********************************************************************************************/
+
+static void * __stdcall StartIpcServerThread(
+    _in void * poVoidThreadParameter
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poVoidThreadParameter);
+
+    IpcServerParameters * poIpcServerParameters = (IpcServerParameters *) poVoidThreadParameter;
+    __DebugAssert(nullptr != poIpcServerParameters->poThreadManager);
+    __DebugAssert(nullptr != poIpcServerParameters->poIpcServer);
+
+    try
+    {
+        VirtualMachineManager * poVirtualMachineManager = ::GetVirtualMachineManager();
+        poVirtualMachineManager->RunIpcServer(poIpcServerParameters->poIpcServer, poIpcServerParameters->poThreadManager);
+    }
+    
+    catch (BaseException oException)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
+                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    catch (...)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    poIpcServerParameters->poIpcServer->Release();
+    gs_oMemoryAllocator.Deallocate(poVoidThreadParameter);
+
+    return nullptr;
+}
+
+/********************************************************************************************
+ *
+ * @function StartIpcThread
+ * @brief Starts up a connection thread
+ * @param[in] poVoidThreadParameter void pointer to socket instance
+ * @return A null pointer
+ *
+ ********************************************************************************************/
+
+static void * __stdcall StartIpcThread(
+    _in void * poVoidThreadParameter
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poVoidThreadParameter);
+    
+    Socket * poIpcSocket = (Socket *) poVoidThreadParameter;
+
+    try
+    {
+        VirtualMachineManager * poVirtualMachineManager = ::GetVirtualMachineManager();
+        poVirtualMachineManager->HandleIpcRequest(poIpcSocket);
+    }
+    
+    catch (BaseException oException)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31m%s\033[0m" << oException.GetExceptionMessage() << std::endl
+                  << "\033[1;31mThrow from ->|File = \033[0m" << oException.GetFilename() << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << oException.GetFunctionName() << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << oException.GetLineNumber() << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    catch (...)
+    {
+        std::cout << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl
+                  << "\033[1;31mOH NO, AN UNKNOWN EXCEPTION!!!\033[0m" << std::endl << std::endl
+                  << "\033[1;31mCaught in -->|File = \033[0m" << __FILE__ << std::endl
+                  << "\033[1;31m             |Function = \033[0m" << __func__ << std::endl
+                  << "\033[1;31m             |Line number = \033[0m" << __LINE__ << std::endl
+                  << "\r\033[1;31m---------------------------------------------------------------------------------\033[0m" << std::endl;
+    }
+
+    poIpcSocket->Release();
+
+    ::pthread_exit(nullptr);
+}
+
 /********************************************************************************************
  *
  * @function CreateRequestPacket
@@ -148,6 +271,9 @@ VirtualMachineManager::~VirtualMachineManager(void)
 {
     __DebugFunction();
 
+    // Wait for all threads in the group to terminate
+    ThreadManager * poThreadManager = ThreadManager::GetInstance();
+    poThreadManager->JoinThreadGroup("VirtualMachineManagerPluginGroup");
 }
 
 /********************************************************************************************
@@ -270,17 +396,59 @@ void __thiscall VirtualMachineManager::InitializePlugin(void)
     oIpAddress.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oIpAddress.PutBoolean("IsRequired", true);
     oRegisterVmParameters.PutStructuredBuffer("IPAddress", oIpAddress);
+    StructuredBuffer oNumberOfVCPUs;
+    oNumberOfVCPUs.PutByte("ElementType", UINT64_VALUE_TYPE);
+    oNumberOfVCPUs.PutBoolean("IsRequired", true);
+    oRegisterVmParameters.PutStructuredBuffer("NumberOfVCPU", oNumberOfVCPUs);
+    StructuredBuffer oHostRegion;
+    oHostRegion.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oHostRegion.PutBoolean("IsRequired", true);
+    oRegisterVmParameters.PutStructuredBuffer("HostRegion", oHostRegion);
+    StructuredBuffer oStartTime;
+    oStartTime.PutByte("ElementType", UINT64_VALUE_TYPE);
+    oStartTime.PutBoolean("IsRequired", true);
+    oRegisterVmParameters.PutStructuredBuffer("StartTime", oStartTime);
 
     // Add Parameters for registering audit event for DOO/RO
     StructuredBuffer oRegisterEvent;
     oRegisterEvent.PutStructuredBuffer("Eosb", oEosb);
     oRegisterEvent.PutStructuredBuffer("VirtualMachineGuid", oVmGuid);
 
-    // // Takes in an EOSB and sends back list of all running VMs information associated with the smart contract
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/GetRunningVMs", 0);
+    // Add Parameters for getting list of running VMs
+    StructuredBuffer oListRunningVMs;
+    oListRunningVMs.PutStructuredBuffer("Eosb", oEosb);
+    oListRunningVMs.PutStructuredBuffer("DigitalContractGuid", oDcGuid);
+
+    // Add Parameters for getting full status of a virtual machine
+    StructuredBuffer oPullVM;
+    oPullVM.PutStructuredBuffer("Eosb", oEosb);
+    oPullVM.PutStructuredBuffer("VirtualMachineGuid", oVmGuid);
+
+    // Add Parameters for updating status of a virtual machine
+    StructuredBuffer oUpdateStatus;
+    oUpdateStatus.PutStructuredBuffer("Eosb", oEosb);
+    oUpdateStatus.PutStructuredBuffer("VirtualMachineGuid", oVmGuid);
+    StructuredBuffer oState;
+    oState.PutByte("ElementType", DWORD_VALUE_TYPE);
+    oState.PutBoolean("IsRequired", true);
+    oUpdateStatus.PutStructuredBuffer("State", oState);
+    // Make DcGuid optional for UpdateStatus API
+    oDcGuid.PutBoolean("IsRequired", false);
+    oUpdateStatus.PutStructuredBuffer("DigitalContractGuid", oDcGuid);
+    StructuredBuffer oVmLoggedInUser;
+    oVmLoggedInUser.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oVmLoggedInUser.PutBoolean("IsRequired", true);
+    oUpdateStatus.PutStructuredBuffer("VMLoggedInUser", oVmLoggedInUser);
+
+    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
+    // Takes in an EOSB and sends back list of all running VM ip addresses associated with the digiatl contract
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/GetRunningVMsIpAdresses", oListRunningVMs, 1);
+
+    // Takes in an EOSB and sends full status of a VM 
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/PullVirtualMachine", oPullVM, 1);
 
     // Sends back report of VM's status
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/GetVMHeartBeat", 0);
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/VirtualMachineManager/UpdateStatus", oUpdateStatus, 2);
 
     // Register a Virtual Machine
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/RegisterVM", oRegisterVmParameters, 2);
@@ -291,6 +459,90 @@ void __thiscall VirtualMachineManager::InitializePlugin(void)
     // Register a Virtual Machine event for RO 
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/Researcher/RegisterVM", oRegisterEvent, 4);
 
+    // Start the Ipc server
+    // Start listening for Ipc connections
+    ThreadManager * poThreadManager = ThreadManager::GetInstance();
+    SocketServer * poIpcServer = new SocketServer("/tmp/{4FBC17DA-81AF-449B-B842-E030E337720E}");
+    IpcServerParameters * poIpcServerParameters = (IpcServerParameters *) gs_oMemoryAllocator.Allocate(sizeof(IpcServerParameters), true);
+    _ThrowOutOfMemoryExceptionIfNull(poIpcServer);
+
+    // Initialize IpcServerParameters struct
+    poIpcServerParameters->poThreadManager = poThreadManager;
+    poIpcServerParameters->poIpcServer = poIpcServer;
+    poThreadManager->CreateThread("VirtualMachineManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function RunIpcServer
+ * @brief Run Ipc server for incoming Ipc requests
+ * @param[in] poIpcServer Pointer to Socket server
+ * @param[in] poThreadManager Pointer to the thread manager object
+ *
+ ********************************************************************************************/
+
+void __thiscall VirtualMachineManager::RunIpcServer(
+    _in SocketServer * poIpcServer,
+    _in ThreadManager * poThreadManager
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poIpcServer);
+
+    while (false == m_fTerminationSignalEncountered)
+    {
+        // Wait for connection
+        if (true == poIpcServer->WaitForConnection(1000))
+        {
+            Socket * poSocket = poIpcServer->Accept();
+            if (nullptr != poSocket)
+            {
+                pthread_t connectionThread;
+                int nStatus = ::pthread_create(&connectionThread, nullptr, StartIpcThread, (void *) poSocket);
+                _ThrowBaseExceptionIf((0 != nStatus), "Error creating a thread with nStatus: %d.", nStatus);
+                // Detach the thread as it terminates on its own by calling pthread_exit
+                // Detaching the thread will make sure that the system recycles its underlying resources automatically
+                ::pthread_detach(connectionThread);
+            }
+        }
+    }
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function HandleIpcRequest
+ * @brief Handles an incoming Ipc request and call the relevant function based on the identifier
+ * @param[in] poSocket Pointer to socket instance
+ *
+ ********************************************************************************************/
+void __thiscall VirtualMachineManager::HandleIpcRequest(
+    _in Socket * poSocket
+    )
+{
+    __DebugFunction();
+    __DebugAssert(nullptr != poSocket);
+
+    std::vector<Byte> stlResponse;
+
+    StructuredBuffer oRequestParameters(::GetIpcTransaction(poSocket, false));
+
+    Dword dwTransactionType = oRequestParameters.GetDword("TransactionType");
+
+    switch (dwTransactionType)
+    {
+        case 0x00000001 // GetListOfVmIpAddressesAssociatedWithDc
+        :
+            stlResponse = this->GetListOfVmIpAddressesAssociatedWithDc(oRequestParameters);
+            break;
+    }
+
+    // Send back the response
+    if ((0 < stlResponse.size())&&(false == ::PutIpcTransaction(poSocket, stlResponse)))
+    {
+        _ThrowBaseException("Error: Sending back Ipc response filed", nullptr);
+    }
 }
 
 /********************************************************************************************
@@ -323,14 +575,13 @@ uint64_t __thiscall VirtualMachineManager::SubmitRequest(
     // Route to the requested resource
     if ("GET" == strVerb)
     {
-        if ("/SAIL/VirtualMachineManager/GetRunningVMs" == strResource)
+        if ("/SAIL/VirtualMachineManager/GetRunningVMsIpAdresses" == strResource)
         {
-            stlResponseBuffer = this->GetListOfRunningVmInstances(c_oRequestStructuredBuffer);
+            stlResponseBuffer = this->GetListOfVmIpAddressesAssociatedWithDc(c_oRequestStructuredBuffer);
         }
-
-        else if ("/SAIL/VirtualMachineManager/GetVMHeartBeat" == strResource)
+        else if ("/SAIL/VirtualMachineManager/PullVirtualMachine" == strResource)
         {
-            stlResponseBuffer = this->GetVmHeartBeat(c_oRequestStructuredBuffer);
+            stlResponseBuffer = this->GetVmInformation(c_oRequestStructuredBuffer);
         }
     }
     else if ("POST" == strVerb)
@@ -346,6 +597,13 @@ uint64_t __thiscall VirtualMachineManager::SubmitRequest(
         else if ("/SAIL/VirtualMachineManager/Researcher/RegisterVM" == strResource)
         {
             stlResponseBuffer = this->RegisterVmForComputation(c_oRequestStructuredBuffer);
+        }
+    }
+    else if ("PUT" == strVerb)
+    {
+        if ("/SAIL/VirtualMachineManager/UpdateStatus" == strResource)
+        {
+            stlResponseBuffer = this->UpdateVirtualMachineStatus(c_oRequestStructuredBuffer);
         }
     }
 
@@ -409,23 +667,84 @@ bool __thiscall VirtualMachineManager::GetResponse(
 /********************************************************************************************
  *
  * @class VirtualMachineManager
- * @function GetListOfRunningVmInstances
- * @brief Takes in IEOSB of Researcher or Dataset Owner and send back list of all running VMs information associated with the smart contract
+ * @function GetListOfVmIpAddressesAssociatedWithDc
+ * @brief Send back list of all running VMs' ip addresses associated with the digital contract
  * @param[in] c_oRequest contains the IEOSB
  * @throw BaseException Error StructuredBuffer element not found
- * @returns StructuredBuffer containing list of running VMs information associated with the smart contract
+ * @returns StructuredBuffer containing list of running VMs information associated with the digital contract
  *
  ********************************************************************************************/
 
-std::vector<Byte> __thiscall VirtualMachineManager::GetListOfRunningVmInstances(
+std::vector<Byte> __thiscall VirtualMachineManager::GetListOfVmIpAddressesAssociatedWithDc(
     _in const StructuredBuffer & c_oRequest
     )
 {
     __DebugFunction();
-    // TODO: Fetch VMInstances records from the database
-    // TODO: Check if user is a DatasetAdmin
 
     StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    TlsNode * poTlsNode = nullptr;
+
+    try
+    {
+        // Get user information
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            // Make a Tls connection with the database portal
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to get the list of VMs
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "GET");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/ListOfVMIpAddressesAssociatedWithDC");
+            oRequest.PutString("DigitalContractGuid", c_oRequest.GetString("DigitalContractGuid"));
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+            // Make sure to release the poTlsNode
+            poTlsNode->Release();
+            poTlsNode = nullptr;
+                
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (404 != oDatabaseResponse.GetDword("Status"))
+            {
+                oResponse.PutStructuredBuffer("VirtualMachines", oDatabaseResponse.GetStructuredBuffer("VirtualMachines"));
+                dwStatus = 200;
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -433,21 +752,111 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetListOfRunningVmInstances(
 /********************************************************************************************
  *
  * @class VirtualMachineManager
- * @function GetVmHeartBeat
- * @brief Send back status of VM
- * @param[in] c_oRequest contains the IEOSB of the Dataset Admin and uuid of the VMInstance
+ * @function UpdateVirtualMachineStatus
+ * @brief Update the status of the VM 
+ * @param[in] c_oRequest contains the Eosb and VM information
  * @returns StructuredBuffer containing status of the VM
  *
  ********************************************************************************************/
 
-std::vector<Byte> __thiscall VirtualMachineManager::GetVmHeartBeat(
+std::vector<Byte> __thiscall VirtualMachineManager::UpdateVirtualMachineStatus(
     _in const StructuredBuffer & c_oRequest
     )
 {
     __DebugFunction();
-    // TODO: Fetch VmInstances records from the database
 
     StructuredBuffer oResponse;
+
+    Dword dwStatus = 204;
+    TlsNode * poTlsNode = nullptr;
+
+    try
+    {
+        // Get user information
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            // Pull virtual machine and then update the structured buffer
+            StructuredBuffer oVmInformation = this->GetVmInformation(c_oRequest);
+            if (200 == oVmInformation.GetDword("Status"))
+            {
+                StructuredBuffer oVmBlob = oVmInformation.GetStructuredBuffer("VirtualMachine");
+                // Add new VM information from the request
+                Dword dwState = c_oRequest.GetDword("State");
+                oVmBlob.PutDword("State", dwState);
+                if (true == c_oRequest.IsElementPresent("DigitalContractGuid", ANSI_CHARACTER_STRING_VALUE_TYPE))
+                {
+                    std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
+                    // Verify the Digital Contract and check if the user's organization is an associated party
+                    StructuredBuffer oVerifyDcRequest;
+                    oVerifyDcRequest.PutString("DigitalContractGuid", strDcGuid);
+                    oVerifyDcRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+                    oVerifyDcRequest.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
+                    StructuredBuffer oVerificationStatus(this->VerifyDigitalContract(oVerifyDcRequest, true, false));
+                    _ThrowBaseExceptionIf((200 != oVerificationStatus.GetDword("Status")), "Digital contract could not be verified.", nullptr);
+                    _ThrowBaseExceptionIf((true != oVerificationStatus.GetBoolean("IsEqual")), "Digital contract is not associated to the user's organization.", nullptr);
+                    // Add the digital contract guid after verification
+                    oVmBlob.PutString("DigitalContractGuid", strDcGuid);
+                }
+                if (eInUse == dwState)
+                {
+                    oVmBlob.PutString("VMLoggedInUser", c_oRequest.GetString("VMLoggedInUser"));
+                }
+                oVmBlob.PutUnsignedInt64("HeartbeatBroadcastTime", ::GetEpochTimeInSeconds());
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to get the list of VMs
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "PUT");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateVirtualMachine");
+                oRequest.PutString("VirtualMachineGuid", c_oRequest.GetString("VirtualMachineGuid"));
+                oRequest.PutStructuredBuffer("VirtualMachineData", oVmBlob);
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                poTlsNode = nullptr;
+                    
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (200 == oDatabaseResponse.GetDword("Status"))
+                {
+                    dwStatus = 200;
+                }
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }
@@ -545,13 +954,13 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetVmInformation(
     
     try 
     {
-        // Get user information to check if the user is a digital contract admin or database admin
+        // Get user information
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
             // Make a Tls connection with the database portal
             poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-            // Create a request to get the digital contract information
+            // Create a request to get the virtual machine information
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
             oRequest.PutString("Verb", "GET");
@@ -612,6 +1021,8 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetVmInformation(
  * @function VerifyDigitalContract
  * @brief Check if IEosb is of the data owner of the digital contract associated with the strDcGuid
  * @param[in] c_oRequest contains the request body
+ * @param[in] fIsEitherRoOrDoo checks if the user's organization is either RO or DOO
+ * @param[in] fIsResearcher checks if the user's organization is RO or DOO
  * @throw BaseException Error StructuredBuffer element not found
  * @returns StructuredBuffer containing the comparison status
  *
@@ -619,6 +1030,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetVmInformation(
 
 std::vector<Byte> __thiscall VirtualMachineManager::VerifyDigitalContract(
     _in const StructuredBuffer & c_oRequest,
+    _in bool fIsEitherRoOrDoo,
     _in bool fIsResearcher
     )
 {
@@ -643,20 +1055,31 @@ std::vector<Byte> __thiscall VirtualMachineManager::VerifyDigitalContract(
         poIpcDigitalContractManager = nullptr;
         if ((0 < oDigitalContractResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oDigitalContractResponse.GetDword("Status")))
         {   
-            if (true == fIsResearcher)
+            if (true == fIsEitherRoOrDoo)
             {
-            // Check if Eosb is of user within RO of the digital contract associated with the strDcGuid
-                if (strOrganizationGuid == oDigitalContractResponse.GetString("ResearcherOrganization"))
+                // Check if Eosb is of user within RO or DOO of the digital contract associated with the strDcGuid
+                if ((strOrganizationGuid == oDigitalContractResponse.GetString("ResearcherOrganization")) || (strOrganizationGuid == oDigitalContractResponse.GetString("DataOwnerOrganization")))
                 {
                     oResponse.PutBoolean("IsEqual", true);
                 } 
             }
             else 
             {
-                // Check if Eosb is of the data owner of the digital contract associated with the strDcGuid
-                if (strOrganizationGuid == oDigitalContractResponse.GetString("DataOwnerOrganization"))
+                if (true == fIsResearcher)
                 {
-                    oResponse.PutBoolean("IsEqual", true);
+                    // Check if Eosb is of user within RO of the digital contract associated with the strDcGuid
+                    if (strOrganizationGuid == oDigitalContractResponse.GetString("ResearcherOrganization"))
+                    {
+                        oResponse.PutBoolean("IsEqual", true);
+                    } 
+                }
+                else 
+                {
+                    // Check if Eosb is of the data owner of the digital contract associated with the strDcGuid
+                    if (strOrganizationGuid == oDigitalContractResponse.GetString("DataOwnerOrganization"))
+                    {
+                        oResponse.PutBoolean("IsEqual", true);
+                    }
                 }
             }
             dwStatus = 200;
@@ -727,6 +1150,15 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
         StructuredBuffer oUserInfo(this->GetUserInfo(oEosbRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
+            // Verify the Digital Contract and check if the user's organization is an associated party
+            StructuredBuffer oVerifyDcRequest;
+            oVerifyDcRequest.PutString("DigitalContractGuid", strDcGuid);
+            oVerifyDcRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+            oVerifyDcRequest.PutBuffer("Eosb", stlEosb);
+            StructuredBuffer oVerificationStatus(this->VerifyDigitalContract(oVerifyDcRequest, true, false));
+            _ThrowBaseExceptionIf((200 != oVerificationStatus.GetDword("Status")), "Digital contract could not be verified.", nullptr);
+            _ThrowBaseExceptionIf((true != oVerificationStatus.GetBoolean("IsEqual")), "Digital contract is not associated to the user's organization.", nullptr);
+
             // TODO: Check if the Eosb is an imposter Eosb
             // TODO: Add a check and Register Vm only if it is an imposter Eosb
             // Register the Virtual Machine 
@@ -742,6 +1174,9 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
             oRequest.PutUnsignedInt64("RegistrationTime", ::GetEpochTimeInSeconds());
             oRequest.PutUnsignedInt64("HeartbeatBroadcastTime", c_oRequest.GetUnsignedInt64("HeartbeatBroadcastTime"));
             oRequest.PutString("IPAddress", c_oRequest.GetString("IPAddress"));
+            oRequest.PutUnsignedInt64("NumberOfVCPU", c_oRequest.GetUnsignedInt64("NumberOfVCPU"));
+            oRequest.PutString("HostRegion", c_oRequest.GetString("HostRegion"));
+            oRequest.PutUnsignedInt64("StartTime", c_oRequest.GetUnsignedInt64("StartTime"));
             std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
             // Send request packet
             poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -857,7 +1292,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmAfterDataUpload(
             oVerifyDcRequest.PutString("DigitalContractGuid", strDcGuid);
             oVerifyDcRequest.PutString("OrganizationGuid", strOrganizationGuid);
             oVerifyDcRequest.PutBuffer("Eosb", stlEosb);
-            StructuredBuffer oVerificationStatus(this->VerifyDigitalContract(oVerifyDcRequest, false));
+            StructuredBuffer oVerificationStatus(this->VerifyDigitalContract(oVerifyDcRequest, false, false));
             if (200 == oVerificationStatus.GetDword("Status"))
             {
                 if (true == oVerificationStatus.GetBoolean("IsEqual"))
@@ -952,7 +1387,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmForComputation(
             oVerifyDcRequest.PutString("DigitalContractGuid", strDcGuid);
             oVerifyDcRequest.PutString("OrganizationGuid", strOrganizationGuid);
             oVerifyDcRequest.PutBuffer("Eosb", stlEosb);
-            StructuredBuffer oVerificationStatus(this->VerifyDigitalContract(oVerifyDcRequest, true));
+            StructuredBuffer oVerificationStatus(this->VerifyDigitalContract(oVerifyDcRequest, false, true));
             if (200 == oVerificationStatus.GetDword("Status"))
             {
                 if (true == oVerificationStatus.GetBoolean("IsEqual"))

@@ -471,6 +471,12 @@ void __thiscall DigitalContractDatabase::InitializePlugin(void)
     oPullDc.PutStructuredBuffer("Eosb", oEosb);
     oPullDc.PutStructuredBuffer("DigitalContractGuid", oDcGuid);
 
+    // Add parameters for getting provisioning status of a digital contract
+    StructuredBuffer oDcProvisioningStatus;
+    oDcProvisioningStatus.PutStructuredBuffer("Eosb", oEosb);
+    oDcProvisioningStatus.PutStructuredBuffer("DigitalContractGuid", oDcGuid);
+
+    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
     // Takes in an EOSB and create a digital contract for a chosen dataset
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DigitalContractManager/Applications", oRegisterDc, 4);
     // Update the digital contract when a data owner accepts the digital contract
@@ -483,6 +489,8 @@ void __thiscall DigitalContractDatabase::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DigitalContractManager/DigitalContracts", oListDc, 1);
     // Get a digital contract's information
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DigitalContractManager/PullDigitalContract", oPullDc, 1);
+    // Get a digital contract's provisioning status
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DigitalContractManager/GetProvisioningStatus", oDcProvisioningStatus, 1);
 
     // Start the Ipc server
     // Start listening for Ipc connections
@@ -607,6 +615,10 @@ uint64_t __thiscall DigitalContractDatabase::SubmitRequest(
         else if ("/SAIL/DigitalContractManager/PullDigitalContract" == strResource)
         {
             stlResponseBuffer = this->PullDigitalContract(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/DigitalContractManager/GetProvisioningStatus" == strResource)
+        {
+            stlResponseBuffer = this->GetProvisioningStatus(c_oRequestStructuredBuffer);
         }
     }
     else if ("POST" == strVerb)
@@ -1217,8 +1229,6 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
 {
     __DebugFunction();
 
-    // TODO: Get data owner organization associated with the dataset guid from DatasetManager plugin 
-
     StructuredBuffer oResponse;
 
     Dword dwStatus = 204;
@@ -1792,6 +1802,89 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AssociateWithAzureTemplate
     oResponse.PutDword("Status", dwStatus);
     // Send back error message that will have digital contract guids that could not be associated to the template
     oResponse.PutString("ErrorMessage", strErrorMessage);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DigitalContractDatabase
+ * @function GetProvisioningStatus
+ * @brief Send back status of the digital contract provisioning
+ * @param[in] c_oRequest contains the DC guid
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Transaction status and the provisioning status
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DigitalContractDatabase::GetProvisioningStatus(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    Socket * poIpcVirtualMachineManager = nullptr;
+
+    try
+    {
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            // Get the digital contract
+            StructuredBuffer oDigitalContract = this->PullDigitalContract(c_oRequest);
+            if (200 == oDigitalContract.GetDword("Status"))
+            {
+                if (true == oDigitalContract.GetStructuredBuffer("DigitalContract").IsElementPresent("ProvisioningStatus", DWORD_VALUE_TYPE))
+                {
+                    Dword dwProvisioningStatus = oDigitalContract.GetStructuredBuffer("DigitalContract").GetDword("ProvisioningStatus");
+                    oResponse.PutDword("ProvisioningStatus", dwProvisioningStatus);
+                    // Send back list of associated VMs and their IP addresses if the status is READY
+                    if (eReady == dwProvisioningStatus)
+                    {
+                        StructuredBuffer oGetListOfVmsRequest;
+                        oGetListOfVmsRequest.PutDword("TransactionType", 0x00000001);
+                        oGetListOfVmsRequest.PutString("DigitalContractGuid", c_oRequest.GetString("DigitalContractGuid"));
+                        // Call VirtualMachine plugin to get the list of VMs associated with the digital contract
+                        poIpcVirtualMachineManager = ::ConnectToUnixDomainSocket("/tmp/{4FBC17DA-81AF-449B-B842-E030E337720E}");
+                        StructuredBuffer oVirtualMachines(::PutIpcTransactionAndGetResponse(poIpcVirtualMachineManager, oGetListOfVmsRequest, false));
+                        poIpcVirtualMachineManager->Release();
+                        poIpcVirtualMachineManager = nullptr;
+                        if ((0 < oVirtualMachines.GetSerializedBufferRawDataSizeInBytes())&&(200 == oVirtualMachines.GetDword("Status")))
+                        {
+                            oResponse.PutStructuredBuffer("VirtualMachines", oVirtualMachines.GetStructuredBuffer("VirtualMachines"));
+                        }
+                    }
+                    dwStatus = 200;
+                }
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poIpcVirtualMachineManager)
+    {
+        poIpcVirtualMachineManager->Release();
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
 }

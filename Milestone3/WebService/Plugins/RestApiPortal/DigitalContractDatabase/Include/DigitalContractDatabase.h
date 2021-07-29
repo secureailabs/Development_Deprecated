@@ -127,8 +127,13 @@ class DigitalContractDatabase : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
-         // Associate one or more digital contracts with one Azure template
+        // Associate one or more digital contracts with one Azure template
         std::vector<Byte> __thiscall AssociateWithAzureTemplate(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Send back status of the digital contract provisioning
+        std::vector<Byte> __thiscall GetProvisioningStatus(
             _in const StructuredBuffer & c_oRequest
             );
 

@@ -96,6 +96,14 @@ extern std::string RegisterVmForComputation(
     _in const std::string & c_strVmGuid
     );
 
+extern bool UpdateVirtualMachineStatus(
+    _in const std::string & c_strEncodedEosb
+    );
+
+extern std::vector<Byte> PullVirtualMachine(
+    _in const std::string & c_strEncodedEosb
+    );
+
 extern bool GetListOfEvents(
     _in const std::string & c_strEncodedEosb,
     _in const std::string & c_strParentGuid,
@@ -206,6 +214,10 @@ extern std::vector<Byte> PullDigitalContract(
 extern std::vector<Byte> PullDigitalContract(
     _in const std::string & c_strEosb,
     _in const std::string & c_strDcGuid
+    );
+
+extern bool GetDigitalContractProvisioningStatus(
+    _in const std::string & c_strEosb
     );
 
 extern bool RegisterDataset(

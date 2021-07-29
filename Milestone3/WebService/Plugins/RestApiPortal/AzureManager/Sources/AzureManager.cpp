@@ -429,6 +429,9 @@ void __thiscall AzureManager::InitializePlugin(void)
     StructuredBuffer oUpdateTemplate;
     oUpdateTemplate.PutStructuredBuffer("Eosb", oEosb);
     oUpdateTemplate.PutStructuredBuffer("TemplateGuid", oTemplateGuid);
+    // Make "Secret" an optional field in UpdateTemplate API
+    oSecret.PutBoolean("IsRequired", false);
+    oTemplateData.PutStructuredBuffer("Secret", oSecret);
     oUpdateTemplate.PutStructuredBuffer("TemplateData", oTemplateData);
 
     // Add parameters for DeleteTemplate
@@ -436,6 +439,7 @@ void __thiscall AzureManager::InitializePlugin(void)
     oDeleteTemplate.PutStructuredBuffer("Eosb", oEosb);
     oDeleteTemplate.PutStructuredBuffer("TemplateGuid", oTemplateGuid);
 
+    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
     // Stores azure settings template in the database
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AzureManager/RegisterTemplate", oRegisterTemplate, 1);
 

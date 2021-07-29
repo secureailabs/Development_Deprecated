@@ -528,6 +528,7 @@ void __thiscall AccountDatabase::InitializePlugin(void)
     oIsHardDelete.PutBoolean("IsRequired", false);
     oDeleteUser.PutStructuredBuffer("IsHardDelete", oIsHardDelete);
 
+    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
     // Takes in an EOSB and returns a list of all organization
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Organizations", oListOrganizations, 1);
     // Takes in an EOSB and returns a list of all users

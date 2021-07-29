@@ -357,6 +357,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             {
                 stlResponseBuffer = this->PullVirtualMachine(c_oRequestStructuredBuffer);
             }
+            else if ("/SAIL/DatabaseManager/ListOfVMIpAddressesAssociatedWithDC" == strResource)
+            {
+                stlResponseBuffer = this->ListOfVmIpAddressesAssociatedWithDc(c_oRequestStructuredBuffer);
+            }
             else if ("/SAIL/DatabaseManager/Organization/Information" == strResource)
             {
                 stlResponseBuffer = this->GetOrganizationInformation(c_oRequestStructuredBuffer);
@@ -438,6 +442,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             else if ("/SAIL/DatabaseManager/UpdateAzureTemplate" == strResource)
             {
                 stlResponseBuffer = this->UpdateAzureTemplate(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/UpdateVirtualMachine" == strResource)
+            {
+                stlResponseBuffer = this->UpdateVirtualMachine(c_oRequestStructuredBuffer);
             }
             else
             {

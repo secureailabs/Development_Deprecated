@@ -70,6 +70,7 @@ std::vector<Byte> __thiscall DatabaseManager::ListAzureTemplates(
                                 if (oObjectBlob && oObjectBlob.type() == type::k_binary)
                                 {
                                     StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size);
+                                    oObject.RemoveElement("Secret");
                                     oListOfAzureTemplates.PutStructuredBuffer(strTemplateGuid.c_str(), oObject);
                                     dwStatus = 200;
                                 }
@@ -152,6 +153,7 @@ std::vector<Byte> __thiscall DatabaseManager::PullAzureTemplate(
                             if (oObjectBlob && oObjectBlob.type() == type::k_binary)
                             {
                                 StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size); 
+                                oObject.RemoveElement("Secret");
                                 oResponse.PutStructuredBuffer("Template", oObject);
                                 dwStatus = 200;
                             }
@@ -366,22 +368,40 @@ std::vector<Byte> __thiscall DatabaseManager::UpdateAzureTemplate(
                         {
                             // Create object blob
                             StructuredBuffer oTemplateData = c_oRequest.GetStructuredBuffer("TemplateData");
-                            StructuredBuffer oObject;
-                            oObject.PutString("TemplateGuid", strTemplateGuid);
-                            oObject.PutString("OrganizationGuid", strOrganizationGuid);
-                            oObject.PutString("Name", oTemplateData.GetString("Name"));
-                            oObject.PutString("Description", oTemplateData.GetString("Description"));
-                            oObject.PutString("SubscriptionID", oTemplateData.GetString("SubscriptionID"));
-                            oObject.PutString("Secret", oTemplateData.GetString("Secret"));
-                            oObject.PutString("TenantID", oTemplateData.GetString("TenantID"));
-                            oObject.PutString("ApplicationID", oTemplateData.GetString("ApplicationID"));
-                            oObject.PutString("ResourceGroup", oTemplateData.GetString("ResourceGroup"));
-                            oObject.PutString("VirtualNetwork", oTemplateData.GetString("VirtualNetwork"));
+                            StructuredBuffer oUpdatedObject;
+                            oUpdatedObject.PutString("TemplateGuid", strTemplateGuid);
+                            oUpdatedObject.PutString("OrganizationGuid", strOrganizationGuid);
+                            oUpdatedObject.PutString("Name", oTemplateData.GetString("Name"));
+                            oUpdatedObject.PutString("Description", oTemplateData.GetString("Description"));
+                            oUpdatedObject.PutString("SubscriptionID", oTemplateData.GetString("SubscriptionID"));
+                            if (true == oTemplateData.IsElementPresent("Secret", ANSI_CHARACTER_STRING_VALUE_TYPE))
+                            {
+                                oUpdatedObject.PutString("Secret", oTemplateData.GetString("Secret"));
+                            }
+                            else
+                            {
+                                // Get the secret from the current object
+                                // Fetch the template object from the Object collection associated with the object guid
+                                bsoncxx::stdx::optional<bsoncxx::document::value> oObjectDocument = oSailDatabase["Object"].find_one(document{} << "ObjectGuid" << strObjectGuid << finalize);
+                                if (bsoncxx::stdx::nullopt != oObjectDocument)
+                                {
+                                    bsoncxx::document::element oObjectBlob = oObjectDocument->view()["ObjectBlob"];
+                                    if (oObjectBlob && oObjectBlob.type() == type::k_binary)
+                                    {
+                                        StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size);
+                                        oUpdatedObject.PutString("Secret", oObject.GetString("Secret"));
+                                    }
+                                }
+                            }
+                            oUpdatedObject.PutString("TenantID", oTemplateData.GetString("TenantID"));
+                            oUpdatedObject.PutString("ApplicationID", oTemplateData.GetString("ApplicationID"));
+                            oUpdatedObject.PutString("ResourceGroup", oTemplateData.GetString("ResourceGroup"));
+                            oUpdatedObject.PutString("VirtualNetwork", oTemplateData.GetString("VirtualNetwork"));
                             bsoncxx::types::b_binary oUpdatedTemplateBlob
                             {
                                 bsoncxx::binary_sub_type::k_binary,
-                                uint32_t(oObject.GetSerializedBufferRawDataSizeInBytes()),
-                                oObject.GetSerializedBufferRawDataPtr()
+                                uint32_t(oUpdatedObject.GetSerializedBufferRawDataSizeInBytes()),
+                                oUpdatedObject.GetSerializedBufferRawDataPtr()
                             };
                             oSailDatabase["Object"].update_one(*poSession, document{} << "ObjectGuid" << strObjectGuid << finalize,
                                                                 document{} << "$set" << open_document <<

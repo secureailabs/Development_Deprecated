@@ -74,3 +74,26 @@ typedef enum eosb_rights
     eVmEosb = 3
 }
 EosbAccessRights;
+
+/********************************************************************************************/
+
+typedef enum dc_provisioning_status
+{
+    eProvisioning = 1,
+    eReady = 2
+}
+DigitalContractProvisiongStatus;
+
+/********************************************************************************************/
+
+typedef enum virtual_machine_state
+{
+    eStarting = 1,
+    eConfiguring = 2,
+    eInitializing = 3,
+    eWaitingForData = 4,
+    eReadyForComputation = 5,
+    eInUse = 6,
+    eShuttingDown = 7
+}
+VirtualMachineState;

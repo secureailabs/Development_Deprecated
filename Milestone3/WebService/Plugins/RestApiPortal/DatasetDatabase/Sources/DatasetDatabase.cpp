@@ -298,6 +298,7 @@ void __thiscall DatasetDatabase::InitializePlugin(void)
     oDeleteDataset.PutStructuredBuffer("Eosb", oEosb);
     oDeleteDataset.PutStructuredBuffer("DatasetGuid", oDatasetGuid);
 
+    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
     // Stores dataset metadata in the database
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatasetManager/RegisterDataset", oRegisterDataset, 1);
 

@@ -37,25 +37,28 @@ std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strCyan + "12- Register a virtual machine\n" +
             oFontColor.strCyan + "13- Register a virtual machine event for DOO and its leaf events\n" +
             oFontColor.strCyan + "14- Register a virtual machine event for RO and its leaf events\n" +
-            oFontColor.strCyan + "15- Get list of all events of the organization\n" +
-            oFontColor.strCyan + "16- Get list of events for a specified parent\n" +
-            oFontColor.strBlue + "17- Register a digital contract\n" +
-            oFontColor.strBlue + "18- Get list of all digital contracts of your organization\n" +
-            oFontColor.strBlue + "19- Pull a digital contract\n" +
-            oFontColor.strBlue + "20- Approve a digital contract - Dataset Admin privileges required\n" +
-            oFontColor.strBlue + "21- Activate a digital contract - Digital Contract Admin privileges required\n" +
-            oFontColor.strYellow + "22- Register a dataset\n" +
-            oFontColor.strYellow + "23- Get list of all available datasets\n" +
-            oFontColor.strYellow + "24- Get metadata of desired dataset\n" +
-            oFontColor.strYellow + "25- Delete a dataset - Dataset Admin privileges required!\n" +
-            oFontColor.strBlue + "26- Register an Azure settings template - Admin privileges required!\n" +
-            oFontColor.strBlue + "27- Get list of Azure settings template - Admin privileges required!\n" +
-            oFontColor.strBlue + "28- Get an Azure settings template - Admin privileges required!\n" +
-            oFontColor.strBlue + "29- Update Azure settings template - Admin privileges required!\n" +
-            oFontColor.strBlue + "30- Delete Azure settings template - Admin privileges required!\n" +
-            oFontColor.strBlue + "31- Associate Digital Contract(s) with an Azure settings template - Admin privileges required!\n" +
-            oFontColor.strMagenta + "32- Get user information\n" +
-            oFontColor.strRed + "33- Shut down servers\n" +
+            oFontColor.strCyan + "15- Update virtual machine status\n" +
+            oFontColor.strCyan + "16- Get virtual machine status\n" +
+            oFontColor.strCyan + "17- Get list of all events of the organization\n" +
+            oFontColor.strCyan + "18- Get list of events for a specified parent\n" +
+            oFontColor.strBlue + "19- Register a digital contract\n" +
+            oFontColor.strBlue + "20- Get list of all digital contracts of your organization\n" +
+            oFontColor.strBlue + "21- Pull a digital contract\n" +
+            oFontColor.strBlue + "22- Approve a digital contract - Dataset Admin privileges required\n" +
+            oFontColor.strBlue + "23- Activate a digital contract - Digital Contract Admin privileges required\n" +
+            oFontColor.strBlue + "24- Get digital contract provisioning status\n" +
+            oFontColor.strYellow + "25- Register a dataset\n" +
+            oFontColor.strYellow + "26- Get list of all available datasets\n" +
+            oFontColor.strYellow + "27- Get metadata of desired dataset\n" +
+            oFontColor.strYellow + "28- Delete a dataset - Dataset Admin privileges required!\n" +
+            oFontColor.strBlue + "29- Register an Azure settings template - Admin privileges required!\n" +
+            oFontColor.strBlue + "30- Get list of Azure settings template - Admin privileges required!\n" +
+            oFontColor.strBlue + "31- Get an Azure settings template - Admin privileges required!\n" +
+            oFontColor.strBlue + "32- Update Azure settings template - Admin privileges required!\n" +
+            oFontColor.strBlue + "33- Delete Azure settings template - Admin privileges required!\n" +
+            oFontColor.strBlue + "34- Associate Digital Contract(s) with an Azure settings template - Admin privileges required!\n" +
+            oFontColor.strMagenta + "35- Get user information\n" +
+            oFontColor.strRed + "36- Shut down servers\n" +
             oFontColor.strRed + "0- Logout\n";
 
 /********************************************************************************************/

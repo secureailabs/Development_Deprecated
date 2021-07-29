@@ -337,6 +337,8 @@ void __thiscall DatabaseTools::AddVirtualMachine(void)
     StructuredBuffer oVmInformation;
     oVmInformation.PutString("DigitalContractGuid", m_stlDigitalContractGuids.at(0));
     oVmInformation.PutString("IPAddress", "127.0.0.1");
+    oVmInformation.PutUnsignedInt64("NumberOfVCPU", 8);
+    oVmInformation.PutString("HostRegion", "East US");
     // Register Vm
     std::string strVmGuid = Guid(eVirtualMachine).ToString(eHyphensAndCurlyBraces);
     std::string strVmEosb = ::RegisterVirtualMachine(strIEosb, strVmGuid, oVmInformation);

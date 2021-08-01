@@ -446,7 +446,7 @@ void __thiscall VirtualMachineManager::InitializePlugin(void)
     // Takes in an EOSB and sends back list of all running VM ip addresses associated with the digiatl contract
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/GetRunningVMsIpAdresses", oListRunningVMs, 1);
 
-    // Takes in an EOSB and sends full status of a VM 
+    // Takes in an EOSB and sends full status of a VM
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/PullVirtualMachine", oPullVM, 1);
 
     // Takes in an EOSB and get a list of VMs associated with an organization
@@ -458,10 +458,10 @@ void __thiscall VirtualMachineManager::InitializePlugin(void)
     // Register a Virtual Machine
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/RegisterVM", oRegisterVmParameters, 1);
 
-    // Register a Virtual Machine event for DOO 
+    // Register a Virtual Machine event for DOO
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/DataOwner/RegisterVM", oRegisterEvent, 1);
 
-    // Register a Virtual Machine event for RO 
+    // Register a Virtual Machine event for RO
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/Researcher/RegisterVM", oRegisterEvent, 1);
 
     // Start the Ipc server
@@ -540,6 +540,14 @@ void __thiscall VirtualMachineManager::HandleIpcRequest(
         case 0x00000001 // GetListOfVmIpAddressesAssociatedWithDc
         :
             stlResponse = this->GetListOfVmIpAddressesAssociatedWithDc(oRequestParameters);
+            break;
+        case 0x00000002 // UpdateVirtualMachineStatus
+        :
+            stlResponse = this->UpdateVirtualMachineStatus(oRequestParameters);
+            break;
+        case 0x00000003 // RegisterNewVirtualMachine
+        :
+            stlResponse = this->RegisterVmInstance(oRequestParameters);
             break;
     }
 
@@ -739,7 +747,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetListOfOrganizationVMs(
                     // Make sure to release the poTlsNode
                     poTlsNode->Release();
                     poTlsNode = nullptr;
-                        
+
                     StructuredBuffer oDatabaseResponse(stlResponse);
                     if (404 != oDatabaseResponse.GetDword("Status"))
                     {
@@ -1148,21 +1156,23 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
     // TODO: Implement the two steps described in the spec document.
     // The step involves registration of a VM and proof of remote attestation.
     // VMEosb should be returned after the remote attestation
-    
+
     StructuredBuffer oResponse;
 
     Dword dwStatus = 204;
     TlsNode * poTlsNode = nullptr;
     Socket * poIpcCryptographicManager = nullptr;
 
-    try 
+    try
     {
         // Take in IEOSB, DigitalContractGuid, VMGuid, and VM information
-        std::vector<Byte> stlEosb = c_oRequest.GetBuffer("IEosb");
+        // TODO: Prawal
+        // std::vector<Byte> stlEosb = c_oRequest.GetBuffer("IEosb");
+        std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
         std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
         std::string strVmGuid = c_oRequest.GetString("VirtualMachineGuid");
 
-        // Get user information 
+        // Get user information
         StructuredBuffer oEosbRequest;
         oEosbRequest.PutBuffer("Eosb", stlEosb);
         // Get user information to check if the user is a digital contract admin or database admin
@@ -1180,7 +1190,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
 
             // TODO: Check if the Eosb is an imposter Eosb
             // TODO: Add a check and Register Vm only if it is an imposter Eosb
-            // Register the Virtual Machine 
+            // Register the Virtual Machine
             // Make a Tls connection with the database portal
             poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
             // Create a request to register the virtual machine information in the database
@@ -1209,16 +1219,17 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
             // Make sure to release the poTlsNode
             poTlsNode->Release();
             poTlsNode = nullptr;
-            
+
+            // TODO: Prawal add this part in the eReady state of the Virtual Machine
             // Check if DatabaseManager registered the virtual machine or not
             StructuredBuffer oDatabaseResponse(stlResponse);
             if (404 != oDatabaseResponse.GetDword("Status"))
-            {    
+            {
                 // Call CryptographicManager plugin to get the VMEOSB
                 StructuredBuffer oUpdateEosbRequest;
                 oUpdateEosbRequest.PutDword("TransactionType", 0x00000005);
                 oUpdateEosbRequest.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
-                oUpdateEosbRequest.PutQword("AccessRights", EosbAccessRights::eVmEosb); 
+                oUpdateEosbRequest.PutQword("AccessRights", EosbAccessRights::eVmEosb);
                 poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
                 StructuredBuffer oUpdatedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oUpdateEosbRequest, false));
                 poIpcCryptographicManager->Release();
@@ -1254,8 +1265,8 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
     {
         poIpcCryptographicManager->Release();
     }
-    
-        
+
+
     oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
@@ -1615,7 +1626,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::UpdateVirtualMachineStatus(
                 {
                     // If the virtual machine is waiting for data, then add its information
                     // to VirtualMachinesWaitingForData collection. When the relevant remote data connector
-                    // sends its heart beat, the ip address of the VM will be sent to the connector and it 
+                    // sends its heart beat, the ip address of the VM will be sent to the connector and it
                     // will upload the dataset
                     if (VirtualMachineState::eWaitingForData == dwState)
                     {
@@ -1635,7 +1646,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::UpdateVirtualMachineStatus(
                             // Create a request to get the list of VMs
                             oRequest.PutString("PluginName", "DatabaseManager");
                             oRequest.PutString("Verb", "POST");
-                            oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterVmAsWaitingFOrData");
+                            oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterVmAsWaitingForData");
                             oRequest.PutString("VirtualMachineGuid", c_oRequest.GetString("VirtualMachineGuid"));
                             oRequest.PutString("IPAddress", oVmBlob.GetString("IPAddress"));
                             oRequest.PutString("DatasetGuid", oDigitalContractResponse.GetStructuredBuffer("DigitalContract").GetString("DatasetGuid"));

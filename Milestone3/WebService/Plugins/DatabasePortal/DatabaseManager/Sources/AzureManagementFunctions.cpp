@@ -129,7 +129,6 @@ std::vector<Byte> __thiscall DatabaseManager::PullAzureTemplate(
         // Fetch the azure settings template of an organization
         bsoncxx::stdx::optional<bsoncxx::document::value> oTemplateDocument = oSailDatabase["AzureSettingsTemplates"].find_one(document{}
                                                                                                                     << "TemplateGuid" << c_oRequest.GetString("TemplateGuid")
-                                                                                                                    << "OrganizationGuid" << c_oRequest.GetString("OrganizationGuid")
                                                                                                                     << finalize);
         if (bsoncxx::stdx::nullopt != oTemplateDocument)
         {                                                                         
@@ -152,8 +151,7 @@ std::vector<Byte> __thiscall DatabaseManager::PullAzureTemplate(
                             bsoncxx::document::element oObjectBlob = oObjectDocument->view()["ObjectBlob"];
                             if (oObjectBlob && oObjectBlob.type() == type::k_binary)
                             {
-                                StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size); 
-                                oObject.RemoveElement("Secret");
+                                StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size);
                                 oResponse.PutStructuredBuffer("Template", oObject);
                                 dwStatus = 200;
                             }

@@ -126,6 +126,23 @@ class DigitalContractDatabase : public Object
         std::vector<Byte> __thiscall ActivateDigitalContract(
             _in const StructuredBuffer & c_oRequest
             );
+        // Activate a Digital Contract when the Researcher wants to create a Virtual Machine
+        std::vector<Byte> __thiscall ProvisionDigitalContract(
+            _in const StructuredBuffer & c_oRequest
+            );
+        // Provision a Virtual Machine
+        void __thiscall ProvisionVirtualMachine(
+            _in const StructuredBuffer c_oDigitalContract,
+            _in const std::vector<Byte> c_stlEosb,
+            _in const std::string c_szApplicationIdentifier,
+            _in const std::string c_szSecret,
+            _in const std::string c_szTenantIdentifier,
+            _in const std::string c_szSubscriptionIdentifier,
+            _in const std::string c_szResourceGroup,
+            _in const std::string c_szVirtualMachineIdentifier,
+            _in const std::string c_szVirtualMachineSpecification,
+            _in const std::string c_szLocation
+            );
 
         // Associate one or more digital contracts with one Azure template
         std::vector<Byte> __thiscall AssociateWithAzureTemplate(

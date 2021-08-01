@@ -109,12 +109,12 @@ class VirtualMachineManager : public Object
             _in bool fIsResearcher
             );
 
-        // Take in IEOSB of the Initializer and add the vm record to the database
+        // Add the vm record to the database
         std::vector<Byte> __thiscall RegisterVmInstance(
             _in const StructuredBuffer & c_oRequest
             );
 
-        // Take in VmEOSB of the data owner and add a VM branch event 
+        // Take in VmEOSB of the data owner and add a VM branch event
         std::vector<Byte> __thiscall RegisterVmAfterDataUpload(
             _in const StructuredBuffer & c_oRequest
             );

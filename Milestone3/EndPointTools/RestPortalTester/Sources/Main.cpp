@@ -288,6 +288,12 @@ int main()
                             }
                             case 17:
                             {
+                                ::ListVirtualMachines(strEncodedEosb);
+                                ::WaitForUserToContinue();
+                            break;
+                            }
+                            case 18:
+                            {
                                 std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
                                 // Get list of all events for the organization
                                 ::GetListOfEvents(strEncodedEosb, "{00000000-0000-0000-0000-000000000000}", strOrganizationGuid, 0);
@@ -295,7 +301,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break;
                             }
-                            case 18:
+                            case 19:
                             {
                                 std::cout << "************************\n  Audit Logs \n************************\n" << std::endl;
                                 std::string strParentGuid = ::GetStringInput("Enter hyphen and curly braces formatted parent guid: ", 38, true, c_szValidInputCharacters);
@@ -312,7 +318,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break;
                             }
-                            case 19:
+                            case 20:
                             {
                                 bool fSuccess = ::RegisterDigitalContract(strEncodedEosb);
                                 if (true == fSuccess)
@@ -322,20 +328,20 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 20:
+                            case 21:
                             {
                                 StructuredBuffer oDigitalContracts(::ListDigitalContracts(strEncodedEosb));
                                 ::PrintDigitalContracts(oDigitalContracts);
                                 WaitForUserToContinue();
                             break; 
                             }
-                            case 21:
+                            case 22:
                             {
                                 ::PullDigitalContract(strEncodedEosb);
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 22:
+                            case 23:
                             {
                                 if (1 == qwAccessRights || 5 == qwAccessRights) // Check if user is a dataset admin
                                 {
@@ -352,7 +358,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 23:
+                            case 24:
                             {
                                 if (1 == qwAccessRights || 4 == qwAccessRights) // Check if user is a digital contract admin
                                 {
@@ -369,13 +375,13 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 24:
+                            case 25:
                             {
                                 bool fSuccess = ::GetDigitalContractProvisioningStatus(strEncodedEosb);
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 25:
+                            case 26:
                             {
                                 bool fSuccess = ::RegisterDataset(strEncodedEosb);
                                 if (true == fSuccess)
@@ -385,19 +391,19 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 26:
+                            case 27:
                             {
                                 bool fSuccess = ::ListDatasets(strEncodedEosb);
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 27:
+                            case 28:
                             {
                                 bool fSuccess = ::PullDataset(strEncodedEosb);
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 28:
+                            case 29:
                             {
                                 bool fSuccess = ::DeleteDataset(strEncodedEosb);
                                 if (true == fSuccess)
@@ -407,7 +413,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 29:
+                            case 30:
                             {
                                 bool fSuccess = ::RegisterAzureTemplate(strEncodedEosb);
                                 if (true == fSuccess)
@@ -417,19 +423,19 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 30:
+                            case 31:
                             {
                                 bool fSuccess = ::ListAzureTemplates(strEncodedEosb);
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 31:
+                            case 32:
                             {
                                 bool fSuccess = ::PullAzureTemplate(strEncodedEosb);
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 32:
+                            case 33:
                             {
                                 bool fSuccess = ::UpdateAzureTemplate(strEncodedEosb);
                                 if (true == fSuccess)
@@ -439,7 +445,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 33:
+                            case 34:
                             {
                                 bool fSuccess = ::DeleteAzureTemplate(strEncodedEosb);
                                 if (true == fSuccess)
@@ -449,7 +455,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 34:
+                            case 35:
                             {
                                 bool fSuccess = ::AssociateDigitalContractWithAzureTemplate(strEncodedEosb);
                                 if (true == fSuccess)
@@ -459,7 +465,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 35:
+                            case 36:
                             {
                                 bool fSuccess = ::RegisterRemoteDataConnector(strEncodedEosb);
                                 if (true == fSuccess)
@@ -469,19 +475,19 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 36:
+                            case 37:
                             {
                                 bool fSuccess = ::ListRemoteDataConnectors(strEncodedEosb);
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 37:
+                            case 38:
                             {
                                 bool fSuccess = ::PullRemoteDataConnector(strEncodedEosb);
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 38:
+                            case 39:
                             {
                                 bool fSuccess = ::UpdateRemoteDataConnector(strEncodedEosb);
                                 if (true == fSuccess)
@@ -491,7 +497,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break; 
                             }
-                            case 39:
+                            case 40:
                             {
                                 StructuredBuffer oUserInformation = ::GetBasicUserInformation(strEncodedEosb);
                                 std::cout << "User Information : \n";
@@ -502,7 +508,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break;
                             }
-                            case 40:
+                            case 41:
                             {
                                 ::ShutdownPortal(strEncodedEosb);
                                 fTerminatedSignalEncountered = true;
@@ -510,7 +516,7 @@ int main()
                             }
                             default:
                             {
-                                ::ShowErrorMessage("Invalid option. Usage: [0-40]");
+                                ::ShowErrorMessage("Invalid option. Usage: [0-41]");
                             break;
                             }
                         }

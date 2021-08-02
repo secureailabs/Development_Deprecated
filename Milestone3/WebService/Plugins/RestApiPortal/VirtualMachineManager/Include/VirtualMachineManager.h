@@ -82,6 +82,11 @@ class VirtualMachineManager : public Object
 
     private:
 
+        // Fetch list of running VMs associated with the digital contract
+        std::vector<Byte> __thiscall GetListOfOrganizationVMs(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Fetch list of running VMs' ip addresses associated with the digital contract
         std::vector<Byte> __thiscall GetListOfVmIpAddressesAssociatedWithDc(
             _in const StructuredBuffer & c_oRequest

@@ -569,6 +569,10 @@ void __thiscall DigitalContractDatabase::HandleIpcRequest(
         :
             stlResponse = this->PullDigitalContract(oRequestParameters);
         break;
+        case 0x00000002 // ListDigitalContracts
+        :
+            stlResponse = this->ListDigitalContracts(oRequestParameters);
+        break;
     }
 
     // Send back the response

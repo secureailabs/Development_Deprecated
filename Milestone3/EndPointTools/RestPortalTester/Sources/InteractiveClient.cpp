@@ -594,6 +594,77 @@ bool UpdateVirtualMachineStatus(
 
 /********************************************************************************************/
 
+bool ListVirtualMachines(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    try
+    {
+        // Create rest request
+        std::string strVerb = "GET";
+        std::string strApiUrl = "/SAIL/VirtualMachineManager/ListVirtualMachines?Eosb="+ c_strEosb;
+        std::string strJsonBody = "";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strJsonBody, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error fetching available virtual machines.", nullptr);
+        fSuccess = true;
+        std::cout << "************************\n List of Virtual Machines \n************************\n" << std::endl;
+        StructuredBuffer oVirtualMachines(oResponse.GetStructuredBuffer("VirtualMachines"));
+        for (std::string strDcGuid : oVirtualMachines.GetNamesOfElements())
+        {
+            StructuredBuffer oVmsAssociatedWithDc = oVirtualMachines.GetStructuredBuffer(strDcGuid.c_str());
+            std::cout << "Digital contract: " << strDcGuid << "\n";
+            std::cout << "Host for running VMs: " << oVmsAssociatedWithDc.GetString("HostForVirtualMachines") << std::endl;
+            std::cout << "Data Owner Organization: " << oVmsAssociatedWithDc.GetString("DataOwnerOrganization") << std::endl;
+            std::cout << "Researcher organization: " << oVmsAssociatedWithDc.GetString("ResearcherOrganization") << std::endl;
+            std::cout << "Virtual machines associated with the digiatl contract:" << std::endl;
+            StructuredBuffer oListOfVMs = oVmsAssociatedWithDc.GetStructuredBuffer("VirtualMachinesAssociatedWithDc");
+            for (std::string strVmGuid : oListOfVMs.GetNamesOfElements())
+            {
+                StructuredBuffer oVirtualMachine = oListOfVMs.GetStructuredBuffer(strVmGuid.c_str());
+                std::cout << "Virtual machine guid: " << strVmGuid << std::endl;
+                std::cout << "Digital contract guid: " << oVirtualMachine.GetString("DigitalContractGuid") << std::endl;
+                std::cout << "Registration time: " << (uint64_t) oVirtualMachine.GetFloat64("RegistrationTime") << std::endl;
+                std::cout << "Heart beat broadcast time: " << (uint64_t) oVirtualMachine.GetFloat64("HeartbeatBroadcastTime") << std::endl;
+                std::cout << "IP address: " << oVirtualMachine.GetString("IPAddress") << std::endl;
+                std::cout << "Number of VCPUs: " << (uint64_t) oVirtualMachine.GetFloat64("NumberOfVCPU") << std::endl;
+                std::cout << "Host region: " << oVirtualMachine.GetString("HostRegion") << std::endl;
+                std::cout << "Start time: " << (uint64_t) oVirtualMachine.GetFloat64("StartTime") << std::endl;
+                if (true == oVirtualMachine.IsElementPresent("State", FLOAT64_VALUE_TYPE))
+                {
+                    std::cout << "State: " << (Dword) oVirtualMachine.GetFloat64("State") << std::endl;
+                }
+                if (true == oVirtualMachine.IsElementPresent("VMLoggedInUser", ANSI_CHARACTER_STRING_VALUE_TYPE))
+                {
+                    std::cout << "Guid of logged in user: " << oVirtualMachine.GetString("VMLoggedInUser") << std::endl;
+                }
+                std::cout << "------------------------------------------------------" << std::endl;
+            }  
+        }
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
 std::vector<Byte> PullVirtualMachine(
     _in const std::string & c_strEncodedEosb
     )

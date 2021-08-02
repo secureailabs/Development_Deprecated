@@ -227,6 +227,10 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/PullDigitalContract");
     // Get a virtual machine's information
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/PullVirtualMachine");
+    // Get list of VMs associated with a digital contract
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/ListOfVMsAssociatedWithDC");
+    // Get list of VM ip addresses associated with a digital contract
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/ListOfVMIpAddressesAssociatedWithDC");
     // Get an azure settings template
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/PullAzureTemplate");
     // Get a list of azure settings templates for an organization
@@ -364,6 +368,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             else if ("/SAIL/DatabaseManager/PullVirtualMachine" == strResource)
             {
                 stlResponseBuffer = this->PullVirtualMachine(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/ListOfVMsAssociatedWithDC" == strResource)
+            {
+                stlResponseBuffer = this->ListOfVmsAssociatedWithDc(c_oRequestStructuredBuffer);
             }
             else if ("/SAIL/DatabaseManager/ListOfVMIpAddressesAssociatedWithDC" == strResource)
             {

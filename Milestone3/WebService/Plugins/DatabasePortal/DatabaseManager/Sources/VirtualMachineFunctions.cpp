@@ -98,6 +98,93 @@ std::vector<Byte> __thiscall DatabaseManager::PullVirtualMachine(
 /********************************************************************************************
  *
  * @class DatabaseManager
+ * @function ListOfVmsAssociatedWithDc
+ * @brief Fetch the virtual machines associated with a digital contract
+ * @param[in] c_oRequest contains the digital contract guid
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns StructuredBuffer containing the virtual machines' information
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::ListOfVmsAssociatedWithDc(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    StructuredBuffer oListOfVMs;
+
+    try 
+    {
+        std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
+        // Each client and transaction can only be used in a single thread
+        mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+        // Access SailDatabase
+        mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+        // Fetch the virtual machine records
+        mongocxx::cursor oVmCursor = oSailDatabase["VirtualMachine"].find(document{}
+                                                                    << "DigitalContractGuid" << strDcGuid
+                                                                    << finalize);
+        for (auto&& oVmDocumentView : oVmCursor)
+        {                                                                                                           
+            bsoncxx::document::element oVmGuid = oVmDocumentView["VirtualMachineGuid"];
+            if (oVmGuid && oVmGuid.type() == type::k_utf8)
+            {
+                std::string strVmGuid = oVmGuid.get_utf8().value.to_string();
+                bsoncxx::document::element oPlainTextObjectBlobGuid = oVmDocumentView["PlainTextObjectBlobGuid"];
+                if (oPlainTextObjectBlobGuid && oPlainTextObjectBlobGuid.type() == type::k_utf8)
+                {
+                    std::string strPlainTextObjectBlobGuid = oPlainTextObjectBlobGuid.get_utf8().value.to_string();
+                    bsoncxx::stdx::optional<bsoncxx::document::value> oPlainTextObjectBlobDocument = oSailDatabase["PlainTextObjectBlob"].find_one(document{} 
+                                                                                                                                                    << "PlainTextObjectBlobGuid" <<  strPlainTextObjectBlobGuid
+                                                                                                                                                    << finalize);
+                    if (bsoncxx::stdx::nullopt != oPlainTextObjectBlobDocument)
+                    {
+                        bsoncxx::document::element oObjectGuid = oPlainTextObjectBlobDocument->view()["ObjectGuid"];
+                        if (oObjectGuid && oObjectGuid.type() == type::k_utf8)
+                        {
+                            std::string strObjectGuid = oObjectGuid.get_utf8().value.to_string();
+                            // Fetch the virtual machine from the Object collection associated with the object guid
+                            bsoncxx::stdx::optional<bsoncxx::document::value> oObjectDocument = oSailDatabase["Object"].find_one(document{} << "ObjectGuid" << strObjectGuid << finalize);
+                            if (bsoncxx::stdx::nullopt != oObjectDocument)
+                            {
+                                bsoncxx::document::element oObjectBlob = oObjectDocument->view()["ObjectBlob"];
+                                if (oObjectBlob && oObjectBlob.type() == type::k_binary)
+                                {
+                                    StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size);
+                                    oListOfVMs.PutStructuredBuffer(strVmGuid.c_str(), oObject);
+                                    dwStatus = 200;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        oResponse.PutStructuredBuffer("VirtualMachines", oListOfVMs);
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
  * @function ListOfVmIpAddressesAssociatedWithDc
  * @brief Fetch the virtual machines' ip addresses associated with a digital contract
  * @param[in] c_oRequest contains the digital contract guid

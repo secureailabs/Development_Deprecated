@@ -461,6 +461,38 @@ int main()
                             }
                             case 35:
                             {
+                                bool fSuccess = ::RegisterRemoteDataConnector(strEncodedEosb);
+                                if (true == fSuccess)
+                                {
+                                    ::ShowSuccessMessage("Remote data connector registered!");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 36:
+                            {
+                                bool fSuccess = ::ListRemoteDataConnectors(strEncodedEosb);
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 37:
+                            {
+                                bool fSuccess = ::PullRemoteDataConnector(strEncodedEosb);
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 38:
+                            {
+                                bool fSuccess = ::UpdateRemoteDataConnector(strEncodedEosb);
+                                if (true == fSuccess)
+                                {
+                                    ::ShowSuccessMessage("Remote data connector updated!");
+                                }
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 39:
+                            {
                                 StructuredBuffer oUserInformation = ::GetBasicUserInformation(strEncodedEosb);
                                 std::cout << "User Information : \n";
                                 std::cout << "User name : " << oUserInformation.GetString("Username") << "\n";
@@ -470,7 +502,7 @@ int main()
                                 ::WaitForUserToContinue();
                             break;
                             }
-                            case 36:
+                            case 40:
                             {
                                 ::ShutdownPortal(strEncodedEosb);
                                 fTerminatedSignalEncountered = true;
@@ -478,7 +510,7 @@ int main()
                             }
                             default:
                             {
-                                ::ShowErrorMessage("Invalid option. Usage: [0-36]");
+                                ::ShowErrorMessage("Invalid option. Usage: [0-40]");
                             break;
                             }
                         }

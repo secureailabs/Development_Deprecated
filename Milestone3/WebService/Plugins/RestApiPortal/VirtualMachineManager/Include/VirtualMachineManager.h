@@ -87,11 +87,6 @@ class VirtualMachineManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
-        // Update a virtual machine's status
-        std::vector<Byte> __thiscall UpdateVirtualMachineStatus(
-            _in const StructuredBuffer & c_oRequest
-            );
-
         // Take in a full IEOSB and send back a StructuredBuffer containing user metadata
         std::vector<Byte> __thiscall GetUserInfo(
             _in const StructuredBuffer & c_oRequest
@@ -126,6 +121,11 @@ class VirtualMachineManager : public Object
 
         // Register VM audit event
         std::vector<Byte> __thiscall RegisterVmAuditEvent(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update a virtual machine's status
+        std::vector<Byte> __thiscall UpdateVirtualMachineStatus(
             _in const StructuredBuffer & c_oRequest
             );
 

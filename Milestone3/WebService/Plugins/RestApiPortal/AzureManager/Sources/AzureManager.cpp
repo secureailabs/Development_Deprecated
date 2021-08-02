@@ -403,6 +403,10 @@ void __thiscall AzureManager::InitializePlugin(void)
     oVirtualNetwork.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oVirtualNetwork.PutBoolean("IsRequired", true);
     oTemplateData.PutStructuredBuffer("VirtualNetwork", oVirtualNetwork);
+    StructuredBuffer oHostRegion;
+    oHostRegion.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oHostRegion.PutBoolean("IsRequired", true);
+    oTemplateData.PutStructuredBuffer("HostRegion", oHostRegion);
     StructuredBuffer oName;
     oName.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oName.PutBoolean("IsRequired", true);

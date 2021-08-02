@@ -432,9 +432,7 @@ void __thiscall VirtualMachineManager::InitializePlugin(void)
     oState.PutByte("ElementType", DWORD_VALUE_TYPE);
     oState.PutBoolean("IsRequired", true);
     oUpdateStatus.PutStructuredBuffer("State", oState);
-    // Make DcGuid optional for UpdateStatus API
-    oDcGuid.PutBoolean("IsRequired", false);
-    oUpdateStatus.PutStructuredBuffer("DigitalContractGuid", oDcGuid);
+    // Make VMLoggedInUser optional for UpdateStatus API but the API will send back an error if the State is "InUse" and this field is missing
     StructuredBuffer oVmLoggedInUser;
     oVmLoggedInUser.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oVmLoggedInUser.PutBoolean("IsRequired", true);
@@ -752,118 +750,6 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetListOfVmIpAddressesAssoci
 /********************************************************************************************
  *
  * @class VirtualMachineManager
- * @function UpdateVirtualMachineStatus
- * @brief Update the status of the VM 
- * @param[in] c_oRequest contains the Eosb and VM information
- * @returns StructuredBuffer containing status of the VM
- *
- ********************************************************************************************/
-
-std::vector<Byte> __thiscall VirtualMachineManager::UpdateVirtualMachineStatus(
-    _in const StructuredBuffer & c_oRequest
-    )
-{
-    __DebugFunction();
-
-    StructuredBuffer oResponse;
-
-    Dword dwStatus = 204;
-    TlsNode * poTlsNode = nullptr;
-
-    try
-    {
-        // Get user information
-        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
-        if (200 == oUserInfo.GetDword("Status"))
-        {
-            // Pull virtual machine and then update the structured buffer
-            StructuredBuffer oVmInformation = this->GetVmInformation(c_oRequest);
-            if (200 == oVmInformation.GetDword("Status"))
-            {
-                StructuredBuffer oVmBlob = oVmInformation.GetStructuredBuffer("VirtualMachine");
-                // Add new VM information from the request
-                Dword dwState = c_oRequest.GetDword("State");
-                oVmBlob.PutDword("State", dwState);
-                if (true == c_oRequest.IsElementPresent("DigitalContractGuid", ANSI_CHARACTER_STRING_VALUE_TYPE))
-                {
-                    std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
-                    // Verify the Digital Contract and check if the user's organization is an associated party
-                    StructuredBuffer oVerifyDcRequest;
-                    oVerifyDcRequest.PutString("DigitalContractGuid", strDcGuid);
-                    oVerifyDcRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
-                    oVerifyDcRequest.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
-                    StructuredBuffer oVerificationStatus(this->VerifyDigitalContract(oVerifyDcRequest, true, false));
-                    _ThrowBaseExceptionIf((200 != oVerificationStatus.GetDword("Status")), "Digital contract could not be verified.", nullptr);
-                    _ThrowBaseExceptionIf((true != oVerificationStatus.GetBoolean("IsEqual")), "Digital contract is not associated to the user's organization.", nullptr);
-                    // Add the digital contract guid after verification
-                    oVmBlob.PutString("DigitalContractGuid", strDcGuid);
-                }
-                if (eInUse == dwState)
-                {
-                    oVmBlob.PutString("VMLoggedInUser", c_oRequest.GetString("VMLoggedInUser"));
-                }
-                oVmBlob.PutUnsignedInt64("HeartbeatBroadcastTime", ::GetEpochTimeInSeconds());
-                // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
-                // Create a request to get the list of VMs
-                StructuredBuffer oRequest;
-                oRequest.PutString("PluginName", "DatabaseManager");
-                oRequest.PutString("Verb", "PUT");
-                oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateVirtualMachine");
-                oRequest.PutString("VirtualMachineGuid", c_oRequest.GetString("VirtualMachineGuid"));
-                oRequest.PutStructuredBuffer("VirtualMachineData", oVmBlob);
-                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
-                // Send request packet
-                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
-
-                // Read header and body of the response
-                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
-                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
-                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
-                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-                // Make sure to release the poTlsNode
-                poTlsNode->Release();
-                poTlsNode = nullptr;
-                    
-                StructuredBuffer oDatabaseResponse(stlResponse);
-                if (200 == oDatabaseResponse.GetDword("Status"))
-                {
-                    dwStatus = 200;
-                }
-            }
-        }
-    }
-    catch (BaseException oException)
-    {
-        ::RegisterException(oException, __func__, __LINE__);
-        oResponse.Clear();
-        // Add status if it was a dead packet
-        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
-        {
-            dwStatus = 408;
-        }
-    }
-    catch (...)
-    {
-        ::RegisterUnknownException(__func__, __LINE__);
-        oResponse.Clear();
-    }
-
-    if (nullptr != poTlsNode)
-    {
-        poTlsNode->Release();
-    }
-
-    // Send back status of the transaction
-    oResponse.PutDword("Status", dwStatus);
-
-    return oResponse.GetSerializedBuffer();
-}
-
-/********************************************************************************************
- *
- * @class VirtualMachineManager
  * @function GetUserInfo
  * @brief Take in a full IEOSB and send back a StructuredBuffer containing user metadata
  * @param[in] c_oRequest contains the request body
@@ -983,7 +869,15 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetVmInformation(
             StructuredBuffer oDatabaseResponse(stlResponse);
             if (404 != oDatabaseResponse.GetDword("Status"))
             {
-                oResponse.PutStructuredBuffer("VirtualMachine", oDatabaseResponse.GetStructuredBuffer("VirtualMachine"));
+                StructuredBuffer oVirtualMachine = oDatabaseResponse.GetStructuredBuffer("VirtualMachine");
+                if (true == oVirtualMachine.IsElementPresent("State", DWORD_VALUE_TYPE))
+                {
+                    if (eInUse != oVirtualMachine.GetDword("State"))
+                    {
+                        oVirtualMachine.RemoveElement("VMLoggedInUser");
+                    }
+                }
+                oResponse.PutStructuredBuffer("VirtualMachine", oVirtualMachine);
                 dwStatus = 200;
             }
         }
@@ -1522,6 +1416,104 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmAuditEvent(
         poIpcAuditLogManager->Release();
     }
 
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class VirtualMachineManager
+ * @function UpdateVirtualMachineStatus
+ * @brief Update the status of the VM 
+ * @param[in] c_oRequest contains the Eosb and VM information
+ * @returns StructuredBuffer containing status of the VM
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall VirtualMachineManager::UpdateVirtualMachineStatus(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 204;
+    TlsNode * poTlsNode = nullptr;
+
+    try
+    {
+        // Get user information
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            // Pull virtual machine and then update the structured buffer
+            StructuredBuffer oVmInformation = this->GetVmInformation(c_oRequest);
+            if (200 == oVmInformation.GetDword("Status"))
+            {
+                StructuredBuffer oVmBlob = oVmInformation.GetStructuredBuffer("VirtualMachine");
+                // Add new VM information from the request
+                Dword dwState = c_oRequest.GetDword("State");
+                oVmBlob.PutDword("State", dwState);
+                if (eInUse == dwState)
+                {
+                    oVmBlob.PutString("VMLoggedInUser", c_oRequest.GetString("VMLoggedInUser"));
+                }
+                oVmBlob.PutUnsignedInt64("HeartbeatBroadcastTime", ::GetEpochTimeInSeconds());
+                // Make a Tls connection with the database portal
+                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                // Create a request to get the list of VMs
+                StructuredBuffer oRequest;
+                oRequest.PutString("PluginName", "DatabaseManager");
+                oRequest.PutString("Verb", "PUT");
+                oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateVirtualMachine");
+                oRequest.PutString("VirtualMachineGuid", c_oRequest.GetString("VirtualMachineGuid"));
+                oRequest.PutStructuredBuffer("VirtualMachineData", oVmBlob);
+                std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                poTlsNode = nullptr;
+                    
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (200 == oDatabaseResponse.GetDword("Status"))
+                {
+                    dwStatus = 200;
+                }
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    // Send back status of the transaction
     oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();

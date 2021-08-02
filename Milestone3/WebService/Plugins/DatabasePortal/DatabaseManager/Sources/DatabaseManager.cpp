@@ -231,6 +231,10 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/PullAzureTemplate");
     // Get a list of azure settings templates for an organization
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/ListAzureTemplates");
+    // Get a remote data connector
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/PullRemoteDataConnector");
+    // Get a list of remote data connectors for an organization
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/ListRemoteDataConnectors");
     // Add a non-leaf audit log event
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/NonLeafEvent");
     // Add a leaf audit log event
@@ -247,6 +251,8 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterDigitalContract");
     // Takes in an EOSB and registers an azure settings template
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterAzureTemplate");
+    // Takes in an EOSB and registers a remote data connector
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterRemoteDataConnector");
     // Shuts down the server
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/ShutdownPortal");
     // Update user's access rights
@@ -259,6 +265,8 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/RecoverUser");
     // Update an azure settings template
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/UpdateAzureTemplate");
+    // Update a remote data connector
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/UpdateRemoteDataConnector");
     // Update the digital contract when a data owner accepts the digital contract or when a researcher accepts the DC terms from the Data owner organization
     m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DatabaseManager/Update/DigitalContract");
     // Delete a user from the database
@@ -373,6 +381,14 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             {
                 stlResponseBuffer = this->ListAzureTemplates(c_oRequestStructuredBuffer);
             }
+            else if ("/SAIL/DatabaseManager/PullRemoteDataConnector" == strResource)
+            {
+                stlResponseBuffer = this->PullRemoteDataConnector(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/ListRemoteDataConnectors" == strResource)
+            {
+                stlResponseBuffer = this->ListRemoteDataConnectors(c_oRequestStructuredBuffer);
+            }
             else
             {
                 _ThrowBaseException("Invalid resource.", nullptr);
@@ -412,6 +428,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             {
                 stlResponseBuffer = this->RegisterAzureTemplate(c_oRequestStructuredBuffer);
             }
+            else if ("/SAIL/DatabaseManager/RegisterRemoteDataConnector" == strResource)
+            {
+                stlResponseBuffer = this->RegisterRemoteDataConnector(c_oRequestStructuredBuffer);
+            }
             else if ("/SAIL/DatabaseManager/ShutdownPortal" == strResource)
             {
                 stlResponseBuffer = this->ShutdownPortal(c_oRequestStructuredBuffer);
@@ -446,6 +466,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             else if ("/SAIL/DatabaseManager/UpdateVirtualMachine" == strResource)
             {
                 stlResponseBuffer = this->UpdateVirtualMachine(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/UpdateRemoteDataConnector" == strResource)
+            {
+                stlResponseBuffer = this->UpdateRemoteDataConnector(c_oRequestStructuredBuffer);
             }
             else
             {

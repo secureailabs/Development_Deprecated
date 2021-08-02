@@ -57,8 +57,12 @@ std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strBlue + "32- Update Azure settings template - Admin privileges required!\n" +
             oFontColor.strBlue + "33- Delete Azure settings template - Admin privileges required!\n" +
             oFontColor.strBlue + "34- Associate Digital Contract(s) with an Azure settings template - Admin privileges required!\n" +
-            oFontColor.strMagenta + "35- Get user information\n" +
-            oFontColor.strRed + "36- Shut down servers\n" +
+            oFontColor.strYellow + "35- Register a remote data connector\n" +
+            oFontColor.strYellow + "36- Get list of remote data connectors\n" +
+            oFontColor.strYellow + "37- Pull a remote data connector's information\n" +
+            oFontColor.strYellow + "38- Update a remote data connector\n" +
+            oFontColor.strMagenta + "39- Get user information\n" +
+            oFontColor.strRed + "40- Shut down servers\n" +
             oFontColor.strRed + "0- Logout\n";
 
 /********************************************************************************************/

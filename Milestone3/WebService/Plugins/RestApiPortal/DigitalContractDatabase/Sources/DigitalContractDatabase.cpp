@@ -1724,8 +1724,8 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AssociateWithAzureTemplate
                             }
                             if (true == fValid)
                             {
-                                // Associate the Digital Contract with the Azure template guid
                                 StructuredBuffer oSsb = oDigitalContract.GetStructuredBuffer("DigitalContract");
+                                // Associate the Digital Contract with the Azure template guid
                                 oSsb.PutString("AzureTemplateGuid", strAzureTemplateGuid);
                                 // Serialize the update digital contract blob
                                 std::vector<Byte> stlUpdatedSsb;

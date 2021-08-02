@@ -104,6 +104,10 @@ extern std::vector<Byte> PullVirtualMachine(
     _in const std::string & c_strEncodedEosb
     );
 
+extern bool ListVirtualMachines(
+    _in const std::string & c_strEncodedEosb
+    );
+
 extern bool GetListOfEvents(
     _in const std::string & c_strEncodedEosb,
     _in const std::string & c_strParentGuid,

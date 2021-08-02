@@ -128,6 +128,11 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Fetch the virtual machines associated with a digital contract
+        std::vector<Byte> __thiscall ListOfVmsAssociatedWithDc(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Fetch the virtual machines' ip addresses associated with a digital contract
         std::vector<Byte> __thiscall ListOfVmIpAddressesAssociatedWithDc(
             _in const StructuredBuffer & c_oRequest

@@ -293,6 +293,26 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Fetch list of remote data connectors
+        std::vector<Byte> __thiscall ListRemoteDataConnectors(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch a remote data connector's metadata
+        std::vector<Byte> __thiscall PullRemoteDataConnector(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Register a remote data connector
+        std::vector<Byte> __thiscall RegisterRemoteDataConnector(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update a remote data connector
+        std::vector<Byte> __thiscall UpdateRemoteDataConnector(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Shutdown the server
         std::vector<Byte> __thiscall ShutdownPortal(
             _in const StructuredBuffer & c_oRequest

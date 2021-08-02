@@ -265,6 +265,22 @@ extern bool AssociateDigitalContractWithAzureTemplate(
     _in const std::string & c_strEosb
     );
 
+extern bool RegisterRemoteDataConnector(
+    _in const std::string & c_strEosb
+    );
+
+extern bool ListRemoteDataConnectors(
+    _in const std::string & c_strEosb
+    );
+
+extern bool PullRemoteDataConnector(
+    _in const std::string & c_strEosb
+    );
+
+extern bool UpdateRemoteDataConnector(
+    _in const std::string & c_strEosb
+    );
+
 extern std::vector<Byte> GetRemoteAttestationCertificate(void);
 
 extern void ShutdownPortal(

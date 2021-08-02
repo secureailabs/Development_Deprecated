@@ -556,12 +556,10 @@ bool UpdateVirtualMachineStatus(
     std::cout << "************************\n Update Virtual Machine Status \n************************\n" << std::endl;
     std::string strVmGuid = ::GetStringInput("Enter hyphen and curly braces formatted virtual machine guid: ", 38, true, c_szValidInputCharacters);
     Dword dwState = std::stoul(::GetStringInput("Enter the state of the VM: ", 500, false, c_szValidInputCharacters));
-    std::string strDcGuid = ::GetStringInput("Enter hyphen and curly braces formatted digital contract guid: ", 38, true, c_szValidInputCharacters);
     std::string strUserGuid = ::GetStringInput("Enter hyphen and curly braces formatted logged in user's guid: ", 38, true, c_szValidInputCharacters);
 
     __DebugAssert(38 == strVmGuid.size());
     __DebugAssert(0 < dwState);
-    __DebugAssert(38 == strDcGuid.size());
     __DebugAssert(38 == strUserGuid.size());
 
     try
@@ -571,7 +569,6 @@ bool UpdateVirtualMachineStatus(
         std::string strApiUrl = "/SAIL/VirtualMachineManager/UpdateStatus?Eosb="+ c_strEncodedEosb;
         std::string strContent = "{\n   \"VirtualMachineGuid\": \""+ strVmGuid +"\","
                                 "\n   \"State\": "+ std::to_string(dwState) +","
-                                "\n   \"DigitalContractGuid\": \""+ strDcGuid +"\","
                                 "\n   \"VMLoggedInUser\": \""+ strUserGuid +"\""
                                 "\n}";
         // Make the API call and get REST response
@@ -2296,6 +2293,7 @@ bool RegisterAzureTemplate(
     std::string strApplicationId = ::GetStringInput("Enter application ID: ", 50, false, c_szValidInputCharacters);
     std::string strResourceGroup = ::GetStringInput("Enter resource group: ", 50, false, c_szValidInputCharacters);
     std::string strVirtualNetwork = ::GetStringInput("Enter virtual network: ", 50, false, c_szValidInputCharacters);
+    std::string strHostRegion = ::GetStringInput("Enter host region: ", 50, false, c_szValidInputCharacters);
 
     __DebugAssert(0 < strName.size());
     __DebugAssert(0 < strDescription.size());
@@ -2305,6 +2303,7 @@ bool RegisterAzureTemplate(
     __DebugAssert(0 < strApplicationId.size());
     __DebugAssert(0 < strResourceGroup.size());
     __DebugAssert(0 < strVirtualNetwork.size());
+    __DebugAssert(0 < strHostRegion.size());
 
     try
     {
@@ -2319,6 +2318,7 @@ bool RegisterAzureTemplate(
                                 "\n   \"TenantID\": \""+ strTenantId +"\","
                                 "\n   \"ApplicationID\": \""+ strApplicationId +"\","
                                 "\n   \"ResourceGroup\": \""+ strResourceGroup +"\","
+                                "\n   \"HostRegion\": \""+ strHostRegion +"\","
                                 "\n   \"VirtualNetwork\": \""+ strVirtualNetwork +"\""
                                 "\n   }"
                                 "\n}";
@@ -2379,6 +2379,7 @@ bool ListAzureTemplates(
             std::cout << "Application ID: " << oElement.GetString("ApplicationID") << std::endl;
             std::cout << "Resource Group: " << oElement.GetString("ResourceGroup") << std::endl;
             std::cout << "Virtual Network: " << oElement.GetString("VirtualNetwork") << std::endl;
+            std::cout << "Host region: " << oElement.GetString("HostRegion") << std::endl;
             std::cout << "------------------------------------------------------" << std::endl;
         }
     }
@@ -2437,6 +2438,7 @@ bool PullAzureTemplate(
         std::cout << "Application ID: " << oTemplate.GetString("ApplicationID") << std::endl;
         std::cout << "Resource Group: " << oTemplate.GetString("ResourceGroup") << std::endl;
         std::cout << "Virtual Network: " << oTemplate.GetString("VirtualNetwork") << std::endl;
+        std::cout << "Host region: " << oTemplate.GetString("HostRegion") << std::endl;
         std::cout << "------------------------------------------------------" << std::endl;
     }
     
@@ -2477,6 +2479,7 @@ bool UpdateAzureTemplate(
     std::string strApplicationId = ::GetStringInput("Enter application ID: ", 50, false, c_szValidInputCharacters);
     std::string strResourceGroup = ::GetStringInput("Enter resource group: ", 50, false, c_szValidInputCharacters);
     std::string strVirtualNetwork = ::GetStringInput("Enter virtual network: ", 50, false, c_szValidInputCharacters);
+    std::string strHostRegion = ::GetStringInput("Enter host region: ", 50, false, c_szValidInputCharacters);
 
     __DebugAssert(38 == strTemplateGuid.size());
     __DebugAssert(0 < strName.size());
@@ -2487,6 +2490,7 @@ bool UpdateAzureTemplate(
     __DebugAssert(0 < strApplicationId.size());
     __DebugAssert(0 < strResourceGroup.size());
     __DebugAssert(0 < strVirtualNetwork.size());
+    __DebugAssert(0 < strHostRegion.size());
 
     try
     {
@@ -2502,6 +2506,7 @@ bool UpdateAzureTemplate(
                                 "\n   \"TenantID\": \""+ strTenantId +"\","
                                 "\n   \"ApplicationID\": \""+ strApplicationId +"\","
                                 "\n   \"ResourceGroup\": \""+ strResourceGroup +"\","
+                                "\n   \"HostRegion\": \""+ strHostRegion +"\","
                                 "\n   \"VirtualNetwork\": \""+ strVirtualNetwork +"\""
                                 "\n   }"
                                 "\n}";
@@ -2624,6 +2629,253 @@ bool AssociateDigitalContractWithAzureTemplate(
         std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
         StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
         _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error processing the transaction.", nullptr);
+        fSuccess = true;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool RegisterRemoteDataConnector(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    try
+    {
+        std::cout << "************************\n Register Remote Data Connector \n************************\n" << std::endl;
+        // Get remote data connector's information
+        std::string strContent = "{\n    \"Datasets\": [";
+        // Get user input
+        std::cout << "************************\n Register Remote Data Connector \n************************\n" << std::endl;
+        int nEnd = 1;
+        while (1 == nEnd)
+        {
+            std::string strDsetGuid = ::GetStringInput("Enter hyphen and curly braces formatted dataset guid: ", 38, false, c_szValidInputCharacters);
+            __DebugAssert(38 == strDsetGuid.size());
+            strContent += "\n   \""+ strDsetGuid;
+            nEnd = stoi(::GetStringInput("Do you want to add another dataset guid to the list? [0, 1] ", 1, false, c_szValidInputCharacters));
+            if (1 == nEnd)
+            {
+                strContent += "\",";
+            }
+            else 
+            {
+                strContent += "\"";
+            }
+        }
+
+        strContent += "\n    ],"
+                    "\"RemoteDataConnectorGuid\": \""+ Guid(eRemoteDataConnector).ToString(eHyphensAndCurlyBraces) +"\","
+                    "\n   \"Version\": \"0x00000001\""
+                    "\n}";
+        // Create rest request
+        std::string strVerb = "POST";
+        std::string strApiUrl = "/SAIL/RemoteDataConnectorManager/RegisterConnector?Eosb="+ c_strEosb;
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error registering the remote data connector.", nullptr);
+        fSuccess = true;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool ListRemoteDataConnectors(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    try
+    {
+        // Create rest request
+        std::string strVerb = "GET";
+        std::string strApiUrl = "/SAIL/RemoteDataConnectorManager/ListConnectors?Eosb="+ c_strEosb;
+        std::string strJsonBody = "";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strJsonBody, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error fetching available remote data connectors.", nullptr);
+        fSuccess = true;
+        std::cout << "************************\n List of Remote Data Connectors \n************************\n" << std::endl;
+        StructuredBuffer oConnectors(oResponse.GetStructuredBuffer("Connectors"));
+        for (std::string strElement : oConnectors.GetNamesOfElements())
+        {
+            StructuredBuffer oConnector(oConnectors.GetStructuredBuffer(strElement.c_str()));
+            std::cout << "Guid: " << strElement << std::endl;
+            std::cout << "Organization Guid: " << oConnector.GetString("OrganizationGuid") << std::endl;
+            std::cout << "User Guid: " << oConnector.GetString("UserGuid") << std::endl;
+            std::cout << "Version: " << oConnector.GetString("Version") << std::endl;
+            // Get list of datasets
+            StructuredBuffer oDatasets = oConnector.GetStructuredBuffer("Datasets");
+            std::cout << "Datasets: ";
+            for (std::string strDset : oDatasets.GetNamesOfElements())
+            {
+                std::cout << oDatasets.GetString(strDset.c_str()) << std::endl;
+            }
+            std::cout << "------------------------------------------------------" << std::endl;
+        }
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool PullRemoteDataConnector(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    // Get connector's information
+    std::cout << "************************\n Pull Remote Data Connector \n************************\n" << std::endl;
+    std::string strConnectorGuid = ::GetStringInput("Enter hyphen and curly braces formatted remote data connector's guid: ", 38, true, c_szValidInputCharacters);
+
+    __DebugAssert(38 == strConnectorGuid.size());
+
+    try
+    {
+        // Create rest request
+        std::string strVerb = "GET";
+        std::string strApiUrl = "/SAIL/RemoteDataConnectorManager/PullConnector?Eosb="+ c_strEosb;
+        std::string strContent = "{\n   \"RemoteDataConnectorGuid\": \""+ strConnectorGuid +"\""
+                                "\n}";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error getting the remote data connector's information.", nullptr);
+        fSuccess = true;
+        StructuredBuffer oConnector(oResponse.GetStructuredBuffer("Connector"));
+        std::cout << "Guid: " << oConnector.GetString("RemoteDataConnectorGuid") << std::endl;
+        std::cout << "Organization Guid: " << oConnector.GetString("OrganizationGuid") << std::endl;
+        std::cout << "User Guid: " << oConnector.GetString("UserGuid") << std::endl;
+        std::cout << "Version: " << oConnector.GetString("Version") << std::endl;
+        // Get list of datasets
+        StructuredBuffer oDatasets = oConnector.GetStructuredBuffer("Datasets");
+        std::cout << "Datasets: ";
+        for (std::string strDset : oDatasets.GetNamesOfElements())
+        {
+            std::cout << oDatasets.GetString(strDset.c_str()) << std::endl;
+        }
+        std::cout << "------------------------------------------------------" << std::endl;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
+bool UpdateRemoteDataConnector(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    try
+    {
+        // Get remote data connector's information
+        std::string strContent = "{\n    \"Datasets\": [";
+        // Get user input
+        std::cout << "************************\n Update Remote Data Connector \n************************\n" << std::endl;
+        std::string strConnectorGuid = ::GetStringInput("Enter hyphen and curly braces formatted Remote data connector's guid: ", 38, false, c_szValidInputCharacters);
+        __DebugAssert(38 == strConnectorGuid.size());
+        int nEnd = 1;
+        while (1 == nEnd)
+        {
+            std::string strDsetGuid = ::GetStringInput("Enter hyphen and curly braces formatted dataset guid: ", 38, false, c_szValidInputCharacters);
+            __DebugAssert(38 == strDsetGuid.size());
+            strContent += "\n   \""+ strDsetGuid;
+            nEnd = stoi(::GetStringInput("Do you want to add another dataset guid to the list? [0, 1] ", 1, false, c_szValidInputCharacters));
+            if (1 == nEnd)
+            {
+                strContent += "\",";
+            }
+            else 
+            {
+                strContent += "\"";
+            }
+        }
+
+        strContent += "\n    ],"
+                    "\"RemoteDataConnectorGuid\": \""+ strConnectorGuid +"\","
+                    "\n   \"Version\": \"0x00000001\""
+                    "\n}";
+        // Create rest request
+        std::string strVerb = "PUT";
+        std::string strApiUrl = "/SAIL/RemoteDataConnectorManager/UpdateConnector?Eosb="+ c_strEosb;
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error updating the remote data connector.", nullptr);
         fSuccess = true;
     }
     

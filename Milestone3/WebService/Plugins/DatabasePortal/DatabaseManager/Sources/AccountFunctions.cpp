@@ -285,7 +285,7 @@ std::vector<Byte> __thiscall DatabaseManager::GetBasicUserRecord(
             oBasicUser = oBasicUserCollection.find_one(document{} 
                                                     << "64BitHash" << (double)qw64BitHash 
                                                     << "AccountStatus" <<  open_document
-                                                    << "$lte" << eOpen << close_document
+                                                    << "$lte" << AccountStatus::eOpen << close_document
                                                     << finalize);
         }
         else
@@ -631,7 +631,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddSuperUser(
             << "64BitHash" << (double) qw64BitHashPassphrase
             << "OrganizationUuid" << c_oRequest.GetString("OrganizationUuid")
             << "UserUuid" << strUserGuid
-            << "AccountStatus" << (double) eNew
+            << "AccountStatus" << (double) AccountStatus::eNew
             << "WrappedAccountKey" << oWrappedAccountEncryptionKey
             << finalize;
 
@@ -760,7 +760,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterUser(
                 << "64BitHash" << (double) qw64BitHashPassphrase
                 << "OrganizationUuid" << c_oRequest.GetString("OrganizationGuid")
                 << "UserUuid" << strUserGuid
-                << "AccountStatus" << (double) eNew
+                << "AccountStatus" << (double) AccountStatus::eNew
                 << "WrappedAccountKey" << oWrappedAccountEncryptionKey
                 << finalize;
 
@@ -1505,7 +1505,7 @@ std::vector<Byte> __thiscall DatabaseManager::RecoverUser(
             {
                 oSailDatabase["BasicUser"].update_one(*poSession, document{} << "UserUuid" << strUserGuid << finalize,
                                                         document{} << "$set" << open_document <<
-                                                        "AccountStatus" << (double) eOpen << close_document << finalize);
+                                                        "AccountStatus" << (double) AccountStatus::eOpen << close_document << finalize);
             };
 
             // Create a session and start the transaction
@@ -1611,7 +1611,7 @@ std::vector<Byte> __thiscall DatabaseManager::DeleteUser(
                 {
                     oSailDatabase["BasicUser"].update_one(*poSession, document{} << "UserUuid" << strUserGuid << finalize,
                                                             document{} << "$set" << open_document <<
-                                                            "AccountStatus" << (double) eClosed << close_document << finalize);
+                                                            "AccountStatus" << (double) AccountStatus::eClosed << close_document << finalize);
                 };
 
                 // Create a session and start the transaction

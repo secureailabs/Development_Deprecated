@@ -62,8 +62,9 @@ std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strYellow + "37- Get list of remote data connectors\n" +
             oFontColor.strYellow + "38- Pull a remote data connector's information\n" +
             oFontColor.strYellow + "39- Update a remote data connector\n" +
-            oFontColor.strMagenta + "40- Get user information\n" +
-            oFontColor.strRed + "41- Shut down servers\n" +
+            oFontColor.strYellow + "40- Update a remote data connector\n" +
+            oFontColor.strMagenta + "41- Send remote data connector's heartbeat\n" +
+            oFontColor.strRed + "42- Shut down servers\n" +
             oFontColor.strRed + "0- Logout\n";
 
 /********************************************************************************************/

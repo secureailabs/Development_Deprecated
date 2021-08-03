@@ -272,6 +272,83 @@ std::vector<Byte> __thiscall DatabaseManager::ListOfVmIpAddressesAssociatedWithD
 /********************************************************************************************
  *
  * @class DatabaseManager
+ * @function GetVmsWaitingForData
+ * @brief Fetch list of VM ipaddressese that are waiting for the remote data connector's dataset(s)
+ * @param[in] c_oRequest contains the dataset guids 
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns StructuredBuffer containing the virtual machines' ip addresses
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::GetVmsWaitingForData(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    StructuredBuffer oListOfVMs;
+
+    try 
+    {
+        // Each client and transaction can only be used in a single thread
+        mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+        // Access SailDatabase
+        mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+        // Create the query
+        StructuredBuffer oDatasets = c_oRequest.GetStructuredBuffer("Datasets");
+        auto stlDatasetGuids = bsoncxx::builder::basic::array{};
+        for (std::string strDset : oDatasets.GetNamesOfElements())
+        {
+            stlDatasetGuids.append(oDatasets.GetString(strDset.c_str()));
+        }
+        // Fetch the virtual machine ip addresses
+        mongocxx::cursor oVmCursor = oSailDatabase["VirtualMachinesWaitingForData"].find(document{}
+                                                                    << "DatasetGuid"
+                                                                    << open_document
+                                                                    << "$in" << stlDatasetGuids
+                                                                    << close_document
+                                                                    << finalize);
+        for (auto&& oVmDocumentView : oVmCursor)
+        {                                                                                                           
+            bsoncxx::document::element oVmGuid = oVmDocumentView["VirtualMachineGuid"];
+            bsoncxx::document::element oIpAddress = oVmDocumentView["IPAddress"];
+            bsoncxx::document::element oDatasetGuid = oVmDocumentView["DatasetGuid"];
+            if ((oVmGuid && oVmGuid.type() == type::k_utf8) && (oIpAddress && oIpAddress.type() == type::k_utf8) && (oDatasetGuid && oDatasetGuid.type() == type::k_utf8))
+            {
+                std::string strVmGuid = oVmGuid.get_utf8().value.to_string();
+                std::string strIpAddress = oIpAddress.get_utf8().value.to_string();
+                std::string strDatasetGuid = oDatasetGuid.get_utf8().value.to_string();
+                StructuredBuffer oVirtualMachineInformation;
+                oVirtualMachineInformation.PutString("IPAddress", strIpAddress);
+                oVirtualMachineInformation.PutString("DatasetGuid", strDatasetGuid);
+                oListOfVMs.PutStructuredBuffer(strVmGuid.c_str(), oVirtualMachineInformation);
+            }
+        }
+        dwStatus = 200;
+        oResponse.PutStructuredBuffer("VirtualMachines", oListOfVMs);
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
  * @function RegisterVirtualMachine
  * @brief Add metadata of a new virtual machine to the database
  * @param[in] c_oRequest contains the virtual machine's information
@@ -328,7 +405,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterVirtualMachine(
         bsoncxx::document::value oPlainTextObjectDocumentValue = bsoncxx::builder::stream::document{}
         << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
         << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
-        << "ObjectType" << eVirtualMachine
+        << "ObjectType" << GuidOfObjectType::eVirtualMachine
         << finalize;
 
         // Each client and transaction can only be used in a single thread
@@ -489,6 +566,144 @@ std::vector<Byte> __thiscall DatabaseManager::UpdateVirtualMachine(
     }
 
     // Send back the status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
+ * @function RegisterVmAsWaitingForData
+ * @brief Add metadata of a virtual machine that is waiting for data to the database
+ * @param[in] c_oRequest contains the virtual machine's information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Serialized StructuredBuffer containing request status
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::RegisterVmAsWaitingForData(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 204;
+
+    try 
+    {
+        // Create an VirtualMachinesWaitingForData document
+        bsoncxx::document::value oDocumentValue = bsoncxx::builder::stream::document{}
+        << "VirtualMachineGuid" << c_oRequest.GetString("VirtualMachineGuid")
+        << "IPAddress" << c_oRequest.GetString("IPAddress")
+        << "DatasetGuid" << c_oRequest.GetString("DatasetGuid")
+        << finalize;
+
+        // Each client and transaction can only be used in a single thread
+        mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+        // Access SailDatabase
+        mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+        // Access VirtualMachinesWaitingForData collection
+        mongocxx::collection oVirtualMachinesWaitingForDataCollection = oSailDatabase["VirtualMachinesWaitingForData"];
+        // Create a transaction callback
+        mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
+        {
+            // Insert document in the VirtualMachinesWaitingForData collection
+            auto oResult = oVirtualMachinesWaitingForDataCollection.insert_one(*poSession, oDocumentValue.view());
+            if (!oResult) {
+                std::cout << "Error while writing to the database." << std::endl;
+            }
+            else
+            {
+                dwStatus = 201;
+            }
+        };
+        // Create a session and start the transaction
+        mongocxx::client_session oSession = oClient->start_session();
+        try 
+        {
+            oSession.with_transaction(oCallback);
+        }
+        catch (mongocxx::exception& e) 
+        {
+            std::cout << "Collection transaction exception: " << e.what() << std::endl;
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    // Send back the status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DatabaseManager
+ * @function RemoveVmAsWaitingForData
+ * @brief Remove VM information as waiting for data
+ * @param[in] c_oRequest contains virtual machine guid
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Status of the transaction
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DatabaseManager::RemoveVmAsWaitingForData(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+
+    try 
+    {
+        std::string strVmGuid = c_oRequest.GetString("VirtualMachineGuid");
+        // Each client and transaction can only be used in a single thread
+        mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+        // Access SailDatabase
+        mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+        // Delete document from VirtualMachinesWaitingForData collection associated with VirtualMachineGuid
+        mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession)
+        {
+            oSailDatabase["VirtualMachinesWaitingForData"].delete_one(*poSession, document{} << "VirtualMachineGuid" << strVmGuid << finalize);
+        };
+        // Create a session and start the transaction
+        mongocxx::client_session oSession = oClient->start_session();
+        try 
+        {
+            oSession.with_transaction(oCallback);
+            dwStatus = 200;
+        }
+        catch (mongocxx::exception & e)
+        {
+            std::cout << "Transaction exception: " << e.what() << std::endl;
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
     oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();

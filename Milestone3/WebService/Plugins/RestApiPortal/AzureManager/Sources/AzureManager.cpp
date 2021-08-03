@@ -443,7 +443,7 @@ void __thiscall AzureManager::InitializePlugin(void)
     oDeleteTemplate.PutStructuredBuffer("Eosb", oEosb);
     oDeleteTemplate.PutStructuredBuffer("TemplateGuid", oTemplateGuid);
 
-    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Stores azure settings template in the database
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AzureManager/RegisterTemplate", oRegisterTemplate, 1);
 
@@ -764,7 +764,7 @@ std::vector<Byte> __thiscall AzureManager::GetListOfAzureSettingsTemplates(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -851,7 +851,7 @@ std::vector<Byte> __thiscall AzureManager::PullAzureSettingsTemplate(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -940,7 +940,7 @@ std::vector<Byte> __thiscall AzureManager::RegisterAzureSettingsTemplate(
         StructuredBuffer oUserInfo = this->GetUserInfo(c_oRequest);
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1029,7 +1029,7 @@ std::vector<Byte> __thiscall AzureManager::UpdateAzureSettingsTemplate(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1119,7 +1119,7 @@ std::vector<Byte> __thiscall AzureManager::DeleteAzureSettingsTemplate(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);

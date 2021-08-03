@@ -387,7 +387,7 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     oEosb.PutByte("ElementType", BUFFER_VALUE_TYPE);
     oEosb.PutBoolean("IsRequired", true);
     oRefreshEosb.PutStructuredBuffer("Eosb", oEosb);
-    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Re-encrypts the old Eosb with the latest key and returns the fresh Eosb
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/RefreshEosb", oRefreshEosb, 0);
 
@@ -397,7 +397,7 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     oMessageDigest.PutByte("ElementType", BUFFER_VALUE_TYPE);
     oMessageDigest.PutBoolean("IsRequired", true);
     oSignMessageDigest.PutStructuredBuffer("MessageDigest", oMessageDigest);
-    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Sign the message digest with the specified key or the user key
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/SignMessageDigest", oSignMessageDigest, 0);
 
@@ -408,14 +408,14 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     oSignature.PutByte("ElementType", BUFFER_VALUE_TYPE);
     oSignature.PutBoolean("IsRequired", true);
     oVerifySignature.PutStructuredBuffer("Signature", oSignature);
-    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Verify the signature with the userkey and message digest
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/VerifySignature", oVerifySignature, 0);
 
     // TODO: Remove this resource in the future or figure out how the Initializer is going to get the IEosb
     StructuredBuffer oGetIEosb;
     oGetIEosb.PutStructuredBuffer("Eosb", oEosb);
-    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Takes in an EOSB and sends back an imposter EOSB (IEOSB)
     // IEOSB has restricted rights and thus minimizes security risks when initializing and logging onto VM's
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/GetIEosb", oGetIEosb, 0);

@@ -2965,6 +2965,62 @@ bool UpdateRemoteDataConnector(
 
 /********************************************************************************************/
 
+bool SendRemoteDataConnectoHeartBeat(
+    _in const std::string & c_strEosb
+    )
+{
+    __DebugFunction();
+    __DebugAssert(0 < c_strEosb.size());
+
+    bool fSuccess = false;
+
+    const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+
+    try
+    {
+        // Get user input
+        std::cout << "************************\n Send Remote Data Connector Heartbeat\n************************\n" << std::endl;
+        std::string strConnectorGuid = ::GetStringInput("Enter hyphen and curly braces formatted Remote data connector's guid: ", 38, false, c_szValidInputCharacters);
+        __DebugAssert(38 == strConnectorGuid.size());
+        
+        // Create rest request
+        std::string strVerb = "PUT";
+        std::string strApiUrl = "/SAIL/RemoteDataConnectorManager/HeartBeart?Eosb="+ c_strEosb;
+        std::string strContent = "{\n    \"RemoteDataConnectorGuid\": \""+ strConnectorGuid +"\""
+                                "\n}";
+        // Make the API call and get REST response
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error sendinf the remote data connector's heart beat.", nullptr);
+        std::cout << "IP Address of VMs waiting for data: " << std::endl;
+        StructuredBuffer oVirtualMachines = oResponse.GetStructuredBuffer("VirtualMachines");
+        for (std::string strVmGuid : oVirtualMachines.GetNamesOfElements())
+        {
+            StructuredBuffer oVirtualMachine = oVirtualMachines.GetStructuredBuffer(strVmGuid.c_str());
+            std::cout << "Virtual machine guid: " << strVmGuid << std::endl;
+            std::cout << "IPAddress: " << oVirtualMachine.GetString("IPAddress") << std::endl;
+            std::cout << "Required dataset guid: " << oVirtualMachine.GetString("DatasetGuid") << std::endl;
+            std::cout << "------------------------------------------------------------------------------" << std::endl;
+        }
+        fSuccess = true;
+    }
+    
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/********************************************************************************************/
+
 std::vector<Byte> GetRemoteAttestationCertificate(void)
 {
     __DebugFunction();

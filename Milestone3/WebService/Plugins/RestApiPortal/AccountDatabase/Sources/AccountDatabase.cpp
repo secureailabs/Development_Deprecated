@@ -528,7 +528,7 @@ void __thiscall AccountDatabase::InitializePlugin(void)
     oIsHardDelete.PutBoolean("IsRequired", false);
     oDeleteUser.PutStructuredBuffer("IsHardDelete", oIsHardDelete);
 
-    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Takes in an EOSB and returns a list of all organization
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Organizations", oListOrganizations, 1);
     // Takes in an EOSB and returns a list of all users
@@ -1208,7 +1208,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterUser(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1302,7 +1302,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1420,7 +1420,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateOrganizationInformation(
         if (200 == oUserInfo.GetDword("Status"))
         {
             // Check if the user is an admin and if the user belongs to the same organization
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1514,7 +1514,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if ((strUserGuid == oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces)) || eAdmin == oUserInfo.GetQword("AccessRights"))
+            if ((strUserGuid == oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces)) || AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 StructuredBuffer oUserInformation = c_oRequest.GetStructuredBuffer("UserInformation");
                 // Make a Tls connection with the database portal
@@ -1632,7 +1632,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizations(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eSailAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eSailAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1720,7 +1720,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListUsers(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eSailAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eSailAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1811,7 +1811,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizationUsers(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1901,7 +1901,7 @@ std::vector<Byte> __thiscall AccountDatabase::RecoverUser(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1992,7 +1992,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteUser(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -2089,7 +2089,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteOrganization(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);

@@ -476,13 +476,13 @@ void __thiscall DigitalContractDatabase::InitializePlugin(void)
     oDcProvisioningStatus.PutStructuredBuffer("Eosb", oEosb);
     oDcProvisioningStatus.PutStructuredBuffer("DigitalContractGuid", oDcGuid);
 
-    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Takes in an EOSB and create a digital contract for a chosen dataset
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DigitalContractManager/Applications", oRegisterDc, 4);
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DigitalContractManager/Applications", oRegisterDc, 1);
     // Update the digital contract when a data owner accepts the digital contract
-    m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DigitalContractManager/DataOwner/Accept", oDcAcceptance, 6);
+    m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DigitalContractManager/DataOwner/Accept", oDcAcceptance, 1);
     // Update the digital contract when a researcher accepts the DC terms from the Data owner organization
-    m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DigitalContractManager/Researcher/Activate", oDcActivation, 6);
+    m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DigitalContractManager/Researcher/Activate", oDcActivation, 1);
     // Associate one or more digital contracts with one Azure template
     m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DigitalContractManager/AssociateWithAzureTemplate", oAssociateWithAzureTemplate, 1);
     // Get a list of digital contracts associated with a researcher or a data owner
@@ -1258,7 +1258,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
             oSsb.PutString("Description", c_oRequest.GetString("Description"));
             oSsb.PutString("VersionNumber", c_oRequest.GetString("VersionNumber"));
             oSsb.PutString("DigitalContractGuid", strDcGuid);
-            oSsb.PutDword("ContractStage", eApplication);
+            oSsb.PutDword("ContractStage", ContractStage::eApplication);
             oSsb.PutUnsignedInt64("SubscriptionDays", c_oRequest.GetUnsignedInt64("SubscriptionDays"));
             oSsb.PutString("DatasetGuid", strDsetGuid);
             oSsb.PutString("Eula", SAIL_EULA);
@@ -1391,7 +1391,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AcceptDigitalContract(
         if (200 == oUserInfo.GetDword("Status"))
         {
             Qword qwAccessRights = oUserInfo.GetQword("AccessRights");
-            if ((eDatasetAdmin == qwAccessRights) || (eAdmin == qwAccessRights))
+            if ((AccessRights::eDatasetAdmin == qwAccessRights) || (AccessRights::eAdmin == qwAccessRights))
             {
                 // Step 1: Get the digital contract blob and update the structure
                 StructuredBuffer oDcBlob(this->PullDigitalContract(c_oRequest));
@@ -1402,9 +1402,9 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AcceptDigitalContract(
                     if (oDcBlob.GetString("DataOwnerOrganization") == strOrganizationGuid)
                     {
                         StructuredBuffer oSsb(oDcBlob.GetStructuredBuffer("DigitalContract"));
-                        if (eApplication == oSsb.GetDword("ContractStage"))
+                        if (ContractStage::eApplication == oSsb.GetDword("ContractStage"))
                         {
-                            oSsb.PutDword("ContractStage", eApproval);
+                            oSsb.PutDword("ContractStage", ContractStage::eApproval);
                             // Update the description of the digital contract if the data owner edited the description
                             if (true == c_oRequest.IsElementPresent("Description", ANSI_CHARACTER_STRING_VALUE_TYPE))
                             {
@@ -1532,7 +1532,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ActivateDigitalContract(
         if (200 == oUserInfo.GetDword("Status"))
         {
             Qword qwAccessRights = oUserInfo.GetQword("AccessRights");
-            if ((eDigitalContractAdmin == qwAccessRights) || (eAdmin == qwAccessRights))
+            if ((AccessRights::eDigitalContractAdmin == qwAccessRights) || (AccessRights::eAdmin == qwAccessRights))
             {
                 // Step 1: Get the digital contract blob and update the structure
                 StructuredBuffer oDcBlob(this->PullDigitalContract(c_oRequest));
@@ -1543,7 +1543,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ActivateDigitalContract(
                     if (oDcBlob.GetString("ResearcherOrganization") == strOrganizationGuid)
                     {
                         StructuredBuffer oSsb(oDcBlob.GetStructuredBuffer("DigitalContract"));
-                        if (eApproval == oSsb.GetDword("ContractStage"))
+                        if (ContractStage::eApproval == oSsb.GetDword("ContractStage"))
                         {
                             uint64_t unActivationTime = ::GetEpochTimeInSeconds();
                             oSsb.PutUnsignedInt64("ActivationTime", unActivationTime);
@@ -1551,7 +1551,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ActivateDigitalContract(
                             uint64_t unSubscriptionDays = oSsb.GetUnsignedInt64("SubscriptionDays");
                             uint64_t unExpirationTime = unActivationTime + (unSubscriptionDays * 24 * 60 * 60);
                             oSsb.PutUnsignedInt64("ExpirationTime", unExpirationTime);
-                            oSsb.PutDword("ContractStage", eActive);
+                            oSsb.PutDword("ContractStage", ContractStage::eActive);
                             oSsb.PutString("EulaAcceptedByROAuthorizedUser", SAIL_EULA);
                             // Update the description of the digital contract if the researcher edited the description
                             if (true == c_oRequest.IsElementPresent("Description", ANSI_CHARACTER_STRING_VALUE_TYPE))
@@ -1672,7 +1672,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AssociateWithAzureTemplate
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Get admin's organization guid
                 std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
@@ -1846,7 +1846,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetProvisioningStatus(
                     Dword dwProvisioningStatus = oDigitalContract.GetStructuredBuffer("DigitalContract").GetDword("ProvisioningStatus");
                     oResponse.PutDword("ProvisioningStatus", dwProvisioningStatus);
                     // Send back list of associated VMs and their IP addresses if the status is READY
-                    if (eReady == dwProvisioningStatus)
+                    if (DigitalContractProvisiongStatus::eReady == dwProvisioningStatus)
                     {
                         StructuredBuffer oGetListOfVmsRequest;
                         oGetListOfVmsRequest.PutDword("TransactionType", 0x00000001);

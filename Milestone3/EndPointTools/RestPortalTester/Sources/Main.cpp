@@ -510,13 +510,19 @@ int main()
                             }
                             case 41:
                             {
+                                bool fSuccess = ::SendRemoteDataConnectoHeartBeat(strEncodedEosb);
+                                ::WaitForUserToContinue();
+                            break; 
+                            }
+                            case 42:
+                            {
                                 ::ShutdownPortal(strEncodedEosb);
                                 fTerminatedSignalEncountered = true;
                             break;
                             }
                             default:
                             {
-                                ::ShowErrorMessage("Invalid option. Usage: [0-41]");
+                                ::ShowErrorMessage("Invalid option. Usage: [0-42]");
                             break;
                             }
                         }

@@ -284,7 +284,7 @@ void __thiscall SailAuthentication::InitializePlugin(void)
     oUpdatePassword.PutStructuredBuffer("CurrentPassword", oPassword);
     oUpdatePassword.PutStructuredBuffer("NewPassword", oPassword);
 
-    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Verifies user credentials and starts an authenticated session with SAIL SaaS
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuthenticationManager/User/Login", oLoginParameters, 2);
 

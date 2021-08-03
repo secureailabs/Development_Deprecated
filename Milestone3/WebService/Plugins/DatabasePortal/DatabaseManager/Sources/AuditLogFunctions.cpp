@@ -362,7 +362,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddNonLeafEvent(
         bsoncxx::document::value oPlainTextObjectDocumentValue = bsoncxx::builder::stream::document{}
         << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
         << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
-        << "ObjectType" << eAuditEventBranchNode
+        << "ObjectType" << GuidOfObjectType::eAuditEventBranchNode
         << finalize;
 
         // Each client and transaction can only be used in a single thread
@@ -505,7 +505,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddLeafEvent(
             stlPlainTextObjectDocuments.push_back(bsoncxx::builder::stream::document{}
             << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
             << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
-            << "ObjectType" << eAuditEventPlainTextLeafNode
+            << "ObjectType" << GuidOfObjectType::eAuditEventPlainTextLeafNode
             << finalize);
         }
 

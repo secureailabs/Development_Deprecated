@@ -285,6 +285,10 @@ extern bool UpdateRemoteDataConnector(
     _in const std::string & c_strEosb
     );
 
+extern bool SendRemoteDataConnectoHeartBeat(
+    _in const std::string & c_strEosb
+    );
+
 extern std::vector<Byte> GetRemoteAttestationCertificate(void);
 
 extern void ShutdownPortal(

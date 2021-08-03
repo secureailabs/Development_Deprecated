@@ -401,7 +401,12 @@ void __thiscall RemoteDataConnectorManager::InitializePlugin(void)
     oUpdateConnector.PutStructuredBuffer("Datasets", oDatasetGuids);
     oUpdateConnector.PutStructuredBuffer("Version", oVersion);
 
-    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
+    // Add parameters for ConnectorHeartBeat resource
+    StructuredBuffer oConnectorHeartBeat;
+    oConnectorHeartBeat.PutStructuredBuffer("Eosb", oEosb);
+    oConnectorHeartBeat.PutStructuredBuffer("RemoteDataConnectorGuid", oConnectorGuid);
+
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Stores remote data connector metadata in the database
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/RemoteDataConnectorManager/RegisterConnector", oRegisterRemoteDataConnector, 1);
 
@@ -413,6 +418,9 @@ void __thiscall RemoteDataConnectorManager::InitializePlugin(void)
 
     // Updates a remote data connector's metadata in the database
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/RemoteDataConnectorManager/UpdateConnector", oUpdateConnector, 1);
+
+    // Fetch list of VM ipaddressese that are waiting for the remote data connector's dataset(s)
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/RemoteDataConnectorManager/HeartBeart", oConnectorHeartBeat, 1);
 }
 
 /********************************************************************************************
@@ -538,6 +546,10 @@ uint64_t __thiscall RemoteDataConnectorManager::SubmitRequest(
         if ("/SAIL/RemoteDataConnectorManager/UpdateConnector" == strResource)
         {
             stlResponseBuffer = this->UpdateRemoteDataConnector(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/RemoteDataConnectorManager/HeartBeart" == strResource)
+        {
+            stlResponseBuffer = this->ConnectorHeartBeat(c_oRequestStructuredBuffer);
         }
     }
 
@@ -699,7 +711,7 @@ std::vector<Byte> __thiscall RemoteDataConnectorManager::GetListOfRemoteDataConn
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -786,7 +798,7 @@ std::vector<Byte> __thiscall RemoteDataConnectorManager::PullRemoteDataConnector
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -875,7 +887,7 @@ std::vector<Byte> __thiscall RemoteDataConnectorManager::RegisterRemoteDataConne
         StructuredBuffer oUserInfo = this->GetUserInfo(c_oRequest);
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -967,7 +979,7 @@ std::vector<Byte> __thiscall RemoteDataConnectorManager::UpdateRemoteDataConnect
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1000,6 +1012,93 @@ std::vector<Byte> __thiscall RemoteDataConnectorManager::UpdateRemoteDataConnect
                     oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
                     dwStatus = 200;
                 }
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class RemoteDataConnectorManager
+ * @function ConnectorHeartBeat
+ * @brief Send back list of VM ipaddressese that are waiting for the remote data connector's dataset(s)
+ * @param[in] c_oRequest contains EOSB and the connector's information
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Request status
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall RemoteDataConnectorManager::ConnectorHeartBeat(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+    TlsNode * poTlsNode = nullptr;
+
+    try 
+    {
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            // Get datasets that the remote data connector is serving
+            StructuredBuffer oDatasets = StructuredBuffer(this->PullRemoteDataConnector(c_oRequest)).GetStructuredBuffer("Connector").GetStructuredBuffer("Datasets");
+            // Make a Tls connection with the database portal
+            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            // Create a request to update the remote data connector
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "GET");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/GetVmsWaitingForData");
+            oRequest.PutStructuredBuffer("Datasets", oDatasets);
+            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), stlRequest.size());
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 100);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+            // Make sure to release the poTlsNode
+            poTlsNode->Release();
+            poTlsNode = nullptr;
+
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (200 == oDatabaseResponse.GetDword("Status"))
+            {
+                oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                oResponse.PutStructuredBuffer("VirtualMachines", oDatabaseResponse.GetStructuredBuffer("VirtualMachines"));
+                dwStatus = 200;
             }
         }
     }

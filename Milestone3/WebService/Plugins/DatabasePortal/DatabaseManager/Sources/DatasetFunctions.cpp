@@ -340,7 +340,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterDataset(
         bsoncxx::document::value oPlainTextObjectDocumentValue = bsoncxx::builder::stream::document{}
         << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
         << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
-        << "ObjectType" << eDataset
+        << "ObjectType" << GuidOfObjectType::eDataset
         << finalize;
 
         // Each client and transaction can only be used in a single thread
@@ -439,10 +439,38 @@ std::vector<Byte> __thiscall DatabaseManager::DeleteDataset(
         mongocxx::pool::entry oClient = m_poMongoPool->acquire();
         // Access SailDatabase
         mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
-        // Delete document from Dataset collection associated with DatasetrGuid
         mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession)
         {
-            oSailDatabase["Dataset"].delete_one(*poSession, document{} << "DatasetGuid" << strDsetGuid << "DataOwnerOrganizationGuid" << strDooGuid << finalize);
+            bsoncxx::stdx::optional<bsoncxx::document::value> oDsetDocument = oSailDatabase["Dataset"].find_one(document{}
+                                                                                                                    << "DatasetGuid" << strDsetGuid
+                                                                                                                    << "DataOwnerOrganizationGuid" << strDooGuid
+                                                                                                                    << finalize);
+            // Get PlainTextObjectBlobGuid and ObjectGuid
+            if (bsoncxx::stdx::nullopt != oDsetDocument)
+            {                                                                         
+                bsoncxx::document::element oPlainTextObjectBlobGuid = oDsetDocument->view()["PlainTextObjectBlobGuid"];
+                if (oPlainTextObjectBlobGuid && oPlainTextObjectBlobGuid.type() == type::k_utf8)
+                {
+                    std::string strPlainTextObjectBlobGuid = oPlainTextObjectBlobGuid.get_utf8().value.to_string();
+                    bsoncxx::stdx::optional<bsoncxx::document::value> oPlainTextObjectBlobDocument = oSailDatabase["PlainTextObjectBlob"].find_one(document{} 
+                                                                                                                                                    << "PlainTextObjectBlobGuid" <<  strPlainTextObjectBlobGuid
+                                                                                                                                                    << finalize);
+                    if (bsoncxx::stdx::nullopt != oPlainTextObjectBlobDocument)
+                    {
+                        bsoncxx::document::element oObjectGuid = oPlainTextObjectBlobDocument->view()["ObjectGuid"];
+                        if (oObjectGuid && oObjectGuid.type() == type::k_utf8)
+                        {
+                            std::string strObjectGuid = oObjectGuid.get_utf8().value.to_string();
+                            // Delete record associated with strObjectGuid
+                            oSailDatabase["Object"].delete_one(*poSession, document{} << "ObjectGuid" << strObjectGuid << finalize);
+                            // Delete records associated with strPlainTextObjectBlobGuid
+                            oSailDatabase["PlainTextObjectBlob"].delete_one(*poSession, document{} << "PlainTextObjectBlobGuid" << strPlainTextObjectBlobGuid << finalize);
+                            // Delete document from Dataset collection associated with DatasetrGuid
+                            oSailDatabase["Dataset"].delete_one(*poSession, document{} << "DatasetGuid" << strDsetGuid << "DataOwnerOrganizationGuid" << strDooGuid << finalize);
+                        }
+                    }
+                }
+            }
         };
         // Create a session and start the transaction
         mongocxx::client_session oSession = oClient->start_session();

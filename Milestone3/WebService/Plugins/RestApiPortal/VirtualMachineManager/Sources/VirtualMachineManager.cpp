@@ -442,7 +442,7 @@ void __thiscall VirtualMachineManager::InitializePlugin(void)
     oVmLoggedInUser.PutBoolean("IsRequired", true);
     oUpdateStatus.PutStructuredBuffer("VMLoggedInUser", oVmLoggedInUser);
 
-    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Takes in an EOSB and sends back list of all running VM ip addresses associated with the digiatl contract
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/GetRunningVMsIpAdresses", oListRunningVMs, 1);
 
@@ -450,19 +450,19 @@ void __thiscall VirtualMachineManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/PullVirtualMachine", oPullVM, 1);
 
     // Takes in an EOSB and get a list of VMs associated with an organization
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/ListVirtualMachines", oListOrganizationVMs, 2);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/VirtualMachineManager/ListVirtualMachines", oListOrganizationVMs, 1);
 
     // Sends back report of VM's status
-    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/VirtualMachineManager/UpdateStatus", oUpdateStatus, 2);
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/VirtualMachineManager/UpdateStatus", oUpdateStatus, 1);
 
     // Register a Virtual Machine
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/RegisterVM", oRegisterVmParameters, 2);
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/RegisterVM", oRegisterVmParameters, 1);
 
     // Register a Virtual Machine event for DOO 
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/DataOwner/RegisterVM", oRegisterEvent, 4);
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/DataOwner/RegisterVM", oRegisterEvent, 1);
 
     // Register a Virtual Machine event for RO 
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/Researcher/RegisterVM", oRegisterEvent, 4);
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/VirtualMachineManager/Researcher/RegisterVM", oRegisterEvent, 1);
 
     // Start the Ipc server
     // Start listening for Ipc connections
@@ -997,7 +997,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetVmInformation(
                 StructuredBuffer oVirtualMachine = oDatabaseResponse.GetStructuredBuffer("VirtualMachine");
                 if (true == oVirtualMachine.IsElementPresent("State", DWORD_VALUE_TYPE))
                 {
-                    if (eInUse != oVirtualMachine.GetDword("State"))
+                    if (VirtualMachineState::eInUse != oVirtualMachine.GetDword("State"))
                     {
                         oVirtualMachine.RemoveElement("VMLoggedInUser");
                     }
@@ -1218,7 +1218,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
                 StructuredBuffer oUpdateEosbRequest;
                 oUpdateEosbRequest.PutDword("TransactionType", 0x00000005);
                 oUpdateEosbRequest.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
-                oUpdateEosbRequest.PutQword("AccessRights", eVmEosb); 
+                oUpdateEosbRequest.PutQword("AccessRights", EosbAccessRights::eVmEosb); 
                 poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
                 StructuredBuffer oUpdatedEosb(::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oUpdateEosbRequest, false));
                 poIpcCryptographicManager->Release();
@@ -1302,7 +1302,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmAfterDataUpload(
         // Register Vm event if it is a Vm Eosb
         // Check if the user is a dataset admin
         // if ((eVmEosb == oUserInfo.GetQword("AccessRights"))&&(eDatasetAdmin == oUserInfo.GetQword("UserAccessRights")))
-        if (eEosb == oUserInfo.GetQword("AccessRights"))
+        if (EosbAccessRights::eEosb == oUserInfo.GetQword("AccessRights"))
         {
             // Get the organization guid
             std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
@@ -1397,7 +1397,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmForComputation(
         // TODO: Who can call this api? Add a check accordingly
         // Check if the Eosb is a Vm Eosb
         // Register Vm if it is a Vm Eosb
-        if (eEosb == oUserInfo.GetQword("AccessRights"))
+        if (EosbAccessRights::eEosb == oUserInfo.GetQword("AccessRights"))
         {
             // Get the organization guid
             std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
@@ -1566,6 +1566,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::UpdateVirtualMachineStatus(
 
     Dword dwStatus = 204;
     TlsNode * poTlsNode = nullptr;
+    Socket * poIpcDigitalContractManager = nullptr;
 
     try
     {
@@ -1581,7 +1582,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::UpdateVirtualMachineStatus(
                 // Add new VM information from the request
                 Dword dwState = c_oRequest.GetDword("State");
                 oVmBlob.PutDword("State", dwState);
-                if (eInUse == dwState)
+                if (VirtualMachineState::eInUse == dwState)
                 {
                     oVmBlob.PutString("VMLoggedInUser", c_oRequest.GetString("VMLoggedInUser"));
                 }
@@ -1612,7 +1613,87 @@ std::vector<Byte> __thiscall VirtualMachineManager::UpdateVirtualMachineStatus(
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (200 == oDatabaseResponse.GetDword("Status"))
                 {
-                    dwStatus = 200;
+                    // If the virtual machine is waiting for data, then add its information
+                    // to VirtualMachinesWaitingForData collection. When the relevant remote data connector
+                    // sends its heart beat, the ip address of the VM will be sent to the connector and it 
+                    // will upload the dataset
+                    if (VirtualMachineState::eWaitingForData == dwState)
+                    {
+                        // Call DigitalContractDatabase plugin to get the digital contract associated with the digital contract guid
+                        StructuredBuffer oDigitalContractRequest;
+                        oDigitalContractRequest.PutDword("TransactionType", 0x00000001);
+                        oDigitalContractRequest.PutString("DigitalContractGuid", oVmBlob.GetString("DigitalContractGuid"));
+                        oDigitalContractRequest.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
+                        poIpcDigitalContractManager = ::ConnectToUnixDomainSocket("/tmp/{BC5AEAAF-E37E-4605-B074-F9DF2E82CD34}");
+                        StructuredBuffer oDigitalContractResponse(::PutIpcTransactionAndGetResponse(poIpcDigitalContractManager, oDigitalContractRequest, false));
+                        poIpcDigitalContractManager->Release();
+                        poIpcDigitalContractManager = nullptr;
+                        if ((0 < oDigitalContractResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oDigitalContractResponse.GetDword("Status")))
+                        {
+                            // Make a Tls connection with the database portal
+                            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                            // Create a request to get the list of VMs
+                            oRequest.PutString("PluginName", "DatabaseManager");
+                            oRequest.PutString("Verb", "POST");
+                            oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterVmAsWaitingFOrData");
+                            oRequest.PutString("VirtualMachineGuid", c_oRequest.GetString("VirtualMachineGuid"));
+                            oRequest.PutString("IPAddress", oVmBlob.GetString("IPAddress"));
+                            oRequest.PutString("DatasetGuid", oDigitalContractResponse.GetStructuredBuffer("DigitalContract").GetString("DatasetGuid"));
+                            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                            // Send request packet
+                            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                            // Read header and body of the response
+                            stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+                            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                            unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                            stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+                            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                            // Make sure to release the poTlsNode
+                            poTlsNode->Release();
+                            poTlsNode = nullptr;
+
+                            oDatabaseResponse = stlResponse;
+                            if (201 == oDatabaseResponse.GetDword("Status"))
+                            {
+                                dwStatus = 200;
+                            }
+                        }
+                    }
+                    else if (VirtualMachineState::eReadyForComputation == dwState)
+                    {
+                        // If the virtual machine has the datasetand is ready for computation, then delete the document from the VirtualMachinesWaitingForData collection
+                        // Make a Tls connection with the database portal
+                        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                        // Create a request to get the list of VMs
+                        oRequest.PutString("PluginName", "DatabaseManager");
+                        oRequest.PutString("Verb", "DELETE");
+                        oRequest.PutString("Resource", "/SAIL/DatabaseManager/RemoveVmAsWaitingForData");
+                        oRequest.PutString("VirtualMachineGuid", c_oRequest.GetString("VirtualMachineGuid"));
+                        std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                        // Send request packet
+                        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                        // Read header and body of the response
+                        stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+                        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                        unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                        stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+                        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                        // Make sure to release the poTlsNode
+                        poTlsNode->Release();
+                        poTlsNode = nullptr;
+
+                        oDatabaseResponse = stlResponse;
+                        if (200 == oDatabaseResponse.GetDword("Status"))
+                        {
+                            dwStatus = 200;
+                        }
+                    }
+                    else
+                    {
+                        dwStatus = 200;
+                    }
                 }
             }
         }
@@ -1636,6 +1717,10 @@ std::vector<Byte> __thiscall VirtualMachineManager::UpdateVirtualMachineStatus(
     if (nullptr != poTlsNode)
     {
         poTlsNode->Release();
+    }
+    if (nullptr != poIpcDigitalContractManager)
+    {
+        poIpcDigitalContractManager->Release();
     }
 
     // Send back status of the transaction

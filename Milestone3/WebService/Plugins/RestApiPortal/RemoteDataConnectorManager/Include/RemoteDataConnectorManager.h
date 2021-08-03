@@ -107,6 +107,11 @@ class RemoteDataConnectorManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Fetch list of VM ipaddressese that are waiting for the remote data connector's dataset(s)
+        std::vector<Byte> __thiscall ConnectorHeartBeat(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Private data members
         mutable pthread_mutex_t m_sMutex;
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;

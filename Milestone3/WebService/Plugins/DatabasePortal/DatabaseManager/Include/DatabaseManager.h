@@ -138,13 +138,28 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Fetch list of VM ipaddressese that are waiting for the remote data connector's dataset(s)
+        std::vector<Byte> __thiscall GetVmsWaitingForData(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Add metadata of a new virtual machine to the database
         std::vector<Byte> __thiscall RegisterVirtualMachine(
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Add metadata of a virtual machine that is waiting for data to the database
+        std::vector<Byte> __thiscall RegisterVmAsWaitingForData(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Update metadata of virtual machine in the database
         std::vector<Byte> __thiscall UpdateVirtualMachine(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Remove metadata of virtual machine as waiting for data in the database
+        std::vector<Byte> __thiscall RemoveVmAsWaitingForData(
             _in const StructuredBuffer & c_oRequest
             );
 

@@ -298,7 +298,7 @@ void __thiscall DatasetDatabase::InitializePlugin(void)
     oDeleteDataset.PutStructuredBuffer("Eosb", oEosb);
     oDeleteDataset.PutStructuredBuffer("DatasetGuid", oDatasetGuid);
 
-    // Parameters to the Dictionary: Verb, Resource, Parameters, No. of unix connections used by the API
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Stores dataset metadata in the database
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatasetManager/RegisterDataset", oRegisterDataset, 1);
 
@@ -783,7 +783,7 @@ std::vector<Byte> __thiscall DatasetDatabase::DeleteDataset(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eDatasetAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eDatasetAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);

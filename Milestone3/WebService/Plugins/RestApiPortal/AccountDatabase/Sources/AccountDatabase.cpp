@@ -487,7 +487,6 @@ void __thiscall AccountDatabase::InitializePlugin(void)
     // Add parameters for updating organization information
     StructuredBuffer oUpdateOrganization;
     oUpdateOrganization.PutStructuredBuffer("Eosb", oEosb);
-    oUpdateOrganization.PutStructuredBuffer("OrganizationGuid", oOrganizationGuid);
     StructuredBuffer oOrganizationInformation;
     oOrganizationInformation.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
     oOrganizationInformation.PutBoolean("IsRequired", true);
@@ -529,6 +528,7 @@ void __thiscall AccountDatabase::InitializePlugin(void)
     oIsHardDelete.PutBoolean("IsRequired", false);
     oDeleteUser.PutStructuredBuffer("IsHardDelete", oIsHardDelete);
 
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Takes in an EOSB and returns a list of all organization
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AccountManager/Organizations", oListOrganizations, 1);
     // Takes in an EOSB and returns a list of all users
@@ -1208,7 +1208,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterUser(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1292,6 +1292,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
 
     Dword dwStatus = 204;
     TlsNode * poTlsNode = nullptr;
+    Socket * poIpcCryptographicManager = nullptr;
 
     try
     {
@@ -1301,7 +1302,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1331,7 +1332,29 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (204 != oDatabaseResponse.GetDword("Status"))
                 {
-                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                    std::vector<Byte> stlEosb = oUserInfo.GetBuffer("Eosb");
+                    // Update the Eosb, if the admin is updating its own Eosb
+                    if (0 == strcmp(c_oRequest.GetString("UserGuid").c_str(), oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces).c_str()))
+                    {
+                        StructuredBuffer oCryptographicRequest;
+                        oCryptographicRequest.PutDword("TransactionType", 0x00000008);
+                        oCryptographicRequest.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                        oCryptographicRequest.PutQword("UserAccessRights", c_oRequest.GetQword("AccessRights"));
+                        poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+                        StructuredBuffer oEosb = ::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oCryptographicRequest, false);
+                        poIpcCryptographicManager->Release();
+                        poIpcCryptographicManager = nullptr;
+                        if (404 != oEosb.GetDword("Status"))
+                        {
+                            oResponse.PutBuffer("Eosb", oEosb.GetBuffer("UpdatedEosb"));
+                            dwStatus = 200;
+                        }
+                    }
+                    else 
+                    {
+                        oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                        dwStatus = 200;
+                    }
                     dwStatus = 200;
                 }
             }
@@ -1356,6 +1379,10 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
     if (nullptr != poTlsNode)
     {
         poTlsNode->Release();
+    }
+    if (nullptr != poIpcCryptographicManager)
+    {
+        poIpcCryptographicManager->Release();
     }
 
     // Send back status of the transaction
@@ -1388,14 +1415,12 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateOrganizationInformation(
 
     try
     {
-        // Get organization guid
-        std::string strOrganizationGuid = c_oRequest.GetString("OrganizationGuid");
         // Get user information to check if the user has admin access rights
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
             // Check if the user is an admin and if the user belongs to the same organization
-            if ((eAdmin == oUserInfo.GetQword("AccessRights")) && (strOrganizationGuid == oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces)))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1404,7 +1429,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateOrganizationInformation(
                 oRequest.PutString("PluginName", "DatabaseManager");
                 oRequest.PutString("Verb", "PUT");
                 oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateOrganizationInformation");
-                oRequest.PutString("OrganizationGuid", strOrganizationGuid);
+                oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
                 oRequest.PutStructuredBuffer("OrganizationInformation", c_oRequest.GetStructuredBuffer("OrganizationInformation"));
                 std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
                 // Send request packet
@@ -1478,6 +1503,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
 
     Dword dwStatus = 204;
     TlsNode * poTlsNode = nullptr;
+    Socket * poIpcCryptographicManager = nullptr;
 
     try
     {
@@ -1488,8 +1514,9 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if ((strUserGuid == oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces)) || eAdmin == oUserInfo.GetQword("AccessRights"))
+            if ((strUserGuid == oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces)) || AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
+                StructuredBuffer oUserInformation = c_oRequest.GetStructuredBuffer("UserInformation");
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
                 // Create a request to add a user to the database
@@ -1498,7 +1525,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
                 oRequest.PutString("Verb", "PUT");
                 oRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateUserInformation");
                 oRequest.PutString("UserGuid", c_oRequest.GetString("UserGuid"));
-                oRequest.PutStructuredBuffer("UserInformation", c_oRequest.GetStructuredBuffer("UserInformation"));
+                oRequest.PutStructuredBuffer("UserInformation", oUserInformation);
                 oRequest.PutBuffer("AccountEncryptionKey", oUserInfo.GetBuffer("AccountEncryptionKey"));
                 std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
                 // Send request packet
@@ -1518,8 +1545,30 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (204 != oDatabaseResponse.GetDword("Status"))
                 {
-                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
-                    dwStatus = 200;
+                    // If user is updating their own information, then update the user Eosb
+                    if (0 == strcmp(strUserGuid.c_str(), oUserInfo.GetGuid("UserGuid").ToString(eHyphensAndCurlyBraces).c_str()))
+                    {
+                        StructuredBuffer oCryptographicRequest;
+                        oCryptographicRequest.PutDword("TransactionType", 0x00000009);
+                        oCryptographicRequest.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                        oCryptographicRequest.PutString("Username", oUserInformation.GetString("Name"));
+                        oCryptographicRequest.PutString("Title", oUserInformation.GetString("Title"));
+                        oCryptographicRequest.PutString("PhoneNumber", oUserInformation.GetString("PhoneNumber"));
+                        poIpcCryptographicManager = ::ConnectToUnixDomainSocket("/tmp/{AA933684-D398-4D49-82D4-6D87C12F33C6}");
+                        StructuredBuffer oEosb = ::PutIpcTransactionAndGetResponse(poIpcCryptographicManager, oCryptographicRequest, false);
+                        poIpcCryptographicManager->Release();
+                        poIpcCryptographicManager = nullptr;
+                        if (404 != oEosb.GetDword("Status"))
+                        {
+                            oResponse.PutBuffer("Eosb", oEosb.GetBuffer("UpdatedEosb"));
+                            dwStatus = 200;
+                        }
+                    }
+                    else 
+                    {
+                        oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                        dwStatus = 200;
+                    }
                 }
             }
         }
@@ -1543,6 +1592,10 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
     if (nullptr != poTlsNode)
     {
         poTlsNode->Release();
+    }
+    if (nullptr != poIpcCryptographicManager)
+    {
+        poIpcCryptographicManager->Release();
     }
 
     // Send back status of the transaction
@@ -1579,7 +1632,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizations(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eSailAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eSailAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1667,7 +1720,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListUsers(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eSailAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eSailAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1758,7 +1811,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizationUsers(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1848,7 +1901,7 @@ std::vector<Byte> __thiscall AccountDatabase::RecoverUser(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1939,7 +1992,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteUser(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -2036,7 +2089,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteOrganization(
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (eAdmin == oUserInfo.GetQword("AccessRights"))
+            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);

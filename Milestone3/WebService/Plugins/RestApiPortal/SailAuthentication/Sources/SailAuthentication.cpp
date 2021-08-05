@@ -281,10 +281,10 @@ void __thiscall SailAuthentication::InitializePlugin(void)
     // Add parameters for UpdatePassword resource
     StructuredBuffer oUpdatePassword;
     oUpdatePassword.PutStructuredBuffer("Eosb", oEosb);
-    oUpdatePassword.PutStructuredBuffer("Email", oEmail);
     oUpdatePassword.PutStructuredBuffer("CurrentPassword", oPassword);
     oUpdatePassword.PutStructuredBuffer("NewPassword", oPassword);
 
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Verifies user credentials and starts an authenticated session with SAIL SaaS
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuthenticationManager/User/Login", oLoginParameters, 2);
 
@@ -474,6 +474,7 @@ std::vector<Byte> __thiscall SailAuthentication::GetUserInfo(
             oResponse.PutGuid("OrganizationGuid", oEosb.GetGuid("OrganizationGuid"));
             // TODO: get user access rights from the confidential record, for now it can't be decrypted
             oResponse.PutQword("AccessRights", oEosb.GetQword("UserAccessRights"));
+            oResponse.PutString("Email", oEosb.GetString("Email"));
             // Send back the updated Eosb
             oResponse.PutBuffer("Eosb", oDecryptedEosb.GetBuffer("UpdatedEosb"));
             dwStatus = 200;
@@ -610,21 +611,21 @@ std::vector<Byte> __thiscall SailAuthentication::UpdatePassword(
     try
     {
         // Get user credentials
-        std::string strEmail = c_oRequest.GetString("Email");
         std::string strCurrentPassword = c_oRequest.GetString("CurrentPassword");
         std::string strNewPassword = c_oRequest.GetString("NewPassword");
-        
-        // Validate old credentials
-        StructuredBuffer oAuthenticateCredentialsRequest;
-        oAuthenticateCredentialsRequest.PutString("Email", strEmail);
-        oAuthenticateCredentialsRequest.PutString("Password", strCurrentPassword);
-        StructuredBuffer oAuthenticateCredentialsResponse = this->AuthenticateUserCredentails(oAuthenticateCredentialsRequest);
-        _ThrowBaseExceptionIf((404 == oAuthenticateCredentialsResponse.GetDword("Status")), "Current credentials are invalid.", nullptr);
 
         // Update password and re-encrypt the confidential record
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
+            std::string strEmail = oUserInfo.GetString("Email");
+            // Validate old credentials
+            StructuredBuffer oAuthenticateCredentialsRequest;
+            oAuthenticateCredentialsRequest.PutString("Email", strEmail);
+            oAuthenticateCredentialsRequest.PutString("Password", strCurrentPassword);
+            StructuredBuffer oAuthenticateCredentialsResponse = this->AuthenticateUserCredentails(oAuthenticateCredentialsRequest);
+            _ThrowBaseExceptionIf((404 == oAuthenticateCredentialsResponse.GetDword("Status")), "Current credentials are invalid.", nullptr);
+
             // Make a Tls connection with the database portal
             poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
             // Create a request to add a user to the database
@@ -655,7 +656,12 @@ std::vector<Byte> __thiscall SailAuthentication::UpdatePassword(
             StructuredBuffer oDatabaseResponse(stlResponse);
             if (404 != oDatabaseResponse.GetDword("Status"))
             {
-                oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                // Once the password is updated, re login the user with the new password and send back the new Eosb
+                oAuthenticateCredentialsRequest.PutString("Email", strEmail);
+                oAuthenticateCredentialsRequest.PutString("Password", strNewPassword);
+                oAuthenticateCredentialsResponse = this->AuthenticateUserCredentails(oAuthenticateCredentialsRequest);
+                _ThrowBaseExceptionIf((404 == oAuthenticateCredentialsResponse.GetDword("Status")), "Error logging in with the new credentials are invalid.", nullptr);
+                oResponse.PutBuffer("Eosb", oAuthenticateCredentialsResponse.GetBuffer("Eosb"));
                 dwStatus = 200;
             }
         }
@@ -729,6 +735,7 @@ std::vector<Byte> __thiscall SailAuthentication::GetBasicUserInformation(
             oResponse.PutString("Username", oEosb.GetString("Username"));
             oResponse.PutString("Title", oEosb.GetString("Title"));
             oResponse.PutString("Email", oEosb.GetString("Email"));
+            oResponse.PutString("PhoneNumber", oEosb.GetString("PhoneNumber"));
             // Send back the updated Eosb
             oResponse.PutBuffer("Eosb", oDecryptedEosb.GetBuffer("UpdatedEosb"));
             dwStatus = 200;

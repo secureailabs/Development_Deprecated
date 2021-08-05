@@ -37,18 +37,34 @@ std::string strTopMenu = oFontColor.strWhite + "Menu: \n\n" +
             oFontColor.strCyan + "12- Register a virtual machine\n" +
             oFontColor.strCyan + "13- Register a virtual machine event for DOO and its leaf events\n" +
             oFontColor.strCyan + "14- Register a virtual machine event for RO and its leaf events\n" +
-            oFontColor.strCyan + "15- Get list of all events of the organization\n" +
-            oFontColor.strCyan + "16- Get list of events for a specified parent\n" +
-            oFontColor.strBlue + "17- Register a digital contract\n" +
-            oFontColor.strBlue + "18- Get list of all digital contracts of your organization\n" +
-            oFontColor.strBlue + "19- Pull a digital contract\n" +
-            oFontColor.strBlue + "20- Approve a digital contract - Dataset Admin privileges required\n" +
-            oFontColor.strBlue + "21- Activate a digital contract - Digital Contract Admin privileges required\n" +
-            oFontColor.strYellow + "22- Register a dataset\n" +
-            oFontColor.strYellow + "23- Get list of all available datasets\n" +
-            oFontColor.strYellow + "24- Get metadata of desired dataset\n" +
-            oFontColor.strYellow + "25- Delete a dataset - Dataset Admin privileges required!\n" +
-            oFontColor.strRed + "26- Shut down servers\n" +
+            oFontColor.strCyan + "15- Update virtual machine status\n" +
+            oFontColor.strCyan + "16- Get virtual machine status\n" +
+            oFontColor.strCyan + "17- Get list of virtual machines associated with an organization\n" +
+            oFontColor.strCyan + "18- Get list of all events of the organization\n" +
+            oFontColor.strCyan + "19- Get list of events for a specified parent\n" +
+            oFontColor.strBlue + "20- Register a digital contract\n" +
+            oFontColor.strBlue + "21- Get list of all digital contracts of your organization\n" +
+            oFontColor.strBlue + "22- Pull a digital contract\n" +
+            oFontColor.strBlue + "23- Approve a digital contract - Dataset Admin privileges required\n" +
+            oFontColor.strBlue + "24- Activate a digital contract - Digital Contract Admin privileges required\n" +
+            oFontColor.strBlue + "25- Get digital contract provisioning status\n" +
+            oFontColor.strYellow + "26- Register a dataset\n" +
+            oFontColor.strYellow + "27- Get list of all available datasets\n" +
+            oFontColor.strYellow + "28- Get metadata of desired dataset\n" +
+            oFontColor.strYellow + "29- Delete a dataset - Dataset Admin privileges required!\n" +
+            oFontColor.strBlue + "30- Register an Azure settings template - Admin privileges required!\n" +
+            oFontColor.strBlue + "31- Get list of Azure settings template - Admin privileges required!\n" +
+            oFontColor.strBlue + "32- Get an Azure settings template - Admin privileges required!\n" +
+            oFontColor.strBlue + "33- Update Azure settings template - Admin privileges required!\n" +
+            oFontColor.strBlue + "34- Delete Azure settings template - Admin privileges required!\n" +
+            oFontColor.strBlue + "35- Associate Digital Contract(s) with an Azure settings template - Admin privileges required!\n" +
+            oFontColor.strYellow + "36- Register a remote data connector\n" +
+            oFontColor.strYellow + "37- Get list of remote data connectors\n" +
+            oFontColor.strYellow + "38- Pull a remote data connector's information\n" +
+            oFontColor.strYellow + "39- Update a remote data connector\n" +
+            oFontColor.strYellow + "40- Update a remote data connector\n" +
+            oFontColor.strMagenta + "41- Send remote data connector's heartbeat\n" +
+            oFontColor.strRed + "42- Shut down servers\n" +
             oFontColor.strRed + "0- Logout\n";
 
 /********************************************************************************************/

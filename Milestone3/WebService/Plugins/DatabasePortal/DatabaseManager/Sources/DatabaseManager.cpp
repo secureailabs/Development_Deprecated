@@ -227,6 +227,20 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/PullDigitalContract");
     // Get a virtual machine's information
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/PullVirtualMachine");
+    // Get list of VMs associated with a digital contract
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/ListOfVMsAssociatedWithDC");
+    // Get list of VM ip addresses associated with a digital contract
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/ListOfVMIpAddressesAssociatedWithDC");
+    // Get an azure settings template
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/PullAzureTemplate");
+    // Get a list of azure settings templates for an organization
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/ListAzureTemplates");
+    // Get a remote data connector
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/PullRemoteDataConnector");
+    // Get a list of remote data connectors for an organization
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/ListRemoteDataConnectors");
+    // Fetch list of VM ipaddressese that are waiting for the remote data connector's dataset(s)
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/GetVmsWaitingForData");
     // Add a non-leaf audit log event
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/NonLeafEvent");
     // Add a leaf audit log event
@@ -241,6 +255,12 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterVirtualMachine");
     // Takes in an EOSB and create a digital contract for a chosen dataset
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterDigitalContract");
+    // Takes in an EOSB and registers an azure settings template
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterAzureTemplate");
+    // Takes in an EOSB and registers a remote data connector
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterRemoteDataConnector");
+    // Add metadata of a virtual machine that is waiting for data to the database
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterVmAsWaitingFOrData");
     // Shuts down the server
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/ShutdownPortal");
     // Update user's access rights
@@ -251,6 +271,10 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/UpdateUserInformation");
     // Recover deleted user account
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/RecoverUser");
+    // Update an azure settings template
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/UpdateAzureTemplate");
+    // Update a remote data connector
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/DatabaseManager/UpdateRemoteDataConnector");
     // Update the digital contract when a data owner accepts the digital contract or when a researcher accepts the DC terms from the Data owner organization
     m_oDictionary.AddDictionaryEntry("PATCH", "/SAIL/DatabaseManager/Update/DigitalContract");
     // Delete a user from the database
@@ -259,6 +283,10 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/DeleteOrganization");
     // Delete a dataset record from the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/DeleteDataset");
+    // Delete an Azure template record from the database
+    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/DeleteAzureTemplate");
+    // Remove VM information as waiting for data
+    m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/RemoveVmAsWaitingForData");
     // Reset the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/ResetDatabase");
 }
@@ -347,9 +375,37 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             {
                 stlResponseBuffer = this->PullVirtualMachine(c_oRequestStructuredBuffer);
             }
+            else if ("/SAIL/DatabaseManager/ListOfVMsAssociatedWithDC" == strResource)
+            {
+                stlResponseBuffer = this->ListOfVmsAssociatedWithDc(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/ListOfVMIpAddressesAssociatedWithDC" == strResource)
+            {
+                stlResponseBuffer = this->ListOfVmIpAddressesAssociatedWithDc(c_oRequestStructuredBuffer);
+            }
             else if ("/SAIL/DatabaseManager/Organization/Information" == strResource)
             {
                 stlResponseBuffer = this->GetOrganizationInformation(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/PullAzureTemplate" == strResource)
+            {
+                stlResponseBuffer = this->PullAzureTemplate(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/ListAzureTemplates" == strResource)
+            {
+                stlResponseBuffer = this->ListAzureTemplates(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/PullRemoteDataConnector" == strResource)
+            {
+                stlResponseBuffer = this->PullRemoteDataConnector(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/ListRemoteDataConnectors" == strResource)
+            {
+                stlResponseBuffer = this->ListRemoteDataConnectors(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/GetVmsWaitingForData" == strResource)
+            {
+                stlResponseBuffer = this->GetVmsWaitingForData(c_oRequestStructuredBuffer);
             }
             else
             {
@@ -386,6 +442,18 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             {
                 stlResponseBuffer = this->RegisterDigitalContract(c_oRequestStructuredBuffer);
             }
+            else if ("/SAIL/DatabaseManager/RegisterAzureTemplate" == strResource)
+            {
+                stlResponseBuffer = this->RegisterAzureTemplate(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/RegisterRemoteDataConnector" == strResource)
+            {
+                stlResponseBuffer = this->RegisterRemoteDataConnector(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/RegisterVmAsWaitingFOrData" == strResource)
+            {
+                stlResponseBuffer = this->RegisterVmAsWaitingForData(c_oRequestStructuredBuffer);
+            }
             else if ("/SAIL/DatabaseManager/ShutdownPortal" == strResource)
             {
                 stlResponseBuffer = this->ShutdownPortal(c_oRequestStructuredBuffer);
@@ -412,6 +480,18 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             else if ("/SAIL/DatabaseManager/RecoverUser" == strResource)
             {
                 stlResponseBuffer = this->RecoverUser(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/UpdateAzureTemplate" == strResource)
+            {
+                stlResponseBuffer = this->UpdateAzureTemplate(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/UpdateVirtualMachine" == strResource)
+            {
+                stlResponseBuffer = this->UpdateVirtualMachine(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/UpdateRemoteDataConnector" == strResource)
+            {
+                stlResponseBuffer = this->UpdateRemoteDataConnector(c_oRequestStructuredBuffer);
             }
             else
             {
@@ -446,6 +526,14 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             else if ("/SAIL/DatabaseManager/DeleteDataset" == strResource)
             {
                 stlResponseBuffer = this->DeleteDataset(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/DeleteAzureTemplate" == strResource)
+            {
+                stlResponseBuffer = this->DeleteAzureTemplate(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/RemoveVmAsWaitingForData" == strResource)
+            {
+                stlResponseBuffer = this->RemoveVmAsWaitingForData(c_oRequestStructuredBuffer);
             }
             else if ("/SAIL/DatabaseManager/ResetDatabase" == strResource)
             {

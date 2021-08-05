@@ -143,9 +143,9 @@ int __thiscall SafeObject::Run(
         else
         {
             // The parent process will wait for either the child to exit after completion or
-            // wait for the halt all jobs from the Job Engine to exit or kill the child process
+            // wait for the halt all jobs signal from the Job Engine to kill the child process
 
-            // Use the process file descriptor to wait for the child process to exit
+            // Use the process file descriptor to wait for the child process to exit using epoll
             int nChildProcessFileDescriptor = ::syscall(SYS_pidfd_open, nProcessIdentifier, 0);
             _ThrowBaseExceptionIf((-1 == nChildProcessFileDescriptor), "Failed to get the file descriptor for the child process Errorno: %s.",  ::strerror(errno));
 
@@ -176,12 +176,26 @@ int __thiscall SafeObject::Run(
             nReturnValue = ::epoll_ctl(nPollingFileDescriptor, EPOLL_CTL_ADD, nINotifyFd, &oEpollEvents[1]);
             _ThrowBaseExceptionIf((0 != nReturnValue), "epoll_ctl() failed with errno = %d", errno);
 
-            // This is a blocking call to infinitely wait for either event
+            // Before going to wait a check for the kill signal file is made, this is to ensure that
+            // the kill signal was not created before the inotify_add_watch call. One could state that
+            // the check could be performed just before the inotify_add_watch call but that would miss
+            // out the time between that check and the creation of watch. Hence checking after watch
+            // would cover all the time.
+            bool fKillSignalPreExist = false;
+            int nNumberOfEvents = 0;
             struct epoll_event asPollingEvents[1];
-            std::cout << "Waiting for epoll event to occur.. " << std::endl;
-            int nNumberOfEvents = ::epoll_wait(nPollingFileDescriptor, asPollingEvents, 1, -1);
+            if (false == std::filesystem::exists(gc_strJobsSignalFolderName + "/" + gc_strHaltAllJobsSignalFilename))
+            {
+                // This is a blocking call to infinitely wait for either event
+                std::cout << "Waiting for epoll event to occur.. " << std::endl;
+                nNumberOfEvents = ::epoll_wait(nPollingFileDescriptor, asPollingEvents, 1, -1);
+            }
+            else
+            {
+                fKillSignalPreExist = true;
+            }
 
-            if (0 < nNumberOfEvents)
+            if ((0 < nNumberOfEvents) || (true == fKillSignalPreExist))
             {
                 // This is when the child process exits itself
                 if (nChildProcessFileDescriptor == asPollingEvents->data.fd)
@@ -211,14 +225,14 @@ int __thiscall SafeObject::Run(
                     }
                 }
                 // This is when a kill signal is recevied from the JobEngine
-                else if (nINotifyFd == asPollingEvents->data.fd)
+                else if ((nINotifyFd == asPollingEvents->data.fd) || (true == fKillSignalPreExist))
                 {
                     std::cout << "Child killed by orchestrator. X-< \n";
                     nProcessExitStatus = ::kill(nProcessIdentifier, SIGKILL);
                 }
                 else
                 {
-                    std::cout << "Unknown event. Should have never hit this." << std::endl;
+                    std::cout << "Potential Bug: Unknown event. Should have never hit this." << std::endl;
                 }
             }
             else
@@ -229,9 +243,7 @@ int __thiscall SafeObject::Run(
             // Cleanup the event listener
             ::inotify_rm_watch( nINotifyFd, nDirectoryToWatchFd);
             ::close(nINotifyFd);
-
             ::close(nChildProcessFileDescriptor);
-
             ::epoll_ctl(nPollingFileDescriptor, EPOLL_CTL_DEL, nINotifyFd, nullptr);
             ::epoll_ctl(nPollingFileDescriptor, EPOLL_CTL_DEL, nChildProcessFileDescriptor, nullptr);
             ::close(nPollingFileDescriptor);

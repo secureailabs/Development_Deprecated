@@ -109,7 +109,6 @@ class JobEngine : public Object
         static JobEngine m_oJobEngine;
         RootOfTrustNode * m_poRootOfTrustNode;
         std::unordered_map<std::string, unsigned int> m_stlSetOfDataConnectorGuids;
-        std::mutex m_oMutexjobEngine;
         uint64_t m_FileListenerId = 0;
         Socket * m_poSocket;
         std::unordered_map<std::string, std::shared_ptr<Job>> m_stlMapOfJobs;

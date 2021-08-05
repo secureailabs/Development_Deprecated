@@ -108,11 +108,11 @@ void __thiscall DatabaseTools::InitializeMembers(void)
     std::string strLegalAgreement = "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties. "
     "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";  
     std::string strDescription = "The dataset will be used to train models for academic research purposes.";  
-    m_stlDigitalContracts.push_back(DigitalContractInformation{"Kidney Cancer Research Consortium", 10, strLegalAgreement, 16186603, strDescription});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{"Diabetes Re-admission Model Phase 1", 28, strLegalAgreement, 24117352, strDescription});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{"Churn Prediction Project", 35, strLegalAgreement, 60768913, strDescription});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{"Harvest Model", 90, strLegalAgreement, 8090084, strDescription});
-    m_stlDigitalContracts.push_back(DigitalContractInformation{"Obesity Model", 120, strLegalAgreement, 18605667, strDescription});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Kidney Cancer Research Consortium", 10, strLegalAgreement, 16186603, strDescription, "Researcher", 2, 8, "East US"});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Diabetes Re-admission Model Phase 1", 28, strLegalAgreement, 24117352, strDescription, "Data Owner", 4, 8, "East US"});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Churn Prediction Project", 35, strLegalAgreement, 60768913, strDescription, "Researcher", 5, 8, "West Europe"});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Harvest Model", 90, strLegalAgreement, 8090084, strDescription, "SAIL", 2, 8, "West Europe"});
+    m_stlDigitalContracts.push_back(DigitalContractInformation{"Obesity Model", 120, strLegalAgreement, 18605667, strDescription, "SAIL", 1, 8, "East US 2"});
 }
 
 /********************************************************************************************/
@@ -232,7 +232,7 @@ void __thiscall DatabaseTools::AddDigitalContracts(void)
     StructuredBuffer oDcInformation;
     oDcInformation.PutString("DOOGuid", strDooGuid);
     // Register five digital contracts for the organizations
-    for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
+    for (unsigned int unIndex = 0; unIndex < m_stlDigitalContracts.size(); ++unIndex)
     {
         oDcInformation.PutString("Title", m_stlDigitalContracts.at(unIndex).m_strTitle);
         oDcInformation.PutUnsignedInt64("SubscriptionDays", m_stlDigitalContracts.at(unIndex).m_unSubscriptionDays);
@@ -258,17 +258,33 @@ void __thiscall DatabaseTools::AcceptDigitalContracts(void)
     std::string strEncodedEosb = Login(m_stlUsers.at(unDatasetAdminIndex).m_strEmail, m_strPassword);
     _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
     // Get list of all digital contracts for the data owner organization
-    for (std::string strGuid : StructuredBuffer(::ListDigitalContracts(strEncodedEosb)).GetNamesOfElements())
+    StructuredBuffer oDigitalContracts = ::ListDigitalContracts(strEncodedEosb);
+    for (std::string strGuid : oDigitalContracts.GetNamesOfElements())
     {
-        m_stlDigitalContractGuids.push_back(strGuid);
+        for (unsigned int unIndex = 0; unIndex < m_stlDigitalContracts.size(); ++unIndex)
+        {
+            if (0 == strcmp(m_stlDigitalContracts[unIndex].m_strTitle.c_str(), oDigitalContracts.GetStructuredBuffer(strGuid.c_str()).GetString("Title").c_str()))
+            {
+                if (unIndex + 1 > m_stlDigitalContractGuids.size())
+                {
+                    m_stlDigitalContractGuids.resize(unIndex + 1);
+                }
+                m_stlDigitalContractGuids[unIndex] = strGuid;
+                break;
+            }
+        }
     }
     // Accept all five digital contracts
-    for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
+    for (unsigned int unIndex = 0; unIndex < m_stlDigitalContracts.size(); ++unIndex)
     {
         StructuredBuffer oDcInformation;
         oDcInformation.PutUnsignedInt64("RetentionTime", m_stlDigitalContracts.at(unIndex).m_unRetentionTime);
         oDcInformation.PutString("LegalAgreement", m_stlDigitalContracts.at(unIndex).m_strLegalAgreement);
-        oDcInformation.PutString("DigitalContractGuid", m_stlDigitalContractGuids.at(unIndex));
+        oDcInformation.PutString("DigitalContractGuid", m_stlDigitalContractGuids[unIndex]);
+        oDcInformation.PutString("HostForVirtualMachines", m_stlDigitalContracts.at(unIndex).m_strHostForVM);
+        oDcInformation.PutUnsignedInt64("NumberOfVirtualMachines", m_stlDigitalContracts.at(unIndex).m_un64NoOfVM);
+        oDcInformation.PutUnsignedInt64("NumberOfVCPU", m_stlDigitalContracts.at(unIndex).m_un64NoOfVCPU);
+        oDcInformation.PutString("HostRegion", m_stlDigitalContracts.at(unIndex).m_strHostRegion);
         // Accept digital contract
         ::AcceptDigitalContract(strEncodedEosb, oDcInformation);
     }
@@ -289,10 +305,10 @@ void __thiscall DatabaseTools::ActivateDigitalContracts(void)
     _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
 
     // Activate all five digital contracts
-    for (unsigned int unIndex = 0; unIndex < 5; ++unIndex)
+    for (unsigned int unIndex = 0; unIndex < m_stlDigitalContractGuids.size(); ++unIndex)
     {
         StructuredBuffer oDcInformation;
-        oDcInformation.PutString("DigitalContractGuid", m_stlDigitalContractGuids.at(unIndex));
+        oDcInformation.PutString("DigitalContractGuid", m_stlDigitalContractGuids[unIndex]);
         // Activate digital contract
         ::ActivateDigitalContract(strEncodedEosb, oDcInformation);
     }
@@ -321,6 +337,8 @@ void __thiscall DatabaseTools::AddVirtualMachine(void)
     StructuredBuffer oVmInformation;
     oVmInformation.PutString("DigitalContractGuid", m_stlDigitalContractGuids.at(0));
     oVmInformation.PutString("IPAddress", "127.0.0.1");
+    oVmInformation.PutUnsignedInt64("NumberOfVCPU", 8);
+    oVmInformation.PutString("HostRegion", "East US");
     // Register Vm
     std::string strVmGuid = Guid(eVirtualMachine).ToString(eHyphensAndCurlyBraces);
     std::string strVmEosb = ::RegisterVirtualMachine(strIEosb, strVmGuid, oVmInformation);

@@ -94,26 +94,6 @@ class DatabaseManager : public Object
 
     private:
 
-        // Fetch user's organization information from the database
-        std::vector<Byte> __thiscall GetOrganizationInformation(
-            _in const StructuredBuffer & c_oRequest
-            );
-        // Fetch basic organization record from the database
-        std::vector<Byte> __thiscall GetBasicOrganizationRecord(
-            _in const StructuredBuffer & c_oRequest
-            );
-        // Get organization name associated to a guid
-        std::vector<Byte> __thiscall GetOrganizationName(
-            _in const std::string & c_strOrganizationGuid
-            );
-        // Fetch basic user record from the database
-        std::vector<Byte> __thiscall GetBasicUserRecord(
-            _in const StructuredBuffer & c_oRequest
-            );
-        // Fetch confidential user record from the database
-        std::vector<Byte> __thiscall GetConfidentialUserRecord(
-            _in const StructuredBuffer & c_oRequest
-            );
         // Given an organization guid fetch digital contract event guid, if exists
         std::vector<Byte> __thiscall DigitalContractBranchExists(
             _in const StructuredBuffer & c_oRequest
@@ -134,11 +114,6 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
-        // Fetch the virtual machine information
-        std::vector<Byte> __thiscall PullVirtualMachine(
-            _in const StructuredBuffer & c_oRequest
-            );
-
         // Store root/branch event in the database
         std::vector<Byte> __thiscall AddNonLeafEvent(
             _in const StructuredBuffer & c_oRequest
@@ -147,6 +122,68 @@ class DatabaseManager : public Object
         std::vector<Byte> __thiscall AddLeafEvent(
             _in const StructuredBuffer & c_oRequest
             );
+
+        // Fetch the virtual machine information
+        std::vector<Byte> __thiscall PullVirtualMachine(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch the virtual machines associated with a digital contract
+        std::vector<Byte> __thiscall ListOfVmsAssociatedWithDc(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch the virtual machines' ip addresses associated with a digital contract
+        std::vector<Byte> __thiscall ListOfVmIpAddressesAssociatedWithDc(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch list of VM ipaddressese that are waiting for the remote data connector's dataset(s)
+        std::vector<Byte> __thiscall GetVmsWaitingForData(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Add metadata of a new virtual machine to the database
+        std::vector<Byte> __thiscall RegisterVirtualMachine(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Add metadata of a virtual machine that is waiting for data to the database
+        std::vector<Byte> __thiscall RegisterVmAsWaitingForData(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update metadata of virtual machine in the database
+        std::vector<Byte> __thiscall UpdateVirtualMachine(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Remove metadata of virtual machine as waiting for data in the database
+        std::vector<Byte> __thiscall RemoveVmAsWaitingForData(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch user's organization information from the database
+        std::vector<Byte> __thiscall GetOrganizationInformation(
+            _in const StructuredBuffer & c_oRequest
+            );
+        // Fetch basic organization record from the database
+        std::vector<Byte> __thiscall GetBasicOrganizationRecord(
+            _in const StructuredBuffer & c_oRequest
+            );
+        // Get organization name associated to a guid
+        std::vector<Byte> __thiscall GetOrganizationName(
+            _in const std::string & c_strOrganizationGuid
+            );
+        // Fetch basic user record from the database
+        std::vector<Byte> __thiscall GetBasicUserRecord(
+            _in const StructuredBuffer & c_oRequest
+            );
+        // Fetch confidential user record from the database
+        std::vector<Byte> __thiscall GetConfidentialUserRecord(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Add a new organization to the database and call AddSuperUser() to add the organziation's super user
         std::vector<Byte> __thiscall RegisterOrganization(
             _in const StructuredBuffer & c_oRequest
@@ -159,10 +196,6 @@ class DatabaseManager : public Object
             );
         // Add a new user to the database
         std::vector<Byte> __thiscall RegisterUser(
-            _in const StructuredBuffer & c_oRequest
-            );
-        // Add metadata of a new virtual machine to the database
-        std::vector<Byte> __thiscall RegisterVirtualMachine(
             _in const StructuredBuffer & c_oRequest
             );
 
@@ -252,6 +285,51 @@ class DatabaseManager : public Object
 
         // Delete a dataset 
         std::vector<Byte> __thiscall DeleteDataset(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch list of azure settings templates
+        std::vector<Byte> __thiscall ListAzureTemplates(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch an azure settings template
+        std::vector<Byte> __thiscall PullAzureTemplate(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Register an azure settings template
+        std::vector<Byte> __thiscall RegisterAzureTemplate(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update an azure settings template
+        std::vector<Byte> __thiscall UpdateAzureTemplate(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Delete an azure settings template
+        std::vector<Byte> __thiscall DeleteAzureTemplate(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch list of remote data connectors
+        std::vector<Byte> __thiscall ListRemoteDataConnectors(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch a remote data connector's metadata
+        std::vector<Byte> __thiscall PullRemoteDataConnector(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Register a remote data connector
+        std::vector<Byte> __thiscall RegisterRemoteDataConnector(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update a remote data connector
+        std::vector<Byte> __thiscall UpdateRemoteDataConnector(
             _in const StructuredBuffer & c_oRequest
             );
 

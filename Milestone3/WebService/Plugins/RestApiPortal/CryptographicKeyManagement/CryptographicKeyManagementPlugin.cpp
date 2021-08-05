@@ -387,6 +387,7 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     oEosb.PutByte("ElementType", BUFFER_VALUE_TYPE);
     oEosb.PutBoolean("IsRequired", true);
     oRefreshEosb.PutStructuredBuffer("Eosb", oEosb);
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Re-encrypts the old Eosb with the latest key and returns the fresh Eosb
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/RefreshEosb", oRefreshEosb, 0);
 
@@ -396,6 +397,7 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     oMessageDigest.PutByte("ElementType", BUFFER_VALUE_TYPE);
     oMessageDigest.PutBoolean("IsRequired", true);
     oSignMessageDigest.PutStructuredBuffer("MessageDigest", oMessageDigest);
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Sign the message digest with the specified key or the user key
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/SignMessageDigest", oSignMessageDigest, 0);
 
@@ -406,12 +408,14 @@ void __thiscall CryptographicKeyManagementPlugin::InitializePlugin(void)
     oSignature.PutByte("ElementType", BUFFER_VALUE_TYPE);
     oSignature.PutBoolean("IsRequired", true);
     oVerifySignature.PutStructuredBuffer("Signature", oSignature);
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Verify the signature with the userkey and message digest
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/VerifySignature", oVerifySignature, 0);
 
     // TODO: Remove this resource in the future or figure out how the Initializer is going to get the IEosb
     StructuredBuffer oGetIEosb;
     oGetIEosb.PutStructuredBuffer("Eosb", oEosb);
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Takes in an EOSB and sends back an imposter EOSB (IEOSB)
     // IEOSB has restricted rights and thus minimizes security risks when initializing and logging onto VM's
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/CryptographicManager/User/GetIEosb", oGetIEosb, 0);
@@ -508,6 +512,14 @@ void __thiscall CryptographicKeyManagementPlugin::HandleIpcRequest(
         case 0x00000007 // GetUserInfoAndUpdateEosb which registers and unregisters an Eosb
         :
             stlResponse = this->GetUserInfoAndUpdateEosb(oRequestParameters);
+            break;
+        case 0x00000008 // UpdateUserAccessRights
+        :
+            stlResponse = this->UpdateUserAccessRights(oRequestParameters);
+            break;
+        case 0x00000009 // UpdateUserInformation
+        :
+            stlResponse = this->UpdateUserInformation(oRequestParameters);
             break;
     }
 
@@ -767,6 +779,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
         oStructuredBufferEosb.PutString("Username", oPlainTextConfidentialUserRecord.GetString("Username"));
         oStructuredBufferEosb.PutString("Title", oPlainTextConfidentialUserRecord.GetString("Title"));
         oStructuredBufferEosb.PutString("Email", oPlainTextConfidentialUserRecord.GetString("Email"));
+        oStructuredBufferEosb.PutString("PhoneNumber", oPlainTextConfidentialUserRecord.GetString("PhoneNumber"));
         oStructuredBufferEosb.PutQword("UserAccessRights", oPlainTextConfidentialUserRecord.GetQword("AccessRights"));
         oStructuredBufferEosb.PutUnsignedInt64("Timestamp", oPlainTextConfidentialUserRecord.GetUnsignedInt64("TimeOfAccountCreation"));
         oStructuredBufferEosb.PutGuid("UserRootKeyId", oPlainTextConfidentialUserRecord.GetGuid("UserRootKeyGuid"));
@@ -1129,6 +1142,114 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::UnregisterEosb(
     oResponseEosb.PutDword("Status", dwStatus);
 
     return oResponseEosb.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function UpdateUserAccessRights
+ * @brief Decrypt the Eosb, update the user access rights and return the encrypted Eosb
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException on failure
+ * @returns Serialized buffer containing the updated Eosb
+ * @note For internal user by plugins only
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::UpdateUserAccessRights(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+
+    try 
+    {
+        std::vector<Byte> stlEncryptedEsob = c_oRequest.GetBuffer("Eosb");
+        // Get plain text Eosb
+        StructuredBuffer oPlainTextEosb(this->GetPlainTextSsbFromEosb(stlEncryptedEsob));
+        // Update the user access rights
+        oPlainTextEosb.PutQword("UserAccessRights", c_oRequest.GetQword("UserAccessRights"));
+        // Encrypt the updated Eosb
+        std::vector<Byte> stlUpdatedEosb = this->CreateEosbFromPlainSsb(oPlainTextEosb.GetSerializedBuffer());
+        // Add Updated Eosb to the response
+        oResponse.PutBuffer("UpdatedEosb", stlUpdatedEosb);
+        dwStatus = 200;
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+        dwStatus = 500;
+    }
+
+    // Add status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class CryptographicKeyManagementPlugin
+ * @function UpdateUserInformation
+ * @brief Decrypt the Eosb, update the user information and return the encrypted Eosb
+ * @param[in] c_oRequest contains the request body
+ * @throw BaseException on failure
+ * @returns Serialized buffer containing the updated Eosb
+ * @note For internal use by plugins only
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::UpdateUserInformation(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 404;
+
+    try 
+    {
+        std::vector<Byte> stlEncryptedEsob = c_oRequest.GetBuffer("Eosb");
+        // Get plain text Eosb
+        StructuredBuffer oPlainTextEosb(this->GetPlainTextSsbFromEosb(stlEncryptedEsob));
+        // Update the user information
+        oPlainTextEosb.PutString("Username", c_oRequest.GetString("Username"));
+        oPlainTextEosb.PutString("Title", c_oRequest.GetString("Title"));
+        oPlainTextEosb.PutString("PhoneNumber", c_oRequest.GetString("PhoneNumber"));
+        // Encrypt the updated Eosb
+        std::vector<Byte> stlUpdatedEosb = this->CreateEosbFromPlainSsb(oPlainTextEosb.GetSerializedBuffer());
+        // Add Updated Eosb to the response
+        oResponse.PutBuffer("UpdatedEosb", stlUpdatedEosb);
+        dwStatus = 200;
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+        dwStatus = 500;
+    }
+
+    // Add status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
 }
 
 /********************************************************************************************

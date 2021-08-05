@@ -39,6 +39,8 @@ typedef enum guidtype
     eAuditEventBranchNode = 0x7,
     eAuditEventEncryptedLeafNode = 0x8,
     eAuditEventPlainTextLeafNode = 0x9,
+    eAzureSettingsTemplate = 0xA,
+    eRemoteDataConnector = 0xB,
     eOthers = 0xF
 }
 GuidOfObjectType;

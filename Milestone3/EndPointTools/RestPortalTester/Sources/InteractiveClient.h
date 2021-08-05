@@ -96,6 +96,18 @@ extern std::string RegisterVmForComputation(
     _in const std::string & c_strVmGuid
     );
 
+extern bool UpdateVirtualMachineStatus(
+    _in const std::string & c_strEncodedEosb
+    );
+
+extern std::vector<Byte> PullVirtualMachine(
+    _in const std::string & c_strEncodedEosb
+    );
+
+extern bool ListVirtualMachines(
+    _in const std::string & c_strEncodedEosb
+    );
+
 extern bool GetListOfEvents(
     _in const std::string & c_strEncodedEosb,
     _in const std::string & c_strParentGuid,
@@ -208,6 +220,10 @@ extern std::vector<Byte> PullDigitalContract(
     _in const std::string & c_strDcGuid
     );
 
+extern bool GetDigitalContractProvisioningStatus(
+    _in const std::string & c_strEosb
+    );
+
 extern bool RegisterDataset(
     _in const std::string & c_strEosb
     );
@@ -226,6 +242,50 @@ extern bool PullDataset(
     );
 
 extern bool DeleteDataset(
+    _in const std::string & c_strEosb
+    );
+
+extern bool RegisterAzureTemplate(
+    _in const std::string & c_strEosb
+    );
+
+extern bool ListAzureTemplates(
+    _in const std::string & c_strEosb
+    );
+
+extern bool PullAzureTemplate(
+    _in const std::string & c_strEosb
+    );
+
+extern bool UpdateAzureTemplate(
+    _in const std::string & c_strEosb
+    );
+
+extern bool DeleteAzureTemplate(
+    _in const std::string & c_strEosb
+    );
+
+extern bool AssociateDigitalContractWithAzureTemplate(
+    _in const std::string & c_strEosb
+    );
+
+extern bool RegisterRemoteDataConnector(
+    _in const std::string & c_strEosb
+    );
+
+extern bool ListRemoteDataConnectors(
+    _in const std::string & c_strEosb
+    );
+
+extern bool PullRemoteDataConnector(
+    _in const std::string & c_strEosb
+    );
+
+extern bool UpdateRemoteDataConnector(
+    _in const std::string & c_strEosb
+    );
+
+extern bool SendRemoteDataConnectoHeartBeat(
     _in const std::string & c_strEosb
     );
 

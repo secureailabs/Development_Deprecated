@@ -18,6 +18,9 @@
 #include "PluginDictionary.h"
 #include "RestFrameworkSharedFunctions.h"
 #include "StructuredBuffer.h"
+#include "Socket.h"
+#include "SocketServer.h"
+#include "ThreadManager.h"
 
 #include <pthread.h>
 #include <string.h>
@@ -66,15 +69,26 @@ class VirtualMachineManager : public Object
             _in unsigned int unSerializedResponseBufferSizeInBytes
             );
 
+        // Start the Ipc server
+        void __thiscall RunIpcServer(
+            _in SocketServer * poIpcServer,
+            _in ThreadManager * poThreadManager
+        );
+
+        // Handle an incoming Ipc request and call the relevant function based on the identifier
+        void __thiscall HandleIpcRequest(
+            _in Socket * poSocket
+            );
+
     private:
 
-        // Fetch list of running Vm instances
-        std::vector<Byte> __thiscall GetListOfRunningVmInstances(
+        // Fetch list of running VMs associated with the digital contract
+        std::vector<Byte> __thiscall GetListOfOrganizationVMs(
             _in const StructuredBuffer & c_oRequest
             );
 
-        // Report if a VmInstance is still running or not
-        std::vector<Byte> __thiscall GetVmHeartBeat(
+        // Fetch list of running VMs' ip addresses associated with the digital contract
+        std::vector<Byte> __thiscall GetListOfVmIpAddressesAssociatedWithDc(
             _in const StructuredBuffer & c_oRequest
             );
 
@@ -91,6 +105,7 @@ class VirtualMachineManager : public Object
         // Check if IEosb is of the data owner of the digital contract associated with the strDcGuid
         std::vector<Byte> __thiscall VerifyDigitalContract(
             _in const StructuredBuffer & c_oRequest,
+            _in bool fIsEitherRoOrDoo,
             _in bool fIsResearcher
             );
 
@@ -111,6 +126,11 @@ class VirtualMachineManager : public Object
 
         // Register VM audit event
         std::vector<Byte> __thiscall RegisterVmAuditEvent(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Update a virtual machine's status
+        std::vector<Byte> __thiscall UpdateVirtualMachineStatus(
             _in const StructuredBuffer & c_oRequest
             );
 

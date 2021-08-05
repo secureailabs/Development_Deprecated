@@ -426,6 +426,7 @@ void __thiscall AuditLogManager::InitializePlugin(void)
     oFilters.PutStructuredBuffer("TypeOfEvents", oTypeOfEvents);
     oGetListOfEvents.PutStructuredBuffer("Filters", oFilters);
 
+    // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Takes in a EOSB and registers leaf events
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/AuditLogManager/LeafEvents", oRegisterLeafEvents, 1);
 

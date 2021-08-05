@@ -285,7 +285,7 @@ std::vector<Byte> __thiscall DatabaseManager::GetBasicUserRecord(
             oBasicUser = oBasicUserCollection.find_one(document{} 
                                                     << "64BitHash" << (double)qw64BitHash 
                                                     << "AccountStatus" <<  open_document
-                                                    << "$lte" << eOpen << close_document
+                                                    << "$lte" << AccountStatus::eOpen << close_document
                                                     << finalize);
         }
         else
@@ -631,7 +631,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddSuperUser(
             << "64BitHash" << (double) qw64BitHashPassphrase
             << "OrganizationUuid" << c_oRequest.GetString("OrganizationUuid")
             << "UserUuid" << strUserGuid
-            << "AccountStatus" << (double) eNew
+            << "AccountStatus" << (double) AccountStatus::eNew
             << "WrappedAccountKey" << oWrappedAccountEncryptionKey
             << finalize;
 
@@ -760,7 +760,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterUser(
                 << "64BitHash" << (double) qw64BitHashPassphrase
                 << "OrganizationUuid" << c_oRequest.GetString("OrganizationGuid")
                 << "UserUuid" << strUserGuid
-                << "AccountStatus" << (double) eNew
+                << "AccountStatus" << (double) AccountStatus::eNew
                 << "WrappedAccountKey" << oWrappedAccountEncryptionKey
                 << finalize;
 
@@ -972,7 +972,11 @@ std::vector<Byte> __thiscall DatabaseManager::UpdateOrganizationInformation(
         bsoncxx::stdx::optional<bsoncxx::document::value> oConfidentialDocument = oSailDatabase["ConfidentialOrganizationOrUser"].find_one(document{} 
                                                                                                             << "OrganizationOrUserUuid" << strOrganizationGuid 
                                                                                                             << finalize);
-        if (bsoncxx::stdx::nullopt != oConfidentialDocument)
+        // Get organization basic document
+        bsoncxx::stdx::optional<bsoncxx::document::value> oBasicDocument = oSailDatabase["BasicOrganization"].find_one(document{} 
+                                                                                                            << "OrganizationUuid" << strOrganizationGuid 
+                                                                                                            << finalize);
+        if ((bsoncxx::stdx::nullopt != oConfidentialDocument) && (bsoncxx::stdx::nullopt != oBasicDocument))
         {
             mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
             {
@@ -999,9 +1003,14 @@ std::vector<Byte> __thiscall DatabaseManager::UpdateOrganizationInformation(
                         uint32_t(oConfidentialOrganization.GetSerializedBufferRawDataSizeInBytes()),
                         oConfidentialOrganization.GetSerializedBufferRawDataPtr()
                     };
+                    // Update the confidential record
                     oSailDatabase["ConfidentialOrganizationOrUser"].update_one(*poSession, document{} << "OrganizationOrUserUuid" << strOrganizationGuid << finalize,
                                                         document{} << "$set" << open_document <<
                                                         "EncryptedSsb" << oNewEncryptedSsb << close_document << finalize);
+                    // Update the basic record
+                    oSailDatabase["BasicOrganization"].update_one(*poSession, document{} << "OrganizationUuid" << strOrganizationGuid << finalize,
+                                                        document{} << "$set" << open_document <<
+                                                        "OrganizationName" << oOrganizationInformation.GetString("OrganizationName") << close_document << finalize);
                 }
             };
             // Create a session and start the transaction
@@ -1496,7 +1505,7 @@ std::vector<Byte> __thiscall DatabaseManager::RecoverUser(
             {
                 oSailDatabase["BasicUser"].update_one(*poSession, document{} << "UserUuid" << strUserGuid << finalize,
                                                         document{} << "$set" << open_document <<
-                                                        "AccountStatus" << (double) eOpen << close_document << finalize);
+                                                        "AccountStatus" << (double) AccountStatus::eOpen << close_document << finalize);
             };
 
             // Create a session and start the transaction
@@ -1602,7 +1611,7 @@ std::vector<Byte> __thiscall DatabaseManager::DeleteUser(
                 {
                     oSailDatabase["BasicUser"].update_one(*poSession, document{} << "UserUuid" << strUserGuid << finalize,
                                                             document{} << "$set" << open_document <<
-                                                            "AccountStatus" << (double) eClosed << close_document << finalize);
+                                                            "AccountStatus" << (double) AccountStatus::eClosed << close_document << finalize);
                 };
 
                 // Create a session and start the transaction

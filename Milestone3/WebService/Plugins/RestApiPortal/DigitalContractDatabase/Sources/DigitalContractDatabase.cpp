@@ -2038,7 +2038,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
         if (200 == oUserInfo.GetDword("Status"))
         {
             Qword qwAccessRights = oUserInfo.GetQword("AccessRights");
-            if ((eOrganizationUser == qwAccessRights) || (eAdmin == qwAccessRights))
+            if (eAdmin == qwAccessRights)
             {
                 // Get the digital contract blob
                 StructuredBuffer oDcBlob(this->PullDigitalContract(c_oRequest));
@@ -2048,23 +2048,23 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
                     std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
                     if (oDcBlob.GetString("ResearcherOrganization") == strOrganizationGuid)
                     {
-                        StructuredBuffer oSsb = oDcBlob.GetStructuredBuffer("DigitalContract");
-                        std::cout << oSsb.ToString() << std::endl;
-                        if (eActive == oSsb.GetDword("ContractStage"))
+                        StructuredBuffer oDigitialContract = oDcBlob.GetStructuredBuffer("DigitalContract");
+                        std::cout << oDigitialContract.ToString() << std::endl;
+                        if (eActive == oDigitialContract.GetDword("ContractStage"))
                         {
                             uint64_t unCurrentTime = ::GetEpochTimeInSeconds();
                             // Calculate expiration time and check if the contact is still active
-                            uint64_t unExpirationTime = oSsb.GetUnsignedInt64("ExpirationTime");
+                            uint64_t unExpirationTime = oDigitialContract.GetUnsignedInt64("ExpirationTime");
                             _ThrowBaseExceptionIf((unCurrentTime > unExpirationTime), "Digital Contract Expired", nullptr);
 
                             // The location of Virtual Machines Provisioning is part of Digital Contract
-                            std::string strLocation = oSsb.GetString("HostRegion");
+                            std::string strLocation = oDigitialContract.GetString("HostRegion");
 
                             // Check if the dataset attached to the Digital Contract is registered
                             // and the Remote Data Connector sent a ping. Get the time of the
                             // latest ping and if the ping is older than the dataconnector_ping_duration
                             // the Remote DataConnector is deemed dead and this request will fail
-                            std::string strRequiredDatasetGuid = oSsb.GetString("DatasetGuid");
+                            std::string strRequiredDatasetGuid = oDigitialContract.GetString("DatasetGuid");
 
                             bool fIsRemoteDataConnectorActive = true;
 
@@ -2072,10 +2072,10 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
                             StructuredBuffer oRemoteDataconnectorRequest;
                             oRemoteDataconnectorRequest.PutDword("TransactionType", 0x00000001);
                             oRemoteDataconnectorRequest.PutBuffer("Eosb", stlEosb);
-                            oRemoteDataconnectorRequest.PutString("OrganizationGuid", oSsb.GetString("DataOwnerOrganization"));
+                            oRemoteDataconnectorRequest.PutString("OrganizationGuid", oDigitialContract.GetString("DataOwnerOrganization"));
                             Socket * poIpcAzureManager = ::ConnectToUnixDomainSocket("/tmp/{9546C893-7F55-4FB7-BA63-B94B172105A0}");
                             StructuredBuffer oRemoteDataconnectorRequestResponse(::PutIpcTransactionAndGetResponse(poIpcAzureManager, oRemoteDataconnectorRequest, false));
-                            poIpcAzureManager->Release();
+                                poIpcAzureManager->Release();
                             poIpcAzureManager = nullptr;
 
                             StructuredBuffer oRemoteDataConnectors = oRemoteDataconnectorRequestResponse.GetStructuredBuffer("Connectors");
@@ -2093,14 +2093,14 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
                             _ThrowBaseExceptionIf((false == fIsRemoteDataConnectorActive), "No remote data connector serving the requested dataset", nullptr);
 
                             // Get the Guid of the user who's azure template are to be used to create Virtual Machine
-                            std::string strHostForVirtualMachine = oSsb.GetString("HostForVirtualMachines");
+                            std::string strHostForVirtualMachine = oDigitialContract.GetString("HostForVirtualMachines");
                             if ("DataOwner" == strHostForVirtualMachine)
                             {
 
                             }
 
                             // Get the Azure Template Uuid from the Digital Contract
-                            std::string strAzureTemplateUuid = oSsb.GetString("AzureTemplateGuid");
+                            std::string strAzureTemplateUuid = oDigitialContract.GetString("AzureTemplateGuid");
                             std::cout << "strAzureTemplateUuid" << strAzureTemplateUuid << std::endl;
                             fflush(stdout);
                             // Use the TemplateUuid to fetch the Azure Template
@@ -2150,7 +2150,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
 
                                 // Create a thread which will keep updating the VM status on the database as it proceeds
                                 // This API will return the response, stating that the VM creation has started
-                                std::thread oThreadCreateVirtualMachine(&DigitalContractDatabase::ProvisionVirtualMachine, this, oSsb, oAzureTemplateResponse.GetBuffer("Eosb"), strApplicationID, strSecret, strTenantID, strSubscriptionID, strResourceGroup, oNewVmGuid.ToString(eRaw), strParamterJson, strLocation);
+                                std::thread oThreadCreateVirtualMachine(&DigitalContractDatabase::ProvisionVirtualMachine, this, oDigitialContract, oAzureTemplateResponse.GetBuffer("Eosb"), strApplicationID, strSecret, strTenantID, strSubscriptionID, strResourceGroup, oNewVmGuid.ToString(eRaw), strParamterJson, strLocation);
                                 oThreadCreateVirtualMachine.detach();
                                 // Return a VM provisioning start success response here.
                             }

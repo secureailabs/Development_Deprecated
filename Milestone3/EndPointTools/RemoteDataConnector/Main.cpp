@@ -28,7 +28,7 @@ void PrintHelp(void)
 {
     __DebugFunction();
 
-    std::cout << "Usage: RemoteDataConnector [--Folder=<FolderName>] [--PortalIp=<RestPortalIp>] [--User=<username> --Password=<password>]" << std::endl;
+    std::cout << "Usage: RemoteDataConnector [--Folder=<FolderName>] [--PortalIp=<RestPortalIp> --Port=<RestPortalIp>] [--User=<username> --Password=<password>]" << std::endl;
     ::exit(1);
 }
 
@@ -87,7 +87,7 @@ int main(
         if (true == oCommandLineArguments.IsElementPresent("PortalIp", ANSI_CHARACTER_STRING_VALUE_TYPE))
         {
             strRestPortalApi = oCommandLineArguments.GetString("PortalIp");
-            if (true == oCommandLineArguments.IsElementPresent("Port", DWORD_VALUE_TYPE))
+            if (true == oCommandLineArguments.IsElementPresent("Port", ANSI_CHARACTER_STRING_VALUE_TYPE))
             {
                 dwPort = std::stoi(oCommandLineArguments.GetString("Port"));
             }
@@ -111,7 +111,7 @@ int main(
             strUserEmail = oCommandLineArguments.GetString("User");
             if (true == oCommandLineArguments.IsElementPresent("Password", ANSI_CHARACTER_STRING_VALUE_TYPE))
             {
-                strUserEmail = oCommandLineArguments.GetString("User");
+                strPassword = oCommandLineArguments.GetString("Password");
             }
             else
             {

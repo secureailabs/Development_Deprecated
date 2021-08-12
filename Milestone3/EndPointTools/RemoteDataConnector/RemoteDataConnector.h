@@ -58,7 +58,7 @@ class RemoteDataConnector : public Object
         void __thiscall NewDatasetFoundCallback(
             _in const std::string & c_strDatasetName
             ) throw();
-        bool __thiscall UpdateDatasets(void) throw();
+        bool __thiscall UpdateDatasets(void);
         void __thiscall UploadDataSetToVirtualMachine(
             _in const std::string c_strVirtualMachineAddress,
             _in const std::string c_strDatasetFileName

@@ -159,7 +159,7 @@ void __thiscall RemoteDataConnector::NewDatasetFoundCallback(
             // so that it is updated by only one thread
             std::lock_guard lock(m_stlMutexRestConnection);
 
-            std::string strDatasetGuid = oStructuredBufferDataset.GetString("Guid");
+            std::string strDatasetGuid = oStructuredBufferDataset.GetString("DatasetUuid");
             m_oCollectionOfDatasets.PutStructuredBuffer(strDatasetGuid.c_str(), oStructuredBufferDataset);
             if (true == this->UpdateDatasets())
             {
@@ -215,12 +215,11 @@ void __thiscall RemoteDataConnector::SendDataConnectorHeartbeat(void) throw()
         {
             // Send the ping to the REST portal and get a response stating if any
             // Virtual Machine is waiting for this dataset
-            std::string strVerb = "POST";
-            std::string strApiUrl = "/SAIL/RemoteDataConnectorManager/HeartBeart?Eosb="+ m_strUserEosb;
+            std::string strVerb = "PUT";
+            std::string strApiUrl = "/SAIL/RemoteDataConnectorManager/HeartBeat?Eosb="+ m_strUserEosb;
             std::string strJsonBody = JsonValue::ParseStructuredBufferToJson(oHeartbeatRequest)->ToString();
             std::vector<Byte> stlRestResponse = ::RestApiCall(m_strRestPortalAddress, m_dwRestPortalPort, strVerb, strApiUrl, strJsonBody, true);
             std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
-
             StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
             if (200 == oResponse.GetFloat64("Status"))
             {
@@ -392,7 +391,7 @@ void __thiscall RemoteDataConnector::UploadDataSetToVirtualMachine(
  * @brief Update the datasets to the SAIL database
  * @return true or false status of update success
  ********************************************************************************************/
-bool __thiscall RemoteDataConnector::UpdateDatasets(void) throw()
+bool __thiscall RemoteDataConnector::UpdateDatasets(void)
 {
     __DebugFunction();
     __DebugAssert(0 < m_strRestPortalAddress.length());
@@ -403,7 +402,7 @@ bool __thiscall RemoteDataConnector::UpdateDatasets(void) throw()
     oUpdateDataConnector.PutString("RemoteDataConnectorGuid", m_oGuidDataConnector.ToString(eHyphensAndCurlyBraces));
     oUpdateDataConnector.PutStructuredBuffer("Datasets", m_oCollectionOfDatasets);
     // TODO: fill in proper version
-    oUpdateDataConnector.PutStructuredBuffer("Version", "0.0.1");
+    oUpdateDataConnector.PutString("Version", "0.0.1");
 
     // On finding a dataset the new RemoteDataConnector is registered, but if it has been already
     // registered on the portal but a new dataset arrives, a call will be made to update the
@@ -492,7 +491,14 @@ StructuredBuffer __thiscall RemoteDataConnector::VerifyDataset(
         stlDatasetFile.read((char *)stlMetaDataStructuredBuffer.data(), m_unMetaDataSizeInBytes);
         StructuredBuffer oDataSetMetaDataStructuredBuffer(stlMetaDataStructuredBuffer);
 
-        oDatasetInformation.PutString("DatasetUuid", oDataSetMetaDataStructuredBuffer.GetString("UUID"));
+        std::string strDatasetUuid = oDataSetMetaDataStructuredBuffer.GetString("UUID");
+
+        oDatasetInformation.PutString("DatasetUuid", strDatasetUuid);
+
+        // TODO: verify the dataset file signature
+
+        // Make a call to the rest portal and check if the dataset are registered.
+
     }
     catch (const BaseException & oException)
     {

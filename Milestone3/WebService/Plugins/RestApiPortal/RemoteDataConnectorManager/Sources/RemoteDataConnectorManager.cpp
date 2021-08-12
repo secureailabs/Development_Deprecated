@@ -424,7 +424,7 @@ void __thiscall RemoteDataConnectorManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/RemoteDataConnectorManager/UpdateConnector", oUpdateConnector, 1);
 
     // Fetch list of VM ipaddressese that are waiting for the remote data connector's dataset(s)
-    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/RemoteDataConnectorManager/HeartBeart", oConnectorHeartBeat, 1);
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/RemoteDataConnectorManager/HeartBeat", oConnectorHeartBeat, 1);
 
     // Start the Ipc server
     // Start listening for Ipc connections
@@ -567,7 +567,7 @@ uint64_t __thiscall RemoteDataConnectorManager::SubmitRequest(
         {
             stlResponseBuffer = this->UpdateRemoteDataConnector(c_oRequestStructuredBuffer);
         }
-        else if ("/SAIL/RemoteDataConnectorManager/HeartBeart" == strResource)
+        else if ("/SAIL/RemoteDataConnectorManager/HeartBeat" == strResource)
         {
             stlResponseBuffer = this->ConnectorHeartBeat(c_oRequestStructuredBuffer);
         }

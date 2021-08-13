@@ -2985,7 +2985,7 @@ bool SendRemoteDataConnectoHeartBeat(
         
         // Create rest request
         std::string strVerb = "PUT";
-        std::string strApiUrl = "/SAIL/RemoteDataConnectorManager/HeartBeart?Eosb="+ c_strEosb;
+        std::string strApiUrl = "/SAIL/RemoteDataConnectorManager/HeartBeat?Eosb="+ c_strEosb;
         std::string strContent = "{\n    \"RemoteDataConnectorGuid\": \""+ strConnectorGuid +"\""
                                 "\n}";
         // Make the API call and get REST response

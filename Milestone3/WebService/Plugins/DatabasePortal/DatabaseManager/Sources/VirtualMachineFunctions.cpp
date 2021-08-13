@@ -302,7 +302,7 @@ std::vector<Byte> __thiscall DatabaseManager::GetVmsWaitingForData(
         auto stlDatasetGuids = bsoncxx::builder::basic::array{};
         for (std::string strDset : oDatasets.GetNamesOfElements())
         {
-            stlDatasetGuids.append(oDatasets.GetString(strDset.c_str()));
+            stlDatasetGuids.append(oDatasets.GetStructuredBuffer(strDset.c_str()).GetString("DatasetUuid"));
         }
         // Fetch the virtual machine ip addresses
         mongocxx::cursor oVmCursor = oSailDatabase["VirtualMachinesWaitingForData"].find(document{}

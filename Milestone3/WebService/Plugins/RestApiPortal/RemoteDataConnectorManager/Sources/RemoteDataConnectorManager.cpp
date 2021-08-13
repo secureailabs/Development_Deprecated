@@ -269,6 +269,10 @@ RemoteDataConnectorManager::RemoteDataConnectorManager(
 RemoteDataConnectorManager::~RemoteDataConnectorManager(void)
 {
     __DebugFunction();
+
+    // Wait for all threads in the group to terminate
+    ThreadManager * poThreadManager = ThreadManager::GetInstance();
+    poThreadManager->JoinThreadGroup("VirtualMachineManagerPluginGroup");
 }
 
 /********************************************************************************************
@@ -420,7 +424,19 @@ void __thiscall RemoteDataConnectorManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/RemoteDataConnectorManager/UpdateConnector", oUpdateConnector, 1);
 
     // Fetch list of VM ipaddressese that are waiting for the remote data connector's dataset(s)
-    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/RemoteDataConnectorManager/HeartBeart", oConnectorHeartBeat, 1);
+    m_oDictionary.AddDictionaryEntry("PUT", "/SAIL/RemoteDataConnectorManager/HeartBeat", oConnectorHeartBeat, 1);
+
+    // Start the Ipc server
+    // Start listening for Ipc connections
+    ThreadManager * poThreadManager = ThreadManager::GetInstance();
+    SocketServer * poIpcServer = new SocketServer("/tmp/{9546C893-7F55-4FB7-BA63-B94B172105A0}");
+    IpcServerParameters * poIpcServerParameters = (IpcServerParameters *) gs_oMemoryAllocator.Allocate(sizeof(IpcServerParameters), true);
+    _ThrowOutOfMemoryExceptionIfNull(poIpcServer);
+
+    // Initialize IpcServerParameters struct
+    poIpcServerParameters->poThreadManager = poThreadManager;
+    poIpcServerParameters->poIpcServer = poIpcServer;
+    poThreadManager->CreateThread("VirtualMachineManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
 }
 
 /********************************************************************************************
@@ -483,6 +499,10 @@ void __thiscall RemoteDataConnectorManager::HandleIpcRequest(
 
     switch (dwTransactionType)
     {
+        case 0x00000001 // GetListOfRemoteDataConnectors
+        :
+            stlResponse = this->GetListOfRemoteDataConnectors(oRequestParameters);
+            break;
         default
         :
             break;
@@ -547,7 +567,7 @@ uint64_t __thiscall RemoteDataConnectorManager::SubmitRequest(
         {
             stlResponseBuffer = this->UpdateRemoteDataConnector(c_oRequestStructuredBuffer);
         }
-        else if ("/SAIL/RemoteDataConnectorManager/HeartBeart" == strResource)
+        else if ("/SAIL/RemoteDataConnectorManager/HeartBeat" == strResource)
         {
             stlResponseBuffer = this->ConnectorHeartBeat(c_oRequestStructuredBuffer);
         }
@@ -706,12 +726,12 @@ std::vector<Byte> __thiscall RemoteDataConnectorManager::GetListOfRemoteDataConn
     Dword dwStatus = 404;
     TlsNode * poTlsNode = nullptr;
 
-    try 
+    try
     {
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
         {
-            if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
+            // if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -720,7 +740,16 @@ std::vector<Byte> __thiscall RemoteDataConnectorManager::GetListOfRemoteDataConn
                 oRequest.PutString("PluginName", "DatabaseManager");
                 oRequest.PutString("Verb", "GET");
                 oRequest.PutString("Resource", "/SAIL/DatabaseManager/ListRemoteDataConnectors");
-                oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+                // OrganizationGuid provided in the Request is used preferably, otherwise the
+                // one from the Eosb is used
+                if (true == c_oRequest.IsElementPresent("OrganizationGuid", ANSI_CHARACTER_STRING_VALUE_TYPE))
+                {
+                    oRequest.PutString("OrganizationGuid", c_oRequest.GetString("OrganizationGuid"));
+                }
+                else
+                {
+                    oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
+                }
                 std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
                 // Send request packet
                 poTlsNode->Write(stlRequest.data(), stlRequest.size());
@@ -793,7 +822,7 @@ std::vector<Byte> __thiscall RemoteDataConnectorManager::PullRemoteDataConnector
     Dword dwStatus = 404;
     TlsNode * poTlsNode = nullptr;
 
-    try 
+    try
     {
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
@@ -882,7 +911,7 @@ std::vector<Byte> __thiscall RemoteDataConnectorManager::RegisterRemoteDataConne
     Dword dwStatus = 404;
     TlsNode * poTlsNode = nullptr;
 
-    try 
+    try
     {
         StructuredBuffer oUserInfo = this->GetUserInfo(c_oRequest);
         if (200 == oUserInfo.GetDword("Status"))

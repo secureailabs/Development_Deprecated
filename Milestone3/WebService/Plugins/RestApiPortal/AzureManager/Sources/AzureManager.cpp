@@ -846,7 +846,7 @@ std::vector<Byte> __thiscall AzureManager::PullAzureSettingsTemplate(
     Dword dwStatus = 404;
     TlsNode * poTlsNode = nullptr;
 
-    try 
+    try
     {
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))

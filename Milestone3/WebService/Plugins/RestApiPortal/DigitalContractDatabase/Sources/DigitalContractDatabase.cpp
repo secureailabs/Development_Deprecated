@@ -2121,7 +2121,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
                                 std::string strApplicationID = oTemplateData.GetString("ApplicationID");
                                 std::string strResourceGroup = oTemplateData.GetString("ResourceGroup");
                                 std::string strVirtualNetwork = oTemplateData.GetString("VirtualNetwork");
-                                // TODO: this needs to be added
+                                // TODO: Prawal uncomment when added to GUI
                                 // std::string strNetworkSecurityGroup = oTemplateData.GetString("NetworkSecurityGroup");
 
                                 // If the DataConnector is active, start the VM provisioning in a different async thread

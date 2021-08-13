@@ -497,7 +497,7 @@ StructuredBuffer __thiscall RemoteDataConnector::VerifyDataset(
 
         // TODO: verify the dataset file signature
 
-        // Make a call to the rest portal and check if the dataset are registered.
+        // TODO: Make a call to the rest portal and check if the dataset are registered.
 
     }
     catch (const BaseException & oException)

@@ -13,10 +13,9 @@ static PyObject* createguid(PyObject* self, PyObject* args)
     return Py_BuildValue("s", strGuid.c_str());
 }
 
-static void parameterConvert(StructuredBuffer& buffer, PyObject* parameter)
+static void parameterConvert(StructuredBuffer& oBuffer, PyObject* parameter)
 {
     Py_ssize_t listLen = PyList_Size(parameter);
-    StructuredBuffer oParameters;
 
     for(Py_ssize_t i = 0; i<listLen; i++)
     {
@@ -28,21 +27,22 @@ static void parameterConvert(StructuredBuffer& buffer, PyObject* parameter)
         const char* guid = PyUnicode_AsUTF8(paramGuid);
         std::string strGuid(guid);
         oItem.PutString("Uuid", strGuid);
-        std::cout<<"guid"<<std::endl;
+        std::cout<<"guid: "<<strGuid<<std::endl;
 
         PyObject* paramType = PyList_GetItem(item, 2);
         const char* type = PyUnicode_AsUTF8(paramType);
         std::string strType(type);
         oItem.PutString("Type", strType);
-        std::cout<<"type"<<std::endl;
+        std::cout<<"type: "<<strType<<std::endl;
 
         PyObject* paramDes = PyList_GetItem(item, 3);
         const char* description = PyUnicode_AsUTF8(paramDes);
         std::string strDescription(description);
         oItem.PutString("Description", strDescription);
-        std::cout<<"Description"<<std::endl;
+        std::cout<<"Description: "<<strDescription<<std::endl;
 
-        oParameters.PutStructuredBuffer(std::to_string((int)i).c_str(), oItem);
+        std::cout<<std::to_string((int)i).c_str()<<std::endl;
+        oBuffer.PutStructuredBuffer(std::to_string((int)i).c_str(), oItem);
     }
 }
 
@@ -79,6 +79,7 @@ static PyObject* writeSafeObject(PyObject* self, PyObject* args)
     std::cout<<"no problem here"<<std::endl;
     parameterConvert(oInput, inputList);
     parameterConvert(oOutput, outputList);
+    std::cout<<"0:"<<oInput.GetStructuredBuffer("0").GetString("Uuid")<<std::endl;
     oResult.PutStructuredBuffer("InputParameters", oInput);
     oResult.PutStructuredBuffer("OutputParameters", oOutput);
     std::cout<<"no problem here 2"<<std::endl;

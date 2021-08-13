@@ -257,8 +257,9 @@ class SafeObjectEditor(QDialog):
         f = open("SafeObjectTemplate", "r")
         template = f.read()
 
-        template = template.replace("\n", "\n        ")
-        template = template.replace("{{code}}", vardict["script"])
+        codeScript = vardict["script"]
+        codeScript = codeScript.replace("\n", "\n        ")
+        template = template.replace("{{code}}", codeScript)
         template = template.replace("{{safeObjectId}}", self.safeObjectGuid)
 
         for i in range(vardict["numberOfInput"]):

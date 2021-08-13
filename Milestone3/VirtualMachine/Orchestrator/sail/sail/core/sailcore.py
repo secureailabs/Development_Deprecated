@@ -1,5 +1,6 @@
 from .. import SAILPyAPI
 import pickle
+from concurrent.futures import ProcessPoolExecutor
 
 def connect(serverIP, port, email, password):
     return SAILPyAPI.connect(serverIP, port, email, password)
@@ -44,14 +45,39 @@ def registersafeobj(script):
     return SAILPyAPI.registersafeobj(script)
 
 def queryresult(jobid, fnid):
+    while(queryjobstatus(jobid)==0):
+        pass
+    
+    jobstatus = queryjobstatus(jobid)
+    if(jobstatus == -1):
+        print("job: " + jobid + " is failed")
+
     bytelist =  SAILPyAPI.queryresult(jobid, fnid)
     reslist = []
     for buf in bytelist:
         reslist.append(pickle.loads(buf))
     return reslist
 
+def queryresults_parallel(jobids, fnid):
+    arglist = []
+    for jobid in jobids:
+        arglist.append((jobid, fnid))
+    
+    results = 0
+    with ProcessPoolExecutor() as executor:
+        results = executor.map(queryresult, arglist)
+    
+    return results
+
 def queryjobstatus(jobid):
-    return SAILPyAPI.queryjobstatus(jobid)
+    result =  SAILPyAPI.queryjobstatus(jobid)
+    if(result==0):
+        print("job is running")
+    elif(result ==1):
+        print("job is done")
+    else:
+        print("job is failed")
+    return result
 
 def querydata(vmid):
     return SAILPyAPI.querydata(vmid)

@@ -1,1 +1,1 @@
-from .sailcore import connect, newguid, pushdata, pulldata, pushsafeobj, submitjob, registersafeobj, queryresult, queryjobstatus, quit, setparameter, spawnvms, configVMs, querydata
+from .sailcore import connect, newguid, pushdata, pulldata, pushsafeobj, submitjob, registersafeobj, queryresult, queryresults_parallel, queryjobstatus, quit, setparameter, spawnvms, configVMs, querydata

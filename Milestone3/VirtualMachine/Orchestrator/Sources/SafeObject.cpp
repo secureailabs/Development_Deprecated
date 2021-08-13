@@ -28,7 +28,8 @@ SafeObject::SafeObject
     {
         StructuredBuffer oOutputElement = oOutput.GetStructuredBuffer(std::to_string(i).c_str());
         m_stlOutputArgs.push_back(oOutputElement.GetString("Uuid"));
-        //m_stlInputDescription.push_back(oInputElement.GetString("Description"));
+        //m_stlOutputDescription.push_back(oInputElement.GetString("Description"));
+        m_stlOutputConfiential.push_back(oInputElement.GetBool("Confidential"));
     }
 }
 
@@ -70,6 +71,11 @@ const std::vector<std::string>& SafeObject::GetInputDescription(void)
 const std::vector<std::string>& SafeObject::GetOutput(void)
 {
     return m_stlOutputArgs;
+}
+
+const std::vector<bool>& SafeObject::GetOutputConfidential(void)
+{
+    return m_stlOutputConfidential;
 }
 
 const std::string& SafeObject::GetScript(void)

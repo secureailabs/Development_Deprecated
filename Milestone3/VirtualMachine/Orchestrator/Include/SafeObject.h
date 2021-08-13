@@ -13,6 +13,7 @@ class SafeObject
         std::vector<std::string> m_stlInputArgs;
         std::vector<std::string> m_stlInputDescription;
         std::vector<std::string> m_stlOutputArgs;
+        std::vector<bool> m_stlOutputConfidential;
         std::string m_strScript;
         std::string m_strSafeObjectID;
         std::string m_strDescription;

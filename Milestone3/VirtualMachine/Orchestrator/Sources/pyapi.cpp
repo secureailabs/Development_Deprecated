@@ -251,24 +251,24 @@ static PyObject* queryjobstatus(PyObject* self, PyObject* args)
     std::string strJobID(jobid);
 
     JobStatusSignals oJobStatus = getFrontend().QueryJobStatus(strJobID);
-    std::string strStatus;
+    int nStatus;
     
     switch(oJobStatus)
     {
         case JobStatusSignals::eJobStart: 
-            strStatus = "Job is running";
+            nStatus = 0;
             break;
         case JobStatusSignals::eJobDone: 
-            strStatus = "Job is done";
+            strStatus = 1;
             break;
         case JobStatusSignals::eJobFail: 
-            strStatus = "Job is failed";
+            strStatus = -1;
             break;
         default:
             break;
     }
     
-    return Py_BuildValue("s", strStatus.c_str());
+    return Py_BuildValue("i", nStatus);
 }
 
 static PyObject* registersafeobj(PyObject* self, PyObject* args)

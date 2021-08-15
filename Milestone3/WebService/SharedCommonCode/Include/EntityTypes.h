@@ -97,3 +97,15 @@ typedef enum virtual_machine_state
     eShuttingDown = 7
 }
 VirtualMachineState;
+
+/********************************************************************************************/
+
+enum class AzureTemplateState
+{
+    eInitializing = 1,
+    eCreatingVirtualNetwork = 2,
+    eCreatingNetworkSecurityGroup = 3,
+    eFailedCreatingVirtualNetwork = 4,
+    eFailedCreatingNetworkSecurityGroup = 5,
+    eReady = 5
+};

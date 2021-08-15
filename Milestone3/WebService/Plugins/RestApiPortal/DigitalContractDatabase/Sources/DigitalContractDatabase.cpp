@@ -2246,6 +2246,7 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
         poIpcAzureManager = nullptr;
         if ((0 < oUpdateVmStateResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oUpdateVmStateResponse.GetDword("Status")))
         {
+            return;
             // Start the VM provisioning step. This step will be
             std::string strIpAddress = ::DeployVirtualMachineAndWait(c_szApplicationIdentifier, c_szSecret, c_szTenantIdentifier, c_szSubscriptionIdentifier, c_szResourceGroup, c_szVirtualMachineIdentifier, c_szVirtualMachineSpecification, c_szLocation);
 

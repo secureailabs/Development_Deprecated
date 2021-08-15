@@ -954,7 +954,9 @@ std::vector<Byte> __thiscall AzureManager::RegisterAzureSettingsTemplate(
                 oRequest.PutString("Verb", "POST");
                 oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterAzureTemplate");
                 oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
-                oRequest.PutStructuredBuffer("TemplateData", c_oRequest.GetStructuredBuffer("TemplateData"));
+                StructuredBuffer oTemplateData = c_oRequest.GetStructuredBuffer("TemplateData");
+                oTemplateData.PutDword("State", (Dword)AzureTemplateState::eInitializing);
+                oRequest.PutStructuredBuffer("TemplateData", oTemplateData);
                 std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
                 // Send request packet
                 poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -968,7 +970,7 @@ std::vector<Byte> __thiscall AzureManager::RegisterAzureSettingsTemplate(
                 // Make sure to release the poTlsNode
                 poTlsNode->Release();
                 poTlsNode = nullptr;
-                
+
                 // Check if DatabaseManager registered the template or not
                 StructuredBuffer oDatabaseResponse(stlResponse);
                 if (204 != oDatabaseResponse.GetDword("Status"))
@@ -1028,7 +1030,7 @@ std::vector<Byte> __thiscall AzureManager::UpdateAzureSettingsTemplate(
     Dword dwStatus = 404;
     TlsNode * poTlsNode = nullptr;
 
-    try 
+    try
     {
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
         if (200 == oUserInfo.GetDword("Status"))
@@ -1117,7 +1119,7 @@ std::vector<Byte> __thiscall AzureManager::DeleteAzureSettingsTemplate(
     Dword dwStatus = 404;
     TlsNode * poTlsNode = nullptr;
 
-    try 
+    try
     {
         // Verify that the user is an Admin
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
@@ -1182,4 +1184,42 @@ std::vector<Byte> __thiscall AzureManager::DeleteAzureSettingsTemplate(
     oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
+}
+
+
+/********************************************************************************************
+ *
+ * @class AzureManager
+ * @function DeleteAzureSettingsTemplate
+ * @brief Take in full EOSB of an admin and delete the template from the database
+ * @param[in] c_oRequest contains EOSB of the admin and the template UUID
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Request status
+ *
+ ********************************************************************************************/
+
+void __thiscall AzureManager::UpdateVirtualNetworkAndNetworkSecurityGroup(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    // Check if the Virtual Network Specified exists in the resourceGroup
+
+    // If it does not exist update the state to CreatingVirutalNetwork
+
+    // Create a Virutal Network accordingly
+
+    // Update the state if the creation failed
+
+    // Check if the Network Security Group exists
+
+    // If it does not exist update the state to AzureTemplateState::eCreatingNetworkSecurityGroup
+
+    // Create the Network Security Group
+
+    // Update the state if it failed
+
+    // If both are success, update the state of the Azure Template to AzureTemplateState::eReady
+
 }

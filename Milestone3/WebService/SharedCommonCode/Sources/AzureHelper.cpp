@@ -352,3 +352,91 @@ std::string DeployVirtualMachineAndWait(
 
     return strVirtualMachineIpAddress;
 }
+
+/********************************************************************************************
+ *
+ * @function CreateVirtualNetwork
+ * @brief Function to get small json values which exist in the same line as the key
+ * @param[in] c_strApplicationIdentifier
+ * @param[in] c_strSecret
+ * @param[in] c_strTenantIdentifier
+ * @param[in] c_strSubscriptionIdentifier
+ * @param[in] c_strResourceGroup
+ * @param[in] c_strVirtualNetworkIdentifier
+ * @param[in] c_strLocation
+ * @return Id of the created Virtual Network
+ * @note This is a blocking call
+ *bb b
+ ********************************************************************************************/
+std::string CreateVirtualNetwork(
+    _in const std::string & c_strApplicationIdentifier,
+    _in const std::string & c_strSecret,
+    _in const std::string & c_strTenantIdentifier,
+    _in const std::string & c_strSubscriptionIdentifier,
+    _in const std::string & c_strResourceGroup,
+    _in const std::string & c_strLocation
+)
+{
+    __DebugFunction();
+
+    std::string strVirtualNetworkId = "";
+
+    // Login to the Microsoft Azure API Portal
+    const std::string c_strMicrosoftAzureAccessToken = ::LoginToMicrosoftAzureApiPortal(c_strApplicationIdentifier, c_strSecret, c_strTenantIdentifier);
+    _ThrowBaseExceptionIf((0 == c_strMicrosoftAzureAccessToken.length()), "Authentication failed...", nullptr);
+
+    // Create resource group
+    std::string resourceGroupSpec = std::string("{\"location\": \"") + c_strLocation + "\"}";
+    ::CreateResourceGroup(c_strMicrosoftAzureAccessToken, c_strSubscriptionIdentifier, c_strResourceGroup, resourceGroupSpec.c_str());
+
+    // Create a Virtual Machine with a pre-existing Azure Template
+    std::string strVerb = "PUT";
+    std::string strResource = "Microsoft.Resources/deployments/VNET-" + Guid().ToString(eRaw) + "-deploy";
+    std::string strHost = "management.azure.com";
+
+    // TODO: Prawal
+    // std::string strContent = ::CreateAzureParamterJson();
+    std::string strContent = "::CreateAzureParamterJson()";
+    std::string strApiVersionDate = "2020-10-01";
+    std::vector<Byte> stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_strSubscriptionIdentifier, c_strResourceGroup);
+    stlResponse.push_back(0);
+    std::string strResponse = (const char*)stlResponse.data();
+    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to create a Microsoft Azure public IP address", nullptr);
+    _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to create a Microsoft Azure public IP address with error %s", strResponse.c_str());
+
+    // Wait until the deployment is running
+    bool fIsRunning = false;
+    do
+    {
+        strVerb = "GET";
+        strContent = "";
+        strApiVersionDate = "2021-04-01";
+        stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_strSubscriptionIdentifier, c_strResourceGroup);
+        stlResponse.push_back(0);
+        strResponse = (const char*)stlResponse.data();
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
+        _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to get the status of a virtual machine being provisioned with error %s", strResponse.c_str());
+
+        StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
+        if (true == oResponse.IsElementPresent("properties", INDEXED_BUFFER_VALUE_TYPE))
+        {
+            StructuredBuffer oProperties(oResponse.GetStructuredBuffer("properties").GetBase64SerializedBuffer().c_str());
+            if (true == oProperties.IsElementPresent("provisioningState", ANSI_CHARACTER_STRING_VALUE_TYPE))
+            {
+                std::string strProvisioningState = oProperties.GetString("provisioningState");
+                if (strProvisioningState == "Succeeded")
+                {
+                    fIsRunning = true;
+                }
+            }
+        }
+
+        // Put the thread to sleep while we wait
+        if (false == fIsRunning)
+        {
+            ::sleep(5);
+        }
+    } while (false == fIsRunning);
+
+    return strVirtualNetworkId;
+}

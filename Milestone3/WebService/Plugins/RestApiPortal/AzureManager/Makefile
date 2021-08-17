@@ -22,6 +22,7 @@ INCLUDE+=-I$(shell realpath ../../../../SharedCommonCode/Include)
 # Add the new source directory here
 SRCDIRS+=$(shell realpath ./Sources)
 SRCDIRS+=$(shell realpath ../../../../WebService/RestApiPortal/Sources)
+SRCDIRS+=$(shell realpath ../../../../WebService/SharedCommonCode/Sources)
 SRCDIRS+=$(shell realpath ../../../../SharedCommonCode/Sources)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)

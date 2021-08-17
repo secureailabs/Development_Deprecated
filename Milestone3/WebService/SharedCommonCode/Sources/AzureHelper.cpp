@@ -14,6 +14,7 @@
 #include "CurlRest.h"
 #include "StructuredBuffer.h"
 #include "JsonValue.h"
+#include "Utils.h"
 
 #include <iostream>
 #include <sstream>
@@ -247,6 +248,7 @@ std::string DeployVirtualMachineAndWait(
     std::string strVirtualMachineIdentifier = c_szVirtualMachineIdentifier;
     std::string strLocation = c_szLocation;
 
+    // TODO: Prawal use the CreateAzureDeployment function here
     // Create resource group
     std::string resourceGroupSpec = std::string("{\"location\": \"") + strLocation + "\"}";
     ::CreateResourceGroup(c_strMicrosoftAzureAccessToken, c_szSubscriptionIdentifier, c_szResourceGroup, resourceGroupSpec.c_str());
@@ -355,8 +357,8 @@ std::string DeployVirtualMachineAndWait(
 
 /********************************************************************************************
  *
- * @function CreateVirtualNetwork
- * @brief Function to get small json values which exist in the same line as the key
+ * @function CreateAzureDeployment
+ * @brief Deploy a Azure template with parameters
  * @param[in] c_strApplicationIdentifier
  * @param[in] c_strSecret
  * @param[in] c_strTenantIdentifier
@@ -364,11 +366,13 @@ std::string DeployVirtualMachineAndWait(
  * @param[in] c_strResourceGroup
  * @param[in] c_strVirtualNetworkIdentifier
  * @param[in] c_strLocation
- * @return Id of the created Virtual Network
+ * @return Id of the created resource
  * @note This is a blocking call
- *bb b
+ *
  ********************************************************************************************/
-std::string CreateVirtualNetwork(
+
+std::string CreateAzureDeployment(
+    _in const std::string & c_strDeploymentParameters,
     _in const std::string & c_strApplicationIdentifier,
     _in const std::string & c_strSecret,
     _in const std::string & c_strTenantIdentifier,
@@ -379,7 +383,7 @@ std::string CreateVirtualNetwork(
 {
     __DebugFunction();
 
-    std::string strVirtualNetworkId = "";
+    std::string strResourceId = "";
 
     // Login to the Microsoft Azure API Portal
     const std::string c_strMicrosoftAzureAccessToken = ::LoginToMicrosoftAzureApiPortal(c_strApplicationIdentifier, c_strSecret, c_strTenantIdentifier);
@@ -391,14 +395,11 @@ std::string CreateVirtualNetwork(
 
     // Create a Virtual Machine with a pre-existing Azure Template
     std::string strVerb = "PUT";
-    std::string strResource = "Microsoft.Resources/deployments/VNET-" + Guid().ToString(eRaw) + "-deploy";
+    std::string strResource = "Microsoft.Resources/deployments/sail-" + Guid().ToString(eRaw) + "-deploy";
     std::string strHost = "management.azure.com";
 
-    // TODO: Prawal
-    // std::string strContent = ::CreateAzureParamterJson();
-    std::string strContent = "::CreateAzureParamterJson()";
     std::string strApiVersionDate = "2020-10-01";
-    std::vector<Byte> stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_strSubscriptionIdentifier, c_strResourceGroup);
+    std::vector<Byte> stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, c_strDeploymentParameters, strApiVersionDate, c_strSubscriptionIdentifier, c_strResourceGroup);
     stlResponse.push_back(0);
     std::string strResponse = (const char*)stlResponse.data();
     _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to create a Microsoft Azure public IP address", nullptr);
@@ -409,9 +410,8 @@ std::string CreateVirtualNetwork(
     do
     {
         strVerb = "GET";
-        strContent = "";
         strApiVersionDate = "2021-04-01";
-        stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_strSubscriptionIdentifier, c_strResourceGroup);
+        stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, "", strApiVersionDate, c_strSubscriptionIdentifier, c_strResourceGroup);
         stlResponse.push_back(0);
         strResponse = (const char*)stlResponse.data();
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
@@ -438,5 +438,77 @@ std::string CreateVirtualNetwork(
         }
     } while (false == fIsRunning);
 
-    return strVirtualNetworkId;
+    // TODO: Prawal: get the resourceId
+
+    return strResourceId;
+}
+
+/********************************************************************************************
+ *
+ * @function DoesAzureResourceExist
+ * @brief Check if an Azure resource exists
+ * @param[in] c_strApplicationIdentifier
+ * @param[in] c_strSecret
+ * @param[in] c_strTenantIdentifier
+ * @param[in] c_strResourceId
+ * @return true if exits, false otherwise
+ *
+ ********************************************************************************************/
+
+bool DoesAzureResourceExist(
+    _in const std::string & c_strApplicationIdentifier,
+    _in const std::string & c_strSecret,
+    _in const std::string & c_strTenantIdentifier,
+    _in const std::string & c_strResourceId
+)
+{
+    __DebugFunction();
+
+    bool fResourceExist = false;
+
+    // Login to the Microsoft Azure API Portal
+    const std::string c_strMicrosoftAzureAccessToken = ::LoginToMicrosoftAzureApiPortal(c_strApplicationIdentifier, c_strSecret, c_strTenantIdentifier);
+    _ThrowBaseExceptionIf((0 == c_strMicrosoftAzureAccessToken.length()), "Azure Authentication failed...", nullptr);
+
+    std::string strVerb = "GET";
+    std::string strContent = "";
+    std::string strApiUri = c_strResourceId + "?api-version=2014-12-01-preview";
+    std::string strHost = "management.azure.com";
+
+    std::vector<std::string> stlHeader;
+    stlHeader.push_back("Host: " + strHost);
+    stlHeader.push_back("Authorization: Bearer " + c_strMicrosoftAzureAccessToken);
+    stlHeader.push_back("Content-Length: " + std::to_string(strContent.length()));
+
+    long nResponseCode = 0;
+    std::vector<Byte> stlResponse = ::RestApiCall(strHost, 443, strVerb, strApiUri, "", false, stlHeader, &nResponseCode);
+
+    std::cout << "nResponseCode " << nResponseCode;
+    if (200 == nResponseCode)
+    {
+        fResourceExist = true;
+    }
+
+    return fResourceExist;
+}
+
+std::string CreateAzureResourceId(
+    _in const std::string & c_strSubscriptionIdentifier,
+    _in const std::string & c_strResourceGroup,
+    _in const std::string & c_strResourceProviderNamespace,
+    _in const std::string & c_strResourceType,
+    _in const std::string & c_strResourceName
+)
+{
+    __DebugFunction();
+
+    std::string gc_strAzureIdFormat = "/subscriptions/{{SubscriptionUuid}}/resourceGroups/{{ResourceGroup}}/{{ResourceProvidernamespcae}}/{{ResourceType}}/{{ResourceName}}";
+
+    ::ReplaceAll(gc_strAzureIdFormat, "{{SubscriptionUuid}}", c_strSubscriptionIdentifier);
+    ::ReplaceAll(gc_strAzureIdFormat, "{{ResourceGroup}}", c_strResourceGroup);
+    ::ReplaceAll(gc_strAzureIdFormat, "{{ResourceProvidernamespcae}}", c_strResourceProviderNamespace);
+    ::ReplaceAll(gc_strAzureIdFormat, "{{ResourceType}}", c_strResourceType);
+    ::ReplaceAll(gc_strAzureIdFormat, "{{ResourceName}}", c_strResourceName);
+
+    return gc_strAzureIdFormat;
 }

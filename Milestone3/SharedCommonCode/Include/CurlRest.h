@@ -23,3 +23,14 @@ extern std::vector<Byte> __stdcall RestApiCall(
     _in bool fDisableSslCertificateVerification,
     _in const std::vector<std::string>& c_stlListOfHeaders
 ) throw();
+
+std::vector<Byte> __stdcall RestApiCall(
+    _in const std::string& c_strHostIpAddress,
+    _in const Word nPort,
+    _in const std::string& c_strVerb,
+    _in const std::string& c_strApiUri,
+    _in const std::string& c_strContent,
+    _in bool fDisableSslCertificateVerification,
+    _in const std::vector<std::string>& c_stlListOfHeaders,
+    _in long * c_nResponseCode
+) throw();

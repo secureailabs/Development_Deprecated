@@ -202,11 +202,12 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterAzureTemplate(
     {
         // Get the organization guid
         std::string strOrganizationGuid = c_oRequest.GetString("OrganizationGuid");
-        // Create a template guid
-        std::string strTemplateGuid = Guid(eAzureSettingsTemplate).ToString(eHyphensAndCurlyBraces);
+        // Ge the Tempalte Guid
+        std::string strTemplateGuid = c_oRequest.GetString("TemplateGuid");
+
         // Create guids for the documents
         Guid oObjectGuid, oPlainTextObjectBlobGuid;
-        
+
         // Create an Azure Template document
         bsoncxx::document::value oTemplateDocumentValue = bsoncxx::builder::stream::document{}
         << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)

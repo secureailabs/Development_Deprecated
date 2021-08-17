@@ -114,7 +114,9 @@ class AzureManager : public Object
 
         // Create a Virtual Network and Network Security Group if they don't exist
         void __thiscall UpdateVirtualNetworkAndNetworkSecurityGroup(
-            _in const StructuredBuffer & c_oRequest
+            _in const StructuredBuffer c_oRequest,
+            _in const std::string c_strTemplateGuid,
+            _in const std::vector<Byte> c_stlEosb
             );
 
         // Private data members

@@ -194,7 +194,8 @@ std::vector<Byte> __stdcall RestApiCall(
     _in const std::string& c_strApiUri,
     _in const std::string& c_strContent,
     _in bool fDisableSslCertificateVerification,
-    _in const std::vector<std::string>& c_stlListOfHeaders
+    _in const std::vector<std::string>& c_stlListOfHeaders,
+    _inout long * nResponseCode
 ) throw()
 {
     __DebugFunction();
@@ -224,7 +225,7 @@ std::vector<Byte> __stdcall RestApiCall(
             ::curl_easy_setopt(psCurl, CURLOPT_SSL_VERIFYHOST, 0L); //only for https
         }
 
-        // Setup callback for Header Write 
+        // Setup callback for Header Write
         ::curl_easy_setopt(psCurl, CURLOPT_HEADERFUNCTION, CurlHeaderWriteCallback);
         std::map<std::string, std::string> stlMapOfHeaders;
         ::curl_easy_setopt(psCurl, CURLOPT_HEADERDATA, &stlMapOfHeaders);
@@ -244,9 +245,26 @@ std::vector<Byte> __stdcall RestApiCall(
         ::curl_easy_cleanup(psCurl);
         if (CURLE_OK == unResponse)
         {
+            // Save the response HTTP code
+            if(nullptr != nResponseCode)
+            {
+                ::curl_easy_getinfo(psCurl, CURLINFO_RESPONSE_CODE, nResponseCode);
+            }
             // Figure out what the Content-Type is to check if it is JSON. If it is, we need
             // to do some string scrubbing to unescape the JSON string
-            std::string strContentType = stlMapOfHeaders.at("Content-Type");
+            std::string strContentType;
+            if (stlMapOfHeaders.end() != stlMapOfHeaders.find("Content-Type"))
+            {
+                strContentType = stlMapOfHeaders.at("Content-Type");
+            }
+            else if (stlMapOfHeaders.end() != stlMapOfHeaders.find("content-type"))
+            {
+                strContentType = stlMapOfHeaders.at("content-type");
+            }
+            else
+            {
+                _ThrowBaseException("Content Type header not found.", nullptr);
+            }
             strContentType = strContentType.substr(0, strContentType.find_first_of(';'));
             strContentType = strContentType.substr(strContentType.find_last_of(' ') + 1);
             // Check if the response is a JSON
@@ -281,4 +299,20 @@ std::vector<Byte> __stdcall RestApiCall(
     }
 
     return stlResponse;
+}
+
+
+std::vector<Byte> __stdcall RestApiCall(
+    _in const std::string& c_strHostIpAddress,
+    _in const Word nPort,
+    _in const std::string& c_strVerb,
+    _in const std::string& c_strApiUri,
+    _in const std::string& c_strContent,
+    _in bool fDisableSslCertificateVerification,
+    _in const std::vector<std::string>& c_stlListOfHeaders
+) throw()
+{
+    __DebugFunction();
+
+    return ::RestApiCall(c_strHostIpAddress, nPort, c_strVerb, c_strApiUri, c_strContent, fDisableSslCertificateVerification, c_stlListOfHeaders, nullptr);
 }

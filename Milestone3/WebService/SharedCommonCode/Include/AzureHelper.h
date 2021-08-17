@@ -16,17 +16,42 @@
 #include <string>
 
 std::string DeployVirtualMachineAndWait(
-    _in const std::string & c_szApplicationIdentifier,
-    _in const std::string & c_szSecret,
-    _in const std::string & c_szTenantIdentifier,
-    _in const std::string & c_szSubscriptionIdentifier,
-    _in const std::string & c_szResourceGroup,
-    _in const std::string & c_szVirtualMachineIdentifier,
-    _in const std::string & c_szconfidentialVirtualMachineSpecification,
-    _in const std::string & c_szLocation
+    _in const std::string & c_strApplicationIdentifier,
+    _in const std::string & c_strSecret,
+    _in const std::string & c_strTenantIdentifier,
+    _in const std::string & c_strSubscriptionIdentifier,
+    _in const std::string & c_strResourceGroup,
+    _in const std::string & c_strVirtualMachineIdentifier,
+    _in const std::string & c_strconfidentialVirtualMachineSpecification,
+    _in const std::string & c_strLocation
 );
 
 std::string CreateAzureParamterJson(
     _in const std::string & c_strTemplateUrl,
     _in const StructuredBuffer & c_oStructuredBuffer
+);
+
+bool DoesAzureResourceExist(
+    _in const std::string & c_strApplicationIdentifier,
+    _in const std::string & c_strSecret,
+    _in const std::string & c_strTenantIdentifier,
+    _in const std::string & c_strResourceId
+);
+
+std::string CreateAzureResourceId(
+    _in const std::string & c_strSubscriptionIdentifier,
+    _in const std::string & c_strResourceGroup,
+    _in const std::string & c_strResourceProviderNamespace,
+    _in const std::string & c_strResourceType,
+    _in const std::string & c_strResourceName
+);
+
+std::string CreateAzureDeployment(
+    _in const std::string & c_strVirtualNetworkName,
+    _in const std::string & c_strApplicationIdentifier,
+    _in const std::string & c_strSecret,
+    _in const std::string & c_strTenantIdentifier,
+    _in const std::string & c_strSubscriptionIdentifier,
+    _in const std::string & c_strResourceGroup,
+    _in const std::string & c_strLocation
 );

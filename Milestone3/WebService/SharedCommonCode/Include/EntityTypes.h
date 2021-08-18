@@ -77,12 +77,12 @@ EosbAccessRights;
 
 /********************************************************************************************/
 
-typedef enum dc_provisioning_status
+enum class DigitalContractProvisiongStatus
 {
     eProvisioning = 1,
-    eReady = 2
-}
-DigitalContractProvisiongStatus;
+    eReady = 2,
+    eUnprovisioned = 3
+};
 
 /********************************************************************************************/
 
@@ -90,11 +90,10 @@ typedef enum virtual_machine_state
 {
     eStarting = 1,
     eConfiguring = 2,
-    eInitializing = 3,
-    eWaitingForData = 4,
-    eReadyForComputation = 5,
-    eInUse = 6,
-    eShuttingDown = 7
+    eWaitingForData = 3,
+    eReadyForComputation = 4,
+    eInUse = 5,
+    eShuttingDown = 6
 }
 VirtualMachineState;
 

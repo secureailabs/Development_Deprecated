@@ -17,6 +17,7 @@
 #include "TlsTransactionHelperFunctions.h"
 #include "JsonValue.h"
 #include "FileUtils.h"
+#include "CurlRest.h"
 
 #include <iostream>
 #include <iterator>
@@ -53,17 +54,30 @@ void __cdecl InitVirtualMachine(
         {
             if (true == oTlsServer.WaitForConnection(1000))
             {
-                std::cout << "New Connection: " << std::endl;
+                std::cout << "New Connection" << std::endl;
                 poTlsNode = oTlsServer.Accept();
                 _ThrowIfNull(poTlsNode, "Cannot establish connection.", nullptr);
 
-                // Fetch the serialized Structure Buffer from the remote Initializer Tool
-
+                // Fetch the serialized Structure Buffer from the remote
                 std::vector<Byte> stlPayload = ::GetTlsTransaction(poTlsNode, 5*60*1000);
                 _ThrowBaseExceptionIf((0 == stlPayload.size()), "Bad Initialization data", nullptr);
 
-                // deserialize the buffer
-                StructuredBuffer oVmInitializationInstructions(stlPayload);
+                StructuredBuffer oGetBinaryPackageInstructions(stlPayload);
+                std::string strVerb = oGetBinaryPackageInstructions.GetString("Verb");
+                std::string strContent = oGetBinaryPackageInstructions.GetString("Content");
+                std::string strApiUri = oGetBinaryPackageInstructions.GetString("Uri");
+                std::string strHost = oGetBinaryPackageInstructions.GetString("Host");
+
+                std::vector<std::string> stlHeader;
+                stlHeader.push_back("Host: " + strHost);
+                stlHeader.push_back("Content-Length: " + std::to_string(strContent.length()));
+                long nResponseCode = 0;
+                std::vector<Byte> stlPackagedBinaries = ::RestApiCall(strHost, 443, strVerb, strApiUri, "", false, stlHeader, &nResponseCode);
+                _ThrowBaseExceptionIf((200 != nResponseCode), "Failed to get Binaries package. Response code: %d", nResponseCode);
+                _ThrowBaseExceptionIf((0 >= stlPackagedBinaries.size()), "Invalid Package received.", nullptr );
+
+                // Deserialize the buffer
+                StructuredBuffer oVmInitializationInstructions(stlPackagedBinaries);
                 std::string strVmType = oVmInitializationInstructions.GetString("VirtualMachineType");
                 if ("WebService" == strVmType)
                 {

@@ -383,7 +383,8 @@ std::string CreateAzureDeployment(
 {
     __DebugFunction();
 
-    std::string strResourceId = "";
+    // TODO: Prawal put this properly
+    std::string strResourceId = "abcd";
 
     // Login to the Microsoft Azure API Portal
     const std::string c_strMicrosoftAzureAccessToken = ::LoginToMicrosoftAzureApiPortal(c_strApplicationIdentifier, c_strSecret, c_strTenantIdentifier);
@@ -487,6 +488,14 @@ bool DoesAzureResourceExist(
     if (200 == nResponseCode)
     {
         fResourceExist = true;
+    }
+    else if (404 == nResponseCode)
+    {
+        fResourceExist = false;
+    }
+    else
+    {
+        _ThrowBaseException("Invalid Response for the resource check. Response code: %d", nResponseCode);
     }
 
     return fResourceExist;

@@ -1247,8 +1247,7 @@ void __thiscall AzureManager::UpdateVirtualNetworkAndNetworkSecurityGroup(
             // Create a Virutal Network accordingly
             StructuredBuffer oVirtualNetworkCreateParameter;
             oVirtualNetworkCreateParameter.PutString("VirtualNetworkName", strVirtualNetwork);
-            // TODO: Prawal uplaod and create a template
-            std::string strDeploymentParameters = ::CreateAzureParamterJson("https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/DeployVirtualMachineNoPorts.json?sp=r&st=2021-06-29T12:01:40Z&se=2022-02-28T20:01:40Z&spr=https&sv=2020-02-10&sr=b&sig=epPQ8kO62sj%2F0jA1aifQVq1VH1yN5woISBaqC2mRGfg%3D", oVirtualNetworkCreateParameter);
+            std::string strDeploymentParameters = ::CreateAzureParamterJson("https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/VirtualNetwork.json?sp=r&st=2021-08-18T11:49:19Z&se=2022-05-31T19:49:19Z&spr=https&sv=2020-08-04&sr=b&sig=UepJBsssk48ON0SKPRo8G1IOc%2F4dysKVOjjQ%2B59iNxA%3D", oVirtualNetworkCreateParameter);
             std::cout << strDeploymentParameters << std::endl;
 
             std::string strVirtualNetowrkId = ::CreateAzureDeployment(strDeploymentParameters, strApplicationIdentifier, strSecret, strTenantIdentifier, strSubscriptionIdentifier, strResourceGroup, strLocation);
@@ -1265,10 +1264,11 @@ void __thiscall AzureManager::UpdateVirtualNetworkAndNetworkSecurityGroup(
                 fVirtualNetworkExists = true;
             }
         }
-        return;
+
         // Check if the Network Security Group exists
         std::string strNetworkSecurityGroupId = ::CreateAzureResourceId(strSubscriptionIdentifier, strResourceGroup, "providers/Microsoft.Network", "networkSecurityGroups", strNetworksecurityGroupName);
-        bool fNetworkSecurityGroupExists = ::DoesAzureResourceExist(strApplicationIdentifier, strSecret, strTenantIdentifier, strVirtualNetworkId);
+        std::cout << strNetworkSecurityGroupId << std::endl;
+        bool fNetworkSecurityGroupExists = ::DoesAzureResourceExist(strApplicationIdentifier, strSecret, strTenantIdentifier, strNetworkSecurityGroupId);
         if ((true == fVirtualNetworkExists) && (false == fNetworkSecurityGroupExists))
         {
             // If it does not exist update the state to AzureTemplateState::eCreatingNetworkSecurityGroup
@@ -1280,8 +1280,7 @@ void __thiscall AzureManager::UpdateVirtualNetworkAndNetworkSecurityGroup(
             // Create the Network Security Group
             StructuredBuffer oNetworkSecurityGroupCreateParameter;
             oNetworkSecurityGroupCreateParameter.PutString("NetworkSecurityGroupName", strNetworksecurityGroupName);
-            // TODO: Prawal uplaod and create a template
-            std::string strDeploymentParameters = ::CreateAzureParamterJson("https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/DeployVirtualMachineNoPorts.json?sp=r&st=2021-06-29T12:01:40Z&se=2022-02-28T20:01:40Z&spr=https&sv=2020-02-10&sr=b&sig=epPQ8kO62sj%2F0jA1aifQVq1VH1yN5woISBaqC2mRGfg%3D", oNetworkSecurityGroupCreateParameter);
+            std::string strDeploymentParameters = ::CreateAzureParamterJson("https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/NetworkSecurityGroup.json?sp=r&st=2021-08-18T11:45:41Z&se=2022-08-31T19:45:41Z&spr=https&sv=2020-08-04&sr=b&sig=6NdypMlPI6D0UVzeux1HUY9KaRns%2BFjX2yluqPoMT1w%3D", oNetworkSecurityGroupCreateParameter);
             std::cout << strDeploymentParameters << std::endl;
 
             std::string strVirtualNetowrkId = ::CreateAzureDeployment(strDeploymentParameters, strApplicationIdentifier, strSecret, strTenantIdentifier, strSubscriptionIdentifier, strResourceGroup, strLocation);

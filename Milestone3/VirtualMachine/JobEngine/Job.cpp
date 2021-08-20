@@ -270,7 +270,7 @@ const std::string & __thiscall Job::GetJobUuid(void) const throw()
  * @brief Constructor to create a Job object
  *
  ********************************************************************************************/
-bool __thiscall Job::AreAllParametersSet(void) throw()
+bool __thiscall Job::AreAllParametersSet(void)
 {
     __DebugFunction();
 

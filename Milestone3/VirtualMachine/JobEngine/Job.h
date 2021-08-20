@@ -67,7 +67,7 @@ class Job : public Object
     private:
 
         // Private member methods
-        bool __thiscall AreAllParametersSet(void) throw();
+        bool __thiscall AreAllParametersSet(void);
         void __thiscall TryRunJob(void);
         void __thiscall AddDependency(
             _in const std::string & strDepedencyName

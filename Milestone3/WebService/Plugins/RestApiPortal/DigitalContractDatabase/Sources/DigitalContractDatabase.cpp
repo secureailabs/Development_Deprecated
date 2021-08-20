@@ -1906,6 +1906,8 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetProvisioningStatus(
     // Send back status of the transaction
     oResponse.PutDword("Status", dwStatus);
 
+    std::cout << "oResponse " << oResponse.ToString() << std::endl;
+
     return oResponse.GetSerializedBuffer();
 }
 
@@ -2227,11 +2229,9 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
         oVmRegisterRequest.PutString("DigitalContractGuid", c_oDigitalContract.GetString("DigitalContractGuid"));
         oVmRegisterRequest.PutString("VirtualMachineGuid", c_szVirtualMachineIdentifier);
         oVmRegisterRequest.PutUnsignedInt64("HeartbeatBroadcastTime", ::GetEpochTimeInSeconds());
-        // TODO: Prawal figure this out
         oVmRegisterRequest.PutString("IPAddress", "0.0.0.0");
         oVmRegisterRequest.PutUnsignedInt64("NumberOfVCPU", c_oDigitalContract.GetUnsignedInt64("NumberOfVCPU"));
         oVmRegisterRequest.PutString("HostRegion", c_oDigitalContract.GetString("HostRegion"));
-        // TODO: Prawal figure this out
         oVmRegisterRequest.PutUnsignedInt64("StartTime", ::GetEpochTimeInSeconds());
 
         Socket * poSocket = ::ConnectToUnixDomainSocket("/tmp/{4FBC17DA-81AF-449B-B842-E030E337720E}");
@@ -2242,7 +2242,7 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
         // Update the status of the Virutal Machine to Provisioning and add the IP Address there
         StructuredBuffer oUpdateVmStateRequest;
         oUpdateVmStateRequest.PutDword("TransactionType", 0x00000002);
-        oUpdateVmStateRequest.PutBuffer("Eosb", c_stlEosb);
+        oUpdateVmStateRequest.PutBuffer("Eosb", oVmRegisterResponse.GetBuffer("Eosb"));
         oUpdateVmStateRequest.PutString("VirtualMachineGuid", c_szVirtualMachineIdentifier);
         oUpdateVmStateRequest.PutDword("State", VirtualMachineState::eStarting);
         Socket * poIpcAzureManager = ::ConnectToUnixDomainSocket("/tmp/{4FBC17DA-81AF-449B-B842-E030E337720E}");
@@ -2253,6 +2253,18 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
         {
             // Start the VM provisioning step. This step will be
             std::string strIpAddress = ::DeployVirtualMachineAndWait(c_szApplicationIdentifier, c_szSecret, c_szTenantIdentifier, c_szSubscriptionIdentifier, c_szResourceGroup, c_szVirtualMachineIdentifier, c_szVirtualMachineSpecification, c_szLocation);
+            _ThrowBaseExceptionIf((0 == strIpAddress.length()), "Virtual Machine provisioning failed.", nullptr);
+
+            // Update the Ip Address of the Virtual Machine
+            StructuredBuffer oVmIpAddressRequest;
+            oVmIpAddressRequest.PutBuffer("Eosb", oUpdateVmStateResponse.GetBuffer("Eosb"));
+            oVmIpAddressRequest.PutDword("TransactionType", 0x00000004);
+            oUpdateVmStateRequest.PutString("VirtualMachineGuid", c_szVirtualMachineIdentifier);
+            oUpdateVmStateRequest.PutString("IpAddress", strIpAddress);
+            Socket * poIpcAzureManager = ::ConnectToUnixDomainSocket("/tmp/{4FBC17DA-81AF-449B-B842-E030E337720E}");
+            StructuredBuffer oUpdateVmStateResponse = StructuredBuffer(::PutIpcTransactionAndGetResponse(poIpcAzureManager, oUpdateVmStateRequest, false));
+            poIpcAzureManager->Release();
+            poIpcAzureManager = nullptr;
 
             // Update the status of the Virutal Machine to Insstalling
             oUpdateVmStateRequest.PutDword("TransactionType", 0x00000002);
@@ -2264,22 +2276,57 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
             poIpcAzureManager->Release();
             poIpcAzureManager = nullptr;
 
-            // Send the link of the binaries to the Virtual Machine so that they can download and install the package
-            std::string strAzurePackageLink = "";
-            TlsNode * poTlsNode = ::TlsConnectToNetworkSocketWithTimeout(strIpAddress.c_str(), 3500, 10*60*1000, 30*1000);
-
             // The installation package would be sent only to the Virutal Machines
             // that have been created with this process
+            TlsNode * poTlsNode = ::TlsConnectToNetworkSocketWithTimeout(strIpAddress.c_str(), 3500, 10*60*1000, 30*1000);
+            _ThrowIfNull(poTlsNode, "Failed to connect to the Virtual Machine", nullptr);
+
             StructuredBuffer oBinaryPackageInstructions;
-            oBinaryPackageInstructions.PutString("Verb", "");
+            oBinaryPackageInstructions.PutString("Verb", "GET");
             oBinaryPackageInstructions.PutString("Content", "");
-            oBinaryPackageInstructions.PutString("Uri", "");
-            oBinaryPackageInstructions.PutString("Host", "");
+            oBinaryPackageInstructions.PutString("Uri", "/deployemnttemplate/SecureComputationalVirtualMachine.binaries?sp=r&st=2021-08-19T08:50:02Z&se=2021-08-31T16:50:02Z&sv=2020-08-04&sr=b&sig=Mfx1Fm8fbm9Fus94WXGL5d7KFzs8NM7CZoJNobV8Kd4%3D");
+            oBinaryPackageInstructions.PutString("Host", "confidentialvmdeployment.blob.core.windows.net");
 
             // Send the url for the binary package and wait for a response on successful installation
             std::vector<Byte> stlSendPackageResponse = ::PutTlsTransactionAndGetResponse(poTlsNode, oBinaryPackageInstructions, 0);
             _ThrowBaseExceptionIf((0 <= stlSendPackageResponse.size()), "Invalid reponse to send package instructions.", nullptr);
             StructuredBuffer oSendPackageResponse(stlSendPackageResponse);
+            _ThrowBaseExceptionIf(("Success" != oSendPackageResponse.GetString("Status")), "Sending package failed", nullptr);
+            poTlsNode = nullptr;
+
+            oUpdateVmStateRequest.PutBuffer("Eosb", oUpdateVmStateResponse.GetBuffer("Eosb"));
+            oUpdateVmStateRequest.PutString("VirtualMachineGuid", c_szVirtualMachineIdentifier);
+            oUpdateVmStateRequest.PutDword("State", VirtualMachineState::eInitializing);
+            poIpcAzureManager = ::ConnectToUnixDomainSocket("/tmp/{4FBC17DA-81AF-449B-B842-E030E337720E}");
+            oUpdateVmStateResponse = StructuredBuffer(::PutIpcTransactionAndGetResponse(poIpcAzureManager, oUpdateVmStateRequest, false));
+            poIpcAzureManager->Release();
+            poIpcAzureManager = nullptr;
+
+            // Send the Virtual Machine Initialization data
+            // Send the initialization data except for the dataset
+            // First we need to build out the huge StructuredBuffer with all of the initialization parameters
+            bool fSuccess = false;
+            StructuredBuffer oInitializationParameters;
+            oInitializationParameters.PutString("NameOfVirtualMachine", "Some nice name of Virtual machine");
+            oInitializationParameters.PutString("IpAddressOfVirtualMachine", strIpAddress);
+            oInitializationParameters.PutString("VirtualMachineIdentifier", c_szVirtualMachineIdentifier);
+            oInitializationParameters.PutString("ClusterIdentifier", Guid().ToString(eHyphensAndCurlyBraces));
+            oInitializationParameters.PutString("DigitalContractIdentifier", c_oDigitalContract.GetString("DigitalContractGuid"));
+            oInitializationParameters.PutString("RootOfTrustDomainIdentifier", Guid().ToString(eHyphensAndCurlyBraces));
+            oInitializationParameters.PutString("ComputationalDomainIdentifier", Guid().ToString(eHyphensAndCurlyBraces));
+            oInitializationParameters.PutString("DataConnectorDomainIdentifier", Guid().ToString(eHyphensAndCurlyBraces));
+            oInitializationParameters.PutString("DataOwnerOrganizationIdentifier", c_oDigitalContract.GetString("DataOwnerOrganization"));
+            oInitializationParameters.PutString("DataOwnerUserIdentifier", c_oDigitalContract.GetString("DatasetGuid"));
+            oInitializationParameters.PutString("DatasetIdentifier", c_oDigitalContract.GetString("DatasetGuid"));
+
+            // The installation package would be sent only to the Virutal Machines
+            // that have been created with this process
+            poTlsNode = ::TlsConnectToNetworkSocketWithTimeout(strIpAddress.c_str(), 6800, 10*60*1000, 30*1000);
+            _ThrowIfNull(poTlsNode, "Failed to connect to the Virtual Machine to send initialization data", nullptr);
+            // Send the url for the binary package and wait for a response on successful installation
+            stlSendPackageResponse = ::PutTlsTransactionAndGetResponse(poTlsNode, oInitializationParameters, 0);
+            _ThrowBaseExceptionIf((0 <= stlSendPackageResponse.size()), "Invalid reponse to send package instructions.", nullptr);
+            oSendPackageResponse = StructuredBuffer(stlSendPackageResponse);
             _ThrowBaseExceptionIf(("Success" != oSendPackageResponse.GetString("Status")), "Sending package failed", nullptr);
 
             // Update status to waiting_for_data. This call wil also update the remote data connector

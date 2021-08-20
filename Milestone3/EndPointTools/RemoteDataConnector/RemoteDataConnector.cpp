@@ -337,8 +337,7 @@ bool __thiscall RemoteDataConnector::UserLogin(
  ********************************************************************************************/
 void __thiscall RemoteDataConnector::UploadDataSetToVirtualMachine(
     _in const std::string c_strVirtualMachineAddress,
-    _in const std::string c_strDatasetUuid,
-    _in const std::string c_strDigitalContractUuid
+    _in const std::string c_strDatasetUuid
     ) const throw()
 {
     __DebugFunction();
@@ -359,50 +358,11 @@ void __thiscall RemoteDataConnector::UploadDataSetToVirtualMachine(
 
         std::vector<Byte> stlDatasetFiledata = ::ReadFileAsByteBuffer(strDatasetFile);
 
-        // TODO: Prawal Get the Digital Contact
-        StructuredBuffer oDigitalContract;
-
-        // Send the initialization data except for the dataset
-        // First we need to build out the huge StructuredBuffer with all of the initialization parameters
-        bool fSuccess = false;
         StructuredBuffer oInitializationParameters;
-        oInitializationParameters.PutString("NameOfVirtualMachine", "Some nice name of Virtual machine");
-        oInitializationParameters.PutString("IpAddressOfVirtualMachine", c_strVirtualMachineAddress);
-        oInitializationParameters.PutString("VirtualMachineIdentifier", c_szVirtualMachineIdentifier);
-        oInitializationParameters.PutString("ClusterIdentifier", Guid().ToString(eHyphensAndCurlyBraces));
-        oInitializationParameters.PutString("DigitalContractIdentifier", oDigitalContract.GetString("DigitalContractGuid"));
-        oInitializationParameters.PutString("DatasetIdentifier", oDigitalContract.GetString("DatasetGuid"));
-        oInitializationParameters.PutString("RootOfTrustDomainIdentifier", Guid().ToString(eHyphensAndCurlyBraces));
-        oInitializationParameters.PutString("ComputationalDomainIdentifier", Guid().ToString(eHyphensAndCurlyBraces));
-        oInitializationParameters.PutString("DataConnectorDomainIdentifier", Guid().ToString(eHyphensAndCurlyBraces));
-        oInitializationParameters.PutString("SailWebApiPortalIpAddress", m_strRestPortalAddress);
         // TODO: Prawal use normal encooding
+        oInitializationParameters.PutString("SailWebApiPortalIpAddress", m_strRestPortalAddress);
         oInitializationParameters.PutString("Base64EncodedDataset", ::Base64Encode(stlDatasetFiledata.data(), stlDatasetFiledata.size()));
         oInitializationParameters.PutString("DataOwnerAccessToken", ::Base64Encode(m_strUserEosb));
-        oInitializationParameters.PutString("DataOwnerOrganizationIdentifier", oDigitalContract.GetString("DataOwnerOrganization"));
-        oInitializationParameters.PutString("DataOwnerUserIdentifier", oDigitalContract.GetString("DatasetGuid"));
-
-        // Now we blast out the transaction
-        std::vector<std::string> stlHeaders;
-        std::vector<Byte> stlResponse;
-        unsigned int unLoopCounter = 120;
-        do
-        {
-            stlResponse = ::RestApiCall(c_strVirtualMachineAddress, 6800, "POST", "/SAIL/InitializationParameters", oInitializationParameters.GetBase64SerializedBuffer(), true, stlHeaders);
-            if (0 == stlResponse.size())
-            {
-                unLoopCounter -= 1;
-                ::sleep(5);
-            }
-            else
-            {
-                // Parse the returning value.
-                StructuredBuffer oGetDigitalContractsResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
-                // Did the transaction succeed?
-                _ThrowBaseExceptionIf(("Success" != oGetDigitalContractsResponse.GetString("Status")), "Initialization has failed. %s", (const char*)stlResponse.data(),nullptr);
-                fSuccess = true;
-            }
-        } while ((0 <= unLoopCounter) && (false == fSuccess));
 
         StructuredBuffer oDataset;
         oDataset.PutBuffer("Dataset", stlDatasetFiledata);
@@ -448,7 +408,7 @@ bool __thiscall RemoteDataConnector::UpdateDatasets(void)
     StructuredBuffer oUpdateDataConnector;
     oUpdateDataConnector.PutString("RemoteDataConnectorGuid", m_oGuidDataConnector.ToString(eHyphensAndCurlyBraces));
     oUpdateDataConnector.PutStructuredBuffer("Datasets", m_oCollectionOfDatasets);
-    // TODO: fill in proper version
+    // TODO: Prawal fill in proper version
     oUpdateDataConnector.PutString("Version", "0.0.1");
 
     // On finding a dataset the new RemoteDataConnector is registered, but if it has been already
@@ -542,9 +502,9 @@ StructuredBuffer __thiscall RemoteDataConnector::VerifyDataset(
 
         oDatasetInformation.PutString("DatasetUuid", strDatasetUuid);
 
-        // TODO: verify the dataset file signature
+        // TODO: Prawal verify the dataset file signature
 
-        // TODO: Make a call to the rest portal and check if the dataset are registered.
+        // TODO: Prawal Make a call to the rest portal and check if the dataset are registered.
 
     }
     catch (const BaseException & oException)

@@ -90,10 +90,11 @@ typedef enum virtual_machine_state
 {
     eStarting = 1,
     eConfiguring = 2,
-    eWaitingForData = 3,
-    eReadyForComputation = 4,
-    eInUse = 5,
-    eShuttingDown = 6
+    eInitializing = 3,
+    eWaitingForData = 4,
+    eReadyForComputation = 5,
+    eInUse = 6,
+    eShuttingDown = 7
 }
 VirtualMachineState;
 

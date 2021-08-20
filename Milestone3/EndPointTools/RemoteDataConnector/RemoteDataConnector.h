@@ -61,8 +61,7 @@ class RemoteDataConnector : public Object
         bool __thiscall UpdateDatasets(void);
         void __thiscall UploadDataSetToVirtualMachine(
             _in const std::string c_strVirtualMachineAddress,
-            _in const std::string c_strDatasetFileName,
-            _in const std::string c_strDigitalContractUuid
+            _in const std::string c_strDatasetFileName
             ) const throw();
         StructuredBuffer __thiscall VerifyDataset(
             _in const std::string & c_strDatasetFileName

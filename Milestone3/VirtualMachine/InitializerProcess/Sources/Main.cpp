@@ -47,7 +47,6 @@ static std::vector<Byte> __stdcall WaitForInitializationParameters(void)
     _ThrowBaseExceptionIf((nullptr == poTlsNode), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
 
     StructuredBuffer oBackendInitializationParameters(::GetTlsTransaction(poTlsNode, 10*1000));
-
     oAllInitializationParameters.PutString("NameOfVirtualMachine", oBackendInitializationParameters.GetString("NameOfVirtualMachine"));
     oAllInitializationParameters.PutString("IpAddressOfVirtualMachine", oBackendInitializationParameters.GetString("IpAddressOfVirtualMachine"));
     oAllInitializationParameters.PutString("VirtualMachineIdentifier", oBackendInitializationParameters.GetString("VirtualMachineIdentifier"));
@@ -61,8 +60,7 @@ static std::vector<Byte> __stdcall WaitForInitializationParameters(void)
 
     StructuredBuffer oStructuredBufferResponse;
     oStructuredBufferResponse.PutString("Status", "Success");
-    JsonValue * poJson = JsonValue::ParseStructuredBufferToJson(oStructuredBufferResponse);
-    ::PutHttpResponse(poTlsNode, poJson->ToString());
+    ::PutTlsTransaction(poTlsNode, oStructuredBufferResponse);
     if (nullptr != poTlsNode)
     {
         poTlsNode->Release();
@@ -84,19 +82,13 @@ static std::vector<Byte> __stdcall WaitForInitializationParameters(void)
     _ThrowBaseExceptionIf((nullptr == poTlsNode), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
 
     StructuredBuffer oRemoteDatasetParameters(::GetTlsTransaction(poTlsNode, 10*1000));
-    if (nullptr != poTlsNode)
-    {
-        poTlsNode->Release();
-        poTlsNode = nullptr;
-    }
-
     oAllInitializationParameters.PutString("DataOwnerAccessToken", oRemoteDatasetParameters.GetString("DataOwnerAccessToken"));
     oAllInitializationParameters.PutString("SailWebApiPortalIpAddress", oRemoteDatasetParameters.GetString("SailWebApiPortalIpAddress"));
     oAllInitializationParameters.PutString("DataOwnerUserIdentifier", oRemoteDatasetParameters.GetString("DataOwnerUserIdentifier"));
     oAllInitializationParameters.PutString("Base64EncodedDataset", oRemoteDatasetParameters.GetString("Base64EncodedDataset"));
     oAllInitializationParameters.PutString("DataOwnerOrganizationIdentifier", oRemoteDatasetParameters.GetString("DataOwnerOrganizationIdentifier"));
 
-    ::PutHttpResponse(poTlsNode, poJson->ToString());
+    ::PutTlsTransaction(poTlsNode, oStructuredBufferResponse);
     if (nullptr != poTlsNode)
     {
         poTlsNode->Release();

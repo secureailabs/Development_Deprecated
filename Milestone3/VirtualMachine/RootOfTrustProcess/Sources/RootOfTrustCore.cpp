@@ -22,6 +22,9 @@
 #include "SocketServer.h"
 #include "StatusMonitor.h"
 #include "ThreadManager.h"
+#include "CurlRest.h"
+#include "Utils.h"
+#include "JsonValue.h"
 
 #include <pthread.h>
 #include <stdlib.h>
@@ -184,9 +187,8 @@ RootOfTrustCore::RootOfTrustCore(
     )
 {
     __DebugFunction();
-    
+
     StructuredBuffer oInitializationData(c_stlSerializedInitializationParameters);
-    
     gs_fIsInitialized = false;
     gs_fIsRunning = false;
     gs_strNameOfVirtualMachine = oInitializationData.GetString("NameOfVirtualMachine");
@@ -211,9 +213,9 @@ RootOfTrustCore::RootOfTrustCore(
     gs_strDataDomainIpcPath = Guid().ToString(eRaw);
 
     gs_fIsInitialized = true;
-    
+
     ::SetIpAddressOfSailWebApiPortalGateway(gs_strSailWebApiPortalIpAddress, 6200);
-    
+
     this->InitializeVirtualMachine();
     this->RegisterDataOwnerEosb();
 }
@@ -252,7 +254,7 @@ Guid __thiscall RootOfTrustCore::GetComputationalDomainIdentifier(void) const th
 {
     __DebugFunction();
     __DebugAssert(true == gs_fIsInitialized);
-    
+
     return Guid(gs_strComputationalDomainIdentifier.c_str());
 }
 
@@ -504,7 +506,7 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactGetDataSet(
         ::RegisterException(oException, __func__, __LINE__);
         oResponseBuffer.PutBoolean("Success", false);
     }
-        
+
     catch(...)
     {
         ::RegisterUnknownException(__func__, __LINE__);
@@ -588,7 +590,7 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactRecordAuditEvent(
         ::RegisterException(oException, __func__, __LINE__);
         oResponseBuffer.PutBoolean("Success", false);
     }
-    
+
     catch(...)
     {
         ::RegisterUnknownException(__func__, __LINE__);
@@ -624,6 +626,18 @@ bool __thiscall RootOfTrustCore::InitializeVirtualMachine(void)
             if ((0 < gs_strDataOwnerAccessToken.size())&&(0 < gs_strVirtualMachineIdentifier.size())&&(0 < gs_strDigitalContractIdentifier.size())&&(0 < gs_strIpAddressOfVirtualMachine.size()))
             {
                 // gs_strVirtualMachineEosb = ::RegisterVirtualMachineWithSailWebApiPortal(gs_strDataOwnerAccessToken, gs_strVirtualMachineIdentifier, gs_strDigitalContractIdentifier, gs_strIpAddressOfVirtualMachine);
+                std::string strVerb = "PUT";
+                // TODO: Prawal make this an enum or string.. VirtualMachineState::eWaitingForData is 5
+                std::string strApiUrl = "/SAIL/VirtualMachineManager/UpdateStatus?Eosb="+ gs_strDataOwnerAccessToken;
+                std::string strContent = "{\n   \"VirtualMachineGuid\": \""+ gs_strVirtualMachineIdentifier +"\","
+                                        "\n   \"State\": "+ std::to_string(5) + "\""
+                                        "\n}";
+                // Make the API call and get REST response
+                std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strSailWebApiPortalIpAddress, (Word)6200, strVerb, strApiUrl, strContent, true);
+                std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+                StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+                _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Error updating the virtual machine status.", nullptr);
+
                 fSuccess = true;
             }
         }

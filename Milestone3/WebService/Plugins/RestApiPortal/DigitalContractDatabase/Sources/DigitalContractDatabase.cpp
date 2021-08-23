@@ -2145,21 +2145,12 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
                                     StructuredBuffer oVirtualMachineCreateParameter;
                                     oVirtualMachineCreateParameter.PutString("vmName", oNewVmGuid.ToString(eRaw));
                                     oVirtualMachineCreateParameter.PutString("vmSize", "Standard_B2ms");
+                                    // TODO: Prawal add this to template
                                     oVirtualMachineCreateParameter.PutString("vmImageId", "/subscriptions/20c11edd-abb4-4bc0-a6d5-c44d6d2524be/resourceGroups/VirtualMachineImageStorageRg/providers/Microsoft.Compute/images/ubuntu-image");
-                                    // oVirtualMachineCreateParameter.PutString("addressPrefix", "10.1.16.0/24");
-                                    // oVirtualMachineCreateParameter.PutString("subnetPrefix", "10.1.16.0/24");
-                                    // oVirtualMachineCreateParameter.PutString("osDiskType", "StandardSSD_LRS");
-                                    // oVirtualMachineCreateParameter.PutString("osType", "Linux");
-                                    // oVirtualMachineCreateParameter.PutString("hyperVGeneration", "V2");
-                                    // TODO: Prawal add this to the Azure Template
-                                    // oVirtualMachineCreateParameter.PutString("osDiskStorageAccountID", "/subscriptions/20c11edd-abb4-4bc0-a6d5-c44d6d2524be/resourceGroups/VirtualMachineImageStorageRg/providers/Microsoft.Storage/storageAccounts/sailcomputationimage9872");
-                                    // oVirtualMachineCreateParameter.PutString("osDiskURL", "https://sailcomputationimage9872.blob.core.windows.net/system/Microsoft.Compute/Images/packer/SailUbuntu2004-osDisk.6126fa4d-ca83-438a-b427-7df563bf8026.vhd");
                                     oVirtualMachineCreateParameter.PutString("VirtualNetworkId", strVirtualNetworkId);
                                     oVirtualMachineCreateParameter.PutString("NetworkSecurityGroupId", strNetworkSecurityGroupId);
-                                    // oVirtualMachineCreateParameter.PutString("bootDiagnostics", "false");
                                     oVirtualMachineCreateParameter.PutString("adminUsername", "saildeveloper");
                                     oVirtualMachineCreateParameter.PutString("adminPassword", "Iw2btin2AC+beRl&dir!");
-                                    // oVirtualMachineCreateParameter.PutString("secureBootEnabled", "true");
 
                                     std::string strParamterJson = ::CreateAzureParamterJson("https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/DeployVirtualMachineNoPorts.json?sp=r&st=2021-06-29T12:01:40Z&se=2022-02-28T20:01:40Z&spr=https&sv=2020-02-10&sr=b&sig=epPQ8kO62sj%2F0jA1aifQVq1VH1yN5woISBaqC2mRGfg%3D", oVirtualMachineCreateParameter);
                                     // Create a thread which will keep updating the VM status on the database as it proceeds
@@ -2240,6 +2231,7 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
 {
     __DebugFunction();
 
+    bool fIsProvisioningSuccess = false;
     try
     {
         // Register a Virtual Machine to the database.
@@ -2275,7 +2267,7 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
             std::string strIpAddress = ::DeployVirtualMachineAndWait(c_szApplicationIdentifier, c_szSecret, c_szTenantIdentifier, c_szSubscriptionIdentifier, c_szResourceGroup, c_szVirtualMachineIdentifier, c_szVirtualMachineSpecification, c_szLocation);
             _ThrowBaseExceptionIf((0 == strIpAddress.length()), "Virtual Machine provisioning failed.", nullptr);
 
-            // Update the Ip Address of the Virtual Machine
+            // Update the IpAddress of the Virtual Machine
             StructuredBuffer oVmIpAddressRequest;
             oVmIpAddressRequest.PutBuffer("Eosb", c_stlEosb);
             oVmIpAddressRequest.PutDword("TransactionType", 0x00000004);
@@ -2360,7 +2352,35 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
             oUpdateVmStateResponse = StructuredBuffer(::PutIpcTransactionAndGetResponse(poIpcAzureManager, oUpdateVmStateRequest, false));
             poIpcAzureManager->Release();
             poIpcAzureManager = nullptr;
+
+            fIsProvisioningSuccess = true;
         }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    try
+    {
+        // Update the Digital ContractStatus to Provisioning
+        StructuredBuffer oUpdateProvisioningState;
+        oUpdateProvisioningState.PutBuffer("Eosb", c_stlEosb);
+        if (true == fIsProvisioningSuccess)
+        {
+            oUpdateProvisioningState.PutDword("ProvisioningStatus", (Dword)DigitalContractProvisiongStatus::eReady);
+        }
+        else
+        {
+            oUpdateProvisioningState.PutDword("ProvisioningStatus", (Dword)DigitalContractProvisiongStatus::eProvisioningFailed);
+        }
+        oUpdateProvisioningState.PutString("DigitalContractGuid", c_oDigitalContract.GetString("DigitalContractGuid"));
+        StructuredBuffer oUpdateProvisioningStateResponse(this->UpdateDigitalContractProvisioningStatus(oUpdateProvisioningState));
+        _ThrowBaseExceptionIf((200 != oUpdateProvisioningStateResponse.GetDword("Status")), "Update DC status fail", nullptr);
     }
     catch (BaseException oException)
     {

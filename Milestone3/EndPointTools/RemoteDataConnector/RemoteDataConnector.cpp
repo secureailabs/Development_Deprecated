@@ -237,7 +237,11 @@ void __thiscall RemoteDataConnector::SendDataConnectorHeartbeat(void) throw()
                     // There is a Virtual Machine waiting for data, a new thread is created
                     // to connect to the Virutal Machine and upload the data
                     StructuredBuffer oVirtualMachineInformation = oVirtualMachinesWaiting.GetStructuredBuffer(strVirtualMachineUuid.c_str());
-                    stlThreadsUploadingDataToVMs.push_back(std::thread(&RemoteDataConnector::UploadDataSetToVirtualMachine, this, oVirtualMachineInformation.GetString("IPAddress"), oVirtualMachineInformation.GetString("DatasetGuid")));
+                    if (m_stlSetOfVirtualMachineUploading.end() == m_stlSetOfVirtualMachineUploading.find(oVirtualMachineInformation.GetString("IPAddress")))
+                    {
+                        m_stlSetOfVirtualMachineUploading.insert(oVirtualMachineInformation.GetString("IPAddress"));
+                        stlThreadsUploadingDataToVMs.push_back(std::thread(&RemoteDataConnector::UploadDataSetToVirtualMachine, this, oVirtualMachineInformation.GetString("IPAddress"), oVirtualMachineInformation.GetString("DatasetGuid")));
+                    }
                 }
             }
             else
@@ -352,11 +356,13 @@ bool __thiscall RemoteDataConnector::UserLogin(
 void __thiscall RemoteDataConnector::UploadDataSetToVirtualMachine(
     _in const std::string c_strVirtualMachineAddress,
     _in const std::string c_strDatasetUuid
-    ) const throw()
+    ) throw()
 {
     __DebugFunction();
 
     std::string strDatasetFile;
+
+    std::cout << "Uploading " << c_strDatasetUuid << " to Virtual Machine " << c_strVirtualMachineAddress << std::endl;
 
     try
     {
@@ -385,7 +391,7 @@ void __thiscall RemoteDataConnector::UploadDataSetToVirtualMachine(
         TlsNode * poTlsNode = ::TlsConnectToNetworkSocketWithTimeout(c_strVirtualMachineAddress.c_str(), 6800, 10*60*1000, 10*1000);
         StructuredBuffer oResponse(::PutTlsTransactionAndGetResponse(poTlsNode, oInitializationParameters, 10*1000));
 
-        if (200 == oResponse.GetFloat64("Status"))
+        if ("Success" == oResponse.GetString("Status"))
         {
             std::cout << "Dataset upload success.\n";
         }

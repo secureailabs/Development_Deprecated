@@ -124,13 +124,13 @@ bool __stdcall SetIpAddressOfSailWebApiPortalGateway(
     __DebugFunction();
     __DebugAssert(0 == gs_strIpAddressOfWebPortalGateway.size());
     __DebugAssert(0 < c_strIpAddressOfWebPortalGateway.size());
-    
+
     gs_strIpAddressOfWebPortalGateway = c_strIpAddressOfWebPortalGateway;
     gs_unPortAddressOfWebPortalGateway = wPortAddressOfWebPortalGateway;
-    
+
     return true;
 }
-    
+
 /*********************************************************************************************/
 
 std::string __stdcall LoginToSailWebApiPortal(

@@ -144,6 +144,11 @@ class DigitalContractDatabase : public Object
             _in const std::string c_szLocation
             );
 
+        // Update the Provisioning Status of Digital Contract to
+        std::vector<Byte> __thiscall UpdateDigitalContractProvisioningStatus(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Associate one or more digital contracts with one Azure template
         std::vector<Byte> __thiscall AssociateWithAzureTemplate(
             _in const StructuredBuffer & c_oRequest

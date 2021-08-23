@@ -73,6 +73,8 @@ class RemoteDataConnector : public Object
         bool m_fIsDataConnectorRegistered = false;
         static RemoteDataConnector m_oRemoteDataConnector;
         std::string m_strUserEosb;
+        std::string m_strUserUuid;
+        std::string m_strUserOrganizationUuid;
         std::string m_strRestPortalAddress;
         Dword m_dwRestPortalPort;
         std::vector<std::thread> m_stlListOfThreadsForDatasets;

@@ -81,7 +81,8 @@ enum class DigitalContractProvisiongStatus
 {
     eProvisioning = 1,
     eReady = 2,
-    eUnprovisioned = 3
+    eUnprovisioned = 3,
+    eProvisioningFailed = 4
 };
 
 /********************************************************************************************/

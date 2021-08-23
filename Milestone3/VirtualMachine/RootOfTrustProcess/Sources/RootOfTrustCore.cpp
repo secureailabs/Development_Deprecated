@@ -202,9 +202,10 @@ RootOfTrustCore::RootOfTrustCore(
     gs_strDataOwnerAccessToken = oInitializationData.GetString("DataOwnerAccessToken");
     gs_strDataOwnerOrganizationIdentifier = oInitializationData.GetString("DataOwnerOrganizationIdentifier");
     gs_strDataOwnerUserIdentifier = oInitializationData.GetString("DataOwnerUserIdentifier");
-    std::string strBase64EncodedSerializedDataset = oInitializationData.GetString("Base64EncodedDataset");    
+    std::string strBase64EncodedSerializedDataset = oInitializationData.GetString("Base64EncodedDataset");
     gs_stlDataset = ::Base64Decode(strBase64EncodedSerializedDataset.c_str());
-    
+    gs_strVirtualMachineEosb = oInitializationData.GetString("VmEosb");
+
     gs_strRootOfTrustIpcPath = Guid().ToString(eRaw);
     gs_strComputationalDomainIpcPath = Guid().ToString(eRaw);
     gs_strDataDomainIpcPath = Guid().ToString(eRaw);
@@ -622,7 +623,7 @@ bool __thiscall RootOfTrustCore::InitializeVirtualMachine(void)
             // Make sure all of the parameters are proper
             if ((0 < gs_strDataOwnerAccessToken.size())&&(0 < gs_strVirtualMachineIdentifier.size())&&(0 < gs_strDigitalContractIdentifier.size())&&(0 < gs_strIpAddressOfVirtualMachine.size()))
             {
-                gs_strVirtualMachineEosb = ::RegisterVirtualMachineWithSailWebApiPortal(gs_strDataOwnerAccessToken, gs_strVirtualMachineIdentifier, gs_strDigitalContractIdentifier, gs_strIpAddressOfVirtualMachine);
+                // gs_strVirtualMachineEosb = ::RegisterVirtualMachineWithSailWebApiPortal(gs_strDataOwnerAccessToken, gs_strVirtualMachineIdentifier, gs_strDigitalContractIdentifier, gs_strIpAddressOfVirtualMachine);
                 fSuccess = true;
             }
         }
@@ -633,12 +634,12 @@ bool __thiscall RootOfTrustCore::InitializeVirtualMachine(void)
         oEventData.PutString("ClusterIdentifier", gs_strClusterIdentifier);
         this->RecordInternalAuditEvent("DC_INITIALIZE", 0x1111, 0x05, oEventData);
     }
-    
+
     catch (BaseException oException)
     {
         ::RegisterException(oException, __func__, __LINE__);
     }
-    
+
     catch(...)
     {
         ::RegisterUnknownException(__func__, __LINE__);

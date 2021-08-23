@@ -1224,7 +1224,6 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
             poTlsNode->Release();
             poTlsNode = nullptr;
 
-            // TODO: Prawal add this part in the eReady state of the Virtual Machine
             // Check if DatabaseManager registered the virtual machine or not
             StructuredBuffer oDatabaseResponse(stlResponse);
             if (404 != oDatabaseResponse.GetDword("Status"))
@@ -1779,7 +1778,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::AddVirtualMachineIpAddress(
             {
                 StructuredBuffer oVmBlob = oVmInformation.GetStructuredBuffer("VirtualMachine");
                 // Add new VM information from the request
-                oVmBlob.PutString("IPAddress", c_oRequest.GetString("IpAddress"));
+                oVmBlob.PutString("IPAddress", c_oRequest.GetString("IPAddress"));
 
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);

@@ -242,24 +242,18 @@ std::string DeployVirtualMachineAndWait(
     const std::string c_strMicrosoftAzureAccessToken = ::LoginToMicrosoftAzureApiPortal(c_szApplicationIdentifier, c_szSecret, c_szTenantIdentifier);
     _ThrowBaseExceptionIf((0 == c_strMicrosoftAzureAccessToken.length()), "Authentication failed...", nullptr);
 
-    // General settings
-    std::string strSubscription = c_szSubscriptionIdentifier;
-    std::string strResourceGroup = c_szResourceGroup;
-    std::string strVirtualMachineIdentifier = c_szVirtualMachineIdentifier;
-    std::string strLocation = c_szLocation;
-
     // TODO: Prawal use the CreateAzureDeployment function here
     // Create resource group
-    std::string resourceGroupSpec = std::string("{\"location\": \"") + strLocation + "\"}";
+    std::string resourceGroupSpec = std::string("{\"location\": \"") + c_szLocation + "\"}";
     ::CreateResourceGroup(c_strMicrosoftAzureAccessToken, c_szSubscriptionIdentifier, c_szResourceGroup, resourceGroupSpec.c_str());
 
     // Create a Virtual Machine with a pre-existing Azure Template
     std::string strVerb = "PUT";
-    std::string strResource = "Microsoft.Resources/deployments/" + strVirtualMachineIdentifier + "-deploy";
+    std::string strResource = "Microsoft.Resources/deployments/" + c_szVirtualMachineIdentifier + "-deploy";
     std::string strHost = "management.azure.com";
     std::string strContent = c_szconfidentialVirtualMachineSpecification;
     std::string strApiVersionDate = "2020-10-01";
-    std::vector<Byte> stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, strSubscription, strResourceGroup);
+    std::vector<Byte> stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_szSubscriptionIdentifier, c_szResourceGroup);
     stlResponse.push_back(0);
     std::string strResponse = (const char*)stlResponse.data();
     _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to create a Microsoft Azure public IP address", nullptr);
@@ -270,11 +264,11 @@ std::string DeployVirtualMachineAndWait(
     do
     {
         strVerb = "GET";
-        strResource = "Microsoft.Resources/deployments/" + strVirtualMachineIdentifier + "-deploy";
+        strResource = "Microsoft.Resources/deployments/" + c_szVirtualMachineIdentifier + "-deploy";
         strHost = "management.azure.com";
         strContent = "";
         strApiVersionDate = "2021-04-01";
-        stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, strSubscription, strResourceGroup);
+        stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_szSubscriptionIdentifier, c_szResourceGroup);
         stlResponse.push_back(0);
         strResponse = (const char*)stlResponse.data();
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
@@ -305,11 +299,11 @@ std::string DeployVirtualMachineAndWait(
     do
     {
         strVerb = "GET";
-        strResource = "Microsoft.Compute/virtualMachines/" + strVirtualMachineIdentifier;
+        strResource = "Microsoft.Compute/virtualMachines/" + c_szVirtualMachineIdentifier;
         strHost = "management.azure.com";
         strContent = "";
         strApiVersionDate = "2020-12-01";
-        stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, strSubscription, strResourceGroup);
+        stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_szSubscriptionIdentifier, c_szResourceGroup);
         stlResponse.push_back(0);
         strResponse = (const char*)stlResponse.data();
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
@@ -338,11 +332,11 @@ std::string DeployVirtualMachineAndWait(
     // Now that the virtual machine is running, we go ahead and effectively get the IP address of the
     // virtual machine. This is the last step in the provisioning of a Microsoft Azure virtual machine
     strVerb = "GET";
-    strResource = "Microsoft.Network/publicIPAddresses/" + strVirtualMachineIdentifier + "-ip";
+    strResource = "Microsoft.Network/publicIPAddresses/" + c_szVirtualMachineIdentifier + "-ip";
     strHost = "management.azure.com";
     strContent = "";
     strApiVersionDate = "2020-07-01";
-    stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, strSubscription, strResourceGroup);
+    stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_szSubscriptionIdentifier, c_szResourceGroup);
     stlResponse.push_back(0);
     strResponse = (const char*)stlResponse.data();
     _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the ip address of a Microsoft Azure virtual machine", nullptr);

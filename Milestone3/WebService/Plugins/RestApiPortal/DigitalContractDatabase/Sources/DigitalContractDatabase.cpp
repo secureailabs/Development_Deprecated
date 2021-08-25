@@ -1886,10 +1886,8 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetProvisioningStatus(
                 Dword dwProvisioningStatus = oDigitalContract.GetStructuredBuffer("DigitalContract").GetDword("ProvisioningStatus");
                 oResponse.PutDword("ProvisioningStatus", dwProvisioningStatus);
                 // Send back list of associated VMs and their IP addresses if the status is READY
-                std::cout << "DigitalContractProvisiongStatus\n";
                 if ((Dword)DigitalContractProvisiongStatus::eReady == dwProvisioningStatus)
                 {
-                    std::cout << "It is ready\n";
                     StructuredBuffer oGetListOfVmsRequest;
                     oGetListOfVmsRequest.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
                     oGetListOfVmsRequest.PutDword("TransactionType", 0x00000001);
@@ -1899,7 +1897,6 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetProvisioningStatus(
                     StructuredBuffer oVirtualMachines(::PutIpcTransactionAndGetResponse(poIpcVirtualMachineManager, oGetListOfVmsRequest, false));
                     poIpcVirtualMachineManager->Release();
                     poIpcVirtualMachineManager = nullptr;
-                    std::cout << "oVirtualMachines" << oVirtualMachines.ToString() << std::endl;
                     if ((0 < oVirtualMachines.GetSerializedBufferRawDataSizeInBytes())&&(200 == oVirtualMachines.GetDword("Status")))
                     {
                         oResponse.PutStructuredBuffer("VirtualMachines", oVirtualMachines.GetStructuredBuffer("VirtualMachines"));
@@ -2142,7 +2139,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
                                 std::string strTenantID = oTemplateData.GetString("TenantID");
                                 std::string strApplicationID = oTemplateData.GetString("ApplicationID");
                                 std::string strResourceGroup = oTemplateData.GetString("ResourceGroup");
-                                std::string strVirtualMachineImageId = oTemplateData.GetString("VirtualMachineImageId");
+                                // std::string strVirtualMachineImageId = oTemplateData.GetString("VirtualMachineImageId");
                                 std::string strVirtualNetwork = oTemplateData.GetString("VirtualNetwork");
                                 std::string strVirtualNetworkId = ::CreateAzureResourceId(strSubscriptionID, strResourceGroup, "providers/Microsoft.Network", "virtualNetworks", strVirtualNetwork);
                                 std::string strNetworkSecurityGroup = oTemplateData.GetString("NetworkSecurityGroup");
@@ -2159,8 +2156,8 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
                                     // TODO: Prawal read this from the template
                                     oVirtualMachineCreateParameter.PutString("vmSize", "Standard_B2ms");
                                     // TODO: Prawal add this to template
-                                    // oVirtualMachineCreateParameter.PutString("vmImageId", "/subscriptions/20c11edd-abb4-4bc0-a6d5-c44d6d2524be/resourceGroups/VirtualMachineImageStorageRg/providers/Microsoft.Compute/images/ubuntu-image");
-                                    oVirtualMachineCreateParameter.PutString("vmImageId", strVirtualMachineImageId);
+                                    oVirtualMachineCreateParameter.PutString("vmImageId", "/subscriptions/20c11edd-abb4-4bc0-a6d5-c44d6d2524be/resourceGroups/VirtualMachineImageStorageRg/providers/Microsoft.Compute/images/ubuntu-image");
+                                    // oVirtualMachineCreateParameter.PutString("vmImageId", strVirtualMachineImageId);
                                     oVirtualMachineCreateParameter.PutString("VirtualNetworkId", strVirtualNetworkId);
                                     oVirtualMachineCreateParameter.PutString("NetworkSecurityGroupId", strNetworkSecurityGroupId);
                                     oVirtualMachineCreateParameter.PutString("adminUsername", "saildeveloper");
@@ -2457,11 +2454,8 @@ std::vector<Byte> __thiscall DigitalContractDatabase::UpdateDigitalContractProvi
                         {
                             oSsb.PutDword("NumberOfVirtualMachinesReady", 1);
                         }
-                        // Only update the status to eReady when all the Virtual Machines have are ready
-                        if (oSsb.GetDword("NumberOfVirtualMachinesReady") == oSsb.GetUnsignedInt64("NumberOfVirtualMachines"))
-                        {
-                            oSsb.PutDword("ProvisioningStatus", (Dword)DigitalContractProvisiongStatus::eReady);
-                        }
+                        // TODO: Prawal update this to provisioned when all the VMs are ready
+                        oSsb.PutDword("ProvisioningStatus", (Dword)DigitalContractProvisiongStatus::eReady);
                     }
                     else if ((Dword)DigitalContractProvisiongStatus::eUnprovisioned == c_oRequest.GetDword("ProvisioningStatus"))
                     {
@@ -2550,7 +2544,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::DeprovisionDigitalContract
 
     StructuredBuffer oResponse;
 
-    Dword dwStatus = 204;
+    Dword dwStatus = 400;
     TlsNode * poTlsNode = nullptr;
 
     try

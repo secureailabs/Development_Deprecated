@@ -518,12 +518,21 @@ bool DeleteAzureResources(
 
     for (auto strResourceId : c_stlResourceId)
     {
-        std::cout << "Deleting " << strResourceId << std::endl;
         if (true == ::DoesAzureResourceExist(c_strMicrosoftAzureAccessToken, strResourceId))
         {
             std::string strVerb = "DELETE";
             std::string strContent = "";
-            std::string strApiUri = strResourceId + "?api-version=2021-03-01";
+            std::string strApiUri = "";
+            if (std::string::npos != strResourceId.find("Microsoft.Network"))
+            {
+                strApiUri = strResourceId + "?api-version=2021-03-01";
+            }
+            else if (std::string::npos != strResourceId.find("Microsoft.Compute"))
+            {
+                strApiUri = strResourceId + "?api-version=2021-04-01";
+            }
+            _ThrowBaseExceptionIf((0 == strApiUri.length()), "Incorrect resource type", nullptr);
+
             std::string strHost = "management.azure.com";
 
             std::vector<std::string> stlHeader;
@@ -534,6 +543,28 @@ bool DeleteAzureResources(
             long nResponseCode = 0;
             std::vector<Byte> stlResponse = ::RestApiCall(strHost, 443, strVerb, strApiUri, "", false, stlHeader, &nResponseCode);
 
+            bool fResourceDeleted = false;
+            // Wait for the resource to be deleted so that no depenedency is blocked or fails later
+            while (false == fResourceDeleted)
+            {
+                if (true == ::DoesAzureResourceExist(c_strMicrosoftAzureAccessToken, strResourceId))
+                {
+                    ::sleep(5);
+                }
+                else
+                {
+                    fResourceDeleted = true;
+                }
+            }
+
+            if (stlResponse.size() > 0)
+            {
+                std::cout << nResponseCode  << "response for " << strResourceId << " " << stlResponse.data() << std::endl;
+            }
+            else
+            {
+                std::cout << nResponseCode  << "response for " << strResourceId << std::endl;
+            }
             if ((200 == nResponseCode) || (202 == nResponseCode) || (204 == nResponseCode))
             {
                 fResourcesDeleted = true;
@@ -576,16 +607,24 @@ bool DoesAzureResourceExist(
 
     std::string strVerb = "GET";
     std::string strContent = "";
-    std::string strApiUri = c_strResourceId + "?api-version=2021-04-01";
-    std::string strHost = "management.azure.com";
+    std::string strApiUri = "";
+    if (std::string::npos != c_strResourceId.find("Microsoft.Network"))
+    {
+        strApiUri = c_strResourceId + "?api-version=2021-03-01";
+    }
+    else if (std::string::npos != c_strResourceId.find("Microsoft.Compute"))
+    {
+        strApiUri = c_strResourceId + "?api-version=2021-04-01";
+    }
+    _ThrowBaseExceptionIf((0 == strApiUri.length()), "Incorrect resource type", nullptr);
 
+    std::string strHost = "management.azure.com";
     std::vector<std::string> stlHeader;
     stlHeader.push_back("Host: " + strHost);
     stlHeader.push_back("Authorization: Bearer " + c_strMicrosoftAzureAccessToken);
     stlHeader.push_back("Content-Length: " + std::to_string(strContent.length()));
 
     long nResponseCode = 0;
-    std::cout << "DoesAzureResourceExist nResponseCode " << nResponseCode << " for resource "  << c_strResourceId <<  std::endl;
     std::vector<Byte> stlResponse = ::RestApiCall(strHost, 443, strVerb, strApiUri, "", false, stlHeader, &nResponseCode);
     if (200 == nResponseCode)
     {

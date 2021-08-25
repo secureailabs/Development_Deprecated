@@ -410,6 +410,10 @@ void __thiscall AzureManager::InitializePlugin(void)
     oNetworkSecurityGroup.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oNetworkSecurityGroup.PutBoolean("IsRequired", true);
     oTemplateData.PutStructuredBuffer("NetworkSecurityGroup", oNetworkSecurityGroup);
+    StructuredBuffer oVirtualMachineImageId;
+    oVirtualMachineImageId.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    oVirtualMachineImageId.PutBoolean("IsRequired", true);
+    oTemplateData.PutStructuredBuffer("VirtualMachineImageId", oVirtualMachineImageId);
     StructuredBuffer oHostRegion;
     oHostRegion.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oHostRegion.PutBoolean("IsRequired", true);
@@ -1226,6 +1230,7 @@ void __thiscall AzureManager::UpdateVirtualNetworkAndNetworkSecurityGroup(
         std::string strResourceGroup = oAzureTemplate.GetString("ResourceGroup");
         std::string strVirtualNetwork = oAzureTemplate.GetString("VirtualNetwork");
         std::string strNetworksecurityGroupName = oAzureTemplate.GetString("NetworkSecurityGroup");
+        std::string strVirtualMachineImageId = oAzureTemplate.GetString("VirtualMachineImageId");
         std::string strLocation = oAzureTemplate.GetString("HostRegion");
 
         StructuredBuffer oUpdateStatus;

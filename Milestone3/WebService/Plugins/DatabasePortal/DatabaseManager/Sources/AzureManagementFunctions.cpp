@@ -229,6 +229,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterAzureTemplate(
         oObject.PutString("ResourceGroup", oTemplateData.GetString("ResourceGroup"));
         oObject.PutString("VirtualNetwork", oTemplateData.GetString("VirtualNetwork"));
         oObject.PutString("NetworkSecurityGroup", oTemplateData.GetString("NetworkSecurityGroup"));
+        oObject.PutString("VirtualMachineImageId", oTemplateData.GetString("VirtualMachineImageId"));
         oObject.PutString("HostRegion", oTemplateData.GetString("HostRegion"));
         oObject.PutDword("State", oTemplateData.GetDword("State"));
         bsoncxx::types::b_binary oObjectBlob
@@ -400,6 +401,7 @@ std::vector<Byte> __thiscall DatabaseManager::UpdateAzureTemplate(
                             oUpdatedObject.PutString("ResourceGroup", oTemplateData.GetString("ResourceGroup"));
                             oUpdatedObject.PutString("VirtualNetwork", oTemplateData.GetString("VirtualNetwork"));
                             oUpdatedObject.PutString("NetworkSecurityGroup", oTemplateData.GetString("NetworkSecurityGroup"));
+                            oUpdatedObject.PutString("VirtualMachineImageId", oTemplateData.GetString("VirtualMachineImageId"));
                             oUpdatedObject.PutString("HostRegion", oTemplateData.GetString("HostRegion"));
                             oUpdatedObject.PutDword("State", oTemplateData.GetDword("State"));
                             bsoncxx::types::b_binary oUpdatedTemplateBlob

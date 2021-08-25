@@ -110,5 +110,5 @@ enum class AzureTemplateState
     eCreatingNetworkSecurityGroup = 3,
     eFailedCreatingVirtualNetwork = 4,
     eFailedCreatingNetworkSecurityGroup = 5,
-    eReady = 5
+    eReady = 6
 };

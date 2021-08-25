@@ -261,10 +261,6 @@ std::vector<Byte> __stdcall RestApiCall(
             {
                 strContentType = stlMapOfHeaders.at("content-type");
             }
-            else
-            {
-                _ThrowBaseException("Content Type header not found.", nullptr);
-            }
             strContentType = strContentType.substr(0, strContentType.find_first_of(';'));
             strContentType = strContentType.substr(strContentType.find_last_of(' ') + 1);
             // Check if the response is a JSON

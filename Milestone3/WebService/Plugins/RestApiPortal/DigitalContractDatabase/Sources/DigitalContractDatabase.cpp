@@ -22,6 +22,7 @@
 #include "TlsTransactionHelperFunctions.h"
 #include "Base64Encoder.h"
 
+#include <algorithm>
 #include <thread>
 
 #include <unistd.h>
@@ -511,6 +512,8 @@ void __thiscall DigitalContractDatabase::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DigitalContractManager/PullDigitalContract", oPullDc, 1);
     // Get a digital contract's provisioning status
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DigitalContractManager/GetProvisioningStatus", oDcProvisioningStatus, 1);
+    // Deprovision a Digital Contract and delete it's corresponding resources
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DigitalContractManager/Deprovision", oDcProvisioningStatus, 1);
 
     // Provision a digital contract
     StructuredBuffer oDcProvision;
@@ -660,6 +663,10 @@ uint64_t __thiscall DigitalContractDatabase::SubmitRequest(
         else if ("/SAIL/DigitalContractManager/Provision" == strResource)
         {
             stlResponseBuffer = this->ProvisionDigitalContract(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/DigitalContractManager/Deprovision" == strResource)
+        {
+            stlResponseBuffer = this->DeprovisionDigitalContract(c_oRequestStructuredBuffer);
         }
     }
     else if ("PATCH" == strVerb)
@@ -1879,9 +1886,12 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetProvisioningStatus(
                 Dword dwProvisioningStatus = oDigitalContract.GetStructuredBuffer("DigitalContract").GetDword("ProvisioningStatus");
                 oResponse.PutDword("ProvisioningStatus", dwProvisioningStatus);
                 // Send back list of associated VMs and their IP addresses if the status is READY
+                std::cout << "DigitalContractProvisiongStatus\n";
                 if ((Dword)DigitalContractProvisiongStatus::eReady == dwProvisioningStatus)
                 {
+                    std::cout << "It is ready\n";
                     StructuredBuffer oGetListOfVmsRequest;
+                    oGetListOfVmsRequest.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
                     oGetListOfVmsRequest.PutDword("TransactionType", 0x00000001);
                     oGetListOfVmsRequest.PutString("DigitalContractGuid", c_oRequest.GetString("DigitalContractGuid"));
                     // Call VirtualMachine plugin to get the list of VMs associated with the digital contract
@@ -1889,6 +1899,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::GetProvisioningStatus(
                     StructuredBuffer oVirtualMachines(::PutIpcTransactionAndGetResponse(poIpcVirtualMachineManager, oGetListOfVmsRequest, false));
                     poIpcVirtualMachineManager->Release();
                     poIpcVirtualMachineManager = nullptr;
+                    std::cout << "oVirtualMachines" << oVirtualMachines.ToString() << std::endl;
                     if ((0 < oVirtualMachines.GetSerializedBufferRawDataSizeInBytes())&&(200 == oVirtualMachines.GetDword("Status")))
                     {
                         oResponse.PutStructuredBuffer("VirtualMachines", oVirtualMachines.GetStructuredBuffer("VirtualMachines"));
@@ -2204,7 +2215,6 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
     return oResponse.GetSerializedBuffer();
 }
 
-
 /********************************************************************************************
  *
  * @class DigitalContractDatabase
@@ -2450,6 +2460,14 @@ std::vector<Byte> __thiscall DigitalContractDatabase::UpdateDigitalContractProvi
                             oSsb.PutDword("ProvisioningStatus", (Dword)DigitalContractProvisiongStatus::eReady);
                         }
                     }
+                    else if ((Dword)DigitalContractProvisiongStatus::eUnprovisioned == c_oRequest.GetDword("ProvisioningStatus"))
+                    {
+                        oSsb.PutDword("ProvisioningStatus", (Dword)DigitalContractProvisiongStatus::eUnprovisioned);
+                    }
+                    else
+                    {
+                        _ThrowBaseException("Invalid provisioning status", nullptr);
+                    }
 
                     // Serialize the update digital contract blob
                     std::vector<Byte> stlUpdatedSsb;
@@ -2508,4 +2526,197 @@ std::vector<Byte> __thiscall DigitalContractDatabase::UpdateDigitalContractProvi
     oResponse.PutDword("Status", dwStatus);
 
     return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class DigitalContractDatabase
+ * @function ProvisionDigitalContract
+ * @brief Create a Virutal Machine for the Digital Contract activation
+ * @param[in] c_oRequest contains user Eosb for the researcher organization
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns status of the transaction and instructions of what happens next
+ *
+ ********************************************************************************************/
+
+std::vector<Byte> __thiscall DigitalContractDatabase::DeprovisionDigitalContract(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 204;
+    TlsNode * poTlsNode = nullptr;
+
+    try
+    {
+        // Get digital contract guid
+        std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
+
+        // Get user information to check if the user has access rights
+        StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
+        if (200 == oUserInfo.GetDword("Status"))
+        {
+            // Get the digital contract blob
+            StructuredBuffer oDcBlob(this->PullDigitalContract(c_oRequest));
+            if (200 == oDcBlob.GetDword("Status"))
+            {
+                // Get user's organization guid
+                std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
+                if (oDcBlob.GetString("ResearcherOrganization") == strOrganizationGuid)
+                {
+                    StructuredBuffer oDigitialContract = oDcBlob.GetStructuredBuffer("DigitalContract");
+                    if ((Dword)DigitalContractProvisiongStatus::eReady == oDigitialContract.GetDword("ProvisioningStatus"))
+                    {
+                        // The location of Virtual Machines Provisioning is part of Digital Contract
+                        std::string strLocation = oDigitialContract.GetString("HostRegion");
+
+                        bool fIsRemoteDataConnectorActive = true;
+
+                        // Get the Azure Template Uuid from the Digital Contract
+                        std::string strAzureTemplateUuid = oDigitialContract.GetString("AzureTemplateGuid");
+                        // Use the TemplateUuid to fetch the Azure Template
+                        StructuredBuffer oAzureTemplate;
+                        oAzureTemplate.PutDword("TransactionType", 0x00000001);
+                        oAzureTemplate.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
+                        oAzureTemplate.PutString("TemplateGuid", strAzureTemplateUuid);
+                        Socket * poIpcAzureManager = ::ConnectToUnixDomainSocket("/tmp/{4B56D0E0-7A38-40C1-839A-B9BBCDDFE521}");
+                        StructuredBuffer oAzureTemplateResponse(::PutIpcTransactionAndGetResponse(poIpcAzureManager, oAzureTemplate, false));
+                        poIpcAzureManager->Release();
+                        poIpcAzureManager = nullptr;
+                        if ((0 < oAzureTemplateResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oAzureTemplateResponse.GetDword("Status")))
+                        {
+                            StructuredBuffer oTemplateData = oAzureTemplateResponse.GetStructuredBuffer("Template");
+                            auto oListOfVirtualMachines = StructuredBuffer(this->GetProvisioningStatus(c_oRequest)).GetStructuredBuffer("VirtualMachines").GetNamesOfElements();
+
+                            // If the DataConnector is active, start the VM provisioning in a different async thread
+                            for (auto strVirtualMachineName : oListOfVirtualMachines)
+                            {
+                                // Update the Virtual machine status to eShutingDown.
+                                StructuredBuffer oUpdateVmStateRequest;
+                                oUpdateVmStateRequest.PutDword("TransactionType", 0x00000002);
+                                oUpdateVmStateRequest.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
+                                oUpdateVmStateRequest.PutString("VirtualMachineGuid", strVirtualMachineName);
+                                oUpdateVmStateRequest.PutDword("State", VirtualMachineState::eShuttingDown);
+                                poIpcAzureManager = ::ConnectToUnixDomainSocket("/tmp/{4FBC17DA-81AF-449B-B842-E030E337720E}");
+                                StructuredBuffer oUpdateVmStateResponse(::PutIpcTransactionAndGetResponse(poIpcAzureManager, oUpdateVmStateRequest, false));
+                                poIpcAzureManager->Release();
+                                poIpcAzureManager = nullptr;
+
+                                std::thread(&DigitalContractDatabase::DeleteVirtualMachineResources, this, oAzureTemplateResponse.GetBuffer("Eosb"), oTemplateData, strVirtualMachineName).detach();
+                            }
+
+                            // Update the Digital ContractStatus to UnProvisioned
+                            StructuredBuffer oUpdateProvisioningState;
+                            oUpdateProvisioningState.PutBuffer("Eosb", oAzureTemplateResponse.GetBuffer("Eosb"));
+                            oUpdateProvisioningState.PutDword("ProvisioningStatus", (Dword)DigitalContractProvisiongStatus::eUnprovisioned);
+                            oUpdateProvisioningState.PutString("DigitalContractGuid", strDcGuid);
+                            StructuredBuffer oUpdateProvisioningStateResponse(this->UpdateDigitalContractProvisioningStatus(oUpdateProvisioningState));
+                            _ThrowBaseExceptionIf((200 != oUpdateProvisioningStateResponse.GetDword("Status")), "Update DC status fail", nullptr);
+
+                            // Return a VM provisioning start success response here.
+                            dwStatus = 200;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+        oResponse.PutString("Messsage: ", oException.GetExceptionMessage());
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    // Send back status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+
+/********************************************************************************************
+ *
+ * @class DigitalContractDatabase
+ * @function DeleteVirtualMachineResources
+ * @brief Delete all the resources belonging to a virtual machine
+ * @param[in] c_stlEosb contains user Eosb for the researcher organization
+ * @param[in] c_oTemplateData The azure template to use for azure credential
+ * @param[in] c_strVirtualMachineName virutal machine which needs to be deleted
+ * @returns status of the transaction and instructions of what happens next
+ *
+ ********************************************************************************************/
+
+void __thiscall DigitalContractDatabase::DeleteVirtualMachineResources(
+    _in const std::vector<Byte> c_stlEosb,
+    _in const StructuredBuffer c_oTemplateData,
+    _in const std::string c_strVirtualMachineName
+    ) const throw()
+{
+    __DebugFunction();
+
+    try
+    {
+        std::string strSubscriptionID = c_oTemplateData.GetString("SubscriptionID");
+        std::string strSecret = c_oTemplateData.GetString("Secret");
+        std::string strTenantID = c_oTemplateData.GetString("TenantID");
+        std::string strApplicationID = c_oTemplateData.GetString("ApplicationID");
+        std::string strResourceGroup = c_oTemplateData.GetString("ResourceGroup");
+
+        std::vector<std::string> stlListOfResourcesToDelete;
+        // VirtualMachineId
+        stlListOfResourcesToDelete.push_back(::CreateAzureResourceId(strSubscriptionID, strResourceGroup, "providers/Microsoft.Compute", "virtualMachines", c_strVirtualMachineName));
+        // OsDisk Id
+        std::string strResourceGroupUpperCase = strResourceGroup;
+        std::transform(strResourceGroupUpperCase.begin(), strResourceGroupUpperCase.end(),strResourceGroupUpperCase.begin(), ::toupper);
+        stlListOfResourcesToDelete.push_back(::CreateAzureResourceId(strSubscriptionID, strResourceGroupUpperCase, "providers/Microsoft.Compute", "disks", c_strVirtualMachineName + "-disk"));
+        // Network Interface Id
+        stlListOfResourcesToDelete.push_back(::CreateAzureResourceId(strSubscriptionID, strResourceGroup, "providers/Microsoft.Network", "networkInterfaces", c_strVirtualMachineName + "-nic"));
+        // IpAddressId
+        stlListOfResourcesToDelete.push_back(::CreateAzureResourceId(strSubscriptionID, strResourceGroup, "providers/Microsoft.Network", "publicIPAddresses", c_strVirtualMachineName + "-ip"));
+
+        // Update the Virtual machine status to eShutingDown.
+        StructuredBuffer oUpdateVmStateRequest;
+        oUpdateVmStateRequest.PutDword("TransactionType", 0x00000002);
+        oUpdateVmStateRequest.PutBuffer("Eosb", c_stlEosb);
+        oUpdateVmStateRequest.PutString("VirtualMachineGuid", c_strVirtualMachineName);
+        if (true == ::DeleteAzureResources(strApplicationID, strTenantID, strSecret, stlListOfResourcesToDelete))
+        {
+            oUpdateVmStateRequest.PutDword("State", VirtualMachineState::eDeleted);
+        }
+        else
+        {
+            oUpdateVmStateRequest.PutDword("State", VirtualMachineState::eDeleteFailed);
+        }
+        Socket * poIpcAzureManager = ::ConnectToUnixDomainSocket("/tmp/{4FBC17DA-81AF-449B-B842-E030E337720E}");
+        StructuredBuffer oUpdateVmStateResponse(::PutIpcTransactionAndGetResponse(poIpcAzureManager, oUpdateVmStateRequest, false));
+        poIpcAzureManager->Release();
+        poIpcAzureManager = nullptr;
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
 }

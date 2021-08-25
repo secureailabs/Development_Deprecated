@@ -55,3 +55,15 @@ std::string CreateAzureDeployment(
     _in const std::string & c_strResourceGroup,
     _in const std::string & c_strLocation
 );
+
+bool DeleteAzureResources(
+    _in const std::string & c_strApplicationIdentifier,
+    _in const std::string & c_strTenantIdentifier,
+    _in const std::string & c_strSecret,
+    _in const std::vector<std::string> & c_stlResourceId
+);
+
+bool DoesAzureResourceExist(
+    _in const std::string & c_strMicrosoftAzureAccessToken,
+    _in const std::string & c_strResourceId
+);

@@ -95,7 +95,9 @@ typedef enum virtual_machine_state
     eWaitingForData = 4,
     eReadyForComputation = 5,
     eInUse = 6,
-    eShuttingDown = 7
+    eShuttingDown = 7,
+    eDeleted = 8,
+    eDeleteFailed = 9
 }
 VirtualMachineState;
 

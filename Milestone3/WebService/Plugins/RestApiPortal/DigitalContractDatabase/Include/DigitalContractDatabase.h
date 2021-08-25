@@ -130,6 +130,15 @@ class DigitalContractDatabase : public Object
         std::vector<Byte> __thiscall ProvisionDigitalContract(
             _in const StructuredBuffer & c_oRequest
             );
+        void __thiscall DeleteVirtualMachineResources(
+            _in const std::vector<Byte> c_stlEosb,
+            _in const StructuredBuffer c_oTemplate,
+            _in const std::string c_strVirtualMachineName
+            )  const throw();
+        std::vector<Byte> __thiscall DeprovisionDigitalContract(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Provision a Virtual Machine
         void __thiscall ProvisionVirtualMachine(
             _in const StructuredBuffer c_oDigitalContract,

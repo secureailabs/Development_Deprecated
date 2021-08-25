@@ -465,34 +465,7 @@ bool DoesAzureResourceExist(
     const std::string c_strMicrosoftAzureAccessToken = ::LoginToMicrosoftAzureApiPortal(c_strApplicationIdentifier, c_strSecret, c_strTenantIdentifier);
     _ThrowBaseExceptionIf((0 == c_strMicrosoftAzureAccessToken.length()), "Azure Authentication failed...", nullptr);
 
-    std::string strVerb = "GET";
-    std::string strContent = "";
-    std::string strApiUri = c_strResourceId + "?api-version=2014-12-01-preview";
-    std::string strHost = "management.azure.com";
-
-    std::vector<std::string> stlHeader;
-    stlHeader.push_back("Host: " + strHost);
-    stlHeader.push_back("Authorization: Bearer " + c_strMicrosoftAzureAccessToken);
-    stlHeader.push_back("Content-Length: " + std::to_string(strContent.length()));
-
-    long nResponseCode = 0;
-    std::vector<Byte> stlResponse = ::RestApiCall(strHost, 443, strVerb, strApiUri, "", false, stlHeader, &nResponseCode);
-
-    std::cout << "nResponseCode " << nResponseCode;
-    if (200 == nResponseCode)
-    {
-        fResourceExist = true;
-    }
-    else if (404 == nResponseCode)
-    {
-        fResourceExist = false;
-    }
-    else
-    {
-        _ThrowBaseException("Invalid Response for the resource check. Response code: %d", nResponseCode);
-    }
-
-    return fResourceExist;
+    return ::DoesAzureResourceExist(c_strMicrosoftAzureAccessToken, c_strResourceId);
 }
 
 std::string CreateAzureResourceId(
@@ -514,4 +487,114 @@ std::string CreateAzureResourceId(
     ::ReplaceAll(gc_strAzureIdFormat, "{{ResourceName}}", c_strResourceName);
 
     return gc_strAzureIdFormat;
+}
+
+/********************************************************************************************
+ *
+ * @function DoesAzureResourceExist
+ * @brief Check if an Azure resource exists
+ * @param[in] c_strApplicationIdentifier
+ * @param[in] c_strSecret
+ * @param[in] c_strTenantIdentifier
+ * @param[in] c_strResourceId
+ * @return true if exits, false otherwise
+ *
+ ********************************************************************************************/
+
+bool DeleteAzureResources(
+    _in const std::string & c_strApplicationIdentifier,
+    _in const std::string & c_strTenantIdentifier,
+    _in const std::string & c_strSecret,
+    _in const std::vector<std::string> & c_stlResourceId
+)
+{
+    __DebugFunction();
+
+    bool fResourcesDeleted = false;
+
+    // Login to the Microsoft Azure API Portal
+    const std::string c_strMicrosoftAzureAccessToken = ::LoginToMicrosoftAzureApiPortal(c_strApplicationIdentifier, c_strSecret, c_strTenantIdentifier);
+    _ThrowBaseExceptionIf((0 == c_strMicrosoftAzureAccessToken.length()), "Azure Authentication failed...", nullptr);
+
+    for (auto strResourceId : c_stlResourceId)
+    {
+        std::cout << "Deleting " << strResourceId << std::endl;
+        if (true == ::DoesAzureResourceExist(c_strMicrosoftAzureAccessToken, strResourceId))
+        {
+            std::string strVerb = "DELETE";
+            std::string strContent = "";
+            std::string strApiUri = strResourceId + "?api-version=2021-03-01";
+            std::string strHost = "management.azure.com";
+
+            std::vector<std::string> stlHeader;
+            stlHeader.push_back("Host: " + strHost);
+            stlHeader.push_back("Authorization: Bearer " + c_strMicrosoftAzureAccessToken);
+            stlHeader.push_back("Content-Length: " + std::to_string(strContent.length()));
+
+            long nResponseCode = 0;
+            std::vector<Byte> stlResponse = ::RestApiCall(strHost, 443, strVerb, strApiUri, "", false, stlHeader, &nResponseCode);
+
+            if ((200 == nResponseCode) || (202 == nResponseCode) || (204 == nResponseCode))
+            {
+                fResourcesDeleted = true;
+            }
+            else if (400 == nResponseCode)
+            {
+                fResourcesDeleted = false;
+                break;
+            }
+            else
+            {
+                _ThrowBaseException("Invalid Response for the resource check. Response code: %d", nResponseCode);
+            }
+        }
+    }
+
+    return fResourcesDeleted;
+}
+
+/********************************************************************************************
+ *
+ * @function DoesAzureResourceExist
+ * @brief Check if an Azure resource exists
+ * @param[in] c_strApplicationIdentifier
+ * @param[in] c_strSecret
+ * @param[in] c_strTenantIdentifier
+ * @param[in] c_strResourceId
+ * @return true if exits, false otherwise
+ *
+ ********************************************************************************************/
+
+bool DoesAzureResourceExist(
+    _in const std::string & c_strMicrosoftAzureAccessToken,
+    _in const std::string & c_strResourceId
+)
+{
+    __DebugFunction();
+
+    bool fResourceExist = false;
+
+    std::string strVerb = "GET";
+    std::string strContent = "";
+    std::string strApiUri = c_strResourceId + "?api-version=2021-04-01";
+    std::string strHost = "management.azure.com";
+
+    std::vector<std::string> stlHeader;
+    stlHeader.push_back("Host: " + strHost);
+    stlHeader.push_back("Authorization: Bearer " + c_strMicrosoftAzureAccessToken);
+    stlHeader.push_back("Content-Length: " + std::to_string(strContent.length()));
+
+    long nResponseCode = 0;
+    std::cout << "DoesAzureResourceExist nResponseCode " << nResponseCode << " for resource "  << c_strResourceId <<  std::endl;
+    std::vector<Byte> stlResponse = ::RestApiCall(strHost, 443, strVerb, strApiUri, "", false, stlHeader, &nResponseCode);
+    if (200 == nResponseCode)
+    {
+        fResourceExist = true;
+    }
+    else
+    {
+        fResourceExist = false;
+    }
+
+    return fResourceExist;
 }

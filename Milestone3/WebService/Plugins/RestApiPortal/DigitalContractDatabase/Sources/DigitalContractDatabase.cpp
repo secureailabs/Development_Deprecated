@@ -2139,7 +2139,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
                                 std::string strTenantID = oTemplateData.GetString("TenantID");
                                 std::string strApplicationID = oTemplateData.GetString("ApplicationID");
                                 std::string strResourceGroup = oTemplateData.GetString("ResourceGroup");
-                                // std::string strVirtualMachineImageId = oTemplateData.GetString("VirtualMachineImageId");
+                                std::string strVirtualMachineImageId = oTemplateData.GetString("VirtualMachineImageId");
                                 std::string strVirtualNetwork = oTemplateData.GetString("VirtualNetwork");
                                 std::string strVirtualNetworkId = ::CreateAzureResourceId(strSubscriptionID, strResourceGroup, "providers/Microsoft.Network", "virtualNetworks", strVirtualNetwork);
                                 std::string strNetworkSecurityGroup = oTemplateData.GetString("NetworkSecurityGroup");
@@ -2153,11 +2153,34 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
                                     Guid oNewVmGuid;
                                     StructuredBuffer oVirtualMachineCreateParameter;
                                     oVirtualMachineCreateParameter.PutString("vmName", oNewVmGuid.ToString(eRaw));
-                                    // TODO: Prawal read this from the template
-                                    oVirtualMachineCreateParameter.PutString("vmSize", "Standard_B2ms");
-                                    // TODO: Prawal add this to template
-                                    oVirtualMachineCreateParameter.PutString("vmImageId", "/subscriptions/20c11edd-abb4-4bc0-a6d5-c44d6d2524be/resourceGroups/VirtualMachineImageStorageRg/providers/Microsoft.Compute/images/ubuntu-image");
-                                    // oVirtualMachineCreateParameter.PutString("vmImageId", strVirtualMachineImageId);
+                                    switch (oDigitialContract.GetUnsignedInt64("NumberOfVCPU"))
+                                    {
+                                        case 4
+                                        :
+                                            oVirtualMachineCreateParameter.PutString("vmSize", "Standard_B4ms");
+                                            break;
+                                        case 8
+                                        :
+                                            oVirtualMachineCreateParameter.PutString("vmSize", "Standard_B8ms");
+                                            break;
+                                        case 16
+                                        :
+                                            oVirtualMachineCreateParameter.PutString("vmSize", "Standard_B16ms");
+                                            break;
+                                        case 32
+                                        :
+                                            oVirtualMachineCreateParameter.PutString("vmSize", "Standard_D32_v4");
+                                            break;
+                                        case 48
+                                        :
+                                            oVirtualMachineCreateParameter.PutString("vmSize", "Standard_D48_v4");
+                                            break;
+                                        default
+                                        :
+                                            _ThrowBaseException("Number Of CPUs not supported", nullptr);
+                                            break;
+                                    }
+                                    oVirtualMachineCreateParameter.PutString("vmImageId", strVirtualMachineImageId);
                                     oVirtualMachineCreateParameter.PutString("VirtualNetworkId", strVirtualNetworkId);
                                     oVirtualMachineCreateParameter.PutString("NetworkSecurityGroupId", strNetworkSecurityGroupId);
                                     oVirtualMachineCreateParameter.PutString("adminUsername", "saildeveloper");

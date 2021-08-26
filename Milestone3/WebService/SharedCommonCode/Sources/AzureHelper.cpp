@@ -15,6 +15,7 @@
 #include "StructuredBuffer.h"
 #include "JsonValue.h"
 #include "Utils.h"
+#include "ExceptionRegister.h"
 
 #include <iostream>
 #include <sstream>
@@ -462,10 +463,23 @@ bool DoesAzureResourceExist(
     bool fResourceExist = false;
 
     // Login to the Microsoft Azure API Portal
-    const std::string c_strMicrosoftAzureAccessToken = ::LoginToMicrosoftAzureApiPortal(c_strApplicationIdentifier, c_strSecret, c_strTenantIdentifier);
-    _ThrowBaseExceptionIf((0 == c_strMicrosoftAzureAccessToken.length()), "Azure Authentication failed...", nullptr);
+    try
+    {
+        const std::string c_strMicrosoftAzureAccessToken = ::LoginToMicrosoftAzureApiPortal(c_strApplicationIdentifier, c_strSecret, c_strTenantIdentifier);
+        _ThrowBaseExceptionIf((0 == c_strMicrosoftAzureAccessToken.length()), "Azure Authentication failed...", nullptr);
 
-    return ::DoesAzureResourceExist(c_strMicrosoftAzureAccessToken, c_strResourceId);
+        fResourceExist = ::DoesAzureResourceExist(c_strMicrosoftAzureAccessToken, c_strResourceId);
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fResourceExist;
 }
 
 std::string CreateAzureResourceId(

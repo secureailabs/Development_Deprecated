@@ -119,6 +119,10 @@ class AzureManager : public Object
             _in const std::vector<Byte> c_stlEosb
             );
 
+        std::vector<Byte> __thiscall UpdateAzureTemplateState(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Private data members
         mutable pthread_mutex_t m_sMutex;
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;

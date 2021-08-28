@@ -67,3 +67,13 @@ bool DoesAzureResourceExist(
     _in const std::string & c_strMicrosoftAzureAccessToken,
     _in const std::string & c_strResourceId
 );
+
+std::string CopyVirtualMachineImage(
+    _in const std::string c_strSubscriptionId,
+    _in const std::string c_strApplicationIdentifier,
+    _in const std::string c_strSecret,
+    _in const std::string c_strTenantIdentifier,
+    _in const std::string c_strResourceGroupName,
+    _in const std::string c_strLocation,
+    _in const std::string c_strImageName
+);

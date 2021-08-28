@@ -20,6 +20,9 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <iostream>
+#include <memory>
+#include <algorithm>
 
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -162,9 +165,9 @@ static std::vector<Byte> __cdecl MakeMicrosoftAzureApiCall(
     }
     stlHeader.push_back("Content-Length: " + std::to_string(c_strContent.size()));
 
-    return ::RestApiCall(c_strHost, 443, c_strVerb, strApiUri, c_strContent, false, stlHeader);
+    long nResponse;
+    return ::RestApiCall(c_strHost, 443, c_strVerb, strApiUri, c_strContent, false, stlHeader, &nResponse);
 }
-
 
 std::string __stdcall CreateResourceGroup(
     _in const std::string & c_strMicrosoftAzureAccessToken,
@@ -650,4 +653,254 @@ bool DoesAzureResourceExist(
     }
 
     return fResourceExist;
+}
+
+std::string ExecuteBashCommandAndGetResult(
+    const char* c_szCommnadToRun
+    )
+{
+    std::vector<char> strTempBuffer(1024);
+    std::string result;
+
+    auto oPopenPipe = ::popen(c_szCommnadToRun, "r");
+    _ThrowIfNull(oPopenPipe, "Could not create shell process", nullptr);
+
+    while (0 == ::feof(oPopenPipe))
+    {
+        if (nullptr != ::fgets(strTempBuffer.data(), 1024, oPopenPipe))
+        {
+            result += std::string(strTempBuffer.data());
+        }
+    }
+
+    auto nExistStatus = ::pclose(oPopenPipe);
+    if (EXIT_SUCCESS != nExistStatus)
+    {
+        result = "";
+    }
+
+    return result;
+}
+
+#include <cctype>
+#include <iomanip>
+#include <sstream>
+#include <string>
+
+std::string url_encode(const std::string &value)
+{
+    std::ostringstream escaped;
+    escaped.fill('0');
+    escaped << std::hex;
+
+    for (std::string::const_iterator i = value.begin(), n = value.end(); i != n; ++i) {
+        std::string::value_type c = (*i);
+
+        // Keep alphanumeric and other accepted characters intact
+        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+            escaped << c;
+            continue;
+        }
+
+        // Any other characters are percent-encoded
+        escaped << std::uppercase;
+        escaped << '%' << std::setw(2) << int((unsigned char) c);
+        escaped << std::nouppercase;
+    }
+
+    return escaped.str();
+}
+
+std::string CopyVirtualMachineImage(
+    _in const std::string c_strSubscriptionId,
+    _in const std::string c_strApplicationIdentifier,
+    _in const std::string c_strSecret,
+    _in const std::string c_strTenantIdentifier,
+    _in const std::string c_strResourceGroupName,
+    _in const std::string c_strLocation,
+    _in const std::string c_strImageName
+)
+{
+    // Login to the Microsoft Azure API Portal
+    const std::string c_strMicrosoftAzureAccessToken = ::LoginToMicrosoftAzureApiPortal(c_strApplicationIdentifier, c_strSecret, c_strTenantIdentifier);
+    _ThrowBaseExceptionIf((0 == c_strMicrosoftAzureAccessToken.length()), "Azure Authentication failed...", nullptr);
+
+    // Get a valid Storage Account Name
+    std::string strStorageAccountName;
+    bool fIsValidName = false;
+    do
+    {
+        strStorageAccountName = "sailimage" + std::to_string(std::rand());
+        std::string strVerb = "POST";
+        StructuredBuffer oRequest;
+        oRequest.PutString("name", strStorageAccountName);
+        oRequest.PutString("type", "Microsoft.Storage/storageAccounts");
+        std::string strContent = JsonValue::ParseStructuredBufferToJson(oRequest)->ToString();
+        std::string strApiUri = "/subscriptions/" + c_strSubscriptionId + "/providers/Microsoft.Storage/checkNameAvailability?api-version=2021-04-01";
+        std::string strHost = "management.azure.com";
+
+        std::vector<std::string> stlHeader;
+        stlHeader.push_back("Host: " + strHost);
+        stlHeader.push_back("Authorization: Bearer " + c_strMicrosoftAzureAccessToken);
+        stlHeader.push_back("Content-Length: " + std::to_string(strContent.length()));
+
+        long nResponseCode = 0;
+        std::vector<Byte> stlResponse = ::RestApiCall(strHost, 443, strVerb, strApiUri, strContent, false, stlHeader, &nResponseCode);
+        StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((char *)stlResponse.data());
+
+        fIsValidName = oResponse.GetBoolean("nameAvailable");
+    }
+    while(false == fIsValidName);
+    _ThrowBaseExceptionIf((0 == strStorageAccountName.length()), "Invaid Storage Account name", nullptr);
+
+    // Create a storage account
+    // TODO: Prawal use a deployment template for this
+    StructuredBuffer oRequest;
+    StructuredBuffer oSku;
+    oSku.PutString("name", "Premium_LRS");
+    oRequest.PutStructuredBuffer("sku", oSku);
+    oRequest.PutString("kind", "StorageV2");
+    oRequest.PutString("location", c_strLocation);
+    std::string strContent = JsonValue::ParseStructuredBufferToJson(oRequest)->ToString();
+
+    // Keep making the same request every 5 seconds until the reposne code is 200 or the reposne is not empty
+    std::vector<Byte> stlResponse;
+    do
+    {
+        stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, "PUT", "Microsoft.Storage/storageAccounts/"+ strStorageAccountName, "management.azure.com", strContent, "2021-04-01", c_strSubscriptionId, c_strResourceGroupName);
+        if (0 == stlResponse.size())
+        {
+            ::sleep(5);
+        }
+    }
+    while(0 == stlResponse.size());
+
+    stlResponse.push_back(0);
+    StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((char *)stlResponse.data());
+    std::string strStorageAccountId = oResponse.GetString("id");
+    std::string strBlobLink = oResponse.GetStructuredBuffer("properties").GetStructuredBuffer("primaryEndpoints").GetString("blob");
+
+    // Fetch the keys for the storage account
+    stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, "POST", "Microsoft.Storage/storageAccounts/"+ strStorageAccountName + "/listKeys", "management.azure.com", strContent, "2021-04-01", c_strSubscriptionId, c_strResourceGroupName);
+    _ThrowBaseExceptionIf((0 == stlResponse.size()), "cannot fetch storage accoutn keys", nullptr);
+    stlResponse.push_back(0);
+    oResponse = JsonValue::ParseDataToStructuredBuffer((char *)stlResponse.data());
+    std::string strBase64EncodedKey = oResponse.GetStructuredBuffer("keys").GetStructuredBuffer("keys0").GetString("value");
+
+    // Create a container in the storage account
+    std::string strApiUri = "/subscriptions/" + c_strSubscriptionId + "/resourceGroups/" + c_strResourceGroupName + "/providers/Microsoft.Storage/storageAccounts/"+ strStorageAccountName + "/blobServices/default/containers/images?api-version=2021-04-01";
+    std::vector<std::string> stlHeader;
+    stlHeader.push_back("Host: management.azure.com");
+    stlHeader.push_back("Authorization: Bearer " + c_strMicrosoftAzureAccessToken);
+    stlHeader.push_back("Content-Type: application/json");
+    stlHeader.push_back("Content-Length: " + std::to_string(2));
+
+    long nResponse = 0;
+    do
+    {
+        stlResponse = ::RestApiCall("management.azure.com", 443, "PUT", strApiUri, "{}", false, stlHeader, &nResponse);
+        if (201 == nResponse)
+        {
+            ::sleep(5);
+        }
+    }
+    while(201 == nResponse);
+    _ThrowBaseExceptionIf((0 == stlResponse.size()), "cannot create a storage account", nullptr);
+    stlResponse.push_back(0);
+    oResponse = JsonValue::ParseDataToStructuredBuffer((char *)stlResponse.data());
+
+    // Create a SAS token
+    std::string strContainerName = "images";
+    std::string strExpiry = "2022-01-01";
+    std::string strCommandToGetSAS = "/usr/bin/az storage container generate-sas -n " + strContainerName + " --account-name "+ strStorageAccountName +" --account-key "+ strBase64EncodedKey +" --https-only --permissions dlrw --expiry "+ strExpiry +" -o tsv";
+    std::string strSASToken = ::ExecuteBashCommandAndGetResult(strCommandToGetSAS.c_str());
+    strSASToken.erase(std::remove(strSASToken.begin(), strSASToken.end(), '\n'), strSASToken.end());
+    strSASToken.erase(std::remove(strSASToken.begin(), strSASToken.end(), '\r'), strSASToken.end());
+
+    // Copy the image blob to the container
+    std::string strUrlSas = "https://" + strStorageAccountName + ".blob.core.windows.net/images/sailimage.vhd?" + strSASToken;
+
+    stlHeader.clear();
+    stlHeader.push_back("Host: " + strStorageAccountName+".blob.core.windows.net");
+    stlHeader.push_back("Content-Length: 0");
+    stlHeader.push_back("x-ms-copy-source: https://sailcomputationimage9872.blob.core.windows.net/system/Microsoft.Compute/Images/packer/SailUbuntu2004-osDisk.6126fa4d-ca83-438a-b427-7df563bf8026.vhd?sp=r&st=2021-08-26T21:33:26Z&se=2021-12-02T05:33:26Z&spr=https&sv=2020-08-04&sr=b&sig=hM%2B7QeOIPlk5PFegpLq3ron3EKVQ5Tk5i8bBuBZEwks%3D");
+
+    long nResponseCode = 0;
+    stlResponse = ::RestApiCall(strStorageAccountName+".blob.core.windows.net", 443, "PUT", "/images/sailimage.vhd?" + strSASToken, "", false, stlHeader, &nResponseCode);
+    _ThrowBaseExceptionIf((202 != nResponseCode), "Failed to copy the image from SAIL account.", nullptr);
+
+    // Busy wait loop to check if the image copy was complete
+    bool fIsCopyComplete = false;
+    do
+    {
+        std::map<std::string, std::string> stlMapOfResponseHeaders;
+        stlResponse = ::RestApiCall(strStorageAccountName+".blob.core.windows.net", 443, "HEAD", "/images/sailimage.vhd?" + strSASToken, "", false, stlHeader, &stlMapOfResponseHeaders, &nResponseCode);
+        if (std::string::npos != stlMapOfResponseHeaders.at("x-ms-copy-status").find("pending"))
+        {
+            std::cout << "it is pending" << std::endl;
+            ::sleep(2);
+        }
+        else
+        {
+            fIsCopyComplete = true;
+        }
+    } while (false == fIsCopyComplete);
+
+    // az image create --resource-group avtestvm100 --name ubuntu-image --source "https://avvhdstorage100.blob.core.windows.net/system/Microsoft.Compute/Images/packer/ubuntu1804-osDisk.3360fdfb-f29c-4a05-bb55-9e81cd12dd8a.vhd" --location eastus2 --os-type "Linux" --storage-sku "Standard_LRS"
+    // Create a image with the image blob
+    // {
+    //   "location": "eastus",
+    //   "properties": {
+    //     "hyperVGeneration":"V2",
+    //     "storageProfile": {
+    //       "osDisk": {
+    //         "osType": "Linux",
+    //         "blobUri": "https://sailimage657644035.blob.core.windows.net:443/images/sailimage.vhd",
+    //         "osState": "Generalized"
+    //       },
+    //       "zoneResilient": true
+    //     }
+    //   }
+    // }
+    StructuredBuffer oImageCreateRequest;
+    oImageCreateRequest.PutString("location", c_strLocation);
+    StructuredBuffer oProperties;
+    oProperties.PutString("hyperVGeneration", "V2");
+    StructuredBuffer oStorageProfile;
+    oStorageProfile.PutBoolean("zoneResilient", true);
+    StructuredBuffer oOsDisk;
+    oOsDisk.PutString("osType", "Linux");
+    oOsDisk.PutString("blobUri", "https://" + strStorageAccountName + ".blob.core.windows.net/images/sailimage.vhd");
+    oOsDisk.PutString("osState", "Generalized");
+    oStorageProfile.PutStructuredBuffer("osDisk", oOsDisk);
+    oProperties.PutStructuredBuffer("storageProfile", oStorageProfile);
+    oImageCreateRequest.PutStructuredBuffer("properties", oProperties);
+    std::string strConvertVhdToImageRequest = JsonValue::ParseStructuredBufferToJson(oImageCreateRequest)->ToString();
+    std::cout << strConvertVhdToImageRequest << std::endl;
+
+    std::string strImageName = strStorageAccountName + "UbuntuImage";
+    strApiUri = "/subscriptions/" + c_strSubscriptionId + "/resourceGroups/" + c_strResourceGroupName + "/providers/Microsoft.Compute/images/"+ strImageName + "?api-version=2021-07-01";
+    stlHeader.clear();
+    stlHeader.push_back("Host: management.azure.com");
+    stlHeader.push_back("Authorization: Bearer " + c_strMicrosoftAzureAccessToken);
+    stlHeader.push_back("Content-Type: application/json");
+    stlHeader.push_back("Content-Length: " + std::to_string(strConvertVhdToImageRequest.length()));
+
+    nResponse = 0;
+    do
+    {
+        stlResponse = ::RestApiCall("management.azure.com", 443, "PUT", strApiUri, strConvertVhdToImageRequest, false, stlHeader, &nResponse);
+        if (201 == nResponse)
+        {
+            ::sleep(5);
+        }
+    }
+    while(201 == nResponse);
+    _ThrowBaseExceptionIf((0 == stlResponse.size()), "cannot create a storage account", nullptr);
+    stlResponse.push_back(0);
+    std::cout << stlResponse.data() << std::endl;
+    oResponse = JsonValue::ParseDataToStructuredBuffer((char *)stlResponse.data());
+    std::cout << oResponse.ToString();
+
+    return oResponse.GetString("id");
 }

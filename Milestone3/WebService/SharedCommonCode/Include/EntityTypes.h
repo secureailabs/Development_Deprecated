@@ -111,5 +111,8 @@ enum class AzureTemplateState
     eFailedCreatingVirtualNetwork = 4,
     eFailedCreatingNetworkSecurityGroup = 5,
     eReady = 6,
-    eImageDoesNotExist = 7
+    eImageDoesNotExist = 7, // Unused
+    eInvalidCredentials = 8,
+    eCreatingImage = 9,
+    eFailedCreatingImage = 10
 };

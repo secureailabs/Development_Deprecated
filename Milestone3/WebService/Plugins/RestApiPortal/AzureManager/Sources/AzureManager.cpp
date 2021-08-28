@@ -1236,94 +1236,117 @@ void __thiscall AzureManager::UpdateAzureTemplateResources(
         std::string strResourceGroup = oAzureTemplate.GetString("ResourceGroup");
         std::string strVirtualNetwork = oAzureTemplate.GetString("VirtualNetwork");
         std::string strNetworksecurityGroupName = oAzureTemplate.GetString("NetworkSecurityGroup");
-        std::string strVirtualMachineImageId = oAzureTemplate.GetString("VirtualMachineImageId");
+        std::string strVirtualMachineImageName = oAzureTemplate.GetString("VirtualMachineImageId");
         std::string strLocation = oAzureTemplate.GetString("HostRegion");
 
         StructuredBuffer oUpdateStatus;
         oUpdateStatus.PutString("TemplateGuid", c_strTemplateGuid);
         oUpdateStatus.PutBuffer("Eosb", c_stlEosb);
 
-        // Check if the Virtul Machine ImageId is a valid Azure Resource
-        bool fDoesImageExist = ::DoesAzureResourceExist(strApplicationIdentifier, strSecret, strTenantIdentifier, strVirtualMachineImageId);
-        if (false == fDoesImageExist)
+        // Attempt a login to azure and verify the credentials
+        std::string strAzureAccessToken = ::LoginToMicrosoftAzureApiPortal(strApplicationIdentifier, strSecret, strTenantIdentifier);
+        if (0 == strAzureAccessToken.length())
         {
-            // Update the state if the creation failed
-            oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eImageDoesNotExist);
+            // Change the state to invalid credentials and throw exception
+            oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eInvalidCredentials);
             oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
             StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
             oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
+            _ThrowBaseException("Invalid Azure credentials", nullptr);
         }
-        else
+
+        // Check if the Virtul Machine ImageId is a valid Azure Resource
+        std::string strVirtualMachineImageId = ::CreateAzureResourceId(strSubscriptionIdentifier, strResourceGroup, "providers/Microsoft.Compute", "images", strVirtualMachineImageName);
+        bool fDoesImageExist = ::DoesAzureResourceExist(strAzureAccessToken, strVirtualMachineImageId);
+
+        if (false == fDoesImageExist)
         {
-            // Check if the Virtual Network Specified exists in the resourceGroup
-            std::string strVirtualNetworkId = ::CreateAzureResourceId(strSubscriptionIdentifier, strResourceGroup, "providers/Microsoft.Network", "virtualNetworks", strVirtualNetwork);
-            bool fVirtualNetworkExists = ::DoesAzureResourceExist(strApplicationIdentifier, strSecret, strTenantIdentifier, strVirtualNetworkId);
-            if (false == fVirtualNetworkExists)
+            // Update the state to creating Virutal machine image
+            oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eCreatingImage);
+            oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
+            StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
+            oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
+
+            std::string strImageId = ::CopyVirtualMachineImage(strAzureAccessToken, strSubscriptionIdentifier, strResourceGroup, strLocation, strVirtualMachineImageName);
+            if (0 == strImageId.length())
             {
-                // If it does not exist update the state to CreatingVirtualNetwork
-                oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eCreatingVirtualNetwork);
+                // Update the state if the creation failed
+                oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eFailedCreatingImage);
                 oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
                 StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
                 oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
-
-                // Create a Virutal Network accordingly
-                StructuredBuffer oVirtualNetworkCreateParameter;
-                oVirtualNetworkCreateParameter.PutString("VirtualNetworkName", strVirtualNetwork);
-                std::string strDeploymentParameters = ::CreateAzureParamterJson("https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/VirtualNetwork.json?sp=r&st=2021-08-18T11:49:19Z&se=2022-05-31T19:49:19Z&spr=https&sv=2020-08-04&sr=b&sig=UepJBsssk48ON0SKPRo8G1IOc%2F4dysKVOjjQ%2B59iNxA%3D", oVirtualNetworkCreateParameter);
-
-                std::string strVirtualNetowrkId = ::CreateAzureDeployment(strDeploymentParameters, strApplicationIdentifier, strSecret, strTenantIdentifier, strSubscriptionIdentifier, strResourceGroup, strLocation);
-                if (0 >= strVirtualNetowrkId.length())
-                {
-                    // Update the state if the creation failed
-                    oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eFailedCreatingVirtualNetwork);
-                    oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
-                    StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
-                    oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
-                }
-                else
-                {
-                    fVirtualNetworkExists = true;
-                }
+                _ThrowBaseExceptionIf((0 == strImageId.length()), "Failed to copy image", nullptr);
             }
+        }
 
-            // Check if the Network Security Group exists
-            std::string strNetworkSecurityGroupId = ::CreateAzureResourceId(strSubscriptionIdentifier, strResourceGroup, "providers/Microsoft.Network", "networkSecurityGroups", strNetworksecurityGroupName);
-            bool fNetworkSecurityGroupExists = ::DoesAzureResourceExist(strApplicationIdentifier, strSecret, strTenantIdentifier, strNetworkSecurityGroupId);
-            if ((true == fVirtualNetworkExists) && (false == fNetworkSecurityGroupExists))
+        // Check if the Virtual Network Specified exists in the resourceGroup
+        std::string strVirtualNetworkId = ::CreateAzureResourceId(strSubscriptionIdentifier, strResourceGroup, "providers/Microsoft.Network", "virtualNetworks", strVirtualNetwork);
+        bool fVirtualNetworkExists = ::DoesAzureResourceExist(strAzureAccessToken, strVirtualNetworkId);
+        if (false == fVirtualNetworkExists)
+        {
+            // If it does not exist update the state to CreatingVirtualNetwork
+            oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eCreatingVirtualNetwork);
+            oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
+            StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
+            oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
+
+            // Create a Virutal Network accordingly
+            StructuredBuffer oVirtualNetworkCreateParameter;
+            oVirtualNetworkCreateParameter.PutString("VirtualNetworkName", strVirtualNetwork);
+            std::string strDeploymentParameters = ::CreateAzureParamterJson("https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/VirtualNetwork.json?sp=r&st=2021-08-18T11:49:19Z&se=2022-05-31T19:49:19Z&spr=https&sv=2020-08-04&sr=b&sig=UepJBsssk48ON0SKPRo8G1IOc%2F4dysKVOjjQ%2B59iNxA%3D", oVirtualNetworkCreateParameter);
+
+            std::string strVirtualNetowrkId = ::CreateAzureDeployment(strDeploymentParameters, strApplicationIdentifier, strSecret, strTenantIdentifier, strSubscriptionIdentifier, strResourceGroup, strLocation);
+            if (0 >= strVirtualNetowrkId.length())
             {
-                // If it does not exist update the state to AzureTemplateState::eCreatingNetworkSecurityGroup
-                oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eCreatingNetworkSecurityGroup);
+                // Update the state if the creation failed
+                oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eFailedCreatingVirtualNetwork);
                 oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
                 StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
                 oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
-
-                // Create the Network Security Group
-                StructuredBuffer oNetworkSecurityGroupCreateParameter;
-                oNetworkSecurityGroupCreateParameter.PutString("NetworkSecurityGroupName", strNetworksecurityGroupName);
-                std::string strDeploymentParameters = ::CreateAzureParamterJson("https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/NetworkSecurityGroup.json?sp=r&st=2021-08-18T11:45:41Z&se=2022-08-31T19:45:41Z&spr=https&sv=2020-08-04&sr=b&sig=6NdypMlPI6D0UVzeux1HUY9KaRns%2BFjX2yluqPoMT1w%3D", oNetworkSecurityGroupCreateParameter);
-
-                std::string strVirtualNetowrkId = ::CreateAzureDeployment(strDeploymentParameters, strApplicationIdentifier, strSecret, strTenantIdentifier, strSubscriptionIdentifier, strResourceGroup, strLocation);
-                if (0 >= strVirtualNetowrkId.length())
-                {
-                    // Update the state if it failed
-                    oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eFailedCreatingNetworkSecurityGroup);
-                    oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
-                    StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
-                    oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
-                }
-                else
-                {
-                    fNetworkSecurityGroupExists = true;
-                }
             }
-
-            // If both are success, update the state of the Azure Template to AzureTemplateState::eReady
-            if ((true == fVirtualNetworkExists) && (true == fNetworkSecurityGroupExists))
+            else
             {
-                oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eReady);
+                fVirtualNetworkExists = true;
+            }
+        }
+
+        // Check if the Network Security Group exists
+        std::string strNetworkSecurityGroupId = ::CreateAzureResourceId(strSubscriptionIdentifier, strResourceGroup, "providers/Microsoft.Network", "networkSecurityGroups", strNetworksecurityGroupName);
+        bool fNetworkSecurityGroupExists = ::DoesAzureResourceExist(strAzureAccessToken, strNetworkSecurityGroupId);
+        if ((true == fVirtualNetworkExists) && (false == fNetworkSecurityGroupExists))
+        {
+            // If it does not exist update the state to AzureTemplateState::eCreatingNetworkSecurityGroup
+            oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eCreatingNetworkSecurityGroup);
+            oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
+            StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
+            oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
+
+            // Create the Network Security Group
+            StructuredBuffer oNetworkSecurityGroupCreateParameter;
+            oNetworkSecurityGroupCreateParameter.PutString("NetworkSecurityGroupName", strNetworksecurityGroupName);
+            std::string strDeploymentParameters = ::CreateAzureParamterJson("https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/NetworkSecurityGroup.json?sp=r&st=2021-08-18T11:45:41Z&se=2022-08-31T19:45:41Z&spr=https&sv=2020-08-04&sr=b&sig=6NdypMlPI6D0UVzeux1HUY9KaRns%2BFjX2yluqPoMT1w%3D", oNetworkSecurityGroupCreateParameter);
+
+            std::string strVirtualNetowrkId = ::CreateAzureDeployment(strDeploymentParameters, strApplicationIdentifier, strSecret, strTenantIdentifier, strSubscriptionIdentifier, strResourceGroup, strLocation);
+            if (0 >= strVirtualNetowrkId.length())
+            {
+                // Update the state if it failed
+                oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eFailedCreatingNetworkSecurityGroup);
                 oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
                 StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
+                oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
             }
+            else
+            {
+                fNetworkSecurityGroupExists = true;
+            }
+        }
+
+        // If both are success, update the state of the Azure Template to AzureTemplateState::eReady
+        if ((true == fVirtualNetworkExists) && (true == fNetworkSecurityGroupExists))
+        {
+            oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eReady);
+            oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
+            StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
         }
     }
     catch (BaseException oException)

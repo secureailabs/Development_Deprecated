@@ -682,48 +682,17 @@ std::string ExecuteBashCommandAndGetResult(
     return result;
 }
 
-#include <cctype>
-#include <iomanip>
-#include <sstream>
-#include <string>
-
-std::string url_encode(const std::string &value)
-{
-    std::ostringstream escaped;
-    escaped.fill('0');
-    escaped << std::hex;
-
-    for (std::string::const_iterator i = value.begin(), n = value.end(); i != n; ++i) {
-        std::string::value_type c = (*i);
-
-        // Keep alphanumeric and other accepted characters intact
-        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
-            escaped << c;
-            continue;
-        }
-
-        // Any other characters are percent-encoded
-        escaped << std::uppercase;
-        escaped << '%' << std::setw(2) << int((unsigned char) c);
-        escaped << std::nouppercase;
-    }
-
-    return escaped.str();
-}
-
 std::string CopyVirtualMachineImage(
+    _in const std::string c_strMicrosoftAzureAccessToken,
     _in const std::string c_strSubscriptionId,
-    _in const std::string c_strApplicationIdentifier,
-    _in const std::string c_strSecret,
-    _in const std::string c_strTenantIdentifier,
     _in const std::string c_strResourceGroupName,
     _in const std::string c_strLocation,
     _in const std::string c_strImageName
 )
 {
-    // Login to the Microsoft Azure API Portal
-    const std::string c_strMicrosoftAzureAccessToken = ::LoginToMicrosoftAzureApiPortal(c_strApplicationIdentifier, c_strSecret, c_strTenantIdentifier);
-    _ThrowBaseExceptionIf((0 == c_strMicrosoftAzureAccessToken.length()), "Azure Authentication failed...", nullptr);
+    // Create resource group
+    std::string resourceGroupSpec = std::string("{\"location\": \"") + c_strLocation + "\"}";
+    std::string strResourceGroupStatus = ::CreateResourceGroup(c_strMicrosoftAzureAccessToken, c_strSubscriptionId, c_strResourceGroupName, resourceGroupSpec.c_str());
 
     // Get a valid Storage Account Name
     std::string strStorageAccountName;
@@ -777,6 +746,10 @@ std::string CopyVirtualMachineImage(
 
     stlResponse.push_back(0);
     StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((char *)stlResponse.data());
+    if (true == oResponse.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE))
+    {
+        _ThrowBaseException("Storage Account create error: %s", oResponse.GetStructuredBuffer("error").GetString("message").c_str());
+    }
     std::string strStorageAccountId = oResponse.GetString("id");
     std::string strBlobLink = oResponse.GetStructuredBuffer("properties").GetStructuredBuffer("primaryEndpoints").GetString("blob");
 
@@ -805,7 +778,7 @@ std::string CopyVirtualMachineImage(
         }
     }
     while(201 == nResponse);
-    _ThrowBaseExceptionIf((0 == stlResponse.size()), "cannot create a storage account", nullptr);
+    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Cannot create a storage account", nullptr);
     stlResponse.push_back(0);
     oResponse = JsonValue::ParseDataToStructuredBuffer((char *)stlResponse.data());
 
@@ -837,7 +810,6 @@ std::string CopyVirtualMachineImage(
         stlResponse = ::RestApiCall(strStorageAccountName+".blob.core.windows.net", 443, "HEAD", "/images/sailimage.vhd?" + strSASToken, "", false, stlHeader, &stlMapOfResponseHeaders, &nResponseCode);
         if (std::string::npos != stlMapOfResponseHeaders.at("x-ms-copy-status").find("pending"))
         {
-            std::cout << "it is pending" << std::endl;
             ::sleep(2);
         }
         else
@@ -845,8 +817,8 @@ std::string CopyVirtualMachineImage(
             fIsCopyComplete = true;
         }
     } while (false == fIsCopyComplete);
+    // TODO: Prawal check if it was a success
 
-    // az image create --resource-group avtestvm100 --name ubuntu-image --source "https://avvhdstorage100.blob.core.windows.net/system/Microsoft.Compute/Images/packer/ubuntu1804-osDisk.3360fdfb-f29c-4a05-bb55-9e81cd12dd8a.vhd" --location eastus2 --os-type "Linux" --storage-sku "Standard_LRS"
     // Create a image with the image blob
     // {
     //   "location": "eastus",
@@ -876,10 +848,8 @@ std::string CopyVirtualMachineImage(
     oProperties.PutStructuredBuffer("storageProfile", oStorageProfile);
     oImageCreateRequest.PutStructuredBuffer("properties", oProperties);
     std::string strConvertVhdToImageRequest = JsonValue::ParseStructuredBufferToJson(oImageCreateRequest)->ToString();
-    std::cout << strConvertVhdToImageRequest << std::endl;
 
-    std::string strImageName = strStorageAccountName + "UbuntuImage";
-    strApiUri = "/subscriptions/" + c_strSubscriptionId + "/resourceGroups/" + c_strResourceGroupName + "/providers/Microsoft.Compute/images/"+ strImageName + "?api-version=2021-07-01";
+    strApiUri = "/subscriptions/" + c_strSubscriptionId + "/resourceGroups/" + c_strResourceGroupName + "/providers/Microsoft.Compute/images/"+ c_strImageName + "?api-version=2021-07-01";
     stlHeader.clear();
     stlHeader.push_back("Host: management.azure.com");
     stlHeader.push_back("Authorization: Bearer " + c_strMicrosoftAzureAccessToken);
@@ -898,9 +868,11 @@ std::string CopyVirtualMachineImage(
     while(201 == nResponse);
     _ThrowBaseExceptionIf((0 == stlResponse.size()), "cannot create a storage account", nullptr);
     stlResponse.push_back(0);
-    std::cout << stlResponse.data() << std::endl;
     oResponse = JsonValue::ParseDataToStructuredBuffer((char *)stlResponse.data());
-    std::cout << oResponse.ToString();
+    if (true == oResponse.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE))
+    {
+        _ThrowBaseException("Storage Account create error: %s", oResponse.GetStructuredBuffer("error").GetString("message").c_str());
+    }
 
     return oResponse.GetString("id");
 }

@@ -567,3 +567,26 @@ bool ValidateSignedNumber(
 
     return fValid;
 }
+
+/********************************************************************************************
+ *
+ * @function ReplaceAll
+ * @brief Replace all the instances of c_strChangeThis to c_strChangeTo
+ * @param[inout] strOriginalString Original string which needs to be modified
+ * @param[in] c_strChangeThis Original string which needs to be replaced
+ * @param[in] c_strChangeTo The string which is put at the replaced position
+ *
+ ********************************************************************************************/
+
+void __thiscall ReplaceAll(
+    _inout std::string & strOriginalString,
+    _in const std::string & c_strChangeThis,
+    _in const std::string & c_strChangeTo)
+{
+    size_t start_pos = 0;
+    while((start_pos = strOriginalString.find(c_strChangeThis, start_pos)) != std::string::npos)
+    {
+        strOriginalString.replace(start_pos, c_strChangeThis.length(), c_strChangeTo);
+        start_pos += c_strChangeTo.length();
+    };
+}

@@ -202,11 +202,12 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterAzureTemplate(
     {
         // Get the organization guid
         std::string strOrganizationGuid = c_oRequest.GetString("OrganizationGuid");
-        // Create a template guid
-        std::string strTemplateGuid = Guid(eAzureSettingsTemplate).ToString(eHyphensAndCurlyBraces);
+        // Ge the Tempalte Guid
+        std::string strTemplateGuid = c_oRequest.GetString("TemplateGuid");
+
         // Create guids for the documents
         Guid oObjectGuid, oPlainTextObjectBlobGuid;
-        
+
         // Create an Azure Template document
         bsoncxx::document::value oTemplateDocumentValue = bsoncxx::builder::stream::document{}
         << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
@@ -227,7 +228,10 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterAzureTemplate(
         oObject.PutString("ApplicationID", oTemplateData.GetString("ApplicationID"));
         oObject.PutString("ResourceGroup", oTemplateData.GetString("ResourceGroup"));
         oObject.PutString("VirtualNetwork", oTemplateData.GetString("VirtualNetwork"));
+        oObject.PutString("NetworkSecurityGroup", oTemplateData.GetString("NetworkSecurityGroup"));
+        oObject.PutString("VirtualMachineImageId", oTemplateData.GetString("VirtualMachineImageId"));
         oObject.PutString("HostRegion", oTemplateData.GetString("HostRegion"));
+        oObject.PutDword("State", oTemplateData.GetDword("State"));
         bsoncxx::types::b_binary oObjectBlob
         {
             bsoncxx::binary_sub_type::k_binary,
@@ -396,7 +400,10 @@ std::vector<Byte> __thiscall DatabaseManager::UpdateAzureTemplate(
                             oUpdatedObject.PutString("ApplicationID", oTemplateData.GetString("ApplicationID"));
                             oUpdatedObject.PutString("ResourceGroup", oTemplateData.GetString("ResourceGroup"));
                             oUpdatedObject.PutString("VirtualNetwork", oTemplateData.GetString("VirtualNetwork"));
+                            oUpdatedObject.PutString("NetworkSecurityGroup", oTemplateData.GetString("NetworkSecurityGroup"));
+                            oUpdatedObject.PutString("VirtualMachineImageId", oTemplateData.GetString("VirtualMachineImageId"));
                             oUpdatedObject.PutString("HostRegion", oTemplateData.GetString("HostRegion"));
+                            oUpdatedObject.PutDword("State", oTemplateData.GetDword("State"));
                             bsoncxx::types::b_binary oUpdatedTemplateBlob
                             {
                                 bsoncxx::binary_sub_type::k_binary,

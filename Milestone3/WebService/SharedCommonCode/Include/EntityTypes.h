@@ -77,12 +77,13 @@ EosbAccessRights;
 
 /********************************************************************************************/
 
-typedef enum dc_provisioning_status
+enum class DigitalContractProvisiongStatus
 {
     eProvisioning = 1,
-    eReady = 2
-}
-DigitalContractProvisiongStatus;
+    eReady = 2,
+    eUnprovisioned = 3,
+    eProvisioningFailed = 4
+};
 
 /********************************************************************************************/
 
@@ -94,6 +95,24 @@ typedef enum virtual_machine_state
     eWaitingForData = 4,
     eReadyForComputation = 5,
     eInUse = 6,
-    eShuttingDown = 7
+    eShuttingDown = 7,
+    eDeleted = 8,
+    eDeleteFailed = 9
 }
 VirtualMachineState;
+
+/********************************************************************************************/
+
+enum class AzureTemplateState
+{
+    eInitializing = 1,
+    eCreatingVirtualNetwork = 2,
+    eCreatingNetworkSecurityGroup = 3,
+    eFailedCreatingVirtualNetwork = 4,
+    eFailedCreatingNetworkSecurityGroup = 5,
+    eReady = 6,
+    eImageDoesNotExist = 7, // Unused
+    eInvalidCredentials = 8,
+    eCreatingImage = 9,
+    eFailedCreatingImage = 10
+};

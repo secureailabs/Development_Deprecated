@@ -17,6 +17,7 @@
 #include "FileUtils.h"
 #include "TlsClient.h"
 #include "TlsTransactionHelperFunctions.h"
+#include "Base64Encoder.h"
 
 #include <iostream>
 #include <filesystem>
@@ -160,6 +161,7 @@ void __thiscall RemoteDataConnector::NewDatasetFoundCallback(
             std::lock_guard lock(m_stlMutexRestConnection);
 
             std::string strDatasetGuid = oStructuredBufferDataset.GetString("DatasetUuid");
+            std::cout << "strDatasetGuid" << strDatasetGuid << std::endl;
             m_oCollectionOfDatasets.PutStructuredBuffer(strDatasetGuid.c_str(), oStructuredBufferDataset);
             if (true == this->UpdateDatasets())
             {
@@ -221,6 +223,7 @@ void __thiscall RemoteDataConnector::SendDataConnectorHeartbeat(void) throw()
             std::vector<Byte> stlRestResponse = ::RestApiCall(m_strRestPortalAddress, m_dwRestPortalPort, strVerb, strApiUrl, strJsonBody, true);
             std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
             StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+            std::cout << "oResponse" << oResponse.ToString() << std::endl;
             if (200 == oResponse.GetFloat64("Status"))
             {
                 // Update the Eosb in case it changed
@@ -234,7 +237,11 @@ void __thiscall RemoteDataConnector::SendDataConnectorHeartbeat(void) throw()
                     // There is a Virtual Machine waiting for data, a new thread is created
                     // to connect to the Virutal Machine and upload the data
                     StructuredBuffer oVirtualMachineInformation = oVirtualMachinesWaiting.GetStructuredBuffer(strVirtualMachineUuid.c_str());
-                    stlThreadsUploadingDataToVMs.push_back(std::thread(&RemoteDataConnector::UploadDataSetToVirtualMachine, this, oVirtualMachineInformation.GetString("IPAddress"), oVirtualMachineInformation.GetString("DatasetGuid")));
+                    if (m_stlSetOfVirtualMachineUploading.end() == m_stlSetOfVirtualMachineUploading.find(oVirtualMachineInformation.GetString("IPAddress")))
+                    {
+                        m_stlSetOfVirtualMachineUploading.insert(oVirtualMachineInformation.GetString("IPAddress"));
+                        stlThreadsUploadingDataToVMs.push_back(std::thread(&RemoteDataConnector::UploadDataSetToVirtualMachine, this, oVirtualMachineInformation.GetString("IPAddress"), oVirtualMachineInformation.GetString("DatasetGuid")));
+                    }
                 }
             }
             else
@@ -314,12 +321,24 @@ bool __thiscall RemoteDataConnector::UserLogin(
     std::string strJsonBody = "";
     std::vector<Byte> stlRestResponse = ::RestApiCall(c_strRestPortalIpAddress, c_dwPort, strVerb, strApiUrl, strJsonBody, true);
     std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
-    StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+    StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str());
     if (201 == oResponse.GetFloat64("Status"))
     {
         fLoginSuccess = true;
         m_strUserEosb = oResponse.GetString("Eosb");
     }
+
+    // Make the API call to get the user information
+    strApiUrl = "/SAIL/AuthenticationManager/GetBasicUserInformation?Eosb="+ m_strUserEosb;
+    // Make the API call and get REST response
+    stlRestResponse = ::RestApiCall(c_strRestPortalIpAddress, c_dwPort, "GET", strApiUrl, strJsonBody, true);
+    strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
+    oResponse = JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str());
+    _ThrowBaseExceptionIf((200 != oResponse.GetFloat64("Status")), "Failed REST Response", nullptr);
+
+    m_strUserUuid = oResponse.GetString("UserGuid");
+    m_strUserEosb = oResponse.GetString("Eosb");
+    m_strUserOrganizationUuid = oResponse.GetString("OrganizationGuid");
 
     return fLoginSuccess;
 }
@@ -337,11 +356,13 @@ bool __thiscall RemoteDataConnector::UserLogin(
 void __thiscall RemoteDataConnector::UploadDataSetToVirtualMachine(
     _in const std::string c_strVirtualMachineAddress,
     _in const std::string c_strDatasetUuid
-    ) const throw()
+    ) throw()
 {
     __DebugFunction();
 
     std::string strDatasetFile;
+
+    std::cout << "Uploading " << c_strDatasetUuid << " to Virtual Machine " << c_strVirtualMachineAddress << std::endl;
 
     try
     {
@@ -357,15 +378,20 @@ void __thiscall RemoteDataConnector::UploadDataSetToVirtualMachine(
 
         std::vector<Byte> stlDatasetFiledata = ::ReadFileAsByteBuffer(strDatasetFile);
 
-        StructuredBuffer oDataset;
-        oDataset.PutBuffer("Dataset", stlDatasetFiledata);
+        StructuredBuffer oInitializationParameters;
+        oInitializationParameters.PutString("SailWebApiPortalIpAddress", m_strRestPortalAddress);
+        oInitializationParameters.PutString("Base64EncodedDataset", ::Base64Encode(stlDatasetFiledata.data(), stlDatasetFiledata.size()));
+        oInitializationParameters.PutString("DataOwnerAccessToken", m_strUserEosb);
+        oInitializationParameters.PutString("DataOwnerUserIdentifier", m_strUserUuid);
+        oInitializationParameters.PutString("DataOwnerUserIdentifier", m_strUserUuid);
+        oInitializationParameters.PutString("DataOwnerOrganizationIdentifier", m_strUserOrganizationUuid);
 
         // Establish a connection with the Virtual Machine
         // Wait for connetion to establish for 10 minutes with a new attempt every 10 seconds
         TlsNode * poTlsNode = ::TlsConnectToNetworkSocketWithTimeout(c_strVirtualMachineAddress.c_str(), 6800, 10*60*1000, 10*1000);
-        StructuredBuffer oResponse(::PutTlsTransactionAndGetResponse(poTlsNode, oDataset, 10*1000));
+        StructuredBuffer oResponse(::PutTlsTransactionAndGetResponse(poTlsNode, oInitializationParameters, 10*1000));
 
-        if (200 == oResponse.GetFloat64("Status"))
+        if ("Success" == oResponse.GetString("Status"))
         {
             std::cout << "Dataset upload success.\n";
         }
@@ -401,7 +427,7 @@ bool __thiscall RemoteDataConnector::UpdateDatasets(void)
     StructuredBuffer oUpdateDataConnector;
     oUpdateDataConnector.PutString("RemoteDataConnectorGuid", m_oGuidDataConnector.ToString(eHyphensAndCurlyBraces));
     oUpdateDataConnector.PutStructuredBuffer("Datasets", m_oCollectionOfDatasets);
-    // TODO: fill in proper version
+    // TODO: Prawal fill in proper version
     oUpdateDataConnector.PutString("Version", "0.0.1");
 
     // On finding a dataset the new RemoteDataConnector is registered, but if it has been already
@@ -495,9 +521,9 @@ StructuredBuffer __thiscall RemoteDataConnector::VerifyDataset(
 
         oDatasetInformation.PutString("DatasetUuid", strDatasetUuid);
 
-        // TODO: verify the dataset file signature
+        // TODO: Prawal verify the dataset file signature
 
-        // Make a call to the rest portal and check if the dataset are registered.
+        // TODO: Prawal Make a call to the rest portal and check if the dataset are registered.
 
     }
     catch (const BaseException & oException)

@@ -2450,6 +2450,7 @@ bool ListAzureTemplates(
             std::cout << "Application ID: " << oElement.GetString("ApplicationID") << std::endl;
             std::cout << "Resource Group: " << oElement.GetString("ResourceGroup") << std::endl;
             std::cout << "Virtual Network: " << oElement.GetString("VirtualNetwork") << std::endl;
+            std::cout << "Network Security Group: " << oElement.GetString("NetworkSecurityGroup") << std::endl;
             std::cout << "Host region: " << oElement.GetString("HostRegion") << std::endl;
             std::cout << "------------------------------------------------------" << std::endl;
         }
@@ -2509,6 +2510,7 @@ bool PullAzureTemplate(
         std::cout << "Application ID: " << oTemplate.GetString("ApplicationID") << std::endl;
         std::cout << "Resource Group: " << oTemplate.GetString("ResourceGroup") << std::endl;
         std::cout << "Virtual Network: " << oTemplate.GetString("VirtualNetwork") << std::endl;
+        std::cout << "Network Security Group: " << oTemplate.GetString("NetworkSecurityGroup") << std::endl;
         std::cout << "Host region: " << oTemplate.GetString("HostRegion") << std::endl;
         std::cout << "------------------------------------------------------" << std::endl;
     }

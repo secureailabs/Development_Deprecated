@@ -112,6 +112,17 @@ class AzureManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Create a Virtual Network and Network Security Group if they don't exist
+        void __thiscall UpdateAzureTemplateResources(
+            _in const StructuredBuffer c_oRequest,
+            _in const std::string c_strTemplateGuid,
+            _in const std::vector<Byte> c_stlEosb
+            );
+
+        std::vector<Byte> __thiscall UpdateAzureTemplateState(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // Private data members
         mutable pthread_mutex_t m_sMutex;
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;

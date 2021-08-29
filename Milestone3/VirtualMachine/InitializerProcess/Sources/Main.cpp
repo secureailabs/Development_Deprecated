@@ -31,7 +31,8 @@ static std::vector<Byte> __stdcall WaitForInitializationParameters(void)
 {
     __DebugFunction();
 
-    std::vector<Byte> stlSerializedParameters;
+    StructuredBuffer oAllInitializationParameters;
+
     TlsServer oTlsServer(6800);
     while (false == oTlsServer.WaitForConnection(1000))
     {
@@ -39,21 +40,62 @@ static std::vector<Byte> __stdcall WaitForInitializationParameters(void)
         // to connect. This reduces thread contention.
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-    // There is a connection is waiting to be made!!!
+
+    // The first connection are the initialization parameters sent from the
+    // SAIL backend which include the digital contract and VM information
     TlsNode * poTlsNode = oTlsServer.Accept();
     _ThrowBaseExceptionIf((nullptr == poTlsNode), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
-    stlSerializedParameters = ::GetTlsTransaction(poTlsNode, 10*1000);
+
+    StructuredBuffer oBackendInitializationParameters(::GetTlsTransaction(poTlsNode, 10*1000));
+    oAllInitializationParameters.PutString("NameOfVirtualMachine", oBackendInitializationParameters.GetString("NameOfVirtualMachine"));
+    oAllInitializationParameters.PutString("IpAddressOfVirtualMachine", oBackendInitializationParameters.GetString("IpAddressOfVirtualMachine"));
+    oAllInitializationParameters.PutString("VirtualMachineIdentifier", oBackendInitializationParameters.GetString("VirtualMachineIdentifier"));
+    oAllInitializationParameters.PutString("ClusterIdentifier", oBackendInitializationParameters.GetString("ClusterIdentifier"));
+    oAllInitializationParameters.PutString("DigitalContractIdentifier", oBackendInitializationParameters.GetString("DigitalContractIdentifier"));
+    oAllInitializationParameters.PutString("DatasetIdentifier", oBackendInitializationParameters.GetString("DatasetIdentifier"));
+    oAllInitializationParameters.PutString("RootOfTrustDomainIdentifier", oBackendInitializationParameters.GetString("RootOfTrustDomainIdentifier"));
+    oAllInitializationParameters.PutString("ComputationalDomainIdentifier", oBackendInitializationParameters.GetString("ComputationalDomainIdentifier"));
+    oAllInitializationParameters.PutString("DataConnectorDomainIdentifier", oBackendInitializationParameters.GetString("DataConnectorDomainIdentifier"));
+    oAllInitializationParameters.PutString("VmEosb", oBackendInitializationParameters.GetString("VmEosb"));
 
     StructuredBuffer oStructuredBufferResponse;
     oStructuredBufferResponse.PutString("Status", "Success");
+    ::PutTlsTransaction(poTlsNode, oStructuredBufferResponse);
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+        poTlsNode = nullptr;
+    }
 
-    JsonValue * poJson = JsonValue::ParseStructuredBufferToJson(oStructuredBufferResponse);
-    ::PutHttpResponse(poTlsNode, poJson->ToString());
+    // Next step is to wait for the dataset from the Remote data connector, the process will wait for the dataset
+    // and dataOwner information
+    while (false == oTlsServer.WaitForConnection(1000))
+    {
+        // Put the thread into efficient sleep to give a chance for the other process
+        // to connect. This reduces thread contention.
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
 
-    // Close the connection
-    poTlsNode->Release();
+    // The second connection are the initialization parameters sent from the
+    // Remote data connector which has information about the dataowner and the dataset
+    poTlsNode = oTlsServer.Accept();
+    _ThrowBaseExceptionIf((nullptr == poTlsNode), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
 
-    return stlSerializedParameters;
+    StructuredBuffer oRemoteDatasetParameters(::GetTlsTransaction(poTlsNode, 10*1000));
+    oAllInitializationParameters.PutString("DataOwnerAccessToken", oRemoteDatasetParameters.GetString("DataOwnerAccessToken"));
+    oAllInitializationParameters.PutString("SailWebApiPortalIpAddress", oRemoteDatasetParameters.GetString("SailWebApiPortalIpAddress"));
+    oAllInitializationParameters.PutString("DataOwnerUserIdentifier", oRemoteDatasetParameters.GetString("DataOwnerUserIdentifier"));
+    oAllInitializationParameters.PutString("Base64EncodedDataset", oRemoteDatasetParameters.GetString("Base64EncodedDataset"));
+    oAllInitializationParameters.PutString("DataOwnerOrganizationIdentifier", oRemoteDatasetParameters.GetString("DataOwnerOrganizationIdentifier"));
+
+    ::PutTlsTransaction(poTlsNode, oStructuredBufferResponse);
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+        poTlsNode = nullptr;
+    }
+
+    return oAllInitializationParameters.GetSerializedBuffer();
 }
 
 /********************************************************************************************/

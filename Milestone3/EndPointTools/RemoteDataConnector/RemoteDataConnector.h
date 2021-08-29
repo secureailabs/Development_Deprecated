@@ -21,7 +21,7 @@
 #include <thread>
 #include <mutex>
 #include <unordered_map>
-#include <condition_variable>
+#include <unordered_set>
 
 /********************************************************************************************/
 
@@ -62,7 +62,7 @@ class RemoteDataConnector : public Object
         void __thiscall UploadDataSetToVirtualMachine(
             _in const std::string c_strVirtualMachineAddress,
             _in const std::string c_strDatasetFileName
-            ) const throw();
+            ) throw();
         StructuredBuffer __thiscall VerifyDataset(
             _in const std::string & c_strDatasetFileName
             ) const throw();
@@ -73,10 +73,13 @@ class RemoteDataConnector : public Object
         bool m_fIsDataConnectorRegistered = false;
         static RemoteDataConnector m_oRemoteDataConnector;
         std::string m_strUserEosb;
+        std::string m_strUserUuid;
+        std::string m_strUserOrganizationUuid;
         std::string m_strRestPortalAddress;
         Dword m_dwRestPortalPort;
         std::vector<std::thread> m_stlListOfThreadsForDatasets;
         std::mutex m_stlMutexRestConnection;
+        std::unordered_set<std::string> m_stlSetOfVirtualMachineUploading;
         std::unordered_map<std::string, std::string> m_stlMapOfFileToDatasetsUuids;
         StructuredBuffer m_oCollectionOfDatasets;
 };

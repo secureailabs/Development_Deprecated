@@ -34,7 +34,7 @@
 static RootOfTrustCore __stdcall RunInitializerProcess(void)
 {
     __DebugFunction();
-    
+
     // The ultimate goal of this function is to get the initialization parameters whic
     // are stored within a StructuredBuffer
     std::vector<Byte> stlSerializedParameters;
@@ -52,7 +52,7 @@ static RootOfTrustCore __stdcall RunInitializerProcess(void)
     // Are we the child process or the parent process?
     if (0 == nProcessIdentifier)
     {
-        // We are the child process. Let's just call execl and pass the IPC path as 
+        // We are the child process. Let's just call execl and pass the IPC path as
         // a parameter. The full command line will end up looking like "Initializer -ipc /SAIL/Ipc/C5133B267E92424896C4ACC898F30852"
         ::execl("InitializerProcess", "InitializerProcess", "-ipc", strInitializerIpcPath.c_str(), nullptr);
         ::exit(0);

@@ -33,15 +33,11 @@ OUTPUT=$(ABSROOTDIR)/Binary/SharedLibraries/RestApiPortal/lib$(notdir $(shell pw
 
 all: $(OUTPUT)
 
-$(OUTPUT): $(LOCAL_BIN)
-	@mkdir -p $(@D)
-	@cp $^ $@
-
 $(OBJDIR)%.o: $(ABSROOTDIR)%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $^ -o $@
 
-$(LOCAL_BIN): $(OBJS)
+$(OUTPUT): $(OBJS)
 	@mkdir -p $(@D)
 	$(CXX) -shared $(CXXFLAGS) $(INCLUDE) $^ -o $@ $(LDFLAGS)
 

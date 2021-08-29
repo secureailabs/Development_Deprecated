@@ -60,3 +60,9 @@ extern "C" bool ValidateSignedNumber(
     _in const std::string & c_strRange,
     _in Byte bRangeType
     );
+
+void __thiscall ReplaceAll(
+    _inout std::string & strOriginalString,
+    _in const std::string & c_strChangeThis,
+    _in const std::string & c_strChangeTo
+    );

@@ -260,7 +260,7 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     // Takes in an EOSB and registers a remote data connector
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterRemoteDataConnector");
     // Add metadata of a virtual machine that is waiting for data to the database
-    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterVmAsWaitingFOrData");
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterVmAsWaitingForData");
     // Shuts down the server
     m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/ShutdownPortal");
     // Update user's access rights
@@ -450,7 +450,7 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             {
                 stlResponseBuffer = this->RegisterRemoteDataConnector(c_oRequestStructuredBuffer);
             }
-            else if ("/SAIL/DatabaseManager/RegisterVmAsWaitingFOrData" == strResource)
+            else if ("/SAIL/DatabaseManager/RegisterVmAsWaitingForData" == strResource)
             {
                 stlResponseBuffer = this->RegisterVmAsWaitingForData(c_oRequestStructuredBuffer);
             }

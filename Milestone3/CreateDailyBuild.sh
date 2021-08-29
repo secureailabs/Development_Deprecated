@@ -6,7 +6,7 @@ set -x
 foldername=$(date +'%Y-%m-%d')
 
 rm -rf $foldername
-rm -rf Binary
+#rm -rf Binary
 mkdir $foldername
 
 #Build and put stuff in the Binary folder

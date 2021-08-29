@@ -12,8 +12,8 @@
 #include "Exceptions.h"
 #include "ExceptionRegister.h"
 #include "TlsTransactionHelperFunctions.h"
-#include "Base64Encoder.h"
 #include "HttpRequestParser.h"
+#include "JsonValue.h"
 
 #include <vector>
 #include <iostream>
@@ -129,7 +129,7 @@ std::vector<Byte> __stdcall GetTlsTransaction(
             std::vector<Byte> stlFileToDownload = poTlsNode->Read(unSizeOfPayload, unMillisecondTimeout);
             _ThrowBaseExceptionIf((unSizeOfPayload != stlFileToDownload.size()), "Read over Tls failed. Timeout", nullptr);
             stlFileToDownload.push_back(0);
-            stlSerializedTransactionBuffer = ::Base64Decode((char *)stlFileToDownload.data());
+            stlSerializedTransactionBuffer = JsonValue::ParseDataToStructuredBuffer((char *)stlFileToDownload.data());
         }
     }
     catch(BaseException oBaseException)

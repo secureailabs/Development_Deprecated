@@ -223,7 +223,6 @@ void __thiscall RemoteDataConnector::SendDataConnectorHeartbeat(void) throw()
             std::vector<Byte> stlRestResponse = ::RestApiCall(m_strRestPortalAddress, m_dwRestPortalPort, strVerb, strApiUrl, strJsonBody, true);
             std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
             StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
-            std::cout << "oResponse" << oResponse.ToString() << std::endl;
             if (200 == oResponse.GetFloat64("Status"))
             {
                 // Update the Eosb in case it changed

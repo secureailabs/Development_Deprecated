@@ -413,7 +413,7 @@ void __thiscall AzureManager::InitializePlugin(void)
     StructuredBuffer oVirtualMachineImageId;
     oVirtualMachineImageId.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oVirtualMachineImageId.PutBoolean("IsRequired", true);
-    oTemplateData.PutStructuredBuffer("VirtualMachineImageId", oVirtualMachineImageId);
+    oTemplateData.PutStructuredBuffer("VirtualMachineImage", oVirtualMachineImageId);
     StructuredBuffer oHostRegion;
     oHostRegion.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
     oHostRegion.PutBoolean("IsRequired", true);
@@ -1236,7 +1236,7 @@ void __thiscall AzureManager::UpdateAzureTemplateResources(
         std::string strResourceGroup = oAzureTemplate.GetString("ResourceGroup");
         std::string strVirtualNetwork = oAzureTemplate.GetString("VirtualNetwork");
         std::string strNetworksecurityGroupName = oAzureTemplate.GetString("NetworkSecurityGroup");
-        std::string strVirtualMachineImageName = oAzureTemplate.GetString("VirtualMachineImageId");
+        std::string strVirtualMachineImageName = oAzureTemplate.GetString("VirtualMachineImage");
         std::string strLocation = oAzureTemplate.GetString("HostRegion");
 
         StructuredBuffer oUpdateStatus;
@@ -1258,7 +1258,6 @@ void __thiscall AzureManager::UpdateAzureTemplateResources(
         // Check if the Virtul Machine ImageId is a valid Azure Resource
         std::string strVirtualMachineImageId = ::CreateAzureResourceId(strSubscriptionIdentifier, strResourceGroup, "providers/Microsoft.Compute", "images", strVirtualMachineImageName);
         bool fDoesImageExist = ::DoesAzureResourceExist(strAzureAccessToken, strVirtualMachineImageId);
-
         if (false == fDoesImageExist)
         {
             // Update the state to creating Virutal machine image
@@ -1294,15 +1293,15 @@ void __thiscall AzureManager::UpdateAzureTemplateResources(
             StructuredBuffer oVirtualNetworkCreateParameter;
             oVirtualNetworkCreateParameter.PutString("VirtualNetworkName", strVirtualNetwork);
             std::string strDeploymentParameters = ::CreateAzureParamterJson("https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/VirtualNetwork.json?sp=r&st=2021-08-18T11:49:19Z&se=2022-05-31T19:49:19Z&spr=https&sv=2020-08-04&sr=b&sig=UepJBsssk48ON0SKPRo8G1IOc%2F4dysKVOjjQ%2B59iNxA%3D", oVirtualNetworkCreateParameter);
-
-            std::string strVirtualNetowrkId = ::CreateAzureDeployment(strDeploymentParameters, strApplicationIdentifier, strSecret, strTenantIdentifier, strSubscriptionIdentifier, strResourceGroup, strLocation);
-            if (0 >= strVirtualNetowrkId.length())
+            std::string strVirtualNetworkStatus = ::CreateAzureDeployment(strAzureAccessToken, strDeploymentParameters, strSubscriptionIdentifier, strResourceGroup, strLocation);
+            if ("Success" != strVirtualNetworkStatus)
             {
                 // Update the state if the creation failed
                 oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eFailedCreatingVirtualNetwork);
                 oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
                 StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
                 oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
+                _ThrowBaseException("Failed to create Virtual Network", nullptr);
             }
             else
             {
@@ -1326,14 +1325,15 @@ void __thiscall AzureManager::UpdateAzureTemplateResources(
             oNetworkSecurityGroupCreateParameter.PutString("NetworkSecurityGroupName", strNetworksecurityGroupName);
             std::string strDeploymentParameters = ::CreateAzureParamterJson("https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/NetworkSecurityGroup.json?sp=r&st=2021-08-18T11:45:41Z&se=2022-08-31T19:45:41Z&spr=https&sv=2020-08-04&sr=b&sig=6NdypMlPI6D0UVzeux1HUY9KaRns%2BFjX2yluqPoMT1w%3D", oNetworkSecurityGroupCreateParameter);
 
-            std::string strVirtualNetowrkId = ::CreateAzureDeployment(strDeploymentParameters, strApplicationIdentifier, strSecret, strTenantIdentifier, strSubscriptionIdentifier, strResourceGroup, strLocation);
-            if (0 >= strVirtualNetowrkId.length())
+            std::string strNsgCreateStatus = ::CreateAzureDeployment(strAzureAccessToken, strDeploymentParameters, strSubscriptionIdentifier, strResourceGroup, strLocation);
+            if ("Success" != strNsgCreateStatus)
             {
                 // Update the state if it failed
                 oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eFailedCreatingNetworkSecurityGroup);
                 oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
                 StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
                 oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
+                _ThrowBaseException("Failed to create Network Security Group", nullptr);
             }
             else
             {

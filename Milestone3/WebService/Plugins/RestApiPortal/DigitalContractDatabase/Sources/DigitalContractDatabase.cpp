@@ -2139,7 +2139,8 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
                                 std::string strTenantID = oTemplateData.GetString("TenantID");
                                 std::string strApplicationID = oTemplateData.GetString("ApplicationID");
                                 std::string strResourceGroup = oTemplateData.GetString("ResourceGroup");
-                                std::string strVirtualMachineImageId = oTemplateData.GetString("VirtualMachineImageId");
+                                std::string strVirtualMachineImageName = oTemplateData.GetString("VirtualMachineImage");
+                                std::string strVirtualMachineImageId = ::CreateAzureResourceId(strSubscriptionID, strResourceGroup, "providers/Microsoft.Compute", "images", strVirtualMachineImageName);
                                 std::string strVirtualNetwork = oTemplateData.GetString("VirtualNetwork");
                                 std::string strVirtualNetworkId = ::CreateAzureResourceId(strSubscriptionID, strResourceGroup, "providers/Microsoft.Network", "virtualNetworks", strVirtualNetwork);
                                 std::string strNetworkSecurityGroup = oTemplateData.GetString("NetworkSecurityGroup");
@@ -2298,6 +2299,7 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
         {
             // Start the VM provisioning step. This step will be
             std::string strIpAddress = ::DeployVirtualMachineAndWait(c_szApplicationIdentifier, c_szSecret, c_szTenantIdentifier, c_szSubscriptionIdentifier, c_szResourceGroup, c_szVirtualMachineIdentifier, c_szVirtualMachineSpecification, c_szLocation);
+            // TODO: Prawal add a check if the VM creation fails and mark the Digital contract as fail too possibly with an error message
             _ThrowBaseExceptionIf((0 == strIpAddress.length()), "Virtual Machine provisioning failed.", nullptr);
 
             // Update the IpAddress of the Virtual Machine

@@ -40,6 +40,12 @@ static void parameterConvert(StructuredBuffer& oBuffer, PyObject* parameter)
         std::string strDescription(description);
         oItem.PutString("Description", strDescription);
         std::cout<<"Description: "<<strDescription<<std::endl;
+        
+        PyObject* paramConf = PyList_GetItem(item, 4);
+        const char* confidentiality = PyUnicode_AsUTF8(paramConf);
+        std::string strConfidentiality(confidentiality);
+        oItem.PutString("confidentiality", strConfidentiality);
+        std::cout<<"confidentiality: "<<strConfidentiality<<std::endl;
 
         std::cout<<std::to_string((int)i).c_str()<<std::endl;
         oBuffer.PutStructuredBuffer(std::to_string((int)i).c_str(), oItem);

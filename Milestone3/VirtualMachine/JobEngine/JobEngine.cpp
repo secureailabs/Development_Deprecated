@@ -400,7 +400,7 @@ void __thiscall JobEngine::PullData(
 
             // We delete the signal file and the data file after we have consumed it.
             ::remove(strSignalFile.c_str());
-            ::remove(c_strFileNametoSend.c_str());
+            //::remove(c_strFileNametoSend.c_str());
         }
     }
     catch(BaseException & oBaseException)

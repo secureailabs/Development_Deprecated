@@ -3,13 +3,15 @@ import xgboost as xgb
 
 
 #function node has 4 input and 1 output
-#input1: __X
-#input2: __y
-#input3: train info __info
-#input4: the grad and hess matrix __data
-#input5: old model __model
-#input6: hash tables __hash_model
+#input1: train info __info
+#input2: old model __model
+#input3: the grad and hess matrix __data
+#input4: hash tables __hash_tables
+#input5: __X
+#input6: __y
 #output: updated model __newmodel
+
+__X = __X.to_numpy()
 
 xgb_local = xgb.DMatrix(np.asarray(__X), label=np.asarray(__y))
 

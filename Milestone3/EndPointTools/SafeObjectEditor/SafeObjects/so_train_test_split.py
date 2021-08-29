@@ -4,10 +4,10 @@ from sklearn.model_selection import train_test_split
 #input2 __randomstate
 #input3 __X
 #input4 __y
-#output1 __X_train
-#output2 __X_test
-#output3 __y_train
-#output4 __y_test
+#output1 __Xtrain
+#output2 __Xtest
+#output3 __ytrain
+#output4 __ytest
 
-__X_train, __X_test, __y_train, __y_test = train_test_split(__X, __y, test_size=__testsize, random_state=__randomstate)
+__Xtrain, __Xtest, __ytrain, __ytest = train_test_split(__X, __y, test_size=__testsize, random_state=__randomstate)
 

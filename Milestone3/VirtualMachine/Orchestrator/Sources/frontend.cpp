@@ -106,7 +106,7 @@ std::vector<Byte> GetResponseBody(
     std::vector<Byte> stlSerializedResponse;
 
     // Check http code
-    bool fSuccess = ::ParseFirstLine(c_strRequestData);
+    bool fSuccess = ::ParseFirstLine(c_strRequestData); 
     // Parse Header of the Rest Request
     HttpRequestParser oParser;
     fSuccess = oParser.ParseResponse(c_strRequestData);
@@ -209,6 +209,7 @@ void __thiscall Frontend::Listener(
                 std::string strJobID = oResponse.GetString("JobUuid");
                 std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
                 m_stlJobStatusMap[strJobID] = JobStatusSignals::eJobDone;
+                std::cout<<"Job status of: "<<strJobID<<" set to: "<<(int)m_stlJobStatusMap[strJobID]<<std::endl;
                 break;
             }
             case JobStatusSignals::eJobFail:
@@ -222,6 +223,7 @@ void __thiscall Frontend::Listener(
             {
                 std::vector<Byte> stlData = oResponse.GetBuffer("FileData");
                 std::string strDataID = oResponse.GetString("ValueName");
+                std::cout<<"Get result posted: "<<strDataID<<std::endl;
                 std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
                 //m_stlResultMap.emplace(strDataID, stlData);
                 m_stlResultMap[strDataID] = stlData;
@@ -324,6 +326,7 @@ void __thiscall Frontend::HandleSubmitJob(
     _in std::string & strJobID
     )
 {
+    std::cout<<"submit job: "<<strJobID<<std::endl;
     StructuredBuffer oBuffer;
     oBuffer.PutString("EndPoint", "JobEngine");
     oBuffer.PutByte("RequestType", (Byte)EngineRequest::eSubmitJob);
@@ -483,6 +486,7 @@ void __thiscall Frontend::HandlePushData(
     _in std::vector<std::vector<Byte>> & stlInputVars
     )
 {
+    std::cout<<"push data: "<<std::endl;
     for(size_t i=0; i<stlInputIds.size(); i++)
     {
         StructuredBuffer oBuffer;
@@ -519,6 +523,7 @@ void __thiscall Frontend::HandleSetParameters(
     )
 {
     std::vector<std::string> stlInputIds = m_stlFNTable[strFNID]->GetInput();
+    std::cout<<"set parameter: "<<strJobID<<std::endl;
 
     for(size_t i=0; i<stlParams.size(); i++)
     {
@@ -556,33 +561,38 @@ void __thiscall Frontend::HandlePullData(
     _in std::string & strFNID
     )
 {
+    std::cout<<"pull data: "<<strJobID<<std::endl;
     std::vector<std::string> stlOutputIDs = m_stlFNTable[strFNID]->GetOutput();
+    std::vector<std::string> stlOutputConf = m_stlFNTable[strFNID]->GetOutputConfidential();
 
     for(size_t i=0; i<stlOutputIDs.size(); i++)
     {
-        StructuredBuffer oBuffer;
-        std::string strOutputFilename = strJobID + "." + stlOutputIDs[i];
+        if(stlOutputConf[i].compare("0")==0)
+        {
+            StructuredBuffer oBuffer;
+            std::string strOutputFilename = strJobID + "." + stlOutputIDs[i];
         
-        oBuffer.PutByte("RequestType", (Byte)EngineRequest::ePullData);
-        oBuffer.PutString("EndPoint", "JobEngine");
-        oBuffer.PutString("Filename", strOutputFilename);
+            oBuffer.PutByte("RequestType", (Byte)EngineRequest::ePullData);
+            oBuffer.PutString("EndPoint", "JobEngine");
+            oBuffer.PutString("Filename", strOutputFilename);
             
-        try
-        {
-            //std::future<std::vector<Byte>> stlFutureResult = std::async(std::launch::async, PutTlsTransactionAndGetResponse, m_stlConnectionMap[strVMID], oBuffer, 100);
-            //PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
-            //m_stlResultMap[strJobID].push_back(stlFutureResult);
-            PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer.GetSerializedBuffer());
-        }
+            try
+            {
+                //std::future<std::vector<Byte>> stlFutureResult = std::async(std::launch::async, PutTlsTransactionAndGetResponse, m_stlConnectionMap[strVMID], oBuffer, 100);
+                //PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
+                //m_stlResultMap[strJobID].push_back(stlFutureResult);
+                PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer.GetSerializedBuffer());
+            }
             
-        catch(BaseException oBaseException)
-        {
-            ::RegisterException(oBaseException, __func__, __LINE__);
-        }
+            catch(BaseException oBaseException)
+            {
+                ::RegisterException(oBaseException, __func__, __LINE__);
+            }
 
-        catch(...)
-        {
-            ::RegisterUnknownException(__func__, __LINE__);
+            catch(...)
+            {
+                ::RegisterUnknownException(__func__, __LINE__);
+            }
         }
     }
 }
@@ -593,13 +603,22 @@ void __thiscall Frontend::QueryResult(
     _inout std::vector<std::vector<Byte>>& stlOutput
 )
 {
+    std::cout<<"query result: "<<strJobID<<std::endl;
     std::vector<std::string> stlOutputID = m_stlFNTable[strFNID]->GetOutput();
+    std::vector<std::string> stlOutputConf = m_stlFNTable[strFNID]->GetOutputConfidential();
 
     for(size_t i =0; i<stlOutputID.size(); i++)
     {
+    
         std::string strDataID = strJobID + "." + stlOutputID[i];
         std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
-        stlOutput.push_back(m_stlResultMap[strDataID]);
+        if(stlOutputConf[i].compare("0")==0)
+            stlOutput.push_back(m_stlResultMap[strDataID]);
+        else
+        {
+            std::vector<Byte> stlTmpBVec(strDataID.begin(), strDataID.end());
+            stlOutput.push_back(stlTmpBVec);
+        }
     }
 }
 
@@ -607,6 +626,7 @@ JobStatusSignals __thiscall Frontend::QueryJobStatus(
     _in std::string& strJobID
 )
 {
+    //std::cout<<"query job status: "<<strJobID<<" : "<<m_stlJobStatusMap[strJobID]<<std::endl;
     std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
     return m_stlJobStatusMap[strJobID];
 }
@@ -674,6 +694,7 @@ void __thiscall Frontend::HandlePushSafeObject(
     _in std::string & strFNID
     )
 {
+    std::cout<<"push safe object: "<<strFNID<<std::endl;
     StructuredBuffer oBuffer;
     
     oBuffer.PutByte("RequestType", (Byte)EngineRequest::ePushSafeObject);
@@ -732,10 +753,13 @@ void __thiscall Frontend::RegisterSafeObject(
 {
     for (const auto & entry : std::filesystem::directory_iterator(strFilePath))
     {
+        std::cout<<"start"<<std::endl;
         std::string strFilename = entry.path().string();
+        std::cout<<strFilename<<std::endl;
         std::ifstream stlFNFile;
         stlFNFile.open(strFilename, (std::ios::in | std::ios::binary | std::ios::ate));
         unsigned int unFileSizeInBytes = (unsigned int)stlFNFile.tellg();
+        std::cout<<unFileSizeInBytes<<std::endl;
         std::vector<Byte> stlBuffer;
         stlBuffer.resize(unFileSizeInBytes);
         //stlFNFile.unsetf(std::ios::skipws);
@@ -744,9 +768,13 @@ void __thiscall Frontend::RegisterSafeObject(
         //stlBuffer.insert(stlBuffer.begin(),std::istream_iterator<Byte>(stlFNFile), std::istream_iterator<Byte>());
         stlFNFile.close();
 
+        std::cout<<"file read done"<<std::endl;
         StructuredBuffer oSafeObject(stlBuffer);
+        std::cout<<"safe obj created"<<std::endl;
         std::unique_ptr<SafeObject> poFN = std::make_unique<SafeObject>(oSafeObject);
         std::string strFNID = poFN->GetSafeObjectID();
+        std::cout<<strFNID<<" created"<<std::endl;
         m_stlFNTable.emplace(strFNID, std::move(poFN));
+        std::cout<<"end"<<std::endl;
     }
 }

@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <iterator>
+#include <iostream>
 #include "Guid.h"
 #include "frontend.h"
 
@@ -151,7 +152,9 @@ static PyObject* setparameter(PyObject* self, PyObject* args)
         }
 
         const char* tmpParam = PyUnicode_AsUTF8(next);
-        stlParams.push_back(std::string(tmpParam));
+        std::string strParam = tmpParam;
+        std::cout<<strParam<<std::endl;
+        stlParams.push_back(strParam);
     }
 
     getFrontend().HandleSetParameters(strVMID, strFNID, strJobID, stlParams);
@@ -259,10 +262,10 @@ static PyObject* queryjobstatus(PyObject* self, PyObject* args)
             nStatus = 0;
             break;
         case JobStatusSignals::eJobDone: 
-            strStatus = 1;
+            nStatus = 1;
             break;
         case JobStatusSignals::eJobFail: 
-            strStatus = -1;
+            nStatus = -1;
             break;
         default:
             break;

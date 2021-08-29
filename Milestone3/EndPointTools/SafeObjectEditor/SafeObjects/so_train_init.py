@@ -1,22 +1,21 @@
 import xgboost as xgb
 import numpy as np
 
-def sigmoid(x):
-    return 1/(1+ np.exp(-x))
-
-def cust_obj(preds, training):
-    labels = training.get_label()
-    preds = sigmoid(preds)
-    grad = preds - labels
-    hess = preds*(1-preds)
-    return grad, hess
+#def cust_obj(preds, training):
+#    labels = training.get_label()
+#    preds = 1/(1+ np.exp(-preds))
+#    grad = preds - labels
+#    hess = preds*(1-preds)
+#    return grad, hess
 
 #function node has 3 inputs and 1 output
-# input 1: X __X
-# input 2: y __y
-# input 3: node info __info
-# input 4: model __model
+# input 1: node info __info
+# input 2: model __model
+# input 3: X __X
+# input 4: y __y
 # output: local gradients calculated __gradient_pairs
+
+__X = __X.to_numpy()
 
 #print("Initializing node info")
 node_id = 0
@@ -40,7 +39,13 @@ num_parties = __info['num_parties']
 xgb_local = xgb.DMatrix(np.asarray(__X), label=np.asarray(__y))
 
 dpred_inst = __model.predict(xgb_local)
-grad, hess = cust_obj(dpred_inst, xgb_local)
+
+labels = xgb_local.get_label()
+preds = 1/(1+ np.exp(-dpred_inst))
+grad = preds - labels
+hess = preds*(1-preds)
+
+#grad, hess = cust_obj(dpred_inst, xgb_local)
 
 __gradient_pairs = {}
 __gradient_pairs['grad'] = grad

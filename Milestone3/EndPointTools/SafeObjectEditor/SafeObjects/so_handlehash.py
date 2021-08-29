@@ -6,6 +6,8 @@ from collections import Counter
 #input2: X __X
 #output: local hash values __hash_values_counters_local
 
+__X = __X.to_numpy()
+
 num_dim = np.shape(__X)[1]
 r = 4.0
 L = min(40, num_dim-1)

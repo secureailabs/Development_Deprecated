@@ -235,7 +235,7 @@ class SafeObjectEditor(QDialog):
         for i in range(inputTableLen):
             tmpTableArr = []
             tmpTableArr.append(newguid())
-            for j in range(3):
+            for j in range(4):
                 tmpTableArr.append(self.inputParameterArea.getTableContent(i, j))
             inputParams.append(tmpTableArr)
         resultDict["input"] = inputParams
@@ -245,7 +245,7 @@ class SafeObjectEditor(QDialog):
         for i in range(outputTableLen):
             tmpTableArr = []
             tmpTableArr.append(newguid())
-            for j in range(3):
+            for j in range(4):
                 tmpTableArr.append(self.outputParameterArea.getTableContent(i, j))
             outputParams.append(tmpTableArr)
         resultDict["output"] = outputParams
@@ -300,8 +300,8 @@ class ParameterWidget(QVBoxLayout):
         self.table = QTableWidget()
         tableSize = self.parameterBox.text()
         self.tableLen = int(tableSize)
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["Symbol", "Type", "Description"])
+        self.table.setColumnCount(4)
+        self.table.setHorizontalHeaderLabels(["Symbol", "Type", "Description", "Confidentiality"])
         self.table.setRowCount(self.tableLen)
 
         for i in range(self.tableLen):

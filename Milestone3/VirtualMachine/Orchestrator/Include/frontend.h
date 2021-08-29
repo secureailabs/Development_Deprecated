@@ -103,7 +103,7 @@ class Frontend : public Object{
         );
         void __thiscall HandlePullData
         (
-            _in std::string& strVMID,
+            _in std::string& strVMID, 
             _in std::string& strJobID,
             _in std::string & strFNID
         );

@@ -2066,7 +2066,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
             {
                 // Get user's organization guid
                 std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
-                if (oDcBlob.GetString("ResearcherOrganization") == strOrganizationGuid)
+                if ((oDcBlob.GetString("ResearcherOrganization") == strOrganizationGuid) || (oDcBlob.GetString("DataOwnerOrganization") == strOrganizationGuid))
                 {
                     StructuredBuffer oDigitialContract = oDcBlob.GetStructuredBuffer("DigitalContract");
                     // if ((Dword)DigitalContractProvisiongStatus::eUnprovisioned == oDigitialContract.GetDword("ProvisioningStatus"))
@@ -2605,7 +2605,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::DeprovisionDigitalContract
             {
                 // Get user's organization guid
                 std::string strOrganizationGuid = oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces);
-                if (oDcBlob.GetString("ResearcherOrganization") == strOrganizationGuid)
+                if ((oDcBlob.GetString("ResearcherOrganization") == strOrganizationGuid) || (oDcBlob.GetString("DataOwnerOrganization") == strOrganizationGuid))
                 {
                     StructuredBuffer oDigitialContract = oDcBlob.GetStructuredBuffer("DigitalContract");
                     if ((Dword)DigitalContractProvisiongStatus::eReady == oDigitialContract.GetDword("ProvisioningStatus"))

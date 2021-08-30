@@ -164,10 +164,11 @@ void __thiscall RemoteDataConnector::NewDatasetFoundCallback(
             std::lock_guard lock(m_stlMutexRestConnection);
 
             std::string strDatasetGuid = oStructuredBufferDataset.GetString("DatasetUuid");
-            std::cout << "strDatasetGuid" << strDatasetGuid << std::endl;
+            std::cout << "strDatasetGuid " << strDatasetGuid << std::endl;
             m_oCollectionOfDatasets.PutStructuredBuffer(strDatasetGuid.c_str(), oStructuredBufferDataset);
             if (true == this->UpdateDatasets())
             {
+                std::cout << "Update datset success for " << c_strDatasetName << std::endl;
                 m_fIsDataConnectorRegistered = true;
                 fIsDatasetRegistered = true;
                 // Add the dataset file to the map of files to datasetguid
@@ -175,6 +176,7 @@ void __thiscall RemoteDataConnector::NewDatasetFoundCallback(
             }
             else
             {
+                std::cout << "Update datset failed for " << c_strDatasetName << std::endl;
                 // on failure remove the dataset from the list maintained
                 m_oCollectionOfDatasets.RemoveElement(strDatasetGuid.c_str());
             }
@@ -453,7 +455,7 @@ bool __thiscall RemoteDataConnector::UpdateDatasets(void)
     std::vector<Byte> stlRestResponse = ::RestApiCall(m_strRestPortalAddress, m_dwRestPortalPort, strVerb, strApiUrl, strJsonBody, true);
     std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
     StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
-    if (201 == oResponse.GetFloat64("Status"))
+    if ((201 == oResponse.GetFloat64("Status")) || 200 == oResponse.GetFloat64("Status"))
     {
         m_strUserEosb = oResponse.GetString("Eosb");
         fUpdateSuccess = true;

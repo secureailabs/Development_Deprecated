@@ -86,6 +86,10 @@ void __thiscall RemoteDataConnector::SetDatasetFolderAndRun(
 
     std::cout << "FileSystemWatcherThread" << std::endl;
 
+    // Start the HeartBeat thread that will start sending the heartbeat to the backend as
+    // soon as RemoteDataConnector is registered
+    std::thread(&RemoteDataConnector::SendDataConnectorHeartbeat, this).detach();
+
     int nINotifyFd = ::inotify_init();
     _ThrowBaseExceptionIf((0 >= nINotifyFd), "Unable to create a inotify object", nullptr);
 
@@ -145,7 +149,6 @@ void __thiscall RemoteDataConnector::NewDatasetFoundCallback(
     __DebugAssert(0 < m_strRestPortalAddress.length());
 
     std::cout << "New dataset found " << c_strDatasetName << std::endl;
-
     try
     {
         // Heartbeats sent only for datasets that have been registered successfully
@@ -202,11 +205,11 @@ void __thiscall RemoteDataConnector::SendDataConnectorHeartbeat(void) throw()
 
     try
     {
-        // Multiple threads could be making calls to the RestPortal but this function
-        // will be updating the Eosb to keep the user logged in for a while, a mutex is
-        // locked up to avoid race condition
-        std::lock_guard lock(m_stlMutexRestConnection);
+        std::mutex oMutex;
+        std::unique_lock<std::mutex> oLock(oMutex);
+        m_stlNotifyRegistration.wait(oLock);
 
+        std::cout << "Registration done starting to send heartbeat" << std::endl;
         // Keep sending the data available pings to the Rest Portal until the file
         // is deleted from by the user from the Dataset folder. That is the only way to
         // stop this thread.
@@ -220,10 +223,10 @@ void __thiscall RemoteDataConnector::SendDataConnectorHeartbeat(void) throw()
             std::string strVerb = "PUT";
             std::string strApiUrl = "/SAIL/RemoteDataConnectorManager/HeartBeat?Eosb="+ m_strUserEosb;
             std::string strJsonBody = JsonValue::ParseStructuredBufferToJson(oHeartbeatRequest)->ToString();
+            std::cout << "Sending a heartbeat to backend" << std::endl;
             std::vector<Byte> stlRestResponse = ::RestApiCall(m_strRestPortalAddress, m_dwRestPortalPort, strVerb, strApiUrl, strJsonBody, true);
             std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
             StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
-            std::cout << "oResponse" << oResponse.ToString() << std::endl;
             if (200 == oResponse.GetFloat64("Status"))
             {
                 // Update the Eosb in case it changed
@@ -427,7 +430,6 @@ bool __thiscall RemoteDataConnector::UpdateDatasets(void)
     StructuredBuffer oUpdateDataConnector;
     oUpdateDataConnector.PutString("RemoteDataConnectorGuid", m_oGuidDataConnector.ToString(eHyphensAndCurlyBraces));
     oUpdateDataConnector.PutStructuredBuffer("Datasets", m_oCollectionOfDatasets);
-    // TODO: Prawal fill in proper version
     oUpdateDataConnector.PutString("Version", "0.0.1");
 
     // On finding a dataset the new RemoteDataConnector is registered, but if it has been already
@@ -459,9 +461,10 @@ bool __thiscall RemoteDataConnector::UpdateDatasets(void)
         // Start the thread which will keep sending the heartbeat signals to the backend
         if (false == m_fIsDataConnectorRegistered)
         {
-            std::thread stlPingThread = std::thread(&RemoteDataConnector::SendDataConnectorHeartbeat, this);
-            stlPingThread.detach();
             m_fIsDataConnectorRegistered = true;
+            // Notify the heartbeat thread that the registration is complete and it can
+            // start sending the heartbeat to the
+            m_stlNotifyRegistration.notify_all();
         }
     }
 

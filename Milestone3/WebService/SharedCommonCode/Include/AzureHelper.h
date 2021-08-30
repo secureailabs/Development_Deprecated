@@ -15,7 +15,7 @@
 
 #include <string>
 
-std::string DeployVirtualMachineAndWait(
+StructuredBuffer DeployVirtualMachineAndWait(
     _in const std::string & c_strApplicationIdentifier,
     _in const std::string & c_strSecret,
     _in const std::string & c_strTenantIdentifier,
@@ -47,10 +47,8 @@ std::string CreateAzureResourceId(
 );
 
 std::string CreateAzureDeployment(
-    _in const std::string & c_strVirtualNetworkName,
-    _in const std::string & c_strApplicationIdentifier,
-    _in const std::string & c_strSecret,
-    _in const std::string & c_strTenantIdentifier,
+    _in const std::string & c_strAzureAccessToken,
+    _in const std::string & c_strdeploymentParameters,
     _in const std::string & c_strSubscriptionIdentifier,
     _in const std::string & c_strResourceGroup,
     _in const std::string & c_strLocation
@@ -80,4 +78,4 @@ std::string __stdcall LoginToMicrosoftAzureApiPortal(
     _in const std::string & c_szApplicationIdentifier,
     _in const std::string & c_szSecret,
     _in const std::string & c_szTenantIdentifier
-    );
+    ) throw();

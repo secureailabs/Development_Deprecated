@@ -22,6 +22,7 @@
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
+#include <condition_variable>
 
 /********************************************************************************************/
 
@@ -72,6 +73,7 @@ class RemoteDataConnector : public Object
         Guid m_oGuidDataConnector;
         bool m_fIsDataConnectorRegistered = false;
         static RemoteDataConnector m_oRemoteDataConnector;
+        std::condition_variable m_stlNotifyRegistration;
         std::string m_strUserEosb;
         std::string m_strUserUuid;
         std::string m_strUserOrganizationUuid;

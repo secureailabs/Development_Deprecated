@@ -249,7 +249,7 @@ std::string __stdcall CreateResourceGroup(
  * @note This is a blocking call
  *
  ********************************************************************************************/
-std::string DeployVirtualMachineAndWait(
+StructuredBuffer DeployVirtualMachineAndWait(
     _in const std::string & c_szApplicationIdentifier,
     _in const std::string & c_szSecret,
     _in const std::string & c_szTenantIdentifier,
@@ -262,117 +262,139 @@ std::string DeployVirtualMachineAndWait(
 {
     __DebugFunction();
 
-    std::string strVirtualMachineIpAddress = "0.0.0.0";
+    StructuredBuffer oResponse;
+    oResponse.PutString("Status", "Fail");
 
-    // Login to the Microsoft Azure API Portal
-    const std::string c_strMicrosoftAzureAccessToken = ::LoginToMicrosoftAzureApiPortal(c_szApplicationIdentifier, c_szSecret, c_szTenantIdentifier);
-    _ThrowBaseExceptionIf((0 == c_strMicrosoftAzureAccessToken.length()), "Authentication failed...", nullptr);
-
-    // TODO: Prawal use the CreateAzureDeployment function here
-    // Create resource group
-    std::string resourceGroupSpec = std::string("{\"location\": \"") + c_szLocation + "\"}";
-    ::CreateResourceGroup(c_strMicrosoftAzureAccessToken, c_szSubscriptionIdentifier, c_szResourceGroup, resourceGroupSpec.c_str());
-
-    // Create a Virtual Machine with a pre-existing Azure Template
-    std::string strVerb = "PUT";
-    std::string strResource = "Microsoft.Resources/deployments/" + c_szVirtualMachineIdentifier + "-deploy";
-    std::string strHost = "management.azure.com";
-    std::string strContent = c_szconfidentialVirtualMachineSpecification;
-    std::string strApiVersionDate = "2020-10-01";
-    std::vector<Byte> stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_szSubscriptionIdentifier, c_szResourceGroup);
-    stlResponse.push_back(0);
-    std::string strResponse = (const char*)stlResponse.data();
-    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to create a Microsoft Azure public IP address", nullptr);
-    _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to create a Microsoft Azure public IP address with error %s", strResponse.c_str());
-
-    // Wait until the deployment is running
-    bool fIsRunning = false;
-    do
+    try
     {
+        // Login to the Microsoft Azure API Portal
+        const std::string c_strMicrosoftAzureAccessToken = ::LoginToMicrosoftAzureApiPortal(c_szApplicationIdentifier, c_szSecret, c_szTenantIdentifier);
+        _ThrowBaseExceptionIf((0 == c_strMicrosoftAzureAccessToken.length()), "Authentication failed...", nullptr);
+
+        // TODO: Prawal use the CreateAzureDeployment function here
+        // Create resource group
+        std::string resourceGroupSpec = std::string("{\"location\": \"") + c_szLocation + "\"}";
+        ::CreateResourceGroup(c_strMicrosoftAzureAccessToken, c_szSubscriptionIdentifier, c_szResourceGroup, resourceGroupSpec.c_str());
+
+        // Create a Virtual Machine with a pre-existing Azure Template
+        std::string strVerb = "PUT";
+        std::string strResource = "Microsoft.Resources/deployments/" + c_szVirtualMachineIdentifier + "-deploy";
+        std::string strHost = "management.azure.com";
+        std::string strContent = c_szconfidentialVirtualMachineSpecification;
+        std::string strApiVersionDate = "2020-10-01";
+        std::vector<Byte> stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_szSubscriptionIdentifier, c_szResourceGroup);
+        stlResponse.push_back(0);
+        std::string strResponse = (const char*)stlResponse.data();
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to create a Microsoft Azure Deployment", nullptr);
+        StructuredBuffer oAzureVmDeployResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
+        _ThrowBaseExceptionIf((true == oAzureVmDeployResponse.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Failed to create a Microsoft Azure Deployment with error %s", oAzureVmDeployResponse.GetStructuredBuffer("error").ToString().c_str());
+        _ThrowBaseExceptionIf((true == oAzureVmDeployResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Failed to create a Microsoft Azure Deployment with error %s", oAzureVmDeployResponse.GetStructuredBuffer("error").ToString().c_str());
+
+        // Wait until the deployment is running
+        bool fIsRunning = false;
+        do
+        {
+            strVerb = "GET";
+            strResource = "Microsoft.Resources/deployments/" + c_szVirtualMachineIdentifier + "-deploy";
+            strHost = "management.azure.com";
+            strContent = "";
+            strApiVersionDate = "2021-04-01";
+            stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_szSubscriptionIdentifier, c_szResourceGroup);
+            stlResponse.push_back(0);
+            strResponse = (const char*)stlResponse.data();
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
+            StructuredBuffer oAzureVmDeployStatus = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
+            _ThrowBaseExceptionIf((true == oAzureVmDeployStatus.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Failed to get the status of a virtual machine being provisioned with error %s", oAzureVmDeployStatus.GetStructuredBuffer("error").ToString().c_str());
+            _ThrowBaseExceptionIf((true == oAzureVmDeployStatus.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Failed to get the status of a virtual machine being provisioned with error %s", oAzureVmDeployStatus.GetStructuredBuffer("error").ToString().c_str());
+            StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
+            if (true == oResponse.IsElementPresent("properties", INDEXED_BUFFER_VALUE_TYPE))
+            {
+                StructuredBuffer oProperties(oResponse.GetStructuredBuffer("properties").GetBase64SerializedBuffer().c_str());
+                if (true == oProperties.IsElementPresent("provisioningState", ANSI_CHARACTER_STRING_VALUE_TYPE))
+                {
+                    std::string strProvisioningState = oProperties.GetString("provisioningState");
+                    if (strProvisioningState == "Succeeded")
+                    {
+                        fIsRunning = true;
+                    }
+                }
+            }
+
+            // Put the thread to sleep while we wait
+            if (false == fIsRunning)
+            {
+                ::sleep(5);
+            }
+        } while (false == fIsRunning);
+
+        // Wait until the virtual machine is running
+        fIsRunning = false;
+        do
+        {
+            strVerb = "GET";
+            strResource = "Microsoft.Compute/virtualMachines/" + c_szVirtualMachineIdentifier;
+            strHost = "management.azure.com";
+            strContent = "";
+            strApiVersionDate = "2020-12-01";
+            stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_szSubscriptionIdentifier, c_szResourceGroup);
+            stlResponse.push_back(0);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
+            StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
+            _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Failed to get the status of a virtual machine being provisioned with error %s", oResponse.GetStructuredBuffer("error").ToString().c_str());
+            _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Failed to get the status of a virtual machine being provisioned with error %s", oResponse.GetStructuredBuffer("error").ToString().c_str());
+            if (true == oResponse.IsElementPresent("properties", INDEXED_BUFFER_VALUE_TYPE))
+            {
+                StructuredBuffer oProperties(oResponse.GetStructuredBuffer("properties").GetBase64SerializedBuffer().c_str());
+                if (true == oProperties.IsElementPresent("provisioningState", ANSI_CHARACTER_STRING_VALUE_TYPE))
+                {
+                    std::string strProvisioningState = oProperties.GetString("provisioningState");
+                    if (strProvisioningState == "Succeeded")
+                    {
+                        fIsRunning = true;
+                    }
+                }
+            }
+
+            // Should we put the thread to sleep while we wait?
+            if (false == fIsRunning)
+            {
+                ::sleep(5);
+            }
+        } while (false == fIsRunning);
+
+        // Now that the virtual machine is running, we go ahead and effectively get the IP address of the
+        // virtual machine. This is the last step in the provisioning of a Microsoft Azure virtual machine
         strVerb = "GET";
-        strResource = "Microsoft.Resources/deployments/" + c_szVirtualMachineIdentifier + "-deploy";
+        strResource = "Microsoft.Network/publicIPAddresses/" + c_szVirtualMachineIdentifier + "-ip";
         strHost = "management.azure.com";
         strContent = "";
-        strApiVersionDate = "2021-04-01";
+        strApiVersionDate = "2020-07-01";
         stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_szSubscriptionIdentifier, c_szResourceGroup);
         stlResponse.push_back(0);
         strResponse = (const char*)stlResponse.data();
-        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
-        _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to get the status of a virtual machine being provisioned with error %s", strResponse.c_str());
-        StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
-        if (true == oResponse.IsElementPresent("properties", INDEXED_BUFFER_VALUE_TYPE))
-        {
-            StructuredBuffer oProperties(oResponse.GetStructuredBuffer("properties").GetBase64SerializedBuffer().c_str());
-            if (true == oProperties.IsElementPresent("provisioningState", ANSI_CHARACTER_STRING_VALUE_TYPE))
-            {
-                std::string strProvisioningState = oProperties.GetString("provisioningState");
-                if (strProvisioningState == "Succeeded")
-                {
-                    fIsRunning = true;
-                }
-            }
-        }
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the ip address of a Microsoft Azure virtual machine", nullptr);
+        _ThrowBaseExceptionIf((std::string::npos != strResponse.find("\"error\"")), "Failed to get the ip address of a Microsoft Azure virtual machine with error %s", strResponse.c_str());
 
-        // Put the thread to sleep while we wait
-        if (false == fIsRunning)
-        {
-            ::sleep(5);
-        }
-    } while (false == fIsRunning);
+        // ParseDataToStructuredBuffer cannot handle the escaped strings. The workaround is to manually get
+        // the Ip Address from the string response.
+        std::string strVirtualMachineIpAddress = ::GetJsonValue(std::string((char*)stlResponse.data(), stlResponse.size()), "\"ipAddress\"");
+        _ThrowBaseExceptionIf((0 == strVirtualMachineIpAddress.length()), "No IP Address in the response", nullptr);
 
-    // Wait until the virtual machine is running
-    fIsRunning = false;
-    do
+        oResponse.PutString("Status", "Success");
+        oResponse.PutString("IpAddress", strVirtualMachineIpAddress);
+    }
+    catch (BaseException oBaseException)
     {
-        strVerb = "GET";
-        strResource = "Microsoft.Compute/virtualMachines/" + c_szVirtualMachineIdentifier;
-        strHost = "management.azure.com";
-        strContent = "";
-        strApiVersionDate = "2020-12-01";
-        stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_szSubscriptionIdentifier, c_szResourceGroup);
-        stlResponse.push_back(0);
-        strResponse = (const char*)stlResponse.data();
-        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
-        _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to get the status of a virtual machine being provisioned with error %s", strResponse.c_str());
-        StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
-        if (true == oResponse.IsElementPresent("properties", INDEXED_BUFFER_VALUE_TYPE))
-        {
-            StructuredBuffer oProperties(oResponse.GetStructuredBuffer("properties").GetBase64SerializedBuffer().c_str());
-            if (true == oProperties.IsElementPresent("provisioningState", ANSI_CHARACTER_STRING_VALUE_TYPE))
-            {
-                std::string strProvisioningState = oProperties.GetString("provisioningState");
-                if (strProvisioningState == "Succeeded")
-                {
-                    fIsRunning = true;
-                }
-            }
-        }
+        ::RegisterException(oBaseException, __func__, __LINE__);
+        oResponse.PutString("error", oBaseException.GetExceptionMessage());
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.PutString("error", "std error");
+    }
 
-        // Should we put the thread to sleep while we wait?
-        if (false == fIsRunning)
-        {
-            ::sleep(5);
-        }
-    } while (false == fIsRunning);
-
-    // Now that the virtual machine is running, we go ahead and effectively get the IP address of the
-    // virtual machine. This is the last step in the provisioning of a Microsoft Azure virtual machine
-    strVerb = "GET";
-    strResource = "Microsoft.Network/publicIPAddresses/" + c_szVirtualMachineIdentifier + "-ip";
-    strHost = "management.azure.com";
-    strContent = "";
-    strApiVersionDate = "2020-07-01";
-    stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_szSubscriptionIdentifier, c_szResourceGroup);
-    stlResponse.push_back(0);
-    strResponse = (const char*)stlResponse.data();
-    _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the ip address of a Microsoft Azure virtual machine", nullptr);
-    _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to get the ip address of a Microsoft Azure virtual machine with error %s", strResponse.c_str());
-
-    // ParseDataToStructuredBuffer cannot handle the escaped strings. The workaround is to manually get
-    // the Ip Address from the string response.
-    strVirtualMachineIpAddress = ::GetJsonValue(std::string((char*)stlResponse.data(), stlResponse.size()), "\"ipAddress\"");
-
-    return strVirtualMachineIpAddress;
+    return oResponse;
 }
 
 /********************************************************************************************

@@ -437,10 +437,11 @@ void __thiscall VirtualMachineManager::InitializePlugin(void)
     oState.PutBoolean("IsRequired", true);
     oUpdateStatus.PutStructuredBuffer("State", oState);
     // Make VMLoggedInUser optional for UpdateStatus API but the API will send back an error if the State is "InUse" and this field is missing
-    StructuredBuffer oVmLoggedInUser;
-    oVmLoggedInUser.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
-    oVmLoggedInUser.PutBoolean("IsRequired", true);
-    oUpdateStatus.PutStructuredBuffer("VMLoggedInUser", oVmLoggedInUser);
+    // TODO: Prawal add some utility to this
+    // StructuredBuffer oVmLoggedInUser;
+    // oVmLoggedInUser.PutByte("ElementType", ANSI_CHARACTER_STRING_VALUE_TYPE);
+    // oVmLoggedInUser.PutBoolean("IsRequired", false);
+    // oUpdateStatus.PutStructuredBuffer("VMLoggedInUser", oVmLoggedInUser);
 
     // Parameters to the Dictionary: Verb, Resource, Parameters, 0 or 1 to represent if the API uses any unix connections
     // Takes in an EOSB and sends back list of all running VM ip addresses associated with the digiatl contract
@@ -552,6 +553,10 @@ void __thiscall VirtualMachineManager::HandleIpcRequest(
         case 0x00000004 // AddVirtualMachineIpAddress
         :
             stlResponse = this->AddVirtualMachineIpAddress(oRequestParameters);
+            break;
+        case 0x00000005 // PullVirtualMachine
+        :
+            stlResponse = this->GetVmInformation(oRequestParameters);
             break;
     }
 

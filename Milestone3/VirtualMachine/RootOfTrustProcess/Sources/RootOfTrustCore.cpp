@@ -629,9 +629,12 @@ bool __thiscall RootOfTrustCore::InitializeVirtualMachine(void)
                 std::string strVerb = "PUT";
                 // TODO: Prawal make this an enum or string.. VirtualMachineState::eWaitingForData is 5
                 std::string strApiUrl = "/SAIL/VirtualMachineManager/UpdateStatus?Eosb="+ gs_strDataOwnerAccessToken;
-                std::string strContent = "{\n   \"VirtualMachineGuid\": \""+ gs_strVirtualMachineIdentifier +"\","
-                                        "\n   \"State\": "+ std::to_string(5) + "\""
-                                        "\n}";
+                StructuredBuffer oStateUpdateRequest;
+                oStateUpdateRequest.PutString("VirtualMachineGuid", gs_strVirtualMachineIdentifier);
+                oStateUpdateRequest.PutDword("State", 5);
+                std::string strContent = JsonValue::ParseStructuredBufferToJson(oStateUpdateRequest)->ToString();
+                std::cout << "/SAIL/VirtualMachineManager/UpdateStatus " << strContent << std::endl;
+
                 // Make the API call and get REST response
                 std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strSailWebApiPortalIpAddress, (Word)6200, strVerb, strApiUrl, strContent, true);
                 std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());

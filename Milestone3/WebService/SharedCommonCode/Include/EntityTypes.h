@@ -97,7 +97,8 @@ typedef enum virtual_machine_state
     eInUse = 6,
     eShuttingDown = 7,
     eDeleted = 8,
-    eDeleteFailed = 9
+    eDeleteFailed = 9,
+    eProvisioningFailed = 10
 }
 VirtualMachineState;
 

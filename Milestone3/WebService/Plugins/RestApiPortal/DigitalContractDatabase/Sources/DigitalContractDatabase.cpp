@@ -2298,9 +2298,20 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
         if ((0 < oUpdateVmStateResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oUpdateVmStateResponse.GetDword("Status")))
         {
             // Start the VM provisioning step. This step will be
-            std::string strIpAddress = ::DeployVirtualMachineAndWait(c_szApplicationIdentifier, c_szSecret, c_szTenantIdentifier, c_szSubscriptionIdentifier, c_szResourceGroup, c_szVirtualMachineIdentifier, c_szVirtualMachineSpecification, c_szLocation);
+            StructuredBuffer oDeployResponse = ::DeployVirtualMachineAndWait(c_szApplicationIdentifier, c_szSecret, c_szTenantIdentifier, c_szSubscriptionIdentifier, c_szResourceGroup, c_szVirtualMachineIdentifier, c_szVirtualMachineSpecification, c_szLocation);
             // TODO: Prawal add a check if the VM creation fails and mark the Digital contract as fail too possibly with an error message
-            _ThrowBaseExceptionIf((0 == strIpAddress.length()), "Virtual Machine provisioning failed.", nullptr);
+            if("Success" != oDeployResponse.GetString("Status"))
+            {
+                if (true == oDeployResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE))
+                {
+                    _ThrowBaseException("%s", oDeployResponse.GetString("error").c_str());
+                }
+                else
+                {
+                    _ThrowBaseException("Virtual Machine provisioning failed with unknown error.", nullptr);
+                }
+            }
+            std::string strIpAddress = oDeployResponse.GetString("IpAddress");
 
             // Update the IpAddress of the Virtual Machine
             StructuredBuffer oVmIpAddressRequest;
@@ -2412,6 +2423,17 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
         else
         {
             oUpdateProvisioningState.PutDword("ProvisioningStatus", (Dword)DigitalContractProvisiongStatus::eProvisioningFailed);
+
+            // Also mark the Virtual Machine Provisioning failed
+            StructuredBuffer oUpdateVmStateRequest;
+            oUpdateVmStateRequest.PutDword("TransactionType", 0x00000002);
+            oUpdateVmStateRequest.PutBuffer("Eosb", c_stlEosb);
+            oUpdateVmStateRequest.PutString("VirtualMachineGuid", c_szVirtualMachineIdentifier);
+            oUpdateVmStateRequest.PutDword("State", VirtualMachineState::eProvisioningFailed);
+            Socket * poIpcAzureManager = ::ConnectToUnixDomainSocket("/tmp/{4FBC17DA-81AF-449B-B842-E030E337720E}");
+            StructuredBuffer oUpdateVmStateResponse = StructuredBuffer(::PutIpcTransactionAndGetResponse(poIpcAzureManager, oUpdateVmStateRequest, false));
+            poIpcAzureManager->Release();
+            poIpcAzureManager = nullptr;
         }
         oUpdateProvisioningState.PutString("DigitalContractGuid", c_oDigitalContract.GetString("DigitalContractGuid"));
         StructuredBuffer oUpdateProvisioningStateResponse(this->UpdateDigitalContractProvisioningStatus(oUpdateProvisioningState));
@@ -2482,13 +2504,9 @@ std::vector<Byte> __thiscall DigitalContractDatabase::UpdateDigitalContractProvi
                         // TODO: Prawal update this to provisioned when all the VMs are ready
                         oSsb.PutDword("ProvisioningStatus", (Dword)DigitalContractProvisiongStatus::eReady);
                     }
-                    else if ((Dword)DigitalContractProvisiongStatus::eUnprovisioned == c_oRequest.GetDword("ProvisioningStatus"))
-                    {
-                        oSsb.PutDword("ProvisioningStatus", (Dword)DigitalContractProvisiongStatus::eUnprovisioned);
-                    }
                     else
                     {
-                        _ThrowBaseException("Invalid provisioning status", nullptr);
+                        oSsb.PutDword("ProvisioningStatus", c_oRequest.GetDword("ProvisioningStatus"));
                     }
 
                     // Serialize the update digital contract blob
@@ -2616,18 +2634,33 @@ std::vector<Byte> __thiscall DigitalContractDatabase::DeprovisionDigitalContract
                             // If the DataConnector is active, start the VM provisioning in a different async thread
                             for (auto strVirtualMachineName : oListOfVirtualMachines)
                             {
-                                // Update the Virtual machine status to eShutingDown.
-                                StructuredBuffer oUpdateVmStateRequest;
-                                oUpdateVmStateRequest.PutDword("TransactionType", 0x00000002);
-                                oUpdateVmStateRequest.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
-                                oUpdateVmStateRequest.PutString("VirtualMachineGuid", strVirtualMachineName);
-                                oUpdateVmStateRequest.PutDword("State", VirtualMachineState::eShuttingDown);
-                                poIpcAzureManager = ::ConnectToUnixDomainSocket("/tmp/{4FBC17DA-81AF-449B-B842-E030E337720E}");
-                                StructuredBuffer oUpdateVmStateResponse(::PutIpcTransactionAndGetResponse(poIpcAzureManager, oUpdateVmStateRequest, false));
-                                poIpcAzureManager->Release();
-                                poIpcAzureManager = nullptr;
+                                // Get the information about the Vitual Machine and deprovision
+                                // it only if it was not already deleted or attempted to be deleted
+                                StructuredBuffer oGetVmStateRequest;
+                                oGetVmStateRequest.PutDword("TransactionType", 0x00000005);
+                                oGetVmStateRequest.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
+                                oGetVmStateRequest.PutString("VirtualMachineGuid", strVirtualMachineName);
+                                Socket * poIpcVirtualMachineManager = ::ConnectToUnixDomainSocket("/tmp/{4FBC17DA-81AF-449B-B842-E030E337720E}");
+                                StructuredBuffer oGetVmStateResponse(::PutIpcTransactionAndGetResponse(poIpcVirtualMachineManager, oGetVmStateRequest, false));
+                                poIpcVirtualMachineManager->Release();
+                                poIpcVirtualMachineManager = nullptr;
 
-                                std::thread(&DigitalContractDatabase::DeleteVirtualMachineResources, this, oAzureTemplateResponse.GetBuffer("Eosb"), oTemplateData, strVirtualMachineName).detach();
+                                StructuredBuffer oVirtualMachine = oGetVmStateResponse.GetStructuredBuffer("VirtualMachine");
+                                if (((Dword)VirtualMachineState::eDeleted != oVirtualMachine.GetDword("State")) && ((Dword)VirtualMachineState::eDeleteFailed != oVirtualMachine.GetDword("State")) && ((Dword)VirtualMachineState::eShuttingDown != oVirtualMachine.GetDword("State")))
+                                {
+                                    // Update the Virtual machine status to eShutingDown.
+                                    StructuredBuffer oUpdateVmStateRequest;
+                                    oUpdateVmStateRequest.PutDword("TransactionType", 0x00000002);
+                                    oUpdateVmStateRequest.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
+                                    oUpdateVmStateRequest.PutString("VirtualMachineGuid", strVirtualMachineName);
+                                    oUpdateVmStateRequest.PutDword("State", VirtualMachineState::eShuttingDown);
+                                    poIpcVirtualMachineManager = ::ConnectToUnixDomainSocket("/tmp/{4FBC17DA-81AF-449B-B842-E030E337720E}");
+                                    StructuredBuffer oUpdateVmStateResponse(::PutIpcTransactionAndGetResponse(poIpcVirtualMachineManager, oUpdateVmStateRequest, false));
+                                    poIpcVirtualMachineManager->Release();
+                                    poIpcVirtualMachineManager = nullptr;
+
+                                    std::thread(&DigitalContractDatabase::DeleteVirtualMachineResources, this, oAzureTemplateResponse.GetBuffer("Eosb"), oTemplateData, strVirtualMachineName).detach();
+                                }
                             }
 
                             // Update the Digital ContractStatus to UnProvisioned

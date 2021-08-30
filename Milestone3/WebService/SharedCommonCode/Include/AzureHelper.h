@@ -15,7 +15,7 @@
 
 #include <string>
 
-std::string DeployVirtualMachineAndWait(
+StructuredBuffer DeployVirtualMachineAndWait(
     _in const std::string & c_strApplicationIdentifier,
     _in const std::string & c_strSecret,
     _in const std::string & c_strTenantIdentifier,

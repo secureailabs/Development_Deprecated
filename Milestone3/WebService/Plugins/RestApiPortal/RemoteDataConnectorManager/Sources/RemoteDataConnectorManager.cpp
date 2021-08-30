@@ -1125,8 +1125,30 @@ std::vector<Byte> __thiscall RemoteDataConnectorManager::ConnectorHeartBeat(
             StructuredBuffer oDatabaseResponse(stlResponse);
             if (200 == oDatabaseResponse.GetDword("Status"))
             {
+
+                // Only send the list of VMs which are waiting for data.
+                StructuredBuffer oVirtualMachinesWaiting = oDatabaseResponse.GetStructuredBuffer("VirtualMachines");
+                for (auto strVirtualMachineUuid : oVirtualMachinesWaiting.GetNamesOfElements())
+                {
+                    // Get the VM details
+                    StructuredBuffer oGetVmStateRequest;
+                    oGetVmStateRequest.PutDword("TransactionType", 0x00000005);
+                    oGetVmStateRequest.PutBuffer("Eosb", c_oRequest.GetBuffer("Eosb"));
+                    oGetVmStateRequest.PutString("VirtualMachineGuid", strVirtualMachineUuid);
+                    Socket * poIpcVirtualMachineManager = ::ConnectToUnixDomainSocket("/tmp/{4FBC17DA-81AF-449B-B842-E030E337720E}");
+                    StructuredBuffer oGetVmStateResponse(::PutIpcTransactionAndGetResponse(poIpcVirtualMachineManager, oGetVmStateRequest, false));
+                    poIpcVirtualMachineManager->Release();
+                    poIpcVirtualMachineManager = nullptr;
+
+                    StructuredBuffer oVirtualMachine = oGetVmStateResponse.GetStructuredBuffer("VirtualMachine");
+                    if ((Dword)VirtualMachineState::eWaitingForData != oVirtualMachine.GetDword("State"))
+                    {
+                        oVirtualMachinesWaiting.RemoveElement(strVirtualMachineUuid.c_str());
+                    }
+                }
+
                 oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
-                oResponse.PutStructuredBuffer("VirtualMachines", oDatabaseResponse.GetStructuredBuffer("VirtualMachines"));
+                oResponse.PutStructuredBuffer("VirtualMachines", oVirtualMachinesWaiting);
                 dwStatus = 200;
             }
         }

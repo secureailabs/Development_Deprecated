@@ -2342,7 +2342,7 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
             StructuredBuffer oBinaryPackageInstructions;
             oBinaryPackageInstructions.PutString("Verb", "GET");
             oBinaryPackageInstructions.PutString("Content", "");
-            oBinaryPackageInstructions.PutString("Uri", "/deployemnttemplate/SecureComputationalVirtualMachine.binaries?sp=r&st=2021-08-19T08:50:02Z&se=2021-08-31T16:50:02Z&sv=2020-08-04&sr=b&sig=Mfx1Fm8fbm9Fus94WXGL5d7KFzs8NM7CZoJNobV8Kd4%3D");
+            oBinaryPackageInstructions.PutString("Uri", "/deployemnttemplate/SecureComputationalVirtualMachine.binaries?sp=r&st=2021-08-31T19:10:45Z&se=2025-03-02T03:10:45Z&sv=2020-08-04&sr=b&sig=Cax0Bm685X0UN8dVLrZYw55bj2gvRLNheiuRVzUtjBU%3D");
             oBinaryPackageInstructions.PutString("Host", "confidentialvmdeployment.blob.core.windows.net");
 
             // Send the url for the binary package and wait for a response on successful installation

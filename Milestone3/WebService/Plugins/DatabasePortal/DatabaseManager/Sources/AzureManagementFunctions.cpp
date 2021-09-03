@@ -232,6 +232,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterAzureTemplate(
         oObject.PutString("VirtualMachineImage", oTemplateData.GetString("VirtualMachineImage"));
         oObject.PutString("HostRegion", oTemplateData.GetString("HostRegion"));
         oObject.PutDword("State", oTemplateData.GetDword("State"));
+        oObject.PutString("Note", oTemplateData.GetString("Note"));
         bsoncxx::types::b_binary oObjectBlob
         {
             bsoncxx::binary_sub_type::k_binary,
@@ -404,6 +405,7 @@ std::vector<Byte> __thiscall DatabaseManager::UpdateAzureTemplate(
                             oUpdatedObject.PutString("VirtualMachineImage", oTemplateData.GetString("VirtualMachineImage"));
                             oUpdatedObject.PutString("HostRegion", oTemplateData.GetString("HostRegion"));
                             oUpdatedObject.PutDword("State", oTemplateData.GetDword("State"));
+                            oUpdatedObject.PutString("Note", oTemplateData.GetString("Note"));
                             bsoncxx::types::b_binary oUpdatedTemplateBlob
                             {
                                 bsoncxx::binary_sub_type::k_binary,

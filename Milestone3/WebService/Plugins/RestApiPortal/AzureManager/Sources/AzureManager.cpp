@@ -946,7 +946,7 @@ std::vector<Byte> __thiscall AzureManager::RegisterAzureSettingsTemplate(
     Dword dwStatus = 404;
     TlsNode * poTlsNode = nullptr;
 
-    try 
+    try
     {
         StructuredBuffer oUserInfo = this->GetUserInfo(c_oRequest);
         if (200 == oUserInfo.GetDword("Status"))
@@ -966,6 +966,7 @@ std::vector<Byte> __thiscall AzureManager::RegisterAzureSettingsTemplate(
                 oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
                 StructuredBuffer oTemplateData = c_oRequest.GetStructuredBuffer("TemplateData");
                 oTemplateData.PutDword("State", (Dword)AzureTemplateState::eInitializing);
+                oTemplateData.PutString("Note", "-");
                 oRequest.PutStructuredBuffer("TemplateData", oTemplateData);
                 oRequest.PutString("TemplateGuid", strTemplateGuid);
                 std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
@@ -1063,6 +1064,7 @@ std::vector<Byte> __thiscall AzureManager::UpdateAzureSettingsTemplate(
                 oRequest.PutString("OrganizationGuid", oUserInfo.GetGuid("OrganizationGuid").ToString(eHyphensAndCurlyBraces));
                 StructuredBuffer oUpdatedAzureTemplate = c_oRequest.GetStructuredBuffer("TemplateData");
                 oUpdatedAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eInitializing);
+                oUpdatedAzureTemplate.PutString("Note", "-");
                 oRequest.PutStructuredBuffer("TemplateData", oUpdatedAzureTemplate);
                 std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
                 // Send request packet
@@ -1227,6 +1229,9 @@ void __thiscall AzureManager::UpdateAzureTemplateResources(
 {
     __DebugFunction();
 
+    bool fInternalError = true;
+    std::string strInternalError = "";
+
     try
     {
         std::string strSubscriptionIdentifier = oAzureTemplate.GetString("SubscriptionID");
@@ -1249,9 +1254,11 @@ void __thiscall AzureManager::UpdateAzureTemplateResources(
         {
             // Change the state to invalid credentials and throw exception
             oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eInvalidCredentials);
+            oAzureTemplate.PutString("Note", "Kindly check the credentials!!");
             oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
             StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
             oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
+            fInternalError = false;
             _ThrowBaseException("Invalid Azure credentials", nullptr);
         }
 
@@ -1266,15 +1273,17 @@ void __thiscall AzureManager::UpdateAzureTemplateResources(
             StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
             oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
 
-            std::string strImageId = ::CopyVirtualMachineImage(strAzureAccessToken, strSubscriptionIdentifier, strResourceGroup, strLocation, strVirtualMachineImageName);
-            if (0 == strImageId.length())
+            StructuredBuffer oCopyImageResponse = ::CopyVirtualMachineImage(strAzureAccessToken, strSubscriptionIdentifier, strResourceGroup, strLocation, strVirtualMachineImageName);
+            if ("Success" != oCopyImageResponse.GetString("Status"))
             {
                 // Update the state if the creation failed
                 oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eFailedCreatingImage);
+                oAzureTemplate.PutString("Note", "Image Fail: "+oCopyImageResponse.GetString("error"));
                 oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
                 StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
                 oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
-                _ThrowBaseExceptionIf((0 == strImageId.length()), "Failed to copy image", nullptr);
+                fInternalError = false;
+                _ThrowBaseException("Failed to copy image", nullptr);
             }
         }
 
@@ -1293,14 +1302,16 @@ void __thiscall AzureManager::UpdateAzureTemplateResources(
             StructuredBuffer oVirtualNetworkCreateParameter;
             oVirtualNetworkCreateParameter.PutString("VirtualNetworkName", strVirtualNetwork);
             std::string strDeploymentParameters = ::CreateAzureParamterJson("https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/VirtualNetwork.json?sp=r&st=2021-08-18T11:49:19Z&se=2022-05-31T19:49:19Z&spr=https&sv=2020-08-04&sr=b&sig=UepJBsssk48ON0SKPRo8G1IOc%2F4dysKVOjjQ%2B59iNxA%3D", oVirtualNetworkCreateParameter);
-            std::string strVirtualNetworkStatus = ::CreateAzureDeployment(strAzureAccessToken, strDeploymentParameters, strSubscriptionIdentifier, strResourceGroup, strLocation);
-            if ("Success" != strVirtualNetworkStatus)
+            StructuredBuffer oDeploymentResult = ::CreateAzureDeployment(strAzureAccessToken, strDeploymentParameters, strSubscriptionIdentifier, strResourceGroup, strLocation);
+            if ("Success" != oDeploymentResult.GetString("Status"))
             {
                 // Update the state if the creation failed
                 oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eFailedCreatingVirtualNetwork);
+                oAzureTemplate.PutString("Note", "Virtual Network Fail: "+oDeploymentResult.GetString("error"));
                 oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
                 StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
                 oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
+                fInternalError = false;
                 _ThrowBaseException("Failed to create Virtual Network", nullptr);
             }
             else
@@ -1324,15 +1335,16 @@ void __thiscall AzureManager::UpdateAzureTemplateResources(
             StructuredBuffer oNetworkSecurityGroupCreateParameter;
             oNetworkSecurityGroupCreateParameter.PutString("NetworkSecurityGroupName", strNetworksecurityGroupName);
             std::string strDeploymentParameters = ::CreateAzureParamterJson("https://confidentialvmdeployment.blob.core.windows.net/deployemnttemplate/NetworkSecurityGroup.json?sp=r&st=2021-08-18T11:45:41Z&se=2022-08-31T19:45:41Z&spr=https&sv=2020-08-04&sr=b&sig=6NdypMlPI6D0UVzeux1HUY9KaRns%2BFjX2yluqPoMT1w%3D", oNetworkSecurityGroupCreateParameter);
-
-            std::string strNsgCreateStatus = ::CreateAzureDeployment(strAzureAccessToken, strDeploymentParameters, strSubscriptionIdentifier, strResourceGroup, strLocation);
-            if ("Success" != strNsgCreateStatus)
+            StructuredBuffer oDeploymentResult = ::CreateAzureDeployment(strAzureAccessToken, strDeploymentParameters, strSubscriptionIdentifier, strResourceGroup, strLocation);
+            if ("Success" != oDeploymentResult.GetString("Status"))
             {
                 // Update the state if it failed
                 oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eFailedCreatingNetworkSecurityGroup);
+                oAzureTemplate.PutString("Note", "Virtual Network Fail: " + oDeploymentResult.GetString("error"));
                 oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
                 StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
                 oUpdateStatus.PutBuffer("Eosb", oStatusUpdateResponse.GetBuffer("Eosb"));
+                fInternalError = false;
                 _ThrowBaseException("Failed to create Network Security Group", nullptr);
             }
             else
@@ -1348,6 +1360,32 @@ void __thiscall AzureManager::UpdateAzureTemplateResources(
             oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
             StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
         }
+
+        // If we are here, then everything should have worked out fine
+        fInternalError = false;
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    try
+    {
+        if (true == fInternalError)
+        {
+            // Update the state if there was an internal error
+            StructuredBuffer oUpdateStatus;
+            oUpdateStatus.PutString("TemplateGuid", c_strTemplateGuid);
+            oUpdateStatus.PutBuffer("Eosb", c_stlEosb);
+            oAzureTemplate.PutDword("State", (Dword)AzureTemplateState::eInternalError);
+            oAzureTemplate.PutString("Note", "Internal Error: " + strInternalError);
+            oUpdateStatus.PutStructuredBuffer("TemplateData", oAzureTemplate);
+            StructuredBuffer oStatusUpdateResponse(this->UpdateAzureTemplateState(oUpdateStatus));
+        }
     }
     catch (BaseException oException)
     {
@@ -1358,7 +1396,6 @@ void __thiscall AzureManager::UpdateAzureTemplateResources(
         ::RegisterUnknownException(__func__, __LINE__);
     }
 }
-
 
 /********************************************************************************************
  *

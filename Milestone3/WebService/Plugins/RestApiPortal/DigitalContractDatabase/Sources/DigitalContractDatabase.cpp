@@ -2081,7 +2081,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
                             // The location of Virtual Machines Provisioning is part of Digital Contract
                             std::string strLocation = oDigitialContract.GetString("HostRegion");
 
-                            // Check if the dataset attached to the Digital Contract is registered
+                            // TODO: Check if the dataset attached to the Digital Contract is registered
                             // and the Remote Data Connector sent a ping. Get the time of the
                             // latest ping and if the ping is older than the dataconnector_ping_duration
                             // the Remote DataConnector is deemed dead and this request will fail

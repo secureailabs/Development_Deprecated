@@ -1208,6 +1208,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
             oRequest.PutString("Verb", "POST");
             oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterVirtualMachine");
             oRequest.PutString("VirtualMachineGuid", strVmGuid);
+            oRequest.PutString("DigitalContractTitle", c_oRequest.GetString("DigitalContractTitle"));
             oRequest.PutString("DigitalContractGuid", strDcGuid);
             oRequest.PutUnsignedInt64("RegistrationTime", ::GetEpochTimeInSeconds());
             oRequest.PutUnsignedInt64("HeartbeatBroadcastTime", c_oRequest.GetUnsignedInt64("HeartbeatBroadcastTime"));
@@ -1215,6 +1216,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
             oRequest.PutUnsignedInt64("NumberOfVCPU", c_oRequest.GetUnsignedInt64("NumberOfVCPU"));
             oRequest.PutString("HostRegion", c_oRequest.GetString("HostRegion"));
             oRequest.PutUnsignedInt64("StartTime", c_oRequest.GetUnsignedInt64("StartTime"));
+            oRequest.PutString("Note", "...");
             std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
             // Send request packet
             poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -1606,6 +1608,11 @@ std::vector<Byte> __thiscall VirtualMachineManager::UpdateVirtualMachineStatus(
                     oVmBlob.PutString("VMLoggedInUser", c_oRequest.GetString("VMLoggedInUser"));
                 }
                 oVmBlob.PutUnsignedInt64("HeartbeatBroadcastTime", ::GetEpochTimeInSeconds());
+                // Add a note if it is there
+                if (true == c_oRequest.IsElementPresent("Note", ANSI_CHARACTER_STRING_VALUE_TYPE))
+                {
+                    oVmBlob.PutString("Note", c_oRequest.GetString("Note"));
+                }
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
                 // Create a request to get the list of VMs

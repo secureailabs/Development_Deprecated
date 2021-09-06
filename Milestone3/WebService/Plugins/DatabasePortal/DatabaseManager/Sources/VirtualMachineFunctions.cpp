@@ -382,6 +382,8 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterVirtualMachine(
         // Create a virtual machine object structured buffer
         StructuredBuffer oObject;
         oObject.PutString("DigitalContractGuid", c_oRequest.GetString("DigitalContractGuid"));
+        oObject.PutString("DigitalContractTitle", c_oRequest.GetString("DigitalContractTitle"));
+        oObject.PutString("Note", c_oRequest.GetString("Note"));
         oObject.PutString("VirtualMachineGuid", c_oRequest.GetString("VirtualMachineGuid"));
         oObject.PutUnsignedInt64("RegistrationTime", c_oRequest.GetUnsignedInt64("RegistrationTime"));
         oObject.PutUnsignedInt64("HeartbeatBroadcastTime", c_oRequest.GetUnsignedInt64("HeartbeatBroadcastTime"));

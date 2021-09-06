@@ -1308,6 +1308,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
             oSsb.PutStructuredBuffer("DatasetDRMMetadata", c_oRequest.GetStructuredBuffer("DatasetDRMMetadata"));
             oSsb.PutUnsignedInt64("LastActivity", ::GetEpochTimeInSeconds());
             oSsb.PutDword("ProvisioningStatus", (Dword)DigitalContractProvisiongStatus::eUnprovisioned);
+            oSsb.PutString("Note", "...");
             // Get Dataset name from the database
             // Make a Tls connection with the database portal
             poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
@@ -1460,6 +1461,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AcceptDigitalContract(
                             oSsb.PutUnsignedInt64("NumberOfVirtualMachines", c_oRequest.GetUnsignedInt64("NumberOfVirtualMachines"));
                             oSsb.PutUnsignedInt64("NumberOfVCPU", c_oRequest.GetUnsignedInt64("NumberOfVCPU"));
                             oSsb.PutString("HostRegion", c_oRequest.GetString("HostRegion"));
+                            oSsb.PutString("Note", "...");
                             // Serialize the update digital contract blob
                             std::vector<Byte> stlUpdatedSsb;
                             this->SerializeDigitalContract(oSsb, stlUpdatedSsb);
@@ -1594,6 +1596,10 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ActivateDigitalContract(
                             uint64_t unExpirationTime = unActivationTime + (unSubscriptionDays * 24 * 60 * 60);
                             oSsb.PutUnsignedInt64("ExpirationTime", unExpirationTime);
                             oSsb.PutDword("ContractStage", ContractStage::eActive);
+                            if (false == oSsb.IsElementPresent("AzureTemplateGuid", ANSI_CHARACTER_STRING_VALUE_TYPE))
+                            {
+                                oSsb.PutString("Note", "Attach Azure Template of Hosting Organization.");
+                            }
                             oSsb.PutString("EulaAcceptedByROAuthorizedUser", SAIL_EULA);
                             // Update the description of the digital contract if the researcher edited the description
                             if (true == c_oRequest.IsElementPresent("Description", ANSI_CHARACTER_STRING_VALUE_TYPE))
@@ -1773,6 +1779,8 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AssociateWithAzureTemplate
                                 StructuredBuffer oSsb = oDigitalContract.GetStructuredBuffer("DigitalContract");
                                 // Associate the Digital Contract with the Azure template guid
                                 oSsb.PutString("AzureTemplateGuid", strAzureTemplateGuid);
+                                // Remove the note to attach the azure template
+                                oSsb.PutString("Note", "...");
                                 // Serialize the update digital contract blob
                                 std::vector<Byte> stlUpdatedSsb;
                                 this->SerializeDigitalContract(oSsb, stlUpdatedSsb);
@@ -2050,11 +2058,14 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
 
     Dword dwStatus = 204;
     TlsNode * poTlsNode = nullptr;
+    std::string strErrorMessage = "";
+    std::vector<Byte> stlEosb = c_oRequest.GetBuffer("Eosb");
+    std::string strDcGuid = "";
 
     try
     {
         // Get digital contract guid
-        std::string strDcGuid = c_oRequest.GetString("DigitalContractGuid");
+        strDcGuid = c_oRequest.GetString("DigitalContractGuid");
 
         // Get user information to check if the user has admin access rights
         StructuredBuffer oUserInfo(this->GetUserInfo(c_oRequest));
@@ -2069,7 +2080,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
                 if ((oDcBlob.GetString("ResearcherOrganization") == strOrganizationGuid) || (oDcBlob.GetString("DataOwnerOrganization") == strOrganizationGuid))
                 {
                     StructuredBuffer oDigitialContract = oDcBlob.GetStructuredBuffer("DigitalContract");
-                    // if ((Dword)DigitalContractProvisiongStatus::eUnprovisioned == oDigitialContract.GetDword("ProvisioningStatus"))
+                    if (((Dword)DigitalContractProvisiongStatus::eUnprovisioned == oDigitialContract.GetDword("ProvisioningStatus")) || ((Dword)DigitalContractProvisiongStatus::eProvisioningFailed == oDigitialContract.GetDword("ProvisioningStatus")))
                     {
                         if (eActive == oDigitialContract.GetDword("ContractStage"))
                         {
@@ -2220,6 +2231,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
         {
             dwStatus = 408;
         }
+        strErrorMessage = oException.GetExceptionMessage();
         oResponse.PutString("Messsage: ", oException.GetExceptionMessage());
     }
     catch (...)
@@ -2231,6 +2243,29 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
     if (nullptr != poTlsNode)
     {
         poTlsNode->Release();
+    }
+
+    try
+    {
+        if (200 != dwStatus)
+        {
+            // Update the Digital ContractStatus to Provisioning
+            StructuredBuffer oUpdateProvisioningState;
+            oUpdateProvisioningState.PutBuffer("Eosb", stlEosb);
+            oUpdateProvisioningState.PutDword("ProvisioningStatus", (Dword)DigitalContractProvisiongStatus::eProvisioningFailed);
+            oUpdateProvisioningState.PutString("DigitalContractGuid", strDcGuid);
+            oUpdateProvisioningState.PutString("Note", "Error: "+strErrorMessage);
+            StructuredBuffer oUpdateProvisioningStateResponse(this->UpdateDigitalContractProvisioningStatus(oUpdateProvisioningState));
+            _ThrowBaseExceptionIf((200 != oUpdateProvisioningStateResponse.GetDword("Status")), "Update DC status fail", nullptr);
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     // Send back status of the transaction
@@ -2266,12 +2301,14 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
     __DebugFunction();
 
     bool fIsProvisioningSuccess = false;
+    std::string strErrorMessage = "";
     try
     {
         // Register a Virtual Machine to the database.
         StructuredBuffer oVmRegisterRequest;
         oVmRegisterRequest.PutBuffer("Eosb", c_stlEosb);
         oVmRegisterRequest.PutDword("TransactionType", 0x00000003);
+        oVmRegisterRequest.PutString("DigitalContractTitle", c_oDigitalContract.GetString("Title"));
         oVmRegisterRequest.PutString("DigitalContractGuid", c_oDigitalContract.GetString("DigitalContractGuid"));
         oVmRegisterRequest.PutString("VirtualMachineGuid", c_szVirtualMachineIdentifier);
         oVmRegisterRequest.PutUnsignedInt64("HeartbeatBroadcastTime", ::GetEpochTimeInSeconds());
@@ -2405,10 +2442,12 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
     catch (BaseException oException)
     {
         ::RegisterException(oException, __func__, __LINE__);
+        strErrorMessage = oException.GetExceptionMessage();
     }
     catch (...)
     {
         ::RegisterUnknownException(__func__, __LINE__);
+        strErrorMessage = "Internal Server Error. Contact SAIL.";
     }
 
     try
@@ -2430,6 +2469,7 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
             oUpdateVmStateRequest.PutBuffer("Eosb", c_stlEosb);
             oUpdateVmStateRequest.PutString("VirtualMachineGuid", c_szVirtualMachineIdentifier);
             oUpdateVmStateRequest.PutDword("State", VirtualMachineState::eProvisioningFailed);
+            oUpdateVmStateRequest.PutString("Note", strErrorMessage);
             Socket * poIpcAzureManager = ::ConnectToUnixDomainSocket("/tmp/{4FBC17DA-81AF-449B-B842-E030E337720E}");
             StructuredBuffer oUpdateVmStateResponse = StructuredBuffer(::PutIpcTransactionAndGetResponse(poIpcAzureManager, oUpdateVmStateRequest, false));
             poIpcAzureManager->Release();
@@ -2507,6 +2547,11 @@ std::vector<Byte> __thiscall DigitalContractDatabase::UpdateDigitalContractProvi
                     else
                     {
                         oSsb.PutDword("ProvisioningStatus", c_oRequest.GetDword("ProvisioningStatus"));
+                    }
+
+                    if (true == c_oRequest.IsElementPresent("Note", ANSI_CHARACTER_STRING_VALUE_TYPE))
+                    {
+                        oSsb.PutString("Note", c_oRequest.GetString("Note"));
                     }
 
                     // Serialize the update digital contract blob

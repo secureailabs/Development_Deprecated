@@ -2089,9 +2089,6 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
                             uint64_t unExpirationTime = oDigitialContract.GetUnsignedInt64("ExpirationTime");
                             _ThrowBaseExceptionIf((unCurrentTime > unExpirationTime), "Digital Contract Expired", nullptr);
 
-                            // The location of Virtual Machines Provisioning is part of Digital Contract
-                            std::string strLocation = oDigitialContract.GetString("HostRegion");
-
                             // TODO: Check if the dataset attached to the Digital Contract is registered
                             // and the Remote Data Connector sent a ping. Get the time of the
                             // latest ping and if the ping is older than the dataconnector_ping_duration
@@ -2151,6 +2148,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
                                 std::string strApplicationID = oTemplateData.GetString("ApplicationID");
                                 std::string strResourceGroup = oTemplateData.GetString("ResourceGroup");
                                 std::string strVirtualMachineImageName = oTemplateData.GetString("VirtualMachineImage");
+                                std::string strLocation = oTemplateData.GetString("HostRegion");
                                 std::string strVirtualMachineImageId = ::CreateAzureResourceId(strSubscriptionID, strResourceGroup, "providers/Microsoft.Compute", "images", strVirtualMachineImageName);
                                 std::string strVirtualNetwork = oTemplateData.GetString("VirtualNetwork");
                                 std::string strVirtualNetworkId = ::CreateAzureResourceId(strSubscriptionID, strResourceGroup, "providers/Microsoft.Network", "virtualNetworks", strVirtualNetwork);

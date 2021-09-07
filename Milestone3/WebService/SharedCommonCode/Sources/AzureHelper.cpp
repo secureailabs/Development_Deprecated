@@ -288,7 +288,7 @@ StructuredBuffer DeployVirtualMachineAndWait(
         std::string strResource = "Microsoft.Resources/deployments/" + c_szVirtualMachineIdentifier + "-deploy";
         std::string strHost = "management.azure.com";
         std::string strContent = c_szconfidentialVirtualMachineSpecification;
-        std::string strApiVersionDate = "2020-10-01";
+        std::string strApiVersionDate = "2021-04-01";
         std::vector<Byte> stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_szSubscriptionIdentifier, c_szResourceGroup);
         stlResponse.push_back(0);
         std::string strResponse = (const char*)stlResponse.data();
@@ -313,10 +313,9 @@ StructuredBuffer DeployVirtualMachineAndWait(
             StructuredBuffer oAzureVmDeployStatus = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
             _ThrowBaseExceptionIf((true == oAzureVmDeployStatus.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Failed to get the status of a virtual machine being provisioned with error %s", oAzureVmDeployStatus.GetStructuredBuffer("error").ToString().c_str());
             _ThrowBaseExceptionIf((true == oAzureVmDeployStatus.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Failed to get the status of a virtual machine being provisioned with error %s", oAzureVmDeployStatus.GetString("error").c_str());
-            StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
-            if (true == oResponse.IsElementPresent("properties", INDEXED_BUFFER_VALUE_TYPE))
+            if (true == oAzureVmDeployStatus.IsElementPresent("properties", INDEXED_BUFFER_VALUE_TYPE))
             {
-                StructuredBuffer oProperties(oResponse.GetStructuredBuffer("properties").GetBase64SerializedBuffer().c_str());
+                StructuredBuffer oProperties(oAzureVmDeployStatus.GetStructuredBuffer("properties").GetBase64SerializedBuffer().c_str());
                 if (true == oProperties.IsElementPresent("provisioningState", ANSI_CHARACTER_STRING_VALUE_TYPE))
                 {
                     std::string strProvisioningState = oProperties.GetString("provisioningState");
@@ -324,9 +323,14 @@ StructuredBuffer DeployVirtualMachineAndWait(
                     {
                         fIsRunning = true;
                     }
+                    else if (strProvisioningState == "Failed")
+                    {
+                        _ThrowBaseExceptionIf((true == oProperties.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Provisioning error: %s", oProperties.GetStructuredBuffer("error").ToString().c_str(), nullptr);
+                        _ThrowBaseExceptionIf((true == oProperties.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Provisioning error: %s", oProperties.GetString("error").c_str(), nullptr);
+                        _ThrowBaseException("Unknown Provisioning error. Contact SAIL.", nullptr);
+                    }
                 }
             }
-
             // Put the thread to sleep while we wait
             if (false == fIsRunning)
             {
@@ -457,21 +461,28 @@ StructuredBuffer CreateAzureDeployment(
             strVerb = "GET";
             strApiVersionDate = "2021-04-01";
             stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, "", strApiVersionDate, c_strSubscriptionIdentifier, c_strResourceGroup);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to create a Microsoft Azure Deployment", nullptr);
             stlResponse.push_back(0);
             strResponse = (const char*)stlResponse.data();
-            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
-            _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to get the status of a virtual machine being provisioned with error %s", strResponse.c_str());
-
             StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
+            _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Failed to create a Microsoft Azure Deployment with error %s", oResponse.GetStructuredBuffer("error").ToString().c_str());
+            _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Failed to create a Microsoft Azure Deployment with error %s", oResponse.GetString("error").c_str());
+
             if (true == oResponse.IsElementPresent("properties", INDEXED_BUFFER_VALUE_TYPE))
             {
                 StructuredBuffer oProperties(oResponse.GetStructuredBuffer("properties").GetBase64SerializedBuffer().c_str());
                 if (true == oProperties.IsElementPresent("provisioningState", ANSI_CHARACTER_STRING_VALUE_TYPE))
                 {
                     std::string strProvisioningState = oProperties.GetString("provisioningState");
-                    if (strProvisioningState == "Succeeded")
+                    if ("Succeeded" == strProvisioningState)
                     {
                         fIsRunning = true;
+                    }
+                    else if ("Failed" == strProvisioningState)
+                    {
+                        _ThrowBaseExceptionIf((true == oProperties.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Deployment error: %s", oProperties.GetStructuredBuffer("error").ToString().c_str(), nullptr);
+                        _ThrowBaseExceptionIf((true == oProperties.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Deployment error: %s", oProperties.GetString("error").c_str(), nullptr);
+                        _ThrowBaseException("Unknown Deployment error. Contact SAIL.", nullptr);
                     }
                 }
             }

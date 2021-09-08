@@ -1,0 +1,12 @@
+# Create resource group for the sharedImage gallery image
+$ResourceGroup="MarketplaceTestGroup3"
+$Galleryname="MarketplaceSharedGallery3"
+$Publisher="SailPublisher"
+$Offer="sailOffer"
+$Sku="Standard_LRS"
+$ImageDefinition="SailImageDefinition"
+$ImageName="SailComputationImage"
+az group create --name $ResourceGroup --location eastus
+az sig create --resource-group $ResourceGroup --gallery-name $Galleryname
+az sig image-definition create --resource-group $ResourceGroup --gallery-name $Galleryname --gallery-image-definition $ImageDefinition --os-type Linux --publisher $Publisher --offer $Offer --sku $Sku
+.\packer.exe build -var location=eastus -var sig_gallery_resource_group=$ResourceGroup -var sig_gallery_name=$Galleryname -var sig_image_name=$ImageDefinition -var sig_image_version=1.0.0 packer-sig-ubuntu.json

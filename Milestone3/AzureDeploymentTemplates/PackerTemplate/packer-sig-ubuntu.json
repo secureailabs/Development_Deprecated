@@ -4,9 +4,11 @@
         "tenant_id": "{{env `AZURE_TENANT_ID`}}",
         "client_id": "{{env `AZURE_CLIENT_ID`}}",
         "client_secret": "{{env `AZURE_CLIENT_SECRET`}}",
-        "location": "eastus",
-        "storage_resource_group": "",
-        "storage_account": ""
+        "location": "",
+        "sig_gallery_resource_group": "",
+        "sig_gallery_name": "",
+        "sig_image_name": "",
+        "sig_image_version": ""
     },
     "sensitive-variables": ["client_secret"],
     "builders": [{
@@ -24,24 +26,23 @@
 
             "location": "{{user `location`}}",
             "vm_size": "Standard_DS2_v2",
-
-            "shared_image_gallery_destination": {
-                "subscription": "{{user `subscription_id`}}",
-                "resource_group": "{{user `storage_resource_group`}}",
-                "gallery_name": "NewGalleryName",
-                "image_name": "ImageName",
-                "image_version": "1.0.0",
-                "replication_regions": ["eastus"],
-                "storage_account_type": "Standard_LRS"
-            },
-            "managed_image_name": "TargetImageName",
-            "managed_image_resource_group_name" : "{{user `storage_resource_group`}}",
-
             "temp_resource_group_name": "packer-rg",
             "temp_compute_name": "packervm",
             "private_virtual_network_with_public_ip": true,
             "custom_data_file": "",
-            "polling_duration_timeout": "0h30m0s"
+            "polling_duration_timeout": "0h30m0s",
+
+            "managed_image_name": "packer-image",
+            "managed_image_resource_group_name" : "{{user `sig_gallery_resource_group`}}",
+
+            "shared_image_gallery_destination": {
+                "subscription": "{{user `subscription_id`}}",
+                "resource_group": "{{user `sig_gallery_resource_group`}}",
+                "gallery_name": "{{user `sig_gallery_name`}}",
+                "image_name": "{{user `sig_image_name`}}",
+                "image_version": "{{user `sig_image_version`}}",
+                "replication_regions": ["{{user `location`}}"]
+            }
         }
     ],
     "provisioners": [{

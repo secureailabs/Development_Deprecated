@@ -10,8 +10,12 @@
 
 #include "DatabaseTools.h"
 #include "ConsoleInputHelperFunctions.h"
+#include "CommandLine.h"
 
 #include "getopt.h"
+
+static const char * gsc_szPrintableCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`~!@#$%^&*()_-+={[}]|\\:;\"'<,>.?/";
+static const char * gsc_szIpAddressCharacters = "0123456789.";
 
 // struct containing valid command line options
 struct option Options[] = {
@@ -22,99 +26,104 @@ struct option Options[] = {
 
 /********************************************************************************************/
 
-int main(int argc, char * argv[])
+int main(
+    _in int nNumberOfArguments,
+    _in char ** pszCommandLineArguments
+    )
 {
     __DebugFunction();
 
-    // Check if any options supplied
-    int nCharacter, nStatus, nSuccess = -1;
-    bool fRegisterVm = false, fDeleteDb = false;
-    while(-1 == nSuccess)
+    // Parse the command line
+    StructuredBuffer oCommandLineArguments = ::ParseCommandLineParameters((unsigned int) nNumberOfArguments, (const char **) pszCommandLineArguments);
+    std::cout << oCommandLineArguments.ToString() << std::endl;
+
+    // Get the IP Address of the SAIL WebPortal. It could either be present
+    // as a commnad line argument or be provided separately
+    std::string strIpAddress = "";
+    unsigned int unPortNumber = 0;
+    if (true == oCommandLineArguments.IsElementPresent("PortalIp", ANSI_CHARACTER_STRING_VALUE_TYPE))
     {
-        nCharacter = getopt_long(argc, argv, "ad", Options, &nStatus);
-        // No more short swicthes
-        if (-1 == nCharacter)
+        strIpAddress = oCommandLineArguments.GetString("PortalIp");
+        if (true == oCommandLineArguments.IsElementPresent("Port", ANSI_CHARACTER_STRING_VALUE_TYPE))
         {
-            nSuccess = 1;
+            unPortNumber = std::stoi(oCommandLineArguments.GetString("Port"));
         }
         else
         {
-            if ('a' == nCharacter)
-            {
-                fRegisterVm = true;
-                nSuccess = 1;
-            }
-            else if ('d' == nCharacter)
-            {
-                fDeleteDb = true;
-                nSuccess = 1;
-            }
-            else 
-            {
-                // Invalid switch
-                std::cout << "Usage: options [-a create-vm] [-d delete-db]" << std::endl;
-                nSuccess = -2; 
-            }
+            std::cout << "Port option missing!! --PortalIp=<Ip address> --Port=<port number> [--a create-vm] [--d delete-db]\n";
         }
     }
-
-    if (1 == nSuccess)
+    else
     {
-        const char * c_szValidInputCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#_$ \b{}-.,";
+        strIpAddress = ::GetStringInput("PortalIpAddress: ", 64, false, gsc_szIpAddressCharacters);
+        unPortNumber = std::stoi(::GetStringInput("Port: ", 64, false, gsc_szIpAddressCharacters));
+    }
 
-        try
+    bool fRegisterVm = false, fDeleteDb = false;
+    if (true == oCommandLineArguments.IsElementPresent("a", BOOLEAN_VALUE_TYPE))
+    {
+        fRegisterVm = true;
+    }
+
+    if (true == oCommandLineArguments.IsElementPresent("d", BOOLEAN_VALUE_TYPE))
+    {
+        fDeleteDb = true;
+    }
+
+    if (true == oCommandLineArguments.IsElementPresent("help", BOOLEAN_VALUE_TYPE))
+    {
+        std::cout << "DatabaseTools --PortalIp=<Ip address> --Port=<port number> [--a create-vm] [--d delete-db]\n";
+    }
+
+    try
+    {
+        ::ClearScreen();
+
+        DatabaseTools oDatabaseTools(strIpAddress.c_str(), unPortNumber);
+        if (true == fRegisterVm)
         {
-            ::ClearScreen();
-
-            std::cout << "************************\n  SAIL DATABASE TOOL\n************************\n" << std::endl;
-            std::string strIpAddress = ::GetStringInput("IP address: ", 50, false, c_szValidInputCharacters);
-            unsigned int unPortNumber = std::stoul(::GetStringInput("Port number: ", 50, false, c_szValidInputCharacters));
-
-            DatabaseTools oDatabaseTools(strIpAddress.c_str(), unPortNumber);
-            if (true == fRegisterVm)
+            // Add a Virtual Machine, add VM branch and leaf events for DOO and RO
+            oDatabaseTools.AddVirtualMachine();
+        }
+        else if (true == fDeleteDb)
+        {
+            static const char * c_szValidInputCharacters = "NYny";
+            std::string strChoice = ::GetStringInput("This action will delete the database. Type 'y' to confirm and 'n' to cancel: ", 1, false, c_szValidInputCharacters);
+            if ("y" == strChoice)
             {
-                // Add a Virtual Machine, add VM branch and leaf events for DOO and RO
-                oDatabaseTools.AddVirtualMachine();
+                // Delete database
+                oDatabaseTools.DeleteDatabase();
+                std::cout << "Database deleted!" << std::endl;
             }
-            else if (true == fDeleteDb)
+            else
             {
-                std::string strChoice = ::GetStringInput("This action will delete the database. Type 'y' to confirm and 'n' to cancel: ", 1, false, c_szValidInputCharacters);
-                if ("y" == strChoice)
-                {
-                    // Delete database
-                    oDatabaseTools.DeleteDatabase();
-                    std::cout << "Database deleted!" << std::endl;
-                }
-                else 
-                {
-                    std::cout << "No action taken. Exiting." << std::endl;
-                }
-            }
-            else 
-            {
-                // Add organizations and their super admins
-                oDatabaseTools.AddOrganizationsAndSuperAdmins();
-                // Add other users for the organizations
-                oDatabaseTools.AddOtherUsers();
-                // Register dataset metadata
-                oDatabaseTools.AddDatasets();
-                // Register digital contracts for the organizations
-                oDatabaseTools.AddDigitalContracts();
-                // Accept digital contracts
-                oDatabaseTools.AcceptDigitalContracts();
-                // Activate digital contracts
-                oDatabaseTools.ActivateDigitalContracts();
+                std::cout << "No action taken. Exiting." << std::endl;
             }
         }
-        catch(BaseException & oBaseException)
+        else
         {
-            std::cout << "Exception: " << std::endl;
-            std::cout << oBaseException.GetExceptionMessage() << std::endl;
+            // Add organizations and their super admins
+            oDatabaseTools.AddOrganizationsAndSuperAdmins();
+            // Add other users for the organizations
+            oDatabaseTools.AddOtherUsers();
+            // Register dataset metadata
+            oDatabaseTools.AddDatasets();
+            // Register digital contracts for the organizations
+            oDatabaseTools.AddDigitalContracts();
+            // Accept digital contracts
+            oDatabaseTools.AcceptDigitalContracts();
+            // Activate digital contracts
+            oDatabaseTools.ActivateDigitalContracts();
         }
-        catch(...)
-        {
-            std::cout << "Error: Unknown exception caught." << std::endl;
-        }
+    }
+    catch(BaseException & oBaseException)
+    {
+        std::cout << "Exception: " << std::endl;
+        std::cout << oBaseException.GetExceptionMessage() << std::endl;
+    }
+    catch(...)
+    {
+        std::cout << "Error: Unknown exception caught." << std::endl;
     }
 
     return 0;

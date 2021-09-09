@@ -146,27 +146,27 @@ void __thiscall CommunicationPortal::PersistantConnectionTlsToIpc(
     try
     {
         bool fKeepRunning = true;
-        std::unique_ptr<StructuredBuffer> poStructuredBufferMessageToPass = std::make_unique<StructuredBuffer>(c_oStructuredBufferMessageToPass);
+        StructuredBuffer oStructuredBufferMessageToPass = c_oStructuredBufferMessageToPass;
         do
         {
-            std::string strEndpointName = poStructuredBufferMessageToPass->GetString("EndPoint");
+            std::string strEndpointName = oStructuredBufferMessageToPass.GetString("EndPoint");
             if (m_stlMapOfProcessToIpcSocket.end() != m_stlMapOfProcessToIpcSocket.find(strEndpointName))
             {
-                if (poStructuredBufferMessageToPass->IsElementPresent("EndConnection", BOOLEAN_VALUE_TYPE))
+                if (oStructuredBufferMessageToPass.IsElementPresent("EndConnection", BOOLEAN_VALUE_TYPE))
                 {
-                    if (false == poStructuredBufferMessageToPass->GetBoolean("KeepAlive"))
+                    if (true == oStructuredBufferMessageToPass.GetBoolean("EndConnection"))
                     {
                         fKeepRunning = false;
                     }
                 }
                 else
                 {
-                    ::PutIpcTransaction(m_stlMapOfProcessToIpcSocket.at(strEndpointName), *poStructuredBufferMessageToPass);
+                    ::PutIpcTransaction(m_stlMapOfProcessToIpcSocket.at(strEndpointName), oStructuredBufferMessageToPass);
                 }
             }
-            poStructuredBufferMessageToPass = std::make_unique<StructuredBuffer>(::GetTlsTransaction(c_poTlsNode, 0));
+            oStructuredBufferMessageToPass = StructuredBuffer(::GetTlsTransaction(c_poTlsNode, 0));
         }
-        while(fKeepRunning);
+        while(true == fKeepRunning);
     }
     catch(const std::exception& e)
     {

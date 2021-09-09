@@ -87,18 +87,9 @@ int main(
         }
         else if (true == fDeleteDb)
         {
-            static const char * c_szValidInputCharacters = "NYny";
-            std::string strChoice = ::GetStringInput("This action will delete the database. Type 'y' to confirm and 'n' to cancel: ", 1, false, c_szValidInputCharacters);
-            if ("y" == strChoice)
-            {
-                // Delete database
-                oDatabaseTools.DeleteDatabase();
-                std::cout << "Database deleted!" << std::endl;
-            }
-            else
-            {
-                std::cout << "No action taken. Exiting." << std::endl;
-            }
+            // Delete database
+            oDatabaseTools.DeleteDatabase();
+            std::cout << "Database deleted!" << std::endl;
         }
         else
         {

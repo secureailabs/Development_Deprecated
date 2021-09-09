@@ -115,5 +115,6 @@ enum class AzureTemplateState
     eImageDoesNotExist = 7, // Unused
     eInvalidCredentials = 8,
     eCreatingImage = 9,
-    eFailedCreatingImage = 10
+    eFailedCreatingImage = 10,
+    eInternalError = 11
 };

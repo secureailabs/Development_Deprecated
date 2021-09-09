@@ -178,16 +178,18 @@ static std::vector<Byte> __cdecl MakeMicrosoftAzureApiCall(
     return ::RestApiCall(c_strHost, 443, c_strVerb, strApiUri, c_strContent, false, stlHeader, &nResponse);
 }
 
-std::string __stdcall CreateResourceGroup(
+StructuredBuffer __stdcall CreateResourceGroup(
     _in const std::string & c_strMicrosoftAzureAccessToken,
     _in const std::string & c_szSubscriptionIdentifier,
     _in const std::string & c_szResourceGroup,
     _in const std::string & c_szResourceGroupSpecification
-)
+) throw()
 {
     __DebugFunction();
 
-    std::string strResourceGroupStatus = "Failed";
+    StructuredBuffer oResponse;
+    oResponse.PutString("Status", "Fail");
+
     try
     {
         // Make sure we are not currently logged on
@@ -216,21 +218,26 @@ std::string __stdcall CreateResourceGroup(
         stlHeader.push_back("Content-Length: " + std::to_string(strContent.size()));
 
         std::vector<Byte> stlResponse = ::RestApiCall(strHost, 443, strVerb, strApiUri, strContent, false, stlHeader);
-        std::string strResponse = (const char*)stlResponse.data();
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to create a Microsoft Azure Resource Group", nullptr);
-        _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to create a Microsoft Azure Resource Group with error %s", strResponse.c_str());
+        stlResponse.push_back(0);
+        StructuredBuffer oAzureVmDeployResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
+        _ThrowBaseExceptionIf((true == oAzureVmDeployResponse.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Failed to create a Microsoft Azure Resource Group with error %s", oAzureVmDeployResponse.GetStructuredBuffer("error").ToString().c_str());
+        _ThrowBaseExceptionIf((true == oAzureVmDeployResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Failed to create a Microsoft Azure Resource Group with error %s", oAzureVmDeployResponse.GetString("error").c_str());
 
-        strResourceGroupStatus = "Success";
+        oResponse.PutString("Status", "Success");
     }
     catch (BaseException oBaseException)
     {
         ::RegisterException(oBaseException, __func__, __LINE__);
+        oResponse.PutString("error", oBaseException.GetExceptionMessage());
     }
     catch (...)
     {
         ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.PutString("error", "std error");
     }
-    return strResourceGroupStatus;
+
+    return oResponse;
 }
 
 /********************************************************************************************
@@ -258,7 +265,7 @@ StructuredBuffer DeployVirtualMachineAndWait(
     _in const std::string & c_szVirtualMachineIdentifier,
     _in const std::string & c_szconfidentialVirtualMachineSpecification,
     _in const std::string & c_szLocation
-)
+) throw()
 {
     __DebugFunction();
 
@@ -281,14 +288,14 @@ StructuredBuffer DeployVirtualMachineAndWait(
         std::string strResource = "Microsoft.Resources/deployments/" + c_szVirtualMachineIdentifier + "-deploy";
         std::string strHost = "management.azure.com";
         std::string strContent = c_szconfidentialVirtualMachineSpecification;
-        std::string strApiVersionDate = "2020-10-01";
+        std::string strApiVersionDate = "2021-04-01";
         std::vector<Byte> stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_szSubscriptionIdentifier, c_szResourceGroup);
         stlResponse.push_back(0);
         std::string strResponse = (const char*)stlResponse.data();
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to create a Microsoft Azure Deployment", nullptr);
         StructuredBuffer oAzureVmDeployResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
         _ThrowBaseExceptionIf((true == oAzureVmDeployResponse.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Failed to create a Microsoft Azure Deployment with error %s", oAzureVmDeployResponse.GetStructuredBuffer("error").ToString().c_str());
-        _ThrowBaseExceptionIf((true == oAzureVmDeployResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Failed to create a Microsoft Azure Deployment with error %s", oAzureVmDeployResponse.GetStructuredBuffer("error").ToString().c_str());
+        _ThrowBaseExceptionIf((true == oAzureVmDeployResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Failed to create a Microsoft Azure Deployment with error %s", oAzureVmDeployResponse.GetString("error").c_str());
 
         // Wait until the deployment is running
         bool fIsRunning = false;
@@ -305,11 +312,10 @@ StructuredBuffer DeployVirtualMachineAndWait(
             _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
             StructuredBuffer oAzureVmDeployStatus = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
             _ThrowBaseExceptionIf((true == oAzureVmDeployStatus.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Failed to get the status of a virtual machine being provisioned with error %s", oAzureVmDeployStatus.GetStructuredBuffer("error").ToString().c_str());
-            _ThrowBaseExceptionIf((true == oAzureVmDeployStatus.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Failed to get the status of a virtual machine being provisioned with error %s", oAzureVmDeployStatus.GetStructuredBuffer("error").ToString().c_str());
-            StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
-            if (true == oResponse.IsElementPresent("properties", INDEXED_BUFFER_VALUE_TYPE))
+            _ThrowBaseExceptionIf((true == oAzureVmDeployStatus.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Failed to get the status of a virtual machine being provisioned with error %s", oAzureVmDeployStatus.GetString("error").c_str());
+            if (true == oAzureVmDeployStatus.IsElementPresent("properties", INDEXED_BUFFER_VALUE_TYPE))
             {
-                StructuredBuffer oProperties(oResponse.GetStructuredBuffer("properties").GetBase64SerializedBuffer().c_str());
+                StructuredBuffer oProperties(oAzureVmDeployStatus.GetStructuredBuffer("properties").GetBase64SerializedBuffer().c_str());
                 if (true == oProperties.IsElementPresent("provisioningState", ANSI_CHARACTER_STRING_VALUE_TYPE))
                 {
                     std::string strProvisioningState = oProperties.GetString("provisioningState");
@@ -317,9 +323,14 @@ StructuredBuffer DeployVirtualMachineAndWait(
                     {
                         fIsRunning = true;
                     }
+                    else if (strProvisioningState == "Failed")
+                    {
+                        _ThrowBaseExceptionIf((true == oProperties.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Provisioning error: %s", oProperties.GetStructuredBuffer("error").ToString().c_str(), nullptr);
+                        _ThrowBaseExceptionIf((true == oProperties.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Provisioning error: %s", oProperties.GetString("error").c_str(), nullptr);
+                        _ThrowBaseException("Unknown Provisioning error. Contact SAIL.", nullptr);
+                    }
                 }
             }
-
             // Put the thread to sleep while we wait
             if (false == fIsRunning)
             {
@@ -337,11 +348,11 @@ StructuredBuffer DeployVirtualMachineAndWait(
             strContent = "";
             strApiVersionDate = "2020-12-01";
             stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, strContent, strApiVersionDate, c_szSubscriptionIdentifier, c_szResourceGroup);
-            stlResponse.push_back(0);
             _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
+            stlResponse.push_back(0);
             StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
             _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Failed to get the status of a virtual machine being provisioned with error %s", oResponse.GetStructuredBuffer("error").ToString().c_str());
-            _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Failed to get the status of a virtual machine being provisioned with error %s", oResponse.GetStructuredBuffer("error").ToString().c_str());
+            _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Failed to get the status of a virtual machine being provisioned with error %s", oResponse.GetString("error").c_str());
             if (true == oResponse.IsElementPresent("properties", INDEXED_BUFFER_VALUE_TYPE))
             {
                 StructuredBuffer oProperties(oResponse.GetStructuredBuffer("properties").GetBase64SerializedBuffer().c_str());
@@ -411,18 +422,19 @@ StructuredBuffer DeployVirtualMachineAndWait(
  *
  ********************************************************************************************/
 
-std::string CreateAzureDeployment(
+StructuredBuffer CreateAzureDeployment(
     _in const std::string & c_strMicrosoftAzureAccessToken,
     _in const std::string & c_strDeploymentParameters,
     _in const std::string & c_strSubscriptionIdentifier,
     _in const std::string & c_strResourceGroup,
     _in const std::string & c_strLocation
-)
+) throw()
 {
     __DebugFunction();
-    _ThrowBaseExceptionIf((0 == c_strMicrosoftAzureAccessToken.length()), "Authentication failed...", nullptr);
+    __DebugAssert(0 != c_strMicrosoftAzureAccessToken.length());
 
-    std::string strResourceStatus = "Fail";
+    StructuredBuffer oDeploymentResult;
+    oDeploymentResult.PutString("Status", "Fail");
 
     try
     {
@@ -449,22 +461,28 @@ std::string CreateAzureDeployment(
             strVerb = "GET";
             strApiVersionDate = "2021-04-01";
             stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, strVerb, strResource, strHost, "", strApiVersionDate, c_strSubscriptionIdentifier, c_strResourceGroup);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to create a Microsoft Azure Deployment", nullptr);
             stlResponse.push_back(0);
             strResponse = (const char*)stlResponse.data();
-            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Failed to get the status of a virtual machine being provisioned", nullptr);
-            _ThrowBaseExceptionIf((std::string::npos != strResponse.find("error")), "Failed to get the status of a virtual machine being provisioned with error %s", strResponse.c_str());
-
             StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
-            std::cout << oResponse.ToString();
+            _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Failed to create a Microsoft Azure Deployment with error %s", oResponse.GetStructuredBuffer("error").ToString().c_str());
+            _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Failed to create a Microsoft Azure Deployment with error %s", oResponse.GetString("error").c_str());
+
             if (true == oResponse.IsElementPresent("properties", INDEXED_BUFFER_VALUE_TYPE))
             {
                 StructuredBuffer oProperties(oResponse.GetStructuredBuffer("properties").GetBase64SerializedBuffer().c_str());
                 if (true == oProperties.IsElementPresent("provisioningState", ANSI_CHARACTER_STRING_VALUE_TYPE))
                 {
                     std::string strProvisioningState = oProperties.GetString("provisioningState");
-                    if (strProvisioningState == "Succeeded")
+                    if ("Succeeded" == strProvisioningState)
                     {
                         fIsRunning = true;
+                    }
+                    else if ("Failed" == strProvisioningState)
+                    {
+                        _ThrowBaseExceptionIf((true == oProperties.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Deployment error: %s", oProperties.GetStructuredBuffer("error").ToString().c_str(), nullptr);
+                        _ThrowBaseExceptionIf((true == oProperties.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Deployment error: %s", oProperties.GetString("error").c_str(), nullptr);
+                        _ThrowBaseException("Unknown Deployment error. Contact SAIL.", nullptr);
                     }
                 }
             }
@@ -475,61 +493,20 @@ std::string CreateAzureDeployment(
             }
         } while (false == fIsRunning);
 
-        strResourceStatus = "Success";
+        oDeploymentResult.PutString("Status", "Success");
     }
     catch (BaseException oBaseException)
     {
         ::RegisterException(oBaseException, __func__, __LINE__);
+        oDeploymentResult.PutString("error", oBaseException.GetExceptionMessage());
     }
     catch (...)
     {
         ::RegisterUnknownException(__func__, __LINE__);
+        oDeploymentResult.PutString("error", "std error");
     }
 
-    return strResourceStatus;
-}
-
-/********************************************************************************************
- *
- * @function DoesAzureResourceExist
- * @brief Check if an Azure resource exists
- * @param[in] c_strApplicationIdentifier
- * @param[in] c_strSecret
- * @param[in] c_strTenantIdentifier
- * @param[in] c_strResourceId
- * @return true if exits, false otherwise
- *
- ********************************************************************************************/
-
-bool DoesAzureResourceExist(
-    _in const std::string & c_strApplicationIdentifier,
-    _in const std::string & c_strSecret,
-    _in const std::string & c_strTenantIdentifier,
-    _in const std::string & c_strResourceId
-)
-{
-    __DebugFunction();
-
-    bool fResourceExist = false;
-
-    // Login to the Microsoft Azure API Portal
-    try
-    {
-        const std::string c_strMicrosoftAzureAccessToken = ::LoginToMicrosoftAzureApiPortal(c_strApplicationIdentifier, c_strSecret, c_strTenantIdentifier);
-        _ThrowBaseExceptionIf((0 == c_strMicrosoftAzureAccessToken.length()), "Azure Authentication failed...", nullptr);
-
-        fResourceExist = ::DoesAzureResourceExist(c_strMicrosoftAzureAccessToken, c_strResourceId);
-    }
-    catch (BaseException oException)
-    {
-        ::RegisterException(oException, __func__, __LINE__);
-    }
-    catch (...)
-    {
-        ::RegisterUnknownException(__func__, __LINE__);
-    }
-
-    return fResourceExist;
+    return oDeploymentResult;
 }
 
 std::string CreateAzureResourceId(
@@ -621,14 +598,6 @@ bool DeleteAzureResources(
                 }
             }
 
-            if (stlResponse.size() > 0)
-            {
-                std::cout << nResponseCode  << "response for " << strResourceId << " " << stlResponse.data() << std::endl;
-            }
-            else
-            {
-                std::cout << nResponseCode  << "response for " << strResourceId << std::endl;
-            }
             if ((200 == nResponseCode) || (202 == nResponseCode) || (204 == nResponseCode))
             {
                 fResourcesDeleted = true;
@@ -729,23 +698,29 @@ std::string ExecuteBashCommandAndGetResult(
     return result;
 }
 
-std::string CopyVirtualMachineImage(
+StructuredBuffer CopyVirtualMachineImage(
     _in const std::string c_strMicrosoftAzureAccessToken,
     _in const std::string c_strSubscriptionId,
     _in const std::string c_strResourceGroupName,
     _in const std::string c_strLocation,
     _in const std::string c_strImageName
-)
+) throw()
 {
     __DebugFunction();
     __DebugAssert(0 != c_strMicrosoftAzureAccessToken.length());
 
-    std::string strVirtualMachineId = "";
+    StructuredBuffer oCopyImageResult;
+    oCopyImageResult.PutString("Status", "Fail");
+
     try
     {
         // Create resource group
         std::string resourceGroupSpec = std::string("{\"location\": \"") + c_strLocation + "\"}";
-        std::string strResourceGroupStatus = ::CreateResourceGroup(c_strMicrosoftAzureAccessToken, c_strSubscriptionId, c_strResourceGroupName, resourceGroupSpec.c_str());
+        StructuredBuffer oResourceGroupStatus = ::CreateResourceGroup(c_strMicrosoftAzureAccessToken, c_strSubscriptionId, c_strResourceGroupName, resourceGroupSpec.c_str());
+        if ("Success" != oResourceGroupStatus.GetString("Status"))
+        {
+            _ThrowBaseException("Resource Group Create Fail: %s", oResourceGroupStatus.GetString("error").c_str());
+        }
 
         // Get a valid Storage Account Name
         std::string strStorageAccountName;
@@ -768,7 +743,11 @@ std::string CopyVirtualMachineImage(
 
             long nResponseCode = 0;
             std::vector<Byte> stlResponse = ::RestApiCall(strHost, 443, strVerb, strApiUri, strContent, false, stlHeader, &nResponseCode);
-            StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((char *)stlResponse.data());
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Invalid response for Storage account name check", nullptr);
+            stlResponse.push_back(0);
+            StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((const char*)stlResponse.data());
+            _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Storage Account name check: %s", oResponse.GetStructuredBuffer("error").ToString().c_str());
+            _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Storage Account name check: %s", oResponse.GetString("error").c_str());
 
             fIsValidName = oResponse.GetBoolean("nameAvailable");
         }
@@ -785,7 +764,7 @@ std::string CopyVirtualMachineImage(
         oRequest.PutString("location", c_strLocation);
         std::string strContent = JsonValue::ParseStructuredBufferToJson(oRequest)->ToString();
 
-        // Keep making the same request every 5 seconds until the reposne code is 200 or the reposne is not empty
+        // Keep making the same request every 5 seconds until the reposne code is 200 or the reponse is not empty
         std::vector<Byte> stlResponse;
         do
         {
@@ -799,18 +778,18 @@ std::string CopyVirtualMachineImage(
 
         stlResponse.push_back(0);
         StructuredBuffer oResponse = JsonValue::ParseDataToStructuredBuffer((char *)stlResponse.data());
-        if (true == oResponse.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE))
-        {
-            _ThrowBaseException("Storage Account create error: %s", oResponse.GetStructuredBuffer("error").GetString("message").c_str());
-        }
+        _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Storage Account create error: %s", oResponse.GetStructuredBuffer("error").GetString("message").c_str());
+        _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Storage Account create error: %s", oResponse.GetString("error").c_str());
         std::string strStorageAccountId = oResponse.GetString("id");
         std::string strBlobLink = oResponse.GetStructuredBuffer("properties").GetStructuredBuffer("primaryEndpoints").GetString("blob");
 
         // Fetch the keys for the storage account
         stlResponse = ::MakeMicrosoftAzureApiCall(c_strMicrosoftAzureAccessToken, "POST", "Microsoft.Storage/storageAccounts/"+ strStorageAccountName + "/listKeys", "management.azure.com", strContent, "2021-04-01", c_strSubscriptionId, c_strResourceGroupName);
-        _ThrowBaseExceptionIf((0 == stlResponse.size()), "cannot fetch storage accoutn keys", nullptr);
+        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Cannot fetch storage account keys", nullptr);
         stlResponse.push_back(0);
         oResponse = JsonValue::ParseDataToStructuredBuffer((char *)stlResponse.data());
+        _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Cannot fetch storage account keys: %s", oResponse.GetStructuredBuffer("error").ToString().c_str());
+        _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Cannot fetch storage account keys: %s", oResponse.GetString("error").c_str());
         std::string strBase64EncodedKey = oResponse.GetStructuredBuffer("keys").GetStructuredBuffer("keys0").GetString("value");
 
         // Create a container in the storage account
@@ -834,12 +813,15 @@ std::string CopyVirtualMachineImage(
         _ThrowBaseExceptionIf((0 == stlResponse.size()), "Cannot create a storage account", nullptr);
         stlResponse.push_back(0);
         oResponse = JsonValue::ParseDataToStructuredBuffer((char *)stlResponse.data());
+        _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", INDEXED_BUFFER_VALUE_TYPE)), "Container creation: %s", oResponse.GetStructuredBuffer("error").ToString().c_str());
+        _ThrowBaseExceptionIf((true == oResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE)), "Container creation: %s", oResponse.GetString("error").c_str());
 
         // Create a SAS token
         std::string strContainerName = "images";
         std::string strExpiry = "2022-01-01";
         std::string strCommandToGetSAS = "/usr/bin/az storage container generate-sas -n " + strContainerName + " --account-name "+ strStorageAccountName +" --account-key "+ strBase64EncodedKey +" --https-only --permissions dlrw --expiry "+ strExpiry +" -o tsv";
         std::string strSASToken = ::ExecuteBashCommandAndGetResult(strCommandToGetSAS.c_str());
+        _ThrowBaseExceptionIf((0 == strSASToken.length()), "Could not create SAS token.", nullptr);
         strSASToken.erase(std::remove(strSASToken.begin(), strSASToken.end(), '\n'), strSASToken.end());
         strSASToken.erase(std::remove(strSASToken.begin(), strSASToken.end(), '\r'), strSASToken.end());
 
@@ -927,16 +909,19 @@ std::string CopyVirtualMachineImage(
             _ThrowBaseException("Storage Account create error: %s", oResponse.GetStructuredBuffer("error").GetString("message").c_str());
         }
 
-        strVirtualMachineId = oResponse.GetString("id");
+        oCopyImageResult.PutString("VirtualImageId", oResponse.GetString("id"));
+        oCopyImageResult.PutString("Status", "Success");
     }
-    catch (BaseException oException)
+    catch (BaseException oBaseException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __LINE__);
+        oCopyImageResult.PutString("error", oBaseException.GetExceptionMessage());
     }
     catch (...)
     {
         ::RegisterUnknownException(__func__, __LINE__);
+        oCopyImageResult.PutString("error", "std error");
     }
 
-    return strVirtualMachineId;
+    return oCopyImageResult;
 }

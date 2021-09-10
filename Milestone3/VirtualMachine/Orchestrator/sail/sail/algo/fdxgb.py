@@ -20,12 +20,12 @@ class fdxgb(BaseEstimator):
     
     def setfn(self):
         fndict = {}
-        fndict['handlehash'] = "6A7D1A0A3DA140398E7D25EFD8F7D0E1"
-        fndict['train_init'] = "B5A6ABFF3B684424B0ACCD98B9CEBE5A"
-        fndict['train_update'] = "29169EF75B3A4C24B954562BC8D2EA19"
-        fndict['conf_mat'] = "75FC6935D6C14F2FA2D00C3AA2AA0169"
-        fndict['shap'] = "14B4A444AEA046DE8999B7561EA51D39"
-        fndict['accuracy_score']="BF7D7A8EEA9746749BE553EF304C2A6B"
+        fndict['handlehash'] = "B804C0767CCB4B01A6BAF5A2F782BD31"
+        fndict['train_init'] = "D708DABA545346409FB835560140E882"
+        fndict['train_update'] = "BE9644CBB2DC4FCD9FD2AF1733550A7E"
+        fndict['conf_mat'] = "A5E177C364604D759518CF618CF2F9C1"
+        fndict['shap'] = "CA459C663543457FAA0F8F2444D61728"
+        fndict['accuracy_score']="BD9552F72CA94350BDF72207B6E33080"
         return fndict
     
     def initvms(self):

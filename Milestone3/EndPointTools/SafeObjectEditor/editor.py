@@ -265,7 +265,7 @@ class SafeObjectEditor(QDialog):
         for i in range(vardict["numberOfInput"]):
             strParamGuid = vardict["input"][i][0]
             template = template.replace(vardict["input"][i][1], "self.m_"+strParamGuid)
-            strStringToGetParameterFromFile = "self.m_"+ strParamGuid + " = pickle.load(open(oInputParameters[\""+ strParamGuid +"\"][\"0\"], 'rb'))"
+            strStringToGetParameterFromFile = "with open(oInputParameters[\""+ strParamGuid +"\"][\"0\"], 'rb') as ifp:\n            self.m_"+ strParamGuid + " = pickle.load(ifp)"
             if (i != (vardict["numberOfInput"]-1)):
                 strStringToGetParameterFromFile += "\n        {{ParamterSet}}\n"
             template = template.replace("{{ParamterSet}}", strStringToGetParameterFromFile)
@@ -273,7 +273,7 @@ class SafeObjectEditor(QDialog):
         for i in range(vardict["numberOfOutput"]):
             strOutputParamterGuid = vardict["output"][i][0]
             template = template.replace(vardict["output"][i][1], "self.m_" + strOutputParamterGuid)
-            strStringToSetParameterFile = "OutputFileHandler = open(self.m_JobIdentifier+\"." + strOutputParamterGuid + "\",\"wb\")\n        pickle.dump(self.m_" + strOutputParamterGuid + ", OutputFileHandler)\n        with open(\"DataSignals/\" + self.m_JobIdentifier + \"." + strOutputParamterGuid + "\", 'w') as fp:\n            pass"
+            strStringToSetParameterFile = "with open(self.m_JobIdentifier+\"." + strOutputParamterGuid + "\",\"wb\") as ofp:\n            pickle.dump(self.m_" + strOutputParamterGuid + ", ofp)\n        with open(\"DataSignals/\" + self.m_JobIdentifier + \"." + strOutputParamterGuid + "\", 'w') as fp:\n            pass"
             if (i != (vardict["numberOfOutput"]-1)):
                 strStringToSetParameterFile += "\n        {{WriteOutputToFile}}\n"
             template = template.replace("{{WriteOutputToFile}}", strStringToSetParameterFile)

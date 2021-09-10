@@ -25,9 +25,11 @@ class SAFE_{{safeObjectId}}:
         # LoadInputParameters() should effectively initialize
         # a whole bunch of local variables with data
         # the input parameters can be found in the m_BaseFolder
-        InputData = open(self.m_JobIdentifier+".inputs", mode='rb').read()
+        InputDataFile = open(self.m_JobIdentifier+".inputs", mode='rb')
+        InputData = InputDataFile.read()
         # oInputParameters = StructuredBuffer.InitWithSerializedBuffer(InputData)
         oInputParameters = json.loads(InputData)
+        InputDataFile.close()
         {{ParamterSet}}
 
         return True

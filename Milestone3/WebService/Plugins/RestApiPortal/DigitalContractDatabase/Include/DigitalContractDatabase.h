@@ -153,6 +153,10 @@ class DigitalContractDatabase : public Object
             _in const std::string c_szLocation
             );
 
+        std::vector<Byte> __thiscall InitializeVirtualMachine(
+            _in const StructuredBuffer & c_oRequest
+        );
+
         // Update the Provisioning Status of Digital Contract to
         std::vector<Byte> __thiscall UpdateDigitalContractProvisioningStatus(
             _in const StructuredBuffer & c_oRequest

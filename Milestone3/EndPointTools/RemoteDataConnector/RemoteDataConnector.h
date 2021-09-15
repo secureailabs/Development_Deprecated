@@ -44,13 +44,17 @@ class RemoteDataConnector : public Object
         void __thiscall SetDatasetFolderAndRun(
             _in const std::string & c_strFolderName
             );
-
         bool __thiscall UserLogin(
             _in const std::string c_strRestPortalApi,
             _in const Dword c_dwPort,
             _in const std::string & c_strEmail,
             _in const std::string & c_strPassword
             );
+        void __thiscall ManualUploadDataSetToVirtualMachine(
+            _in const std::string c_strVirtualMachineAddress,
+            _in const std::string c_strDatasetGuid,
+            _in const std::string c_strDatasetFileName
+            ) throw();
 
     private:
 
@@ -62,7 +66,7 @@ class RemoteDataConnector : public Object
         bool __thiscall UpdateDatasets(void);
         void __thiscall UploadDataSetToVirtualMachine(
             _in const std::string c_strVirtualMachineAddress,
-            _in const std::string c_strDatasetFileName
+            _in const std::string c_strDatasetGuid
             ) throw();
         StructuredBuffer __thiscall VerifyDataset(
             _in const std::string & c_strDatasetFileName

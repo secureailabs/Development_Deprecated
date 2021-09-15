@@ -115,11 +115,12 @@ void __thiscall Job::TryRunJob(void)
             // StructuredBuffer, we are using the JSON
             // std::cout << m_oParameters.ToString() << std::endl;
             // ::WriteBytesAsFile(m_strJobUuid + ".inputs", m_oParameters.GetSerializedBuffer());
-
-            std::string strInputsJson = JsonValue::ParseStructuredBufferToJson(m_oParameters)->ToString();
+            auto oJsonBody = JsonValue::ParseStructuredBufferToJson(m_oParameters);
+            std::string strInputsJson = oJsonBody->ToString();
             std::ofstream out(m_strJobUuid + ".inputs");
             out << strInputsJson;
             out.close();
+            oJsonBody->Release();
 
             // The SafeObject just requires the JobId and BaseFolder name to run
             nProcessExitStatus = m_poSafeObject->Run(m_strJobUuid);

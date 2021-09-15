@@ -224,7 +224,9 @@ void __thiscall RemoteDataConnector::SendDataConnectorHeartbeat(void) throw()
             // Virtual Machine is waiting for this dataset
             std::string strVerb = "PUT";
             std::string strApiUrl = "/SAIL/RemoteDataConnectorManager/HeartBeat?Eosb="+ m_strUserEosb;
-            std::string strJsonBody = JsonValue::ParseStructuredBufferToJson(oHeartbeatRequest)->ToString();
+            auto oJsonBody = JsonValue::ParseStructuredBufferToJson(oHeartbeatRequest);
+            std::string strJsonBody = oJsonBody->ToString();
+            oJsonBody->Release();
             std::cout << "Sending a heartbeat to backend" << std::endl;
             std::vector<Byte> stlRestResponse = ::RestApiCall(m_strRestPortalAddress, m_dwRestPortalPort, strVerb, strApiUrl, strJsonBody, true);
             std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
@@ -451,7 +453,9 @@ bool __thiscall RemoteDataConnector::UpdateDatasets(void)
         strVerb = "PUT";
         strApiUrl = "/SAIL/RemoteDataConnectorManager/UpdateConnector?Eosb="+ m_strUserEosb;
     }
-    std::string strJsonBody = JsonValue::ParseStructuredBufferToJson(oUpdateDataConnector)->ToString();
+    auto oJsonBody = JsonValue::ParseStructuredBufferToJson(oUpdateDataConnector);
+    std::string strJsonBody = oJsonBody->ToString();
+    oJsonBody->Release();
     std::vector<Byte> stlRestResponse = ::RestApiCall(m_strRestPortalAddress, m_dwRestPortalPort, strVerb, strApiUrl, strJsonBody, true);
     std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
     StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));

@@ -19,6 +19,7 @@
 #include "IpcTransactionHelperFunctions.h"
 #include "TlsTransactionHelperFunctions.h"
 #include "Base64Encoder.h"
+#include "ExceptionRegister.h"
 
 #include <iostream>
 #include <thread>
@@ -168,17 +169,18 @@ void __thiscall CommunicationPortal::PersistantConnectionTlsToIpc(
         }
         while(true == fKeepRunning);
     }
-    catch(const std::exception& e)
+    catch (BaseException & oException)
     {
-        std::cout << e.what() << '\n';
+        ::RegisterException(oException, __func__, __LINE__);
     }
-    catch(const BaseException& e)
+    catch (std::exception & oException)
     {
-        std::cout << e.GetExceptionMessage() << '\n';
+        std::cout << "std::exception " << oException.what() << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
     }
-    catch(...)
+    catch (...)
     {
-        std::cout << "!!!! Unknown Exception !!!!!\n\n" << '\n';
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 }
 
@@ -248,17 +250,18 @@ void __thiscall CommunicationPortal::OneTimeConnectionHandler(
             ::PutTlsTransaction(c_poTlsNode, oStructuredBufferFailureResponse.GetSerializedBuffer());
         }
     }
-    catch(const BaseException& oBaseException)
+    catch (BaseException & oException)
     {
-        std::cout << "Exception in " << __func__ <<  oBaseException.GetExceptionMessage() << '\n';
+        ::RegisterException(oException, __func__, __LINE__);
     }
-    catch(const std::exception& oException)
+    catch (std::exception & oException)
     {
-        std::cout << "Exception in " << __func__ <<  oException.what() << '\n';
+        std::cout << "std::exception " << oException.what() << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
     }
-    catch(...)
+    catch (...)
     {
-        std::cout << "Unknown Exception in " << __func__ << '\n';
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 }
 
@@ -306,13 +309,18 @@ void __thiscall CommunicationPortal::HandleConnection(
         }
         c_poTlsNode->Release();
     }
-    catch(const BaseException& oBaseException)
+    catch (BaseException & oException)
     {
-        std::cout << "EXCEPTION: " << oBaseException.GetExceptionMessage() << '\n';
+        ::RegisterException(oException, __func__, __LINE__);
     }
-    catch(const std::exception& e)
+    catch (std::exception & oException)
     {
-        std::cout <<"EXCEPTION: " << e.what() << '\n';
+        std::cout << "std::exception " << oException.what() << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 }
 

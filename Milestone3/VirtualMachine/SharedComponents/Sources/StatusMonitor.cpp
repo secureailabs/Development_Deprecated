@@ -101,22 +101,23 @@ bool __thiscall StatusMonitor::IsTerminating(void) const throw()
     
     try
     {
+        // TODO: fix this and re-enable this
         // Build the request packet
-        StructuredBuffer oRequest;
-        oRequest.PutDword("Transaction", 0x10000001);
-        oRequest.PutGuid("MonitoringIdentifier", m_oStatusMonitorIdentifier);
+        // StructuredBuffer oRequest;
+        // oRequest.PutDword("Transaction", 0x10000001);
+        // oRequest.PutGuid("MonitoringIdentifier", m_oStatusMonitorIdentifier);
         // Send the request and wait for a response
-        Socket * poSocket = ::ConnectToUnixDomainSocket("/tmp/{597722ad-5085-435b-81d7-6af3e0510432}");
-        StructuredBuffer oResponse(::PutIpcTransactionAndGetResponse(poSocket, oRequest.GetSerializedBuffer(), false));
-        poSocket->Release();
-        // Parse the response and extract the terminating signal state
-        if ((true == oResponse.IsElementPresent("Success", BOOLEAN_VALUE_TYPE))&&(true == oResponse.IsElementPresent("TerminationSignal", BOOLEAN_VALUE_TYPE)))
-        {
-            if (true == oResponse.GetBoolean("Success"))
-            {
-                fIsTerminating = oResponse.GetBoolean("TerminationSignal");
-            }
-        }
+        // Socket * poSocket = ::ConnectToUnixDomainSocket("/tmp/{597722ad-5085-435b-81d7-6af3e0510432}");
+        // StructuredBuffer oResponse(::PutIpcTransactionAndGetResponse(poSocket, oRequest.GetSerializedBuffer(), false));
+        // poSocket->Release();
+        // // Parse the response and extract the terminating signal state
+        // if ((true == oResponse.IsElementPresent("Success", BOOLEAN_VALUE_TYPE))&&(true == oResponse.IsElementPresent("TerminationSignal", BOOLEAN_VALUE_TYPE)))
+        // {
+        //     if (true == oResponse.GetBoolean("Success"))
+        //     {
+        //         fIsTerminating = oResponse.GetBoolean("TerminationSignal");
+        //     }
+        // }
     }
     
     catch(BaseException oBaseException)

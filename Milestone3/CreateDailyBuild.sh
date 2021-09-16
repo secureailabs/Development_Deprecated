@@ -20,7 +20,7 @@ cd $SCRIPT_DIR/InternalTools/PackageWebServiceAndComputeVm/
 make all -j && returncode=$? || returncode=$?
 
 cd $SCRIPT_DIR/InternalTools/DatabaseTools/
-make all -j make all -j && returncode=$? || returncode=$?
+make all -j && returncode=$? || returncode=$?
 
 set -e
 

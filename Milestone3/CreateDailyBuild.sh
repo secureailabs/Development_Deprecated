@@ -1,34 +1,31 @@
 #! /bin/bash
 # set -e
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 set -x
 
 #Build and put stuff in the Binary folder
-cd WebService/Plugins/RestApiPortal
-for d in $(echo ./*/); do (cd $d; make all -j; cd ..); done
-cd ../../..
+cd $SCRIPT_DIR/WebService/Plugins/RestApiPortal
+echo ./*/
+for d in ./*/; do (cd $d; make all -j; retVal=$?); if [ ${retVal} -ne 0 ]; then echo "Error"; exit $retVal; fi; (cd ..) done
 
-cd WebService/Plugins/DatabasePortal
-for d in $(echo ./*/); do (cd $d; make all -j; cd ..); done
-cd ../../..
+cd $SCRIPT_DIR/WebService/Plugins/DatabasePortal
+for d in ./*/; do (cd $d; make all -j; retVal=$?); if [ ${retVal} -ne 0 ]; then echo "Error"; exit $retVal; fi; (cd ..) done
 
-cd VirtualMachine
-for d in $(echo ./*/); do (cd $d; make all -j; cd ..); done
-cd ..
+cd $SCRIPT_DIR/VirtualMachine
+for d in ./*/; do (cd $d; make all -j; retVal=$?); if [ ${retVal} -ne 0 ]; then echo "Error"; exit $retVal; fi; (cd ..) done
 
-cd WebService
-for d in $(echo ./*/); do (cd $d; make all -j; cd ..); done
-cd ..
-
-cd InternalTools/PackageWebServiceAndComputeVm/
+cd $SCRIPT_DIR/WebService
+# for d in ./*/; do (cd $d; make all -j; retVal=$?; echo 'exit code' && echo ${retVal}); if [ ${retVal} -ne 0 ]; then echo "Error"; exit $retVal; fi; (cd ..) done
+for d in ./*/; do (cd $d; make all -j; retVal=$?); if [ ${retVal} -ne 0 ]; then echo "Error"; exit $retVal; fi; (cd ..) done
+cd $SCRIPT_DIR/InternalTools/PackageWebServiceAndComputeVm/
 make all -j
-cd ../..
 
-cd InternalTools/DatabaseTools/
+cd $SCRIPT_DIR/InternalTools/DatabaseTools/
 make all -j
-cd ../..
 
 set -e
 
-cd Binary
+cd $SCRIPT_DIR/Binary
 ./PackageWebServiceAndComputeVm
-cd ..
+
+cd $SCRIPT_DIR

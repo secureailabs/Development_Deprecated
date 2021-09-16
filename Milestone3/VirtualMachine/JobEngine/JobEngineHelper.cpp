@@ -43,11 +43,11 @@ void * __stdcall FileSystemWatcherThread(void * poThreadParameter)
 
         // Add the directory we want to watch
         int nDirectoryToWatchFd = ::inotify_add_watch(nINotifyFd, gc_strSignalFolderName.c_str(), IN_CREATE);
-        _ThrowBaseExceptionIf((-1 == nDirectoryToWatchFd), "Could not watch : *s\n", gc_strSignalFolderName.c_str());
+        _ThrowBaseExceptionIf((-1 == nDirectoryToWatchFd), "Could not watch : %s\n", gc_strSignalFolderName.c_str());
 
         bool fKeepRunning = true;
         // Allocate a buffer for
-        std::vector<Byte> stlNotifyEvent(sizeof(struct inotify_event) + NAME_MAX + 1);
+        std::vector<Byte> stlNotifyEvent((sizeof(struct inotify_event) + NAME_MAX + 1)*32);
 
         // Get the Job Engine Object which has the callback we'd need to call on
         // every new file creation
@@ -59,18 +59,26 @@ void * __stdcall FileSystemWatcherThread(void * poThreadParameter)
             // is reported in the specified directory
             int nLengthOfData = ::read(nINotifyFd, stlNotifyEvent.data(), stlNotifyEvent.size());
 
-            struct inotify_event * poInotifyEvent = (struct inotify_event *)stlNotifyEvent.data();
-            if(poInotifyEvent->len && (poInotifyEvent->mask & IN_CREATE))
+            int nBufferIndex = 0;
+            while (nBufferIndex < nLengthOfData)
             {
-                // For everyfile created we call a JobEngine callback function which should
-                // find the most efficient way to handle such a file.
-                std::cout << "FileCreateCallback for " << poInotifyEvent->name << std::endl;
-                oJobEngine.FileCreateCallback(poInotifyEvent->name);
-
-                if (gc_strHaltAllJobsSignalFilename == poInotifyEvent->name)
+                // Parse events
+                struct inotify_event * poInotifyEvent = (struct inotify_event *)(stlNotifyEvent.data() + nBufferIndex);
+                if((0 != poInotifyEvent->len) && (poInotifyEvent->mask & IN_CREATE))
                 {
-                    fKeepRunning = false;
+                    // For everyfile created we call a JobEngine callback function which should
+                    // find the most efficient way to handle such a file.
+                    std::cout << "FileCreateCallback for " << poInotifyEvent->name << std::endl;
+                    fflush(stdout);
+                    oJobEngine.FileCreateCallback(poInotifyEvent->name);
+
+                    if (gc_strHaltAllJobsSignalFilename == poInotifyEvent->name)
+                    {
+                        fKeepRunning = false;
+                    }
                 }
+                size_t nEventSize =  offsetof(struct inotify_event, name) + poInotifyEvent->len;
+                nBufferIndex += nEventSize;
             }
         }
 

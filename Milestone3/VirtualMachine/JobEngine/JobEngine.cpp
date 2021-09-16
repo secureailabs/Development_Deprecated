@@ -333,7 +333,7 @@ void __thiscall JobEngine::PushData(
 
     try
     {
-        std::cout << "Pushing data " << c_oStructuredBuffer.GetBuffer("Data").data() << " to file " << c_oStructuredBuffer.GetString("DataId") << std::endl;
+        std::cout << "Pushing " << c_oStructuredBuffer.GetBuffer("Data").size() << " bytes to file " << c_oStructuredBuffer.GetString("DataId") << std::endl;
         fflush(stdout);
 
         // Create a new file and put the buffer data
@@ -374,6 +374,7 @@ void __thiscall JobEngine::PullData(
     try
     {
         std::cout << "Pull Data request " << c_strFileNametoSend << std::endl;
+        fflush(stdout);
 
         std::string strSignalFile = gc_strSignalFolderName + "/" + c_strFileNametoSend;
 
@@ -554,13 +555,15 @@ void __thiscall JobEngine::SetJobParameter(
 
         // If the parameter is a file and does not exist on the file system, we add it as
         // an dependency for the job and wait for it.
-        bool fIsValueFilePresent = poJob->SetParameter(c_oStructuredBuffer.GetString("ParameterUuid"), c_oStructuredBuffer.GetString("ValueUuid"), c_oStructuredBuffer.GetUnsignedInt32("ValuesExpected"), c_oStructuredBuffer.GetUnsignedInt32("ValueIndex"));
-        std::string strParameterValueFile = c_oStructuredBuffer.GetString("ValueUuid");
-        if (false == fIsValueFilePresent)
         {
             // Register the request for now and fulfill it as soon as it is available later
+            std::string strParameterValueFile = c_oStructuredBuffer.GetString("ValueUuid");
             std::lock_guard<std::mutex> lock(m_oMutexOnParameterValuesToJobMap);
-            m_stlMapOfParameterValuesToJob.insert(std::make_pair(strParameterValueFile, poJob));
+            bool fIsValueFilePresent = poJob->SetParameter(c_oStructuredBuffer.GetString("ParameterUuid"), strParameterValueFile, c_oStructuredBuffer.GetUnsignedInt32("ValuesExpected"), c_oStructuredBuffer.GetUnsignedInt32("ValueIndex"));
+            if (false == fIsValueFilePresent)
+            {
+                m_stlMapOfParameterValuesToJob.insert(std::make_pair(strParameterValueFile, poJob));
+            }
         }
     }
     catch(BaseException & oBaseException)
@@ -663,6 +666,11 @@ void __thiscall JobEngine::SendMessageToOrchestrator(
             {
                 std::lock_guard<std::mutex> lock(m_oMutexOnJobsMap);
                 m_stlMapOfJobs.erase(c_oStructuredBuffer.GetString("JobUuid"));
+            }
+            else if (JobStatusSignals::ePostValue == eSignalType)
+            {
+                std::cout << "Writing " << c_oStructuredBuffer.GetString("ValueName") << " of size " << c_oStructuredBuffer.GetBuffer("FileData").size() << std::endl;
+                fflush(stdout);
             }
         }
         std::lock_guard<std::mutex> lock(m_oMutexOnIpcSocket);

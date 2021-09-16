@@ -103,7 +103,7 @@ void __thiscall Job::TryRunJob(void)
 
     if (true == this->AreAllParametersSet())
     {
-        std::cout << "All parameters set" << std::endl;
+        std::cout << "All parameters set " << m_stlSetOfDependencies.size() << std::endl;
         if (0 == m_stlSetOfDependencies.size())
         {
             std::cout << "No dependencies" << std::endl;
@@ -115,11 +115,12 @@ void __thiscall Job::TryRunJob(void)
             // StructuredBuffer, we are using the JSON
             // std::cout << m_oParameters.ToString() << std::endl;
             // ::WriteBytesAsFile(m_strJobUuid + ".inputs", m_oParameters.GetSerializedBuffer());
-
-            std::string strInputsJson = JsonValue::ParseStructuredBufferToJson(m_oParameters)->ToString();
+            auto oJsonBody = JsonValue::ParseStructuredBufferToJson(m_oParameters);
+            std::string strInputsJson = oJsonBody->ToString();
             std::ofstream out(m_strJobUuid + ".inputs");
             out << strInputsJson;
             out.close();
+            oJsonBody->Release();
 
             // The SafeObject just requires the JobId and BaseFolder name to run
             nProcessExitStatus = m_poSafeObject->Run(m_strJobUuid);
@@ -185,7 +186,7 @@ bool __thiscall Job::SetParameter(
     if (false == fIsSignalFilePresent)
     {
         // Add the file to the list of dependencies of the job
-        std::cout << "Adding dependency" << std::endl;
+        std::cout << "Adding dependency " << c_strValueIdentifier << std::endl;
         this->AddDependency(c_strValueIdentifier);
     }
     else
@@ -216,7 +217,7 @@ void __thiscall Job::RemoveAvailableDependency(
     try
     {
         m_stlSetOfDependencies.erase(c_strDependencyName);
-
+        std::cout << "m_stlSetOfDependencies.size() " << m_stlSetOfDependencies.size() << " " << c_strDependencyName << std::endl;
         if (0 == m_stlSetOfDependencies.size())
         {
             this->TryRunJob();

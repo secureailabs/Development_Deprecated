@@ -145,7 +145,15 @@ int main(
         } while(false == fIsLoggedIn);
 
         // Start the DataConnector for all the datasets in the given folder
-        if (0 != strDatasetFolderName.size())
+        if (true == oCommandLineArguments.IsElementPresent("VirtualMachineIp", ANSI_CHARACTER_STRING_VALUE_TYPE))
+        {
+            std::string strVmIp = oCommandLineArguments.GetString("VirtualMachineIp");
+            std::string strDatasetGuid = oCommandLineArguments.GetString("DatasetGuid");
+            std::string strFileName = oCommandLineArguments.GetString("FileName");
+
+            oRemoteDataConnector.ManualUploadDataSetToVirtualMachine(strVmIp, strDatasetGuid, strFileName);
+        }
+        else if (0 != strDatasetFolderName.size())
         {
             oRemoteDataConnector.SetDatasetFolderAndRun(strDatasetFolderName);
         }

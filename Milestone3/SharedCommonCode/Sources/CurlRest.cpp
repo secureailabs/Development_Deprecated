@@ -1,3 +1,13 @@
+/*********************************************************************************************
+ *
+ * @file CurlRest.cpp
+ * @author Prawal Gangwar
+ * @date 10 Sept 2021
+ * @License Private and Confidential. Internal Use Only.
+ * @copyright Copyright (C) 2020 Secure AI Labs, Inc. All Rights Reserved.
+ *
+ ********************************************************************************************/
+
 #include "DebugLibrary.h"
 #include "Exceptions.h"
 #include "ExceptionRegister.h"
@@ -297,7 +307,14 @@ std::vector<Byte> __stdcall RestApiCall(
     return stlResponse;
 }
 
-
+/********************************************************************************************
+ *
+ * @function RestApiCall
+ * @brief Make Rest API calls using psCurl
+ * @param[in] c_pszData pointer to the data pointer
+ * @return Rest Response
+ *
+ ********************************************************************************************/
 std::vector<Byte> __stdcall RestApiCall(
     _in const std::string& c_strHostIpAddress,
     _in const Word nPort,
@@ -312,7 +329,6 @@ std::vector<Byte> __stdcall RestApiCall(
 
     return ::RestApiCall(c_strHostIpAddress, nPort, c_strVerb, c_strApiUri, c_strContent, fDisableSslCertificateVerification, c_stlListOfHeaders, nullptr);
 }
-
 
 /********************************************************************************************
  *

@@ -247,6 +247,18 @@ int __thiscall SafeObject::Run(
             ::epoll_ctl(nPollingFileDescriptor, EPOLL_CTL_DEL, nINotifyFd, nullptr);
             ::epoll_ctl(nPollingFileDescriptor, EPOLL_CTL_DEL, nChildProcessFileDescriptor, nullptr);
             ::close(nPollingFileDescriptor);
+
+            // Delete the inputs file if it exists
+            if (true == std::filesystem::exists(c_strJobUuid + ".inputs"))
+            {
+                std::filesystem::remove(c_strJobUuid + ".inputs");
+            }
+
+            // Delete the output file if it exists
+            if (true == std::filesystem::exists(c_strJobUuid + ".output"))
+            {
+                std::filesystem::remove(c_strJobUuid + ".output");
+            }
         }
     }
     catch(const BaseException & oBaseException)

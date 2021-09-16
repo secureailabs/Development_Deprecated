@@ -178,6 +178,7 @@ void __cdecl InitVirtualMachine(
                 JsonValue * poResponseJson = JsonValue::ParseStructuredBufferToJson(oResponseStructuredBuffer);
                 bool fResponseStatus = ::PutHttpResponse(poTlsNode, poResponseJson->ToString());
                 poTlsNode->Release();
+                poResponseJson->Release();
             }
         }
         

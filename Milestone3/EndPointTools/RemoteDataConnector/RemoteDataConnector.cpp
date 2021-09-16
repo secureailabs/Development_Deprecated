@@ -224,7 +224,9 @@ void __thiscall RemoteDataConnector::SendDataConnectorHeartbeat(void) throw()
             // Virtual Machine is waiting for this dataset
             std::string strVerb = "PUT";
             std::string strApiUrl = "/SAIL/RemoteDataConnectorManager/HeartBeat?Eosb="+ m_strUserEosb;
-            std::string strJsonBody = JsonValue::ParseStructuredBufferToJson(oHeartbeatRequest)->ToString();
+            auto oJsonBody = JsonValue::ParseStructuredBufferToJson(oHeartbeatRequest);
+            std::string strJsonBody = oJsonBody->ToString();
+            oJsonBody->Release();
             std::cout << "Sending a heartbeat to backend" << std::endl;
             std::vector<Byte> stlRestResponse = ::RestApiCall(m_strRestPortalAddress, m_dwRestPortalPort, strVerb, strApiUrl, strJsonBody, true);
             std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
@@ -451,7 +453,9 @@ bool __thiscall RemoteDataConnector::UpdateDatasets(void)
         strVerb = "PUT";
         strApiUrl = "/SAIL/RemoteDataConnectorManager/UpdateConnector?Eosb="+ m_strUserEosb;
     }
-    std::string strJsonBody = JsonValue::ParseStructuredBufferToJson(oUpdateDataConnector)->ToString();
+    auto oJsonBody = JsonValue::ParseStructuredBufferToJson(oUpdateDataConnector);
+    std::string strJsonBody = oJsonBody->ToString();
+    oJsonBody->Release();
     std::vector<Byte> stlRestResponse = ::RestApiCall(m_strRestPortalAddress, m_dwRestPortalPort, strVerb, strApiUrl, strJsonBody, true);
     std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
     StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
@@ -543,4 +547,60 @@ StructuredBuffer __thiscall RemoteDataConnector::VerifyDataset(
     }
 
     return oDatasetInformation;
+}
+
+/********************************************************************************************
+ *
+ * @class RemoteDataConnector
+ * @function UploadDataSetToVirtualMachine
+ * @brief Upload the dataset file to the Virtual Machine
+ * @param[in] c_strVirtualMachineAddress The IP address of the Virtual Machine waiting for
+ *      the dataset file
+ * @param[in] c_strDatasetFileName Path of the dataset file
+ *
+ ********************************************************************************************/
+void __thiscall RemoteDataConnector::ManualUploadDataSetToVirtualMachine(
+    _in const std::string c_strVirtualMachineAddress,
+    _in const std::string c_strDatasetGuid,
+    _in const std::string c_strFileName
+    ) throw()
+{
+    __DebugFunction();
+
+    std::cout << "Uploading " << c_strDatasetGuid << " to Virtual Machine " << c_strVirtualMachineAddress << std::endl;
+
+    try
+    {
+        std::vector<Byte> stlDatasetFiledata = ::ReadFileAsByteBuffer(c_strFileName);
+
+        StructuredBuffer oInitializationParameters;
+        oInitializationParameters.PutString("SailWebApiPortalIpAddress", m_strRestPortalAddress);
+        oInitializationParameters.PutString("Base64EncodedDataset", ::Base64Encode(stlDatasetFiledata.data(), stlDatasetFiledata.size()));
+        oInitializationParameters.PutString("DataOwnerAccessToken", m_strUserEosb);
+        oInitializationParameters.PutString("DataOwnerUserIdentifier", m_strUserUuid);
+        oInitializationParameters.PutString("DataOwnerUserIdentifier", m_strUserUuid);
+        oInitializationParameters.PutString("DataOwnerOrganizationIdentifier", m_strUserOrganizationUuid);
+
+        // Establish a connection with the Virtual Machine
+        // Wait for connetion to establish for 10 minutes with a new attempt every 10 seconds
+        TlsNode * poTlsNode = ::TlsConnectToNetworkSocketWithTimeout(c_strVirtualMachineAddress.c_str(), 6800, 10*60*1000, 10*1000);
+        StructuredBuffer oResponse(::PutTlsTransactionAndGetResponse(poTlsNode, oInitializationParameters, 10*1000));
+
+        if ("Success" == oResponse.GetString("Status"))
+        {
+            std::cout << "Dataset upload success.\n";
+        }
+        else
+        {
+            _ThrowBaseException("Dataset Uplaod failed.", nullptr);
+        }
+    }
+    catch (const BaseException & oException)
+    {
+        ::RegisterException(oException, __func__, __LINE__);
+    }
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
 }

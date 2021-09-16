@@ -35,6 +35,8 @@ std::string CreateAzureParamterJson(
 {
     __DebugFunction();
 
+    std::string strResponse;
+
     StructuredBuffer oProperties;
 
     StructuredBuffer oTemplateLink;
@@ -55,9 +57,11 @@ std::string CreateAzureParamterJson(
     StructuredBuffer oJson;
     oJson.PutStructuredBuffer("properties", oProperties);
 
-    JsonValue * oOut = JsonValue::ParseStructuredBufferToJson(oJson);
+    JsonValue * oOutput = JsonValue::ParseStructuredBufferToJson(oJson);
+    strResponse = oOutput->ToString();
+    oOutput->Release();
 
-    return oOut->ToString();
+    return strResponse;
 }
 
 
@@ -732,7 +736,9 @@ StructuredBuffer CopyVirtualMachineImage(
             StructuredBuffer oRequest;
             oRequest.PutString("name", strStorageAccountName);
             oRequest.PutString("type", "Microsoft.Storage/storageAccounts");
-            std::string strContent = JsonValue::ParseStructuredBufferToJson(oRequest)->ToString();
+            auto oJsonResponse = JsonValue::ParseStructuredBufferToJson(oRequest);
+            std::string strContent = oJsonResponse->ToString();
+            oJsonResponse->Release();
             std::string strApiUri = "/subscriptions/" + c_strSubscriptionId + "/providers/Microsoft.Storage/checkNameAvailability?api-version=2021-04-01";
             std::string strHost = "management.azure.com";
 
@@ -762,7 +768,9 @@ StructuredBuffer CopyVirtualMachineImage(
         oRequest.PutStructuredBuffer("sku", oSku);
         oRequest.PutString("kind", "StorageV2");
         oRequest.PutString("location", c_strLocation);
-        std::string strContent = JsonValue::ParseStructuredBufferToJson(oRequest)->ToString();
+        auto oJsonResponse = JsonValue::ParseStructuredBufferToJson(oRequest);
+        std::string strContent = oJsonResponse->ToString();
+        oJsonResponse->Release();
 
         // Keep making the same request every 5 seconds until the reposne code is 200 or the reponse is not empty
         std::vector<Byte> stlResponse;
@@ -882,7 +890,9 @@ StructuredBuffer CopyVirtualMachineImage(
         oStorageProfile.PutStructuredBuffer("osDisk", oOsDisk);
         oProperties.PutStructuredBuffer("storageProfile", oStorageProfile);
         oImageCreateRequest.PutStructuredBuffer("properties", oProperties);
-        std::string strConvertVhdToImageRequest = JsonValue::ParseStructuredBufferToJson(oImageCreateRequest)->ToString();
+        auto oJsonResponse = JsonValue::ParseStructuredBufferToJson(oImageCreateRequest);
+        std::string strConvertVhdToImageRequest = oJsonResponse->ToString();
+        oJsonResponse->Release();
 
         strApiUri = "/subscriptions/" + c_strSubscriptionId + "/resourceGroups/" + c_strResourceGroupName + "/providers/Microsoft.Compute/images/"+ c_strImageName + "?api-version=2021-07-01";
         stlHeader.clear();

@@ -19,6 +19,7 @@
 #include "IpcTransactionHelperFunctions.h"
 #include "TlsTransactionHelperFunctions.h"
 #include "Base64Encoder.h"
+#include "ExceptionRegister.h"
 
 #include <iostream>
 #include <thread>
@@ -146,39 +147,40 @@ void __thiscall CommunicationPortal::PersistantConnectionTlsToIpc(
     try
     {
         bool fKeepRunning = true;
-        std::unique_ptr<StructuredBuffer> poStructuredBufferMessageToPass = std::make_unique<StructuredBuffer>(c_oStructuredBufferMessageToPass);
+        StructuredBuffer oStructuredBufferMessageToPass = c_oStructuredBufferMessageToPass;
         do
         {
-            std::string strEndpointName = poStructuredBufferMessageToPass->GetString("EndPoint");
+            std::string strEndpointName = oStructuredBufferMessageToPass.GetString("EndPoint");
             if (m_stlMapOfProcessToIpcSocket.end() != m_stlMapOfProcessToIpcSocket.find(strEndpointName))
             {
-                if (poStructuredBufferMessageToPass->IsElementPresent("EndConnection", BOOLEAN_VALUE_TYPE))
+                if (oStructuredBufferMessageToPass.IsElementPresent("EndConnection", BOOLEAN_VALUE_TYPE))
                 {
-                    if (false == poStructuredBufferMessageToPass->GetBoolean("KeepAlive"))
+                    if (true == oStructuredBufferMessageToPass.GetBoolean("EndConnection"))
                     {
                         fKeepRunning = false;
                     }
                 }
                 else
                 {
-                    ::PutIpcTransaction(m_stlMapOfProcessToIpcSocket.at(strEndpointName), *poStructuredBufferMessageToPass);
+                    ::PutIpcTransaction(m_stlMapOfProcessToIpcSocket.at(strEndpointName), oStructuredBufferMessageToPass);
                 }
             }
-            poStructuredBufferMessageToPass = std::make_unique<StructuredBuffer>(::GetTlsTransaction(c_poTlsNode, 0));
+            oStructuredBufferMessageToPass = StructuredBuffer(::GetTlsTransaction(c_poTlsNode, 0));
         }
-        while(fKeepRunning);
+        while(true == fKeepRunning);
     }
-    catch(const std::exception& e)
+    catch (BaseException & oException)
     {
-        std::cout << e.what() << '\n';
+        ::RegisterException(oException, __func__, __LINE__);
     }
-    catch(const BaseException& e)
+    catch (std::exception & oException)
     {
-        std::cout << e.GetExceptionMessage() << '\n';
+        std::cout << "std::exception " << oException.what() << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
     }
-    catch(...)
+    catch (...)
     {
-        std::cout << "!!!! Unknown Exception !!!!!\n\n" << '\n';
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 }
 
@@ -248,17 +250,18 @@ void __thiscall CommunicationPortal::OneTimeConnectionHandler(
             ::PutTlsTransaction(c_poTlsNode, oStructuredBufferFailureResponse.GetSerializedBuffer());
         }
     }
-    catch(const BaseException& oBaseException)
+    catch (BaseException & oException)
     {
-        std::cout << "Exception in " << __func__ <<  oBaseException.GetExceptionMessage() << '\n';
+        ::RegisterException(oException, __func__, __LINE__);
     }
-    catch(const std::exception& oException)
+    catch (std::exception & oException)
     {
-        std::cout << "Exception in " << __func__ <<  oException.what() << '\n';
+        std::cout << "std::exception " << oException.what() << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
     }
-    catch(...)
+    catch (...)
     {
-        std::cout << "Unknown Exception in " << __func__ << '\n';
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 }
 
@@ -306,13 +309,18 @@ void __thiscall CommunicationPortal::HandleConnection(
         }
         c_poTlsNode->Release();
     }
-    catch(const BaseException& oBaseException)
+    catch (BaseException & oException)
     {
-        std::cout << "EXCEPTION: " << oBaseException.GetExceptionMessage() << '\n';
+        ::RegisterException(oException, __func__, __LINE__);
     }
-    catch(const std::exception& e)
+    catch (std::exception & oException)
     {
-        std::cout <<"EXCEPTION: " << e.what() << '\n';
+        std::cout << "std::exception " << oException.what() << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 }
 

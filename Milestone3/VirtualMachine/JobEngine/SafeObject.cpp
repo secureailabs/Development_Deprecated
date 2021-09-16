@@ -63,7 +63,7 @@ SafeObject::~SafeObject(void)
     std::cout << "SafeObject destructed" << std::endl;
 
     // Destructor will just delete the executable file containing the safeObject
-    ::remove(m_strSafeObjectIdentifier.c_str());
+    std::filesystem::remove(m_strSafeObjectIdentifier.c_str());
 }
 
 /********************************************************************************************

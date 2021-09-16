@@ -156,23 +156,23 @@ void __thiscall JobEngine::ListenToRequests(void)
                 break;
             case EngineRequest::ePushSafeObject
             :
-                m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &JobEngine::PushSafeObject, this, oNewRequest));
+                std::thread(&JobEngine::PushSafeObject, this, oNewRequest).detach();
                 break;
             case EngineRequest::ePushdata
             :
-                m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &JobEngine::PushData, this, oNewRequest));
+                std::thread(&JobEngine::PushData, this, oNewRequest).detach();
                 break;
             case EngineRequest::ePullData
             :
-                m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &JobEngine::PullData, this, oNewRequest.GetString("Filename")));
+                std::thread(&JobEngine::PullData, this, oNewRequest.GetString("Filename")).detach();
                 break;
             case EngineRequest::eSubmitJob
             :
-                m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &JobEngine::SubmitJob, this, oNewRequest));
+                std::thread(&JobEngine::SubmitJob, this, oNewRequest).detach();
                 break;
             case EngineRequest::eSetParameters
             :
-                m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &JobEngine::SetJobParameter, this, oNewRequest));
+                std::thread(&JobEngine::SetJobParameter, this, oNewRequest).detach();
                 break;
             case EngineRequest::eHaltAllJobs
             :
@@ -603,7 +603,7 @@ void __thiscall JobEngine::FileCreateCallback(
             if(m_stlMapOfParameterValuesToJob.end() != m_stlMapOfParameterValuesToJob.find(c_strFileCreatedName))
             {
                 std::shared_ptr<Job> poJob = m_stlMapOfParameterValuesToJob.at(c_strFileCreatedName);
-                m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &Job::RemoveAvailableDependency, poJob, c_strFileCreatedName));
+                std::thread(&Job::RemoveAvailableDependency, poJob, c_strFileCreatedName).detach();
                 m_stlMapOfParameterValuesToJob.erase(c_strFileCreatedName);
                 fIsParameterValue = true;
             }
@@ -619,7 +619,7 @@ void __thiscall JobEngine::FileCreateCallback(
                 // Send the file back to the orchestrator asynchronously
                 // The mutex locked up here will not block the next PullData call because it is async
                 // and the mutex will be unlocked just after the call.
-                m_stlListOfAsyncFutures.push_back(std::async(std::launch::async, &JobEngine::PullData, this, c_strFileCreatedName));
+                std::thread(&JobEngine::PullData, this, c_strFileCreatedName).detach();
             }
         }
     }
@@ -665,6 +665,7 @@ void __thiscall JobEngine::SendMessageToOrchestrator(
             if ((JobStatusSignals::eJobFail == eSignalType) || (JobStatusSignals::eJobDone == eSignalType))
             {
                 std::lock_guard<std::mutex> lock(m_oMutexOnJobsMap);
+                std::cout << "m_stlMapOfJobs.size " << m_stlMapOfJobs.size() << std::endl;
                 m_stlMapOfJobs.erase(c_oStructuredBuffer.GetString("JobUuid"));
             }
             else if (JobStatusSignals::ePostValue == eSignalType)
@@ -709,11 +710,7 @@ void __thiscall JobEngine::ResetJobEngine(void)
     // Create a kill running job signal file that will inform all the running jobs to quit
     std::ofstream output(gc_strJobsSignalFolderName + "/" + gc_strHaltAllJobsSignalFilename);
 
-    // Next step is the wait for all the async threads in progress to complete or exit
-    // and since the job kill signal already exists, no job will start to run
-    // A destructor called on all the async futures will compelte any pending threads.
-    // Since they are small they will execute in no time, and the job will not run as well.
-    m_stlListOfAsyncFutures.clear();
+    // TODO: Prawal. Stop all running threads
 
     // Call destructor on all the job objects as soon as they have killed the running jobs
     // are are stable

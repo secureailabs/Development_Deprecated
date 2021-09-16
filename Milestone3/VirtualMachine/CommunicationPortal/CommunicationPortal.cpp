@@ -69,7 +69,6 @@ void __thiscall CommunicationPortal::StartServer(
 {
     __DebugFunction();
 
-    std::vector<std::thread> stlListOfThreads;
     TlsServer oTlsServer(wPortNumber);
     do
     {
@@ -78,7 +77,7 @@ void __thiscall CommunicationPortal::StartServer(
             TlsNode * poTlsNode = oTlsServer.Accept();
             if (nullptr != poTlsNode)
             {
-                stlListOfThreads.push_back(std::thread(&CommunicationPortal::HandleConnection, this, poTlsNode));
+                std::thread(&CommunicationPortal::HandleConnection, this, poTlsNode).detach();
             }
         }
     }
@@ -294,14 +293,11 @@ void __thiscall CommunicationPortal::HandleConnection(
             // A new thread is created for the reading requests on the TlsNode and forwarding them
             // to the IPC connection while forwarding the data read on IPC connection will be handled
             // in this thread.
-            std::thread oThreadTlsToIpc = std::thread(&CommunicationPortal::PersistantConnectionTlsToIpc, this, c_poTlsNode, oStructuredBufferNewRequest);
+            std::thread(&CommunicationPortal::PersistantConnectionTlsToIpc, this, c_poTlsNode, oStructuredBufferNewRequest).detach();
 
             // This is blocking call and will exit only when the end connection signal is received via IPC
             // from the JobEngine
             this->PersistantConnectionIpcToTls(m_stlMapOfProcessToIpcSocket.at(strEndPoint), c_poTlsNode);
-
-            // Kill the other thread which was listening to requests on TlsNode and passing on to the IPC.
-            oThreadTlsToIpc.~thread();
         }
         else
         {

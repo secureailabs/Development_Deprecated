@@ -5,23 +5,22 @@ set -x
 
 #Build and put stuff in the Binary folder
 cd $SCRIPT_DIR/WebService/Plugins/RestApiPortal
-echo ./*/
-for d in ./*/; do (cd $d; make all -j; retVal=$?); if [ ${retVal} -ne 0 ]; then echo "Error"; exit $retVal; fi; (cd ..) done
+for d in $(echo ./*/);do (cd $d; make all -j && returncode=$? || returncode=$?; cd ..); done
 
 cd $SCRIPT_DIR/WebService/Plugins/DatabasePortal
-for d in ./*/; do (cd $d; make all -j; retVal=$?); if [ ${retVal} -ne 0 ]; then echo "Error"; exit $retVal; fi; (cd ..) done
+for d in $(echo ./*/);do (cd $d; make all -j && returncode=$? || returncode=$?; cd ..); done
 
 cd $SCRIPT_DIR/VirtualMachine
-for d in ./*/; do (cd $d; make all -j; retVal=$?); if [ ${retVal} -ne 0 ]; then echo "Error"; exit $retVal; fi; (cd ..) done
+for d in $(echo ./*/);do (cd $d; make all -j && returncode=$? || returncode=$?; cd ..); done
 
 cd $SCRIPT_DIR/WebService
-# for d in ./*/; do (cd $d; make all -j; retVal=$?; echo 'exit code' && echo ${retVal}); if [ ${retVal} -ne 0 ]; then echo "Error"; exit $retVal; fi; (cd ..) done
-for d in ./*/; do (cd $d; make all -j; retVal=$?); if [ ${retVal} -ne 0 ]; then echo "Error"; exit $retVal; fi; (cd ..) done
+for d in $(echo ./*/);do (cd $d; make all -j && returncode=$? || returncode=$?; cd ..); done
+
 cd $SCRIPT_DIR/InternalTools/PackageWebServiceAndComputeVm/
-make all -j
+make all -j && returncode=$? || returncode=$?
 
 cd $SCRIPT_DIR/InternalTools/DatabaseTools/
-make all -j
+make all -j make all -j && returncode=$? || returncode=$?
 
 set -e
 

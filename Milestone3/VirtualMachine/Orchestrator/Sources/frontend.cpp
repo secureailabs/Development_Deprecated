@@ -225,7 +225,7 @@ void __thiscall Frontend::Listener(
             {
                 std::vector<Byte> stlData = oResponse.GetBuffer("FileData");
                 std::string strDataID = oResponse.GetString("ValueName");
-                std::cout<<"Get result posted: "<<strDataID<<std::endl;
+                std::cout<<"Get result posted: "<<strDataID<<" Data length: "<<stlData.size()<<std::endl;
                 std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
                 //m_stlResultMap.emplace(strDataID, stlData);
                 m_stlResultMap[strDataID] = stlData;

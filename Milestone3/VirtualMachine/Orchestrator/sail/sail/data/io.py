@@ -15,6 +15,7 @@ class DataFrameGroup:
         fndict = {}
         fndict['import'] = "32501FA4883C4B3493773D5F8E73D88E"
         fndict['col_des'] = "B2654A3C8D91436585EF158F0A661686"
+        #fndict['describe'] = ""
         #fndict['std_trans'] = ""
         #fndict['norm_trans'] = ""
         #fndict['log_trans'] = ""
@@ -29,6 +30,8 @@ class DataFrameGroup:
         #fndict['onehot'] = ""
         #fndict['concat'] = ""
         fndict['drop'] = "3B791230932D49AA8CC5F14FC0B982B9"
+        #fndict['dropna'] = ""
+        #fndict['merge'] = ""
         #fndict['astype']= ""
         #fndict['apply']= ""
         #fndict['apply_and_change'] = ""
@@ -93,6 +96,21 @@ class DataFrameGroup:
             submitjob(self.vms[i], self.fns['col_des'], jobid)
             pulldata(self.vms[i], jobid, self.fns['col_des'])
         result = queryresults_parallel(jobids, self.fns['col_des'])
+        ret = []
+        for item in result:
+            ret.append(item[0])
+        return ret
+    
+    def describe(self, df, percentiles=None, include=None, exclude=None, datetime_is_numeric=False):
+        jobids = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            jobids.append(jobid)
+            data_id = pushdata(self.vms[i], [percentiles, include, exclude, datetime_is_numeric])
+            setparameter(self.vms[i], jobid, self.fns['describe'], [data_id[0], data_id[1], data_id[2], data_id[3], self.data_ids[i]])
+            submitjob(self.vms[i], self.fns['describe'], jobid)
+            pulldata(self.vms[i], jobid, self.fns['describe'])
+        result = queryresults_parallel(jobids, self.fns['describe'])
         ret = []
         for item in result:
             ret.append(item[0])
@@ -293,13 +311,28 @@ class DataFrameGroup:
     #     result = queryresults_parallel(jobids, self.fns['concat'])
     #     return result
     
-    def drop(self, label, axis, df):
+    def drop(self, df, labels=None, axis=0, index=None, columns=None, level=None, inplace=False, errors='raise'):
         jobids = []
         for i in range(len(self.vms)):
             jobid = newguid()
             jobids.append(jobid)
-            data_id = pushdata(self.vms[i], [label, axis])
-            setparameter(self.vms[i], jobid, self.fns['drop'], [data_id[0], data_id[1], df[i]])
+            data_id = pushdata(self.vms[i], [labels, axis, index, columns, level, inplace, errors])
+            setparameter(self.vms[i], jobid, self.fns['drop'], data_id.append(df[i]))
+            submitjob(self.vms[i], self.fns['drop'], jobid)
+            pulldata(self.vms[i], jobid, self.fns['drop'])
+        result = queryresults_parallel(jobids, self.fns['drop'])
+        ret = []
+        for item in result:
+            ret.append(item[0])
+        return ret
+    
+    def dropna(self, df, axis=0, how='any', thresh=None, subset=None, inplace=False):
+        jobids = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            jobids.append(jobid)
+            data_id = pushdata(self.vms[i], [axis, how, thresh, subset, inplace])
+            setparameter(self.vms[i], jobid, self.fns['drop'], data_id.append(df[i]))
             submitjob(self.vms[i], self.fns['drop'], jobid)
             pulldata(self.vms[i], jobid, self.fns['drop'])
         result = queryresults_parallel(jobids, self.fns['drop'])

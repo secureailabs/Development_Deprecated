@@ -27,6 +27,8 @@
 #include <cstdlib>
 #include <iterator>
 #include <filesystem>
+#include <chrono>
+#include <thread>
 
 #ifndef SERVER_IP_ADDRESS
     #define SERVER_PORT 6200
@@ -611,9 +613,19 @@ void __thiscall Frontend::QueryResult(
     {
     
         std::string strDataID = strJobID + "." + stlOutputID[i];
-        std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
+        
+        //
+       
         if(stlOutputConf[i].compare("0")==0)
+        {
+            while(m_stlResultMap.end()==m_stlResultMap.find(strDataID))
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+                std::cout<<"waiting for result: "<<strDataID<<std::endl;
+            }
+            std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
             stlOutput.push_back(m_stlResultMap[strDataID]);
+        }
         else
         {
             std::vector<Byte> stlTmpBVec(strDataID.begin(), strDataID.end());

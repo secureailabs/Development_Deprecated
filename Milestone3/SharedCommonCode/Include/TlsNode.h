@@ -19,6 +19,8 @@
 #include "Object.h"
 #include "FifoBuffer.h"
 
+#include "memory"
+
 /********************************************************************************************/
 
 enum SSLMode
@@ -48,14 +50,14 @@ class TlsNode : public Object
         std::vector<Byte> __thiscall Read(
             _in unsigned int unNumberOfDesiredBytes,
             _in unsigned int unMillisecondTimeout
-            );
+            ) throw();
         // Unlike the read methods, there is no timeout on Write(). The Write() methods will
         // block until the write operation is completed. The Write() methods will either
         // return the number of bytes or throw exception if it fails.
         int __thiscall Write(
             _in const Byte * c_pbSourceBuffer,
             _in unsigned int unNumberOfBytesToWrite
-            );
+            ) throw();
 
     private:
 
@@ -66,10 +68,10 @@ class TlsNode : public Object
             _in SSL_CTX * poSSL_CTX
             )const;
 
-        Socket * m_poSocket;
-        SSL * m_poSSL;
-        BIO * m_poWriteBIO;
-        BIO * m_poReadBIO;
+        std::unique_ptr<Socket> m_poSocket;
+        std::unique_ptr<SSL, decltype(&SSL_free)> m_poSSL;
+        std::unique_ptr<BIO, decltype(&BIO_free)> m_poWriteBIO;
+        std::unique_ptr<BIO, decltype(&BIO_free)> m_poReadBIO;
         FifoBuffer m_oDecryptedBytesCache;
         std::vector<Byte> m_stlTlsHeaderCache;
 };

@@ -396,6 +396,7 @@ void __thiscall RemoteDataConnector::UploadDataSetToVirtualMachine(
         // Establish a connection with the Virtual Machine
         // Wait for connetion to establish for 10 minutes with a new attempt every 10 seconds
         TlsNode * poTlsNode = ::TlsConnectToNetworkSocketWithTimeout(c_strVirtualMachineAddress.c_str(), 6800, 10*60*1000, 10*1000);
+        _ThrowIfNull(poTlsNode, "TlsConnectToNetworkSocketWithTimeout failed.", nullptr);
         StructuredBuffer oResponse(::PutTlsTransactionAndGetResponse(poTlsNode, oInitializationParameters, 10*1000));
 
         if ("Success" == oResponse.GetString("Status"))
@@ -584,6 +585,7 @@ void __thiscall RemoteDataConnector::ManualUploadDataSetToVirtualMachine(
         // Establish a connection with the Virtual Machine
         // Wait for connetion to establish for 10 minutes with a new attempt every 10 seconds
         TlsNode * poTlsNode = ::TlsConnectToNetworkSocketWithTimeout(c_strVirtualMachineAddress.c_str(), 6800, 10*60*1000, 10*1000);
+        _ThrowIfNull(poTlsNode, "TlsConnectToNetworkSocketWithTimeout failed.", nullptr);
         StructuredBuffer oResponse(::PutTlsTransactionAndGetResponse(poTlsNode, oInitializationParameters, 10*1000));
 
         if ("Success" == oResponse.GetString("Status"))

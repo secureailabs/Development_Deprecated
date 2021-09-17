@@ -30,9 +30,23 @@ TlsNode * __stdcall TlsConnectToUnixDomainSocket(
 {
     __DebugFunction();
 
-    Socket * poSocket = ::ConnectToUnixDomainSocket(std::string(c_szSocketPath));
+    TlsNode * poTlsNode = nullptr;
+    try
+    {
+        Socket * poSocket = ::ConnectToUnixDomainSocket(std::string(c_szSocketPath));
 
-    return new TlsNode(poSocket, eSSLModeClient);
+        poTlsNode = new TlsNode(poSocket, eSSLModeClient);
+    }
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return poTlsNode;
 }
 
 /********************************************************************************************/
@@ -44,9 +58,24 @@ TlsNode * __stdcall TlsConnectToNetworkSocket(
 {
     __DebugFunction();
 
-    Socket * poSocket = ::ConnectToNetworkSocket(std::string(c_szTargetIpAddress), wPortNumber);
+    TlsNode * poTlsNode = nullptr;
 
-    return new TlsNode(poSocket, eSSLModeClient);
+    try
+    {
+        Socket * poSocket = ::ConnectToNetworkSocket(std::string(c_szTargetIpAddress), wPortNumber);
+
+        poTlsNode = new TlsNode(poSocket, eSSLModeClient);
+    }
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return poTlsNode;
 }
 
 /********************************************************************************************/
@@ -60,25 +89,40 @@ TlsNode * __stdcall TlsConnectToNetworkSocketWithTimeout(
 {
     __DebugFunction();
 
-    Chronometer oChronometer;
-    oChronometer.Start();
-    Socket * poSocket = nullptr;
+    TlsNode * poTlsNode = nullptr;
 
-    while ((nullptr == poSocket) && (unMillisecondTimeout > oChronometer.GetElapsedTimeWithPrecision(Millisecond)))
+    try
     {
-        try
-        {
-            poSocket = ::ConnectToNetworkSocket(c_strTargetIpAddress, wPortNumber);
-        }
-        
-        catch(const BaseException & oBaseException)
-        {
-            ::sleep(unMillesecondStepTime/1000);
-        }
-    }
-    _ThrowIfNull(poSocket, "Connection request timed out", nullptr);
+        Chronometer oChronometer;
+        oChronometer.Start();
+        Socket * poSocket = nullptr;
 
-    return new TlsNode(poSocket, eSSLModeClient);
+        while ((nullptr == poSocket) && (unMillisecondTimeout > oChronometer.GetElapsedTimeWithPrecision(Millisecond)))
+        {
+            try
+            {
+                poSocket = ::ConnectToNetworkSocket(c_strTargetIpAddress, wPortNumber);
+            }
+
+            catch(const BaseException & oBaseException)
+            {
+                ::sleep(unMillesecondStepTime/1000);
+            }
+        }
+        _ThrowIfNull(poSocket, "Connection request timed out", nullptr);
+
+        poTlsNode = new TlsNode(poSocket, eSSLModeClient);
+    }
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return poTlsNode;
 }
 
 /********************************************************************************************/

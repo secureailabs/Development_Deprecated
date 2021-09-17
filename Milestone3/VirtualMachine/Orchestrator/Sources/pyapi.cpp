@@ -136,24 +136,25 @@ static PyObject* setparameter(PyObject* self, PyObject* args)
     {
         return NULL;
     }
-
     std::string strVMID(vmID);
     std::string strJobID(jobID);
     std::string strFNID(fnID);
 
     PyObject *iter = PyObject_GetIter(ParamsList);
+    
     std::vector<std::string> stlParams;
 
     while (true) 
     {
         PyObject *next = PyIter_Next(iter);
+        
         if (!next) {
             break;
         }
 
         const char* tmpParam = PyUnicode_AsUTF8(next);
         std::string strParam = tmpParam;
-        std::cout<<strParam<<std::endl;
+        std::cout<<"set param: "<<strParam<<std::endl;
         stlParams.push_back(strParam);
     }
 

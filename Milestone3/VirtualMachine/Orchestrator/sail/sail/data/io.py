@@ -29,7 +29,7 @@ class DataFrameGroup:
         fndict['get_col'] = "63CBDC2EB27844928713DA54B9446FED"
         #fndict['onehot'] = ""
         #fndict['concat'] = ""
-        fndict['drop'] = "3B791230932D49AA8CC5F14FC0B982B9"
+        fndict['drop'] = "8ECA2ACB296D433DA56BD471D0D66F0E"
         #fndict['dropna'] = ""
         #fndict['merge'] = ""
         #fndict['astype']= ""
@@ -317,7 +317,8 @@ class DataFrameGroup:
             jobid = newguid()
             jobids.append(jobid)
             data_id = pushdata(self.vms[i], [labels, axis, index, columns, level, inplace, errors])
-            setparameter(self.vms[i], jobid, self.fns['drop'], data_id.append(df[i]))
+            data_id.append(df[i])
+            setparameter(self.vms[i], jobid, self.fns['drop'], data_id)
             submitjob(self.vms[i], self.fns['drop'], jobid)
             pulldata(self.vms[i], jobid, self.fns['drop'])
         result = queryresults_parallel(jobids, self.fns['drop'])

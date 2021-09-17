@@ -496,6 +496,7 @@ void __thiscall Frontend::HandlePushData(
         oBuffer.PutByte("RequestType", (Byte)EngineRequest::ePushdata);
         oBuffer.PutString("EndPoint", "JobEngine");
         oBuffer.PutString("DataId", stlInputIds[i]);
+        std::cout<<"dataid: "<<stlInputIds[i]<<"length: "<<stlInputVars[i].size()<<std::endl;
         oBuffer.PutBuffer("Data", stlInputVars[i]);
 
         try
@@ -513,7 +514,7 @@ void __thiscall Frontend::HandlePushData(
         {
             ::RegisterUnknownException(__func__, __LINE__);
         }
-    }    
+    }  
 }
 
 //do not know the purpose of "ValuesExpected" and "ValueIndex", disable?

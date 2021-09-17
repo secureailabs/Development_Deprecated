@@ -890,7 +890,7 @@ StructuredBuffer CopyVirtualMachineImage(
         oStorageProfile.PutStructuredBuffer("osDisk", oOsDisk);
         oProperties.PutStructuredBuffer("storageProfile", oStorageProfile);
         oImageCreateRequest.PutStructuredBuffer("properties", oProperties);
-        auto oJsonResponse = JsonValue::ParseStructuredBufferToJson(oImageCreateRequest);
+        oJsonResponse = JsonValue::ParseStructuredBufferToJson(oImageCreateRequest);
         std::string strConvertVhdToImageRequest = oJsonResponse->ToString();
         oJsonResponse->Release();
 

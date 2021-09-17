@@ -1,34 +1,30 @@
 #! /bin/bash
 # set -e
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 set -x
 
 #Build and put stuff in the Binary folder
-cd WebService/Plugins/RestApiPortal
-for d in $(echo ./*/); do (cd $d; make all -j; cd ..); done
-cd ../../..
+cd $SCRIPT_DIR/WebService/Plugins/RestApiPortal
+for d in $(echo ./*/);do (cd $d; make all -j && returncode=$? || returncode=$?; cd ..); done
 
-cd WebService/Plugins/DatabasePortal
-for d in $(echo ./*/); do (cd $d; make all -j; cd ..); done
-cd ../../..
+cd $SCRIPT_DIR/WebService/Plugins/DatabasePortal
+for d in $(echo ./*/);do (cd $d; make all -j && returncode=$? || returncode=$?; cd ..); done
 
-cd VirtualMachine
-for d in $(echo ./*/); do (cd $d; make all -j; cd ..); done
-cd ..
+cd $SCRIPT_DIR/VirtualMachine
+for d in $(echo ./*/);do (cd $d; make all -j && returncode=$? || returncode=$?; cd ..); done
 
-cd WebService
-for d in $(echo ./*/); do (cd $d; make all -j; cd ..); done
-cd ..
+cd $SCRIPT_DIR/WebService
+for d in $(echo ./*/);do (cd $d; make all -j && returncode=$? || returncode=$?; cd ..); done
 
-cd InternalTools/PackageWebServiceAndComputeVm/
-make all -j
-cd ../..
+cd $SCRIPT_DIR/InternalTools/PackageWebServiceAndComputeVm/
+make all -j && returncode=$? || returncode=$?
 
-cd InternalTools/DatabaseTools/
-make all -j
-cd ../..
+cd $SCRIPT_DIR/InternalTools/DatabaseTools/
+make all -j && returncode=$? || returncode=$?
 
 set -e
 
-cd Binary
+cd $SCRIPT_DIR/Binary
 ./PackageWebServiceAndComputeVm
-cd ..
+
+cd $SCRIPT_DIR

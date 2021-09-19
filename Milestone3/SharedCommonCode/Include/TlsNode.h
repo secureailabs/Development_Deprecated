@@ -70,8 +70,11 @@ class TlsNode : public Object
 
         std::unique_ptr<Socket> m_poSocket;
         std::unique_ptr<SSL, decltype(&SSL_free)> m_poSSL;
-        std::unique_ptr<BIO, decltype(&BIO_free)> m_poWriteBIO;
-        std::unique_ptr<BIO, decltype(&BIO_free)> m_poReadBIO;
+        // TODO: BIOs are freed in SSL_free() but in case the BIOs are assigned
+        // and not attached to SSL object they will not be free and lead to a
+        // memory leak. :|
+        BIO * m_poWriteBIO;
+        BIO * m_poReadBIO;
         FifoBuffer m_oDecryptedBytesCache;
         std::vector<Byte> m_stlTlsHeaderCache;
 };

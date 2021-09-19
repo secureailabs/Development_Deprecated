@@ -36,7 +36,7 @@
 TlsNode::TlsNode(
     _in Socket * poSocket,
     _in enum SSLMode connectionMode
-    ) : m_poSocket(poSocket), m_poReadBIO(::BIO_new(::BIO_s_mem()), ::BIO_free), m_poWriteBIO(::BIO_new(::BIO_s_mem()), ::BIO_free), m_poSSL(nullptr, ::SSL_free)
+    ) : m_poSocket(poSocket), m_poReadBIO(::BIO_new(::BIO_s_mem())), m_poWriteBIO(::BIO_new(::BIO_s_mem())), m_poSSL(nullptr, ::SSL_free)
 {
     __DebugFunction();
     __DebugAssert(nullptr != poSocket);
@@ -79,7 +79,7 @@ TlsNode::TlsNode(
         ::SSL_set_connect_state(m_poSSL.get());
     }
 
-    ::SSL_set_bio(m_poSSL.get(), m_poReadBIO.get(), m_poWriteBIO.get());
+    ::SSL_set_bio(m_poSSL.get(), m_poReadBIO, m_poWriteBIO);
 
     //Perform the TLS Handhshake with a default timeout of 15 second
     this->SSLHandshake(15000);
@@ -154,7 +154,7 @@ std::vector<Byte> __thiscall TlsNode::Read(
                     _ThrowBaseExceptionIf((stlEncryptedDataReadBuffer.size() != nEncryptedDataSize), "TLS Read failed: Read Timeout", nullptr);
 
                     // Write the TLS header to the read BIO for the SSL_read to use
-                    _ThrowBaseExceptionIf((5 != ::BIO_write(m_poReadBIO.get(), m_stlTlsHeaderCache.data(), 5)), "TLS Read failed: Writing to readBIO failed", nullptr);
+                    _ThrowBaseExceptionIf((5 != ::BIO_write(m_poReadBIO, m_stlTlsHeaderCache.data(), 5)), "TLS Read failed: Writing to readBIO failed", nullptr);
 
                     // Since the Header has been consumed and written to the readBIO,
                     // it should be cleaned.
@@ -162,7 +162,7 @@ std::vector<Byte> __thiscall TlsNode::Read(
 
                     // Write the actual read data to the readBIO. This call only fails when the
                     // process runs out of memory to write more data.
-                    _ThrowBaseExceptionIf((nEncryptedDataSize != ::BIO_write(m_poReadBIO.get(), stlEncryptedDataReadBuffer.data(), nEncryptedDataSize)), "TLS Read failed: Writing to readBIO failed", nullptr);
+                    _ThrowBaseExceptionIf((nEncryptedDataSize != ::BIO_write(m_poReadBIO, stlEncryptedDataReadBuffer.data(), nEncryptedDataSize)), "TLS Read failed: Writing to readBIO failed", nullptr);
 
                     // Allocating a FIFO buffer reserve for the next SSL_read of dencrypted data.
                     // It is not possible to figure out the amount of data SSL_read will
@@ -229,7 +229,7 @@ int __thiscall TlsNode::Write(
         // Get the pointer(pDataInWriteBIO) to the data in the write BIO and
         // write it to the socket descriptor connected to the other side of the TLS connection
         Byte * pDataInWriteBIO = nullptr;
-        size_t nDataInWriteBIO = ::BIO_get_mem_data(m_poWriteBIO.get(), &pDataInWriteBIO);
+        size_t nDataInWriteBIO = ::BIO_get_mem_data(m_poWriteBIO, &pDataInWriteBIO);
         if ((0 < nDataInWriteBIO) && (nullptr != pDataInWriteBIO))
         {
             int nActualBytesWritten = m_poSocket->Write(pDataInWriteBIO, nDataInWriteBIO);
@@ -237,7 +237,7 @@ int __thiscall TlsNode::Write(
 
             // Reset the buffer to the original no-data state as all of it has been read
             // and sent to the socket
-            _ThrowBaseExceptionIf((1 != ::BIO_ctrl(m_poWriteBIO.get(), BIO_CTRL_RESET, 0, nullptr)), "TLS failed: Write BIO reset failed", nullptr);
+            _ThrowBaseExceptionIf((1 != ::BIO_ctrl(m_poWriteBIO, BIO_CTRL_RESET, 0, nullptr)), "TLS failed: Write BIO reset failed", nullptr);
         }
     }
     catch(BaseException oBaseException)
@@ -293,7 +293,7 @@ void __thiscall TlsNode::SSLHandshake(
         // Get the pointer(pDataInWriteBIO) to the data in the write BIO and
         // write it to the socket descriptor connected to the other side of the TLS connection
         Byte * pDataInWriteBIO = nullptr;
-        size_t nDataInWriteBIO = ::BIO_get_mem_data(m_poWriteBIO.get(), &pDataInWriteBIO);
+        size_t nDataInWriteBIO = ::BIO_get_mem_data(m_poWriteBIO, &pDataInWriteBIO);
         if ((0 < nDataInWriteBIO) && (nullptr != pDataInWriteBIO))
         {
             int nActualBytesWritten = m_poSocket->Write(pDataInWriteBIO, nDataInWriteBIO);
@@ -301,7 +301,7 @@ void __thiscall TlsNode::SSLHandshake(
 
             // Reset the buffer to the original no-data state as all of it has been read
             // and sent over the socket
-            _ThrowBaseExceptionIf((1 != ::BIO_ctrl(m_poWriteBIO.get(), BIO_CTRL_RESET, 0, nullptr)), "TLS Handshake failed: Write BIO reset failed", nullptr);
+            _ThrowBaseExceptionIf((1 != ::BIO_ctrl(m_poWriteBIO, BIO_CTRL_RESET, 0, nullptr)), "TLS Handshake failed: Write BIO reset failed", nullptr);
         }
 
         // SSL_read failed when it tried to read data from readBIO because it is empty.
@@ -320,8 +320,8 @@ void __thiscall TlsNode::SSLHandshake(
             _ThrowBaseExceptionIf((stlHandshakeDataBuffer.size() != nTLSHandshakeDataLength), "TLS Handshake failed: Read Timeout", nullptr);
 
             // Write the header and data read from the socket to the readBIO for SSL_read
-            _ThrowBaseExceptionIf((5 != ::BIO_write(m_poReadBIO.get(), stlHandshakeHeaderBuffer.data(), 5)), "TLS Handshake failed: Writing to readBIO failed", nullptr);
-            _ThrowBaseExceptionIf((nTLSHandshakeDataLength != ::BIO_write(m_poReadBIO.get(), stlHandshakeDataBuffer.data(), nTLSHandshakeDataLength)), "TLS Handshake failed: Writing to readBIO failed", nullptr);
+            _ThrowBaseExceptionIf((5 != ::BIO_write(m_poReadBIO, stlHandshakeHeaderBuffer.data(), 5)), "TLS Handshake failed: Writing to readBIO failed", nullptr);
+            _ThrowBaseExceptionIf((nTLSHandshakeDataLength != ::BIO_write(m_poReadBIO, stlHandshakeDataBuffer.data(), nTLSHandshakeDataLength)), "TLS Handshake failed: Writing to readBIO failed", nullptr);
         }
         _ThrowBaseExceptionIf((unMillisecondTimeout < oChronometer.GetElapsedTimeWithPrecision(Millisecond)), "TLS Handshake failed: Handshake Timeout", nullptr);
     }

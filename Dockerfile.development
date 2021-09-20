@@ -1,0 +1,28 @@
+FROM ubuntu
+ENV TZ=America/Toronto
+LABEL authors="stanley@secureailabs.com"
+USER root
+
+# Set tzdata
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+sudo \
+git \
+make \
+wget \
+systemd \
+iproute2 \
+libcurl4-gnutls-dev \
+build-essential
+
+# GIT
+ARG git_personal_token
+RUN git config --global url."https://$git_personal_token:@github.com/".insteadOf " https://github.com/"
+RUN git clone https://$git_personal_token@github.com/secureailabs/Development.git /Development
+RUN sh /Development/install.sh
+
+EXPOSE 27017 6200
+WORKDIR /Development
+
+CMD ["/bin/bash"]

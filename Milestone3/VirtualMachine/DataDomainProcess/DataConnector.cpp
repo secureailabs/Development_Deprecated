@@ -181,7 +181,7 @@ bool __thiscall DataConnector::LoadAndVerify(
             for (unsigned int unColumnNumber = 0; unColumnNumber < m_stlTableMetaData[unTableID].GetInt32("NumberColumns"); unColumnNumber++)
             {
                 std::string strCell;
-                std::getline(oStringStream, strCell, ',');
+                std::getline(oStringStream, strCell, '\x1f');
                 stlOneRow.push_back(strCell);
             }
             stlIndividualTable.push_back(stlOneRow);

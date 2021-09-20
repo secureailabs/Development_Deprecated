@@ -33,8 +33,8 @@ namespace DataSetSpecification
         public FormLogin()
         {
             InitializeComponent();
-            textBox1.Text = "nadams@mghl.com";
-            textBoxWebPortalUrl.Text = "137.116.90.145";
+            textBox1.Text = "";
+            textBoxWebPortalUrl.Text = "";
             textBox2.Text = "";
         }
 

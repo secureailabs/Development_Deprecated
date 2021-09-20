@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using Microsoft.VisualBasic.FileIO;
 
 namespace DataSetSpecification
 {
@@ -63,7 +64,7 @@ namespace DataSetSpecification
             foreach (DataRow row in dataTable.Rows)
             {
                 IEnumerable<string> fields = row.ItemArray.Select(field => field.ToString());
-                sb.AppendLine(string.Join(",", fields));
+                sb.AppendLine(string.Join("\x1f", fields));
             }
             return sb.ToString();
         }
@@ -127,26 +128,30 @@ namespace DataSetSpecification
                 FileInfo fi = new FileInfo(filePath);
                 filesize.Text = fi.Length.ToString() + " bytes";
                 bool first = true;
-                IEnumerable<string> lines;
                 try
                 {
-                    lines = System.IO.File.ReadLines(filePath);
-                    foreach (string line in lines)
+                    TextFieldParser parser = new TextFieldParser(filePath)
                     {
-                        string[] oneLine = line.Split(',');
+                        TextFieldType = FieldType.Delimited
+                    };
+                    parser.SetDelimiters(",",";");
+                    while (!parser.EndOfData)
+                    {
+                        //Process row
+                        string[] fields = parser.ReadFields();
                         if (first)
                         {
-                            foreach (string entry in oneLine)
+                            foreach (string field in fields)
                             {
                                 dataTable.Columns.Add(m_numberOfColumns.ToString());
                                 m_numberOfColumns++;
                                 UserControlTableColumn cc = new UserControlTableColumn();
-                                cc.Controls.Find("label1", true)[0].Text = entry;
+                                cc.Controls.Find("label1", true)[0].Text = field;
                                 FlowPanelColumnInfo.Controls.Add(cc);
                             }
                             first = false;
                         }
-                        dataTable.Rows.Add(oneLine);
+                        dataTable.Rows.Add(fields);
                         m_numberOfRows++;
                     }
                     dataGridView1.DataSource = dataTable;

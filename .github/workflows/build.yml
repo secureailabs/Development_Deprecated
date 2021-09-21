@@ -41,6 +41,8 @@ jobs:
           docker exec -w /Development/Milestone3/ ubuntu_dev_CI ps -ef
           docker exec -w /Development/Milestone3/ ubuntu_dev_CI sh CreateDailyBuild.sh
           docker exec -w /Development/Milestone3/Binary/ ubuntu_dev_CI ls -l
+          docker stop ubuntu_dev_CI
+          docker rm ubuntu_dev_CI
   stop-runner:
     runs-on: ubuntu-latest
     needs: build
@@ -51,7 +53,6 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       - name: Deallocate self-hosted runner
         run: |
-          set -x
-          docker stop ubuntu_dev_CI
-          docker rm ubuntu_dev_CI
+          pwd
+          ls -l
           az vm deallocate  --subscription Build -g Dev-CI -n github-runner1 --no-wait

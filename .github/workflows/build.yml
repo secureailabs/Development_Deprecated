@@ -31,7 +31,7 @@ jobs:
       - name: Run a multi-line script, Build images   
         run: |
           ls -l 
-          # docker build -t ubuntu-sailtap:1.0 --build-arg git_personal_token=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 -f Dockerfile.development .
+          docker build -t ubuntu-sailtap:1.0 --build-arg git_personal_token=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 -f Dockerfile.development .
           
           
   stop-runner:

@@ -51,4 +51,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       - name: Deallocate self-hosted runner
         run: |
+          set -x
+          docker stop ubuntu_dev_CI
+          docker rm ubuntu_dev_CI
           az vm deallocate  --subscription Build -g Dev-CI -n github-runner1 --no-wait

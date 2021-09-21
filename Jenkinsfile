@@ -60,7 +60,6 @@ pipeline {
                 }
                 echo 'Backend Portal Server is Deployed and Ready to use'
                 echo 'Build Successful'
-                echo 'Teardown'
                 script {
                     echo 'Teardown'
                     sh label:

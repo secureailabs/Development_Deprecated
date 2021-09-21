@@ -31,7 +31,7 @@ pipeline {
                     'Build Binaries',
                     script:'''
                     set -x
-                    docker exec -w /Development/Milestone3/ ubuntu_dev_CI sh CreateDailyBuild.sh
+                    docker exec -w /Development/Milestone3/ ubuntu_dev_CI source CreateDailyBuild.sh
                     docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "ls -l"
                     docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseGateway  > database.log &"
                     sleep 1

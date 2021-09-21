@@ -3,7 +3,7 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 set -x
 
-#Build and put stuff in the Binary folder
+# Build and put stuff in the Binary folder
 cd $SCRIPT_DIR/WebService/Plugins/RestApiPortal
 for d in $(echo ./*/);do (cd $d; make all -j && returncode=$? || returncode=$?; cd ..); done
 
@@ -21,6 +21,18 @@ make all -j && returncode=$? || returncode=$?
 
 cd $SCRIPT_DIR/InternalTools/DatabaseTools/
 make all -j && returncode=$? || returncode=$?
+
+set +x
+# Verify files exist
+for val in "${StringArray[@]}"; do
+    echo "searching for ${val} ..."
+    ls $SCRIPT_DIR/Binary/ | grep $val
+    retVal=$?
+    if [ $retVal -ne 0 ]; then
+        echo "Error ${val} does not exist"
+        exit $retVal
+    fi
+done
 
 set -e
 

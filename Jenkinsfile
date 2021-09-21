@@ -1,7 +1,7 @@
 pipeline {
     agent any
     stages {
-        stage('Build Binaries') {
+        stage('Git') {
             steps {
                 pwd(tmp: true)
                 sh '''
@@ -25,6 +25,10 @@ pipeline {
                     docker exec -w /Development/Milestone3/ ubuntu_dev_CI ps -ef
                     '''
                 }
+            }
+        }
+        stage('Build Backend') {
+            steps {
                 script {
                     echo 'Build Binaries'
                     sh label:
@@ -33,15 +37,20 @@ pipeline {
                     set -x
                     docker exec -w /Development/Milestone3/ ubuntu_dev_CI ./CreateDailyBuild.sh
                     docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "ls -l"
+                    '''
+                }
+            }
+        }
+        stage ('Deploy Backend') {
+            steps {
+                script {
+                    echo 'Deploy DatabaseGateway and RestApiPortal'
+                    sh '''
                     docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseGateway  > database.log &"
                     sleep 1
                     docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./RestApiPortal > portal.log &"
                     sleep 1
                     docker exec -w /Development/Milestone3/ ubuntu_dev_CI ps -ef
-                    # docker stop ubuntu_dev_CI
-                    # docker rm ubuntu_dev_CI
-                    # docker kill $(docker ps -q)
-                    # docker rm $(docker ps -a -q)
                     '''
                 }
                 script {
@@ -76,7 +85,6 @@ pipeline {
                 }
             }
         }
-        
     }
     post {
         failure {

@@ -39,7 +39,7 @@ jobs:
           docker exec -w /Development/ ubuntu_dev_CI git pull
           docker exec -w /Development/Milestone3/ ubuntu_dev_CI sudo mongod --port 27017 --dbpath /srv/mongodb/db0 --replSet rs0 --bind_ip localhost --fork --logpath /var/log/mongod.log
           docker exec -w /Development/Milestone3/ ubuntu_dev_CI ps -ef
-          docker exec -w /Development/Milestone3/ ubuntu_dev_CI sh CreateDailyBuild.sh
+          docker exec -w /Development/Milestone3/ ubuntu_dev_CI ./CreateDailyBuild.sh
           docker exec -w /Development/Milestone3/Binary/ ubuntu_dev_CI ls -l
           docker stop ubuntu_dev_CI
           docker rm ubuntu_dev_CI

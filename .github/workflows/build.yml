@@ -1,0 +1,43 @@
+# CI workflow Docker Build
+
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ main ]
+    paths:
+      - ".github/workflows/build.yaml"
+  workflow_dispatch:
+  
+jobs: 
+  start-runner:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login 
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}     
+      - name: Start self-hosted runner
+        run: |
+          az vm start --subscription Build -g Dev-CI -n github-runner1
+  build:
+    runs-on: [self-hosted, docker]
+    needs: start-runner
+    steps:
+      - uses: actions/checkout@v2   
+      - name: Run a multi-line script, Build images   
+        run: |
+          echo Hello, world!
+          docker build -t ubuntu-sailtap:1.0 --build-arg git_personal_token=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 -f Dockerfile.development .
+          
+          
+  stop-runner:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Login 
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Deallocate self-hosted runner
+        run: |
+          az vm deallocate  --subscription Build -g Dev-CI -n github-runner1 --no-wait

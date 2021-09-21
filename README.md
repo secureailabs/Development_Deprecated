@@ -71,4 +71,4 @@ If the login is successful, the RestApiPortal will return an Eosb otherwise it w
 
 Once done, stop the servers.
 
-[![.github/workflows/build.yml](https://github.com/secureailabs/Development/actions/workflows/build.yml/badge.svg?branch=main&event=check_run)](https://github.com/secureailabs/Development/actions/workflows/build.yml)
+[![.github/workflows/build.yml](https://github.com/secureailabs/Development/actions/workflows/build.yml/badge.svg)](https://github.com/secureailabs/Development/actions/workflows/build.yml)

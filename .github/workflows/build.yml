@@ -26,7 +26,6 @@ jobs:
       - uses: actions/checkout@v2   
       - name: Run a multi-line script, Build images   
         run: |
-          echo Hello, world!
           docker build -t ubuntu-sailtap:1.0 --build-arg git_personal_token=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 -f Dockerfile.development .
           
           

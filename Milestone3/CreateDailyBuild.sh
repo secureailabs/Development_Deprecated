@@ -1,5 +1,9 @@
 #! /bin/bash
 # set -e
+declare -a StringArray=("BaseVmImageInit" "CommunicationPortal" "DataDomainProcess" "DatabaseGateway"
+"InitializerProcess" "JobEngine" "lala" "RestApiPortal" "RootOfTrustProcess" "SignalTerminationProcess"
+"Tests")
+
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 set -x
 

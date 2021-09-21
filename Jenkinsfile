@@ -53,13 +53,17 @@ pipeline {
                         echo getStackTrace(exception)
                         echo 'Error detected, retrying...'
                         sh '''
-                            docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseTools --PortalIp=127.0.0.1 --Port=6200 -d"
-                            docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseTools --PortalIp=127.0.0.1 --Port=6200"
-                            ''' 
+                        docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseTools --PortalIp=127.0.0.1 --Port=6200 -d"
+                        docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseTools --PortalIp=127.0.0.1 --Port=6200"
+                        ''' 
                     }
                 }
                 echo 'Backend Portal Server is Deployed and Ready to use'
                 echo 'Build Successful'
+            }
+        }
+        stage('Teardown') {
+            steps {
                 script {
                     echo 'Teardown'
                     sh label:
@@ -72,5 +76,6 @@ pipeline {
                 }
             }
         }
+        
     }
 }

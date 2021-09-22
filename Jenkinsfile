@@ -26,6 +26,11 @@ pipeline {
                     '''
                 }
             }
+            post {
+                failure {
+                    echo "Failed during Git stage"
+                }
+            }
         }
         stage('Build Backend') {
             steps {
@@ -38,6 +43,11 @@ pipeline {
                     docker exec -w /Development/Milestone3/ ubuntu_dev_CI ./CreateDailyBuild.sh
                     docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "ls -l"
                     '''
+                }
+            }
+            post {
+                failure {
+                    echo "Failed during Build Backend stage"
                 }
             }
         }
@@ -69,6 +79,11 @@ pipeline {
                 }
                 echo 'Backend Portal Server is Deployed and Ready to use'
                 echo 'Build Successful'
+            }
+            post {
+                failure {
+                    echo "Failed during Deploy Backend stage"
+                }
             }
         }
     }

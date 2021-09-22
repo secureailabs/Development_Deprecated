@@ -71,27 +71,17 @@ pipeline {
                 echo 'Build Successful'
             }
         }
-        stage('Teardown') {
-            steps {
-                script {
-                    echo 'Teardown'
-                    sh label:
-                    'Teardown',
-                    script:'''
-                    set -x
-                    docker stop ubuntu_dev_CI
-                    docker rm ubuntu_dev_CI
-                    '''
-                }
-            }
-        }
     }
     post {
-        failure {
-            echo 'This will run only if failed'
-        }
-        unstable {
-            echo 'This will run only if the run was marked as unstable'
+        always {
+            echo 'Teardown'
+            sh label:
+            'Teardown',
+            script:'''
+            set -x
+            docker kill $(docker ps -q)
+            docker rm $(docker ps -a -q)
+            '''
         }
     }
 }

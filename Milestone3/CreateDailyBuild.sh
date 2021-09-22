@@ -1,8 +1,10 @@
 #! /bin/bash
 # set -e
 declare -a StringArray=("BaseVmImageInit" "CommunicationPortal" "DataDomainProcess" "DatabaseGateway"
-"InitializerProcess" "JobEngine" "RestApiPortal" "RootOfTrustProcess" "SignalTerminationProcess"
-"Tests")
+"InitializerProcess" "JobEngine" "lala" "RestApiPortal" "RootOfTrustProcess" "SignalTerminationProcess"
+"Tests" "libDatabaseManager.so" "libAccountDatabase.so" "libAuditLogManager.so" "libAzureManager.so"
+"libCryptographicKeyManagement.so" "libDatasetDatabase.so" "libDigitalContractDatabase.so"
+"libRemoteDataConnectorManager.so" "libSailAuthentication.so" "libVirtualMachineManager.so")
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 set -x

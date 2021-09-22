@@ -1,11 +1,13 @@
 # CI workflow Docker Build
-
+name: CI for Development Repository
 on:
   # Triggers the workflow on push or pull request events but only for the main branch
-  push:
+  pull_request:
     branches: [ main ]
-    paths:
-      - ".github/workflows/build.yaml"
+#   push:
+#     branches: [ main ]
+  
+  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
   
 jobs: 
@@ -24,12 +26,21 @@ jobs:
     needs: start-runner
     steps:
       - uses: actions/checkout@v2   
-      - name: Run a multi-line script, Build images   
+      - name: Run a multi-line script, Build Binaries   
         run: |
-          echo Hello, world!
-          docker build -t ubuntu-sailtap:1.0 --build-arg git_personal_token=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 -f Dockerfile.development .
-          
-          
+          set -e
+          pwd
+          ls -l
+          sudo chmod 666 /var/run/docker.sock
+          docker build -t ubuntu-development:1.0 --build-arg git_personal_token=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 -f Dockerfile.development .
+          docker run --name ubuntu_dev_CI -dit -p 6200:6200 -p 27017:27017 ubuntu-development:1.0 /bin/bash
+          docker exec -w /Development/ ubuntu_dev_CI git pull
+          docker exec -w /Development/Milestone3/ ubuntu_dev_CI sudo mongod --port 27017 --dbpath /srv/mongodb/db0 --replSet rs0 --bind_ip localhost --fork --logpath /var/log/mongod.log
+          docker exec -w /Development/Milestone3/ ubuntu_dev_CI ps -ef
+          docker exec -w /Development/Milestone3/ ubuntu_dev_CI ./CreateDailyBuild.sh
+          docker exec -w /Development/Milestone3/Binary/ ubuntu_dev_CI ls -l
+          docker stop ubuntu_dev_CI
+          docker rm ubuntu_dev_CI
   stop-runner:
     runs-on: ubuntu-latest
     needs: build
@@ -40,4 +51,6 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       - name: Deallocate self-hosted runner
         run: |
+          pwd
+          ls -l
           az vm deallocate  --subscription Build -g Dev-CI -n github-runner1 --no-wait

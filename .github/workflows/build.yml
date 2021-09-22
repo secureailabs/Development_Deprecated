@@ -1,5 +1,5 @@
 # CI workflow Docker Build
-
+name: CI for Development Repository
 on:
   # Triggers the workflow on push or pull request events but only for the main branch
   pull_request:
@@ -26,7 +26,7 @@ jobs:
     needs: start-runner
     steps:
       - uses: actions/checkout@v2   
-      - name: Run a multi-line script, Build images   
+      - name: Run a multi-line script, Build Binaries   
         run: |
           set -e
           pwd

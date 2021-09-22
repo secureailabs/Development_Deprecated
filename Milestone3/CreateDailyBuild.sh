@@ -29,8 +29,8 @@ make all -j && returncode=$? || returncode=$?
 set +x
 # Verify files exist
 for val in "${StringArray[@]}"; do
-    echo "searching for ${val} ..."
-    ls $SCRIPT_DIR/Binary/ | grep $val
+    echo -e "\nsearching for ${val} ..."
+    find $SCRIPT_DIR/Binary/ -name $val
     retVal=$?
     if [ $retVal -ne 0 ]; then
         echo "Error ${val} does not exist"

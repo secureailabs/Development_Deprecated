@@ -51,6 +51,7 @@ jobs:
           docker rm ubuntu_dev_CI
   
   stop-runner:
+    # Always stop runner even if build step fails
     if: always()
     runs-on: ubuntu-latest
     needs: [start-runner, build]

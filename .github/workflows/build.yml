@@ -10,7 +10,7 @@ on:
   
 # Only one concurrent action at a time for group tag.
 concurrency:
-  group: CI-Build-Development-${{ github.head_ref }}
+  group: CI-Build-Development
   cancel-in-progress: true
 
 jobs: 

@@ -33,7 +33,7 @@ static void * __stdcall InitializeResearchProcess(
 
     Socket * poResearchProcessSocket = (Socket *) poParameter;
     DataConnector * poDataConnector = ::GetDataConnector();
-    poDataConnector->HandleRequestsUntilClose(poResearchProcessSocket);
+    poDataConnector->HandleRequest(poResearchProcessSocket);
 
     return nullptr;
 }

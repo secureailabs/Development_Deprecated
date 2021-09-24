@@ -1,7 +1,7 @@
 #! /bin/bash
 # set -e
 declare -a StringArray=("BaseVmImageInit" "CommunicationPortal" "DataDomainProcess" "DatabaseGateway"
-"InitializerProcess" "JobEngine" "lala" "RestApiPortal" "RootOfTrustProcess" "SignalTerminationProcess"
+"InitializerProcess" "JobEngine" "RestApiPortal" "RootOfTrustProcess" "SignalTerminationProcess"
 "Tests" "libDatabaseManager.so" "libAccountDatabase.so" "libAuditLogManager.so" "libAzureManager.so"
 "libCryptographicKeyManagement.so" "libDatasetDatabase.so" "libDigitalContractDatabase.so"
 "libRemoteDataConnectorManager.so" "libSailAuthentication.so" "libVirtualMachineManager.so")
@@ -32,7 +32,7 @@ set +x
 # Verify files exist
 for val in "${StringArray[@]}"; do
     echo -e "\nsearching for ${val} ..."
-    find $SCRIPT_DIR/Binary/ -name $val
+    ls -Rt $SCRIPT_DIR/Binary/ | grep $val
     retVal=$?
     if [ $retVal -ne 0 ]; then
         echo "Error ${val} does not exist"

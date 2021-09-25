@@ -123,18 +123,41 @@ namespace DataSetSpecification
             FlowPanelColumnInfo.Controls.Clear();
             DataTable dataTable = new DataTable();
             string filePath = textBox1.Text;
+
+            // find the delimiter
+            string delimiter = ",";
+            int Tchar = 0;
+            StreamReader reader;
+            reader = new StreamReader(filePath);
+            do
+            {
+                char ch = (char)reader.Read();
+                if (ch == ',')
+                {
+                    delimiter = ",";
+                    break;
+                }
+                else if (';' == ch)
+                {
+                    delimiter = ";";
+                    break;
+                }
+                Tchar++;
+            } while (!reader.EndOfStream);
+            reader.Close();
+            reader.Dispose();
+
             if (filePath != "")
             {
                 FileInfo fi = new FileInfo(filePath);
                 filesize.Text = fi.Length.ToString() + " bytes";
                 bool first = true;
-                try
                 {
                     TextFieldParser parser = new TextFieldParser(filePath)
                     {
                         TextFieldType = FieldType.Delimited
                     };
-                    parser.SetDelimiters(",",";");
+                    parser.SetDelimiters(delimiter);
                     while (!parser.EndOfData)
                     {
                         //Process row
@@ -151,7 +174,9 @@ namespace DataSetSpecification
                             }
                             first = false;
                         }
-                        dataTable.Rows.Add(fields);
+                        string[] shortArray = new string[m_numberOfColumns];
+                        Array.Copy(fields, 0, shortArray, 0, m_numberOfColumns);
+                        dataTable.Rows.Add(shortArray);
                         m_numberOfRows++;
                     }
                     dataGridView1.DataSource = dataTable;
@@ -166,10 +191,6 @@ namespace DataSetSpecification
                     ButtonEditHeader.Show();
                     m_addHeaderButtonVisibility = 10;
                     m_editHeaderButtonVisibility = 10;
-                }
-                catch (System.Exception)
-                {
-                    ;
                 }
             }
         }

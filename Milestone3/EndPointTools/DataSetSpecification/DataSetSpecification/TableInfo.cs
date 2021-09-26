@@ -161,9 +161,9 @@ namespace DataSetSpecification
                     while (!parser.EndOfData)
                     {
                         //Process row
-                        string[] fields = parser.ReadFields();
                         if (first)
                         {
+                            string[] fields = parser.ReadFields();
                             foreach (string field in fields)
                             {
                                 dataTable.Columns.Add(m_numberOfColumns.ToString());
@@ -173,11 +173,15 @@ namespace DataSetSpecification
                                 FlowPanelColumnInfo.Controls.Add(cc);
                             }
                             first = false;
+                            dataTable.Rows.Add(fields);
+                            m_numberOfRows++;
                         }
-                        string[] shortArray = new string[m_numberOfColumns];
-                        Array.Copy(fields, 0, shortArray, 0, m_numberOfColumns);
-                        dataTable.Rows.Add(shortArray);
-                        m_numberOfRows++;
+                        else
+                        {
+                            string[] fields = parser.ReadFields().Take((int)m_numberOfColumns).ToArray();
+                            dataTable.Rows.Add(fields);
+                            m_numberOfRows++;
+                        }
                     }
                     dataGridView1.DataSource = dataTable;
                     foreach (DataGridViewRow onerow in dataGridView1.Rows)

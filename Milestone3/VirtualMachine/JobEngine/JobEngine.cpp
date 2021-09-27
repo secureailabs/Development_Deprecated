@@ -222,7 +222,7 @@ void __thiscall JobEngine::ConnectVirtualMachine(
     auto oListOfGuids = oStructuredBufferOfGuids.GetNamesOfElements();
     for (auto strName : oListOfGuids)
     {
-        m_stlSetOfDataConnectorGuids.insert(std::make_pair(oStructuredBufferOfGuids.GetString(strName.c_str()), std::atoi(strName.c_str())));
+        m_stlMapOfDataConnectorGuidsToName.insert(std::make_pair(oStructuredBufferOfGuids.GetString(strName.c_str()), strName));
     }
 
     StructuredBuffer oStructuredBufferLoginResponse;
@@ -543,11 +543,11 @@ void __thiscall JobEngine::SetJobParameter(
         }
 
         // Check if the requested data is a dataset from the DataConnector.
-        if (m_stlSetOfDataConnectorGuids.end() != m_stlSetOfDataConnectorGuids.find(c_oStructuredBuffer.GetString("ValueUuid")))
+        if (m_stlMapOfDataConnectorGuidsToName.end() != m_stlMapOfDataConnectorGuidsToName.find(c_oStructuredBuffer.GetString("ValueUuid")))
         {
             // This means that the valueId is to be fetched from the DataConnector
             // and written to the file system
-            ::DataConnectorGetTable(c_oStructuredBuffer.GetString("ValueUuid"), m_stlSetOfDataConnectorGuids.at(c_oStructuredBuffer.GetString("ValueUuid")));
+            ::DataConnectorGetTable(c_oStructuredBuffer.GetString("ValueUuid"), m_stlMapOfDataConnectorGuidsToName.at(c_oStructuredBuffer.GetString("ValueUuid")));
 
             // Assuming the file was successfully written to the file system, create a signal file for the same
             std::ofstream output(gc_strSignalFolderName + "/" + c_oStructuredBuffer.GetString("ValueUuid"));

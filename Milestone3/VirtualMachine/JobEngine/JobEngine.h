@@ -108,7 +108,7 @@ class JobEngine : public Object
         // Private data members
         static JobEngine m_oJobEngine;
         RootOfTrustNode * m_poRootOfTrustNode;
-        std::unordered_map<std::string, unsigned int> m_stlSetOfDataConnectorGuids;
+        std::unordered_map<std::string, std::string> m_stlMapOfDataConnectorGuidsToName;
         uint64_t m_FileListenerId = 0;
         Socket * m_poSocket;
         std::unordered_map<std::string, std::shared_ptr<Job>> m_stlMapOfJobs;

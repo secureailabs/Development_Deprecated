@@ -83,7 +83,6 @@ class RemoteDataConnector : public Object
         std::string m_strUserOrganizationUuid;
         std::string m_strRestPortalAddress;
         Dword m_dwRestPortalPort;
-        std::vector<std::thread> m_stlListOfThreadsForDatasets;
         std::mutex m_stlMutexRestConnection;
         std::unordered_set<std::string> m_stlSetOfVirtualMachineUploading;
         std::unordered_map<std::string, std::string> m_stlMapOfFileToDatasetsUuids;

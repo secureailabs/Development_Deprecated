@@ -161,7 +161,7 @@ bool __thiscall DataConnector::LoadAndVerify(
         stlDatasetFile.read((char *)stlTempTableMetadata.data(), stlTableMetadataSizeArray[unTableID]);
         m_stlTableMetaData.push_back(StructuredBuffer(stlTempTableMetadata));
         std::cout << "Table Metadata\n" << StructuredBuffer(stlTempTableMetadata).ToString();
-        oTableMetadata.PutString(std::to_string(unTableID).c_str(), m_stlTableMetaData.at(unTableID).GetGuid("Guid").ToString(eRaw));
+        oTableMetadata.PutString(m_stlTableMetaData[unTableID].GetString("Name").c_str(), m_stlTableMetaData.at(unTableID).GetGuid("Guid").ToString(eRaw));
     }
     m_oAllDatasetIds.PutStructuredBuffer("Tables", oTableMetadata);
     std::cout << "\nDataIds\n" << m_oAllDatasetIds.ToString();

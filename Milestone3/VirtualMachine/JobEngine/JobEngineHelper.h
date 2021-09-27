@@ -30,5 +30,5 @@ StructuredBuffer DataConnectorGetFetchableUuid(void);
 
 std::string DataConnectorGetTable(
     _in std::string strTableUuid,
-    _in unsigned int unTableId
+    _in std::string strTableName
 );

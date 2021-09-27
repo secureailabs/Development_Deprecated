@@ -67,6 +67,7 @@ namespace DataSetSpecification
 
         private void button1_Click(object sender, EventArgs e)
         {
+            bool fLoginSuccess = false;
             if ("" == textBox1.Text)
             {
                 loginStatus.Text = "Invalid UserEmail!!";
@@ -105,7 +106,7 @@ namespace DataSetSpecification
                         Thread.Sleep(500);
                         this.Hide();
                         client = null;
-                        m_container.GetAuth();
+                        fLoginSuccess = true;
                     }
                     else
                     {
@@ -115,6 +116,11 @@ namespace DataSetSpecification
                 catch (Exception oException)
                 {
                     loginStatus.Text = oException.Message;
+                }
+
+                if (true == fLoginSuccess)
+                {
+                    m_container.GetAuth();
                 }
             }
         }

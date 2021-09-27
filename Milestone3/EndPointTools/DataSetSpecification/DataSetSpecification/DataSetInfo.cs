@@ -38,7 +38,6 @@ namespace DataSetSpecification
                 string finalFileName = textBoxOutputFile.Text;
                 // Each UserControl1 has a TableInfo Object which will have all the data related to the file that we need. 
                 // Iterate through all the UserControl1 objects and fetch their TableInfo object and get all the data.
-                try
                 {
                     FileStream newFile = File.Open(finalFileName, FileMode.Create);
                     BinaryWriter outputFile = new BinaryWriter(newFile);
@@ -210,10 +209,6 @@ namespace DataSetSpecification
                         dynamic responseJsonObject = JsonConvert.DeserializeObject(response.Content);
                         Console.WriteLine("Json is "+responseJsonObject);
                     }
-                }
-                catch (Exception oException)
-                {
-                    Console.WriteLine("Exception: " + oException.ToString());
                 }
             }
             else

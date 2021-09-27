@@ -47,7 +47,8 @@ enum class JobStatusSignals
     eJobDone = 1,
     eJobFail = 2,
     ePostValue = 3,
-    eVmShutdown = 4
+    eVmShutdown = 4,
+    ePrivacyViolation = 5
 };
 
 /********************************************************************************************/

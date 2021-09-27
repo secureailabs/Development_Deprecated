@@ -1,3 +1,4 @@
+[![.github/workflows/build.yml](https://github.com/secureailabs/Development/actions/workflows/build.yml/badge.svg)](https://github.com/secureailabs/Development/actions/workflows/build.yml)
 ![alt text](https://github.com/secureailabs/Development/blob/main/Logo.jpg?raw=true)
 
 # Development
@@ -70,5 +71,3 @@ You can also use Postman to make Http requests to the RestApiPortal. An example 
 If the login is successful, the RestApiPortal will return an Eosb otherwise it will return an error code.
 
 Once done, stop the servers.
-
-[![.github/workflows/build.yml](https://github.com/secureailabs/Development/actions/workflows/build.yml/badge.svg)](https://github.com/secureailabs/Development/actions/workflows/build.yml)

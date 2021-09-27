@@ -85,7 +85,7 @@ std::vector<Byte> __thiscall DatabaseManager::ListAzureTemplates(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)
@@ -163,7 +163,7 @@ std::vector<Byte> __thiscall DatabaseManager::PullAzureTemplate(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)
@@ -303,7 +303,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterAzureTemplate(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)
@@ -434,7 +434,7 @@ std::vector<Byte> __thiscall DatabaseManager::UpdateAzureTemplate(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)
@@ -528,7 +528,7 @@ std::vector<Byte> __thiscall DatabaseManager::DeleteAzureTemplate(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)

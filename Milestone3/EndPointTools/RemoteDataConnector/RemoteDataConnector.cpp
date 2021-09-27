@@ -184,7 +184,7 @@ void __thiscall RemoteDataConnector::NewDatasetFoundCallback(
     }
     catch (const BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch(...)
     {
@@ -282,7 +282,7 @@ void __thiscall RemoteDataConnector::SendDataConnectorHeartbeat(void) throw()
     }
     catch (const BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch(...)
     {
@@ -401,7 +401,7 @@ void __thiscall RemoteDataConnector::UploadDataSetToVirtualMachine(
     }
     catch (const BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch(...)
     {
@@ -529,7 +529,7 @@ StructuredBuffer __thiscall RemoteDataConnector::VerifyDataset(
     }
     catch (const BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oDatasetInformation.Clear();
     }
     catch(...)
@@ -590,7 +590,7 @@ void __thiscall RemoteDataConnector::ManualUploadDataSetToVirtualMachine(
     }
     catch (const BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch(...)
     {

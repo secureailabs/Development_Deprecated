@@ -290,7 +290,7 @@ std::string __thiscall StructuredBuffer::ToString(void) throw()
 
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     
     catch(...)
@@ -957,7 +957,7 @@ void __thiscall StructuredBuffer::Serialize(void) const throw()
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         m_qw64BitHash = 0;
         m_qwComposition64BitHash = 0;
         m_stlSerializedBuffer.clear();

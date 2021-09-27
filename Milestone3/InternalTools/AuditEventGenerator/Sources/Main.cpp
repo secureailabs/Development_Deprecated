@@ -152,7 +152,7 @@ static void __thiscall AuditEventDispatcher(void)
         
         catch (BaseException oException)
         {
-            ::RegisterException(oException, __func__, __LINE__);
+            ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         }
         
         catch(...)
@@ -197,7 +197,7 @@ static void * __stdcall StartAuditEventDispatcherThread(
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     
     catch (...)
@@ -246,7 +246,7 @@ static bool __stdcall InitializeVirtualMachine(void)
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     
     catch(...)
@@ -279,7 +279,7 @@ static bool __stdcall RegisterDataOwnerEosb(void)
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     
     catch(...)
@@ -312,7 +312,7 @@ static bool __stdcall RegisterResearcherEosb(void)
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     
     catch(...)

@@ -473,7 +473,7 @@ std::vector<Byte> __thiscall DatasetDatabase::GetUserInfo(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -557,7 +557,7 @@ std::vector<Byte> __thiscall DatasetDatabase::GetListOfAvailableDatasets(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -642,7 +642,7 @@ std::vector<Byte> __thiscall DatasetDatabase::PullDataset(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -730,7 +730,7 @@ std::vector<Byte> __thiscall DatasetDatabase::RegisterDataset(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -819,7 +819,7 @@ std::vector<Byte> __thiscall DatasetDatabase::DeleteDataset(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)

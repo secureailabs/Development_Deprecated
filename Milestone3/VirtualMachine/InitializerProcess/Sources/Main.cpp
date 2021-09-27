@@ -81,7 +81,7 @@ static std::vector<Byte> __stdcall WaitForInitializationParameters(void)
     poTlsNode = oTlsServer.Accept();
     _ThrowBaseExceptionIf((nullptr == poTlsNode), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
 
-    StructuredBuffer oRemoteDatasetParameters(::GetTlsTransaction(poTlsNode, 10*1000));
+    StructuredBuffer oRemoteDatasetParameters(::GetTlsTransaction(poTlsNode, 60*60*1000));
     oAllInitializationParameters.PutString("DataOwnerAccessToken", oRemoteDatasetParameters.GetString("DataOwnerAccessToken"));
     oAllInitializationParameters.PutString("SailWebApiPortalIpAddress", oRemoteDatasetParameters.GetString("SailWebApiPortalIpAddress"));
     oAllInitializationParameters.PutString("DataOwnerUserIdentifier", oRemoteDatasetParameters.GetString("DataOwnerUserIdentifier"));

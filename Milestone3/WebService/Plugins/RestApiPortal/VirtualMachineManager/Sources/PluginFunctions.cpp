@@ -48,7 +48,7 @@ extern "C" uint64_t SubmitRequest(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch (...)
     {
@@ -93,7 +93,7 @@ extern "C" bool GetResponse(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch (...)
     {
@@ -135,7 +135,7 @@ extern "C" bool __stdcall InitializePlugin(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch (...)
     {
@@ -163,7 +163,7 @@ extern "C" void __stdcall ShutdownPlugin(void)
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch (...)
     {

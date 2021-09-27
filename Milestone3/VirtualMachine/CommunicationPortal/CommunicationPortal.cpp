@@ -170,7 +170,7 @@ void __thiscall CommunicationPortal::PersistantConnectionTlsToIpc(
     }
     catch (BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch (std::exception & oException)
     {
@@ -254,7 +254,7 @@ void __thiscall CommunicationPortal::OneTimeConnectionHandler(
     }
     catch (BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch (std::exception & oException)
     {
@@ -312,7 +312,7 @@ void __thiscall CommunicationPortal::HandleConnection(
     }
     catch (BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch (std::exception & oException)
     {

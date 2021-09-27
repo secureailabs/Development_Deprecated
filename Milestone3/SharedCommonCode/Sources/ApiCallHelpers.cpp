@@ -191,7 +191,7 @@ StructuredBuffer __stdcall GetSailWebApiPortalBasicUserInformation(
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oBasicUserInformation.Clear();
         oBasicUserInformation.PutBoolean("Success", false);
     }
@@ -262,7 +262,7 @@ bool __stdcall TransmitAuditEventsToSailWebApiPortal(
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     
     catch(...)
@@ -303,7 +303,7 @@ StructuredBuffer __stdcall GetListOfDigitalContracts(
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oListOfDigitalContracts.Clear();
         oListOfDigitalContracts.PutBoolean("Success", false);
     }
@@ -350,7 +350,7 @@ StructuredBuffer __stdcall GetDigitalContract(
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oDigitalContract.Clear();
         oDigitalContract.PutBoolean("Success", false);
     }
@@ -404,7 +404,7 @@ std::string __stdcall RegisterVirtualMachineWithSailWebApiPortal(
     
     catch(BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     
     catch(...)
@@ -448,7 +448,7 @@ std::string __stdcall RegisterVirtualMachineDataOwner(
     
     catch(BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     
     catch(...)
@@ -492,7 +492,7 @@ std::string RegisterVirtualMachineResearcher(
     
     catch(BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     
     catch(...)

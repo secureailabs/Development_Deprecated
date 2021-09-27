@@ -75,7 +75,7 @@ std::vector<Byte> __thiscall DatabaseManager::GetDatasetName(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)
@@ -171,7 +171,7 @@ std::vector<Byte> __thiscall DatabaseManager::ListDatasets(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)
@@ -261,7 +261,7 @@ std::vector<Byte> __thiscall DatabaseManager::PullDataset(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)
@@ -395,7 +395,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterDataset(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)
@@ -486,7 +486,7 @@ std::vector<Byte> __thiscall DatabaseManager::DeleteDataset(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)

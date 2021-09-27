@@ -10,7 +10,7 @@ else
 endif
 
 # The Root directory containing all the code
-ROOTDIR=.
+ROOTDIR=../..
 ABSROOTDIR=$(shell realpath $(ROOTDIR))
 OBJDIR=$(ABSROOTDIR)/Binary/Objects
 
@@ -37,7 +37,7 @@ FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
-OUTPUT=SAILPyAPI.so
+OUTPUT=$(ABSROOTDIR)/Binary/SAILPyAPI.so
 
 all: $(OUTPUT)
 

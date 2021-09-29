@@ -11,7 +11,7 @@ def PrivacyValidation(data, strJobIdentifier):
     strViolationMessage = ""
 
     if True == isinstance(data, pd.DataFrame):
-        if data.shape[0] > json_object['k']:
+        if data.shape[0] > json_object['rules']['k']:
             fIsAccessSafe = True
         else:
             strViolationMessage = "Number of enteries in the request is lesser than the minimum threshold set in the Digital Contract"

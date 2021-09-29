@@ -1,0 +1,9 @@
+{
+    "version": "",
+    "rules" :
+    {
+        "k": 5,
+        "some_limit": 10,
+        "some_policy": "Test"
+    }
+}

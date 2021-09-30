@@ -216,7 +216,7 @@ int __thiscall SafeObject::Run(
                         oStructruedBufferSignal.PutString("JobUuid", c_strJobUuid);
                         oJobEngine.SendMessageToOrchestrator(oStructruedBufferSignal);
                     }
-                    else if (123 == nProcessExitStatus)
+                    else if (123 == WEXITSTATUS(nProcessExitStatus))
                     {
                         // Send a job fail signal to the orchestrator
                         oStructruedBufferSignal.PutByte("SignalType", (Byte)JobStatusSignals::ePrivacyViolation);

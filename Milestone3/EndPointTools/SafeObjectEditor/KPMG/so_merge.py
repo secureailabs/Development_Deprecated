@@ -1,0 +1,1 @@
+__res = __data.merge(__right, how=__how, on=__on, left_on=__left_on, right_on=__right_on, left_index=__left_index, right_index=__right_index, sort=__sort, suffixes=__suffixes, copy=__copy, indicator=__indicator, validate=__validate)

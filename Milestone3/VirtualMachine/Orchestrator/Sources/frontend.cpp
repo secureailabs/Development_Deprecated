@@ -146,7 +146,7 @@ std::vector<Byte> GetResponseBody(
 
 /********************************************************************************************/
 
-std::string Login(
+std::string Frontend::Login(
     _in const std::string & c_strEmail,
     _in const std::string & c_strUserPassword
     )
@@ -182,6 +182,8 @@ std::string Login(
         ::RegisterUnknownException(__func__, __LINE__);
     }
 
+    m_strEOSB = strEosb;
+    m_strUsername = c_strEmail; 
     return strEosb;
 }
 
@@ -231,6 +233,15 @@ void __thiscall Frontend::Listener(
                 m_stlResultMap[strDataID] = stlData;
                 break;
             }
+            case JobStatusSignals::ePrivacyViolation:
+            {
+                std::string strJobID = oResponse.GetString("JobUuid");
+                std::cout<<"Get privacy violation: "<<strJobID<<std::endl;
+                std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
+                //m_stlResultMap.emplace(strDataID, stlData);
+                m_stlJobStatusMap[strJobID] = JobStatusSignals::ePrivacyViolation;
+                break;
+            }
             case JobStatusSignals::eVmShutdown: break;
             default: break;
         }
@@ -247,22 +258,20 @@ void __thiscall Frontend::Listener(
 void __thiscall Frontend::SetFrontend(
     _in std::string & strServerIP, 
     _in Word wPort,
-    _in std::string & strVMID,
-    _in std::string & strEmail,
-    _in std::string & strPassword
+    _in std::string & strVMID
     )
 {
-    if(m_strEOSB.empty())
-    {
-        m_strEOSB = Login(strEmail, strPassword);
-        std::cout<<"Login done"<<std::endl;
-        std::cout<<"EOSB:"<<m_strEOSB<<std::endl;
-    }
+    //if(m_strEOSB.empty())
+    //{
+    //    m_strEOSB = Login(strEmail, strPassword);
+    //    std::cout<<"Login done"<<std::endl;
+    //    std::cout<<"EOSB:"<<m_strEOSB<<std::endl;
+    //}
     
     StructuredBuffer oBuffer;
     oBuffer.PutByte("RequestType", (Byte)EngineRequest::eConnectVirtualMachine);
     oBuffer.PutString("Eosb", m_strEOSB);
-    oBuffer.PutString("Username", strEmail);
+    oBuffer.PutString("Username", m_strUsername);
 
     TlsNode * poSocket = nullptr;
 
@@ -283,15 +292,18 @@ void __thiscall Frontend::SetFrontend(
             StructuredBuffer oResponse(stlResponse);
             strVMID = oResponse.GetString("VirtualMachineUuid");
 
-            std::vector<std::string> stlDataGuid;
+            std::map<std::string, std::string> stlDataMap;
             StructuredBuffer oDataset = oResponse.GetStructuredBuffer("Dataset");
-            std::vector<std::string> stlNameList = oDataset.GetStructuredBuffer("Tables").GetNamesOfElements();
+            StructuredBuffer oTables = oDataset.GetStructuredBuffer("Tables");
+            std::vector<std::string> stlNameList = oTables.GetNamesOfElements();
+            
             for(size_t i = 0 ; i<stlNameList.size(); i++)
             {
-                stlDataGuid.push_back(oDataset.GetStructuredBuffer("Tables").GetString(stlNameList[i].c_str()));
+                //stlDataGuid.push_back(oDataset.GetStructuredBuffer("Tables").GetString(stlNameList[i].c_str()));
+                stlDataMap.emplace(stlNameList[i], oDataset.GetStructuredBuffer("Tables").GetString(stlNameList[i].c_str()));
             }
 
-            m_stlDataTableMap.emplace(strVMID, stlDataGuid);
+            m_stlDataTableMap.emplace(strVMID, stlDataMap);
 
             std::shared_ptr<TlsNode> stlSocket(poSocket);
             m_stlConnectionMap.emplace(strVMID, stlSocket);
@@ -644,7 +656,7 @@ JobStatusSignals __thiscall Frontend::QueryJobStatus(
     return m_stlJobStatusMap[strJobID];
 }
 
-std::vector<std::string> __thiscall Frontend::QueryDataset(
+std::map<std::string, std::string> __thiscall Frontend::QueryDataset(
     _in std::string& strVMID
 )
 {

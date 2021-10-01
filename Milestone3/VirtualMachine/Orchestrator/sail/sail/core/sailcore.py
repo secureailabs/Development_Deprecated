@@ -1,10 +1,12 @@
 from .. import SAILPyAPI
-import pickle
+import pickle, json, requests, pprint
 from concurrent.futures import ThreadPoolExecutor
-import time
 
-def connect(serverIP, port, email, password):
-    return SAILPyAPI.connect(serverIP, port, email, password)
+def connect(serverIP, port):
+    return SAILPyAPI.connect(serverIP, port)
+
+def login(email, password):
+    return SAILPyAPI.login(email,password)
 
 def newguid():
     return SAILPyAPI.createguid()
@@ -34,7 +36,7 @@ def setparameter(vm, jobID, fnID, parameterId):
 #     SAILPyAPI.deletedata(varIDs)
 
 def pushsafeobj(vm, safeobjID):
-    return SAILPyAPI.pushsafeobj(vm, safeobjID)
+    SAILPyAPI.pushsafeobj(vm, safeobjID)
 
 def submitjob(vm, fnID, jobID):
     return SAILPyAPI.submitjob(vm, fnID, jobID)
@@ -47,7 +49,7 @@ def registersafeobj(script):
 
 def queryresult(jobid, fnid):
     while(queryjobstatus(jobid)==0):
-        time.sleep(5)
+        #time.sleep(5)
         #print("jobstatus: {} : 0".format(jobid))
         pass
     
@@ -55,6 +57,14 @@ def queryresult(jobid, fnid):
     if(jobstatus == -1):
         print("job: " + jobid + " is failed")
         return
+    
+    if(jobstatus == -2):
+        class X(str):
+            def __repr__(self):
+                return "'%s'" % self
+    
+        errstr = "\x1b[31m Cannot complete the requested job due to a possible privacy violation: too few samples \x1b[0m"
+        raise RuntimeError(X(errstr))
 
     bytelist =  SAILPyAPI.queryresult(jobid, fnid)
     reslist = []
@@ -92,27 +102,120 @@ def querydata(vmid):
 def quit():
     return SAILPyAPI.quit()
     
-# def spawnvms(numberOfVMs):
-#     vms = []
-#     for i in range(numberOfVMs):
-#         vm = SAILPyAPI.connect("127.0.0.1", 7001+i, "marine@terran.com", "sailpassword")
-#         vms.append(vm)
-#     return vms
+def create_dummy_data(vm, fnid):
+    jobid = newguid()
+    #inputs = pushdata(self.vm, [attr])
+    #inputs.append(self.data_id)
+    #setparameter(self.vm, jobid, self.fns['rdf_getattribute'], inputs)
+    submitjob(vm, fnid, jobid)
+    pulldata(vm, jobid, fnid)
+    result = queryresult(jobid, fnid)
+    return result
 
-# def configVMs(config):
-#     f = open(config, 'r')
-#     ips = []
-#     usernames = []
-#     passwords = []
-#     for line in f:
-#         arr = line.split(',')
-#         ips.append(arr[0])
-#         usernames.append(arr[1])
-#         passwords.append(arr[2])
-#     print(ips)
-#     vms = []
-#     for i in range(len(ips)):
-#         vm = SAILPyAPI.connect(ips[i], 7000, usernames[i], passwords[i])
-#         vms.append(vm)
-#         print(vm)
-#     return vms
+def get_fns():
+    fnsdict = {
+        'getitem':'F11C49327A9244A5AEE568B531C6A957',
+        'getattr':'9C4019584DB04B1A9BF05EC91836BCB0',
+        'series_mean':'0650C80D11A04720BFA8F1693AC292D0',
+        'rdf_query':'BF18C294BCCC4B9C94624C79D2506CCC'
+    }
+    return fnsdict
+
+def VMSetup():
+
+    registersafeobj("/home/jjj/playground/demo/safeobjects/safeobjects")
+    print("[P]safe objects registered")
+
+    eosb = login("researcher@researcher.com", "SailPassword@123")
+    print("[P]login success")
+
+    url = "https://40.76.22.246:6200/SAIL/VirtualMachineManager/GetRunningVMsIpAdresses?Eosb="+eosb
+
+    payload1 = json.dumps({
+        "DigitalContractGuid":"{3ED37E3B-DAC5-472D-9670-2D2A39C6BFF9}"
+    })
+    payload2 = json.dumps({
+        "DigitalContractGuid":"{35703BD8-43F5-4DCC-B536-A2B824A66B79}"
+    })
+    payload3 = json.dumps({
+        "DigitalContractGuid":"{327F1289-3975-4696-9A92-E6066FCB3D05}"
+    })
+    payloads = [payload1, payload2, payload3]
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    
+    ips = []
+    for payload in payloads:
+        response = requests.request("GET", url, headers=headers, data=payload, verify=False)
+        response = response.json()
+        for key in response['VirtualMachines']:
+            ips.append(response['VirtualMachines'][key])
+    
+    vmids = []
+    for ip in ips:
+        vmid = connect(ip, 3500)
+        vmids.append(vmid)
+        print("[P]virtual machine connection to ip: {0} success".format(ip))
+    
+    fns = get_fns()
+    for vm in vmids:
+        for key in fns:
+            pushsafeobj(vm, fns[key])
+    print("[P]safe object pushed to virtual machines")
+
+    table = []
+    for vm in vmids:
+        tableid = querydata(vm)
+        table.append(tableid)
+    print("[P]obtain table ids")
+    
+    from ..data.remote_dataframe import RemoteDataFrame
+    demo1= [RemoteDataFrame(vmids[0], table[0]['MGH_biomarker'], fns), 
+            RemoteDataFrame(vmids[1], table[1]['BWH_biomarker'], fns),
+            RemoteDataFrame(vmids[2], table[2]['BMC_biomaker'], fns)]
+    demo2= [RemoteDataFrame(vmids[0], table[0]['MGH_patient'], fns), 
+            RemoteDataFrame(vmids[1], table[1]['BWH_patient'], fns),
+            RemoteDataFrame(vmids[2], table[2]['BMC_patient'], fns)]
+    demo3= [RemoteDataFrame(vmids[0], table[0]['MGH_treatment'], fns), 
+            RemoteDataFrame(vmids[1], table[1]['BWH_treatment'], fns),
+            RemoteDataFrame(vmids[2], table[2]['BMC_treatment'], fns)]
+    demo_data = [demo1, demo3, demo2]
+    
+    return vmids, demo_data, fns
+
+def dataInfo():
+    eosb = login("researcher@researcher.com", "SailPassword@123")
+
+    url = "https://40.76.22.246:6200/SAIL/DigitalContractManager/PullDigitalContract?Eosb="+eosb
+
+    payload1 = json.dumps({
+        "DigitalContractGuid":"{3ED37E3B-DAC5-472D-9670-2D2A39C6BFF9}"
+    })
+    payload2 = json.dumps({
+        "DigitalContractGuid":"{35703BD8-43F5-4DCC-B536-A2B824A66B79}"
+    })
+    payload3 = json.dumps({
+        "DigitalContractGuid":"{327F1289-3975-4696-9A92-E6066FCB3D05}"
+    })
+    payloads = [payload1, payload2, payload3]
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    datasetids = []
+    for payload in payloads:
+        response = requests.request("GET", url, headers=headers, data=payload, verify=False)
+        response = response.json()
+        datasetids.append(response['DigitalContract']["DatasetGuid"])
+    
+    dataInfo = []
+    for dataset in datasetids:
+        tmp_dic = {}
+        tmp_dic['DatasetGuid'] = dataset
+        payload = json.dumps(tmp_dic)
+        data_url = "https://40.76.22.246:6200/SAIL/DatasetManager/PullDataset?Eosb="+eosb
+        response = requests.request("GET", data_url, headers=headers, data=payload, verify=False)
+        dataInfo.append(response.json())
+    
+    return dataInfo

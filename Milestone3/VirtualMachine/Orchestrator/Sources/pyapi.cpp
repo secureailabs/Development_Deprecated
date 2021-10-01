@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <string>
 #include <vector>
+#include <map>
 #include <fstream>
 #include <sstream>
 #include <iterator>
@@ -22,23 +23,37 @@ static PyObject* createguid(PyObject* self, PyObject* args)
     return Py_BuildValue("s", strGuid.c_str());
 }
 
+static PyObject* login(PyObject* self, PyObject* args)
+{
+    char* email;
+    char* password;
+    
+    if(!PyArg_ParseTuple(args, "ss", &email, &password))
+    {
+        return NULL;
+    }
+    
+    std::string strEmail(email);
+    std::string strPassword(password);
+    
+    std::string strEOSB = getFrontend().Login(strEmail, strPassword);
+    
+    return Py_BuildValue("s", strEOSB.c_str());
+}
+
 static PyObject* vmconnect(PyObject* self, PyObject* args)
 {
     char* serverIP;
-    char* email;
-    char* password;
     unsigned int port;
     std::string strVMID;
 
-    if(!PyArg_ParseTuple(args, "sIss", &serverIP, &port, &email, &password))
+    if(!PyArg_ParseTuple(args, "sI", &serverIP, &port))
     {
         return NULL;
     }
 
     std::string strIP(serverIP);
-    std::string strEmail(email);
-    std::string strPassword(password);
-    getFrontend().SetFrontend(strIP, port, strVMID, strEmail, strPassword);
+    getFrontend().SetFrontend(strIP, port, strVMID);
 
     return Py_BuildValue("s", strVMID.c_str());
 }
@@ -268,6 +283,9 @@ static PyObject* queryjobstatus(PyObject* self, PyObject* args)
         case JobStatusSignals::eJobFail: 
             nStatus = -1;
             break;
+        case JobStatusSignals::ePrivacyViolation: 
+            nStatus = -2;
+            break;
         default:
             break;
     }
@@ -335,22 +353,29 @@ static PyObject* querydata(PyObject* self, PyObject* args)
 
     std::string strVMID(vmid);
 
-    std::vector<std::string> stlDataTableIDs = getFrontend().QueryDataset(strVMID);
-
-    PyObject* output = PyList_New(stlDataTableIDs.size());
-
-    for(size_t i=0;i<stlDataTableIDs.size();i++)
+    std::map<std::string, std::string> stlDataTable = getFrontend().QueryDataset(strVMID);
+    
+    PyObject* output = PyDict_New();
+    
+    for(auto const& x : stlDataTable)
     {
-        const char* tmpdata = stlDataTableIDs[i].c_str();
-        PyList_SetItem(output, i, Py_BuildValue("s", tmpdata));
+        PyObject* value = Py_BuildValue("s", x.second.c_str());
+        PyDict_SetItemString(output, x.first.c_str(), value);
     }
+    //PyObject* output = PyList_New(stlDataTableIDs.size());
 
+    //for(size_t i=0;i<stlDataTableIDs.size();i++)
+    //{
+    //    const char* tmpdata = stlDataTableIDs[i].c_str();
+    //    PyList_SetItem(output, i, Py_BuildValue("s", tmpdata));
+    //}
     return Py_BuildValue("O", output);
 }
 
 static PyMethodDef SAILAPIMethods [] =
 {
     {"createguid", (PyCFunction)createguid, METH_NOARGS, NULL},
+    {"login", (PyCFunction)login, METH_VARARGS, NULL},
     {"connect", (PyCFunction)vmconnect, METH_VARARGS, NULL},
     {"pushdata", (PyCFunction)pushdata, METH_VARARGS, NULL},
     {"pulldata", (PyCFunction)pulldata, METH_VARARGS, NULL},

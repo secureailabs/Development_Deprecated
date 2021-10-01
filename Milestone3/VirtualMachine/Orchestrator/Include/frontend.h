@@ -40,7 +40,8 @@ enum class JobStatusSignals
     eJobDone = 1,
     eJobFail = 2,
     ePostValue = 3,
-    eVmShutdown = 4
+    eVmShutdown = 4,
+    ePrivacyViolation = 5
 };
 
 class Frontend : public Object{
@@ -57,12 +58,14 @@ class Frontend : public Object{
         (
             _in std::string& strServerIP, 
             _in Word wPort,
-            _in std::string& strVMID,
-            _in std::string& strEmail,
-            _in std::string& strPassword
+            _in std::string& strVMID
         );
         void __thiscall Listener(
             _in TlsNode* poSocket
+        );
+        std::string Login(
+            _in const std::string& c_strEmail,
+            _in const std::string& c_strUserPassword
         );
         void __thiscall HandleSubmitJob
         (
@@ -116,7 +119,7 @@ class Frontend : public Object{
         JobStatusSignals __thiscall QueryJobStatus(
             _in std::string& strJobID
         );
-        std::vector<std::string> __thiscall QueryDataset(
+        std::map<std::string, std::string> __thiscall QueryDataset(
             _in std::string& strVMID
         );
         // void __thiscall HandleDeleteData
@@ -137,11 +140,12 @@ class Frontend : public Object{
     private:
         std::map<std::string, std::shared_ptr<TlsNode>> m_stlConnectionMap;
         std::map<std::string, JobStatusSignals> m_stlJobStatusMap;
-        std::map<std::string, std::vector<std::string>> m_stlDataTableMap;
+        std::map<std::string, std::map<std::string, std::string>> m_stlDataTableMap;
         //std::string m_strWebPortalIP;
         //std::string m_strWebPortalPort;
         std::map<std::string, std::unique_ptr<SafeObject>> m_stlFNTable;
         std::map<std::string, std::vector<Byte>> m_stlResultMap;
+        std::string m_strUsername;
         std::string m_strEOSB;
         std::mutex m_stlResultMapMutex;
         std::mutex m_stlJobStatusMapMutex;

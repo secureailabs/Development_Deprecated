@@ -18,6 +18,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using RestSharp;
 using Newtonsoft.Json;
+using Microsoft.Win32;
 
 namespace DataSetSpecification
 {
@@ -33,13 +34,40 @@ namespace DataSetSpecification
         public FormLogin()
         {
             InitializeComponent();
-            textBox1.Text = "nadams@mghl.com";
-            textBoxWebPortalUrl.Text = "137.116.90.145";
+
+            textBox1.Text = "";
+            textBoxWebPortalUrl.Text = "";
             textBox2.Text = "";
+
+            // Load default settings from the registry of they exist
+            RegistryKey registryKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\SAIL");
+            string[] registryKeyValues = registryKey.GetValueNames();
+            if (true == registryKeyValues.Contains("DefaultSailWebApiPortalIpAddress"))
+            {
+                textBoxWebPortalUrl.Text = registryKey.GetValue("DefaultSailWebApiPortalIpAddress").ToString();
+            }
+            if (true == registryKeyValues.Contains("DefaultSailWebApiPortalUsername"))
+            {
+                textBox1.Text = registryKey.GetValue("DefaultSailWebApiPortalUsername").ToString();
+            }
+            registryKey.Close();
+
+            if ("" != textBoxWebPortalUrl.Text)
+            {
+                if ("" != textBox1.Text)
+                {
+                    textBox2.Select();
+                }
+                else
+                {
+                    textBox1.Select();
+                }
+            }
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
+            bool fLoginSuccess = false;
             if ("" == textBox1.Text)
             {
                 loginStatus.Text = "Invalid UserEmail!!";
@@ -52,6 +80,13 @@ namespace DataSetSpecification
             {
                 try
                 {
+                    // Persist some of the settings to the registry to make it easier to restart the
+                    // application later.
+                    RegistryKey registryKey = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\SAIL");
+                    registryKey.SetValue("DefaultSailWebApiPortalIpAddress", textBoxWebPortalUrl.Text);
+                    registryKey.SetValue("DefaultSailWebApiPortalUsername", textBox1.Text);
+                    registryKey.Close();
+
                     m_strWebPortalUrl = textBoxWebPortalUrl.Text;
                     var client = new RestClient("https://"+ m_strWebPortalUrl + ":6200/SAIL/AuthenticationManager/User/Login?Email=" + textBox1.Text + "&Password=" + textBox2.Text)
                     {
@@ -71,7 +106,7 @@ namespace DataSetSpecification
                         Thread.Sleep(500);
                         this.Hide();
                         client = null;
-                        m_container.GetAuth();
+                        fLoginSuccess = true;
                     }
                     else
                     {
@@ -81,6 +116,11 @@ namespace DataSetSpecification
                 catch (Exception oException)
                 {
                     loginStatus.Text = oException.Message;
+                }
+
+                if (true == fLoginSuccess)
+                {
+                    m_container.GetAuth();
                 }
             }
         }

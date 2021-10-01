@@ -36,88 +36,53 @@
 TlsNode::TlsNode(
     _in Socket * poSocket,
     _in enum SSLMode connectionMode
-    )
+    ) : m_poSocket(poSocket), m_poReadBIO(::BIO_new(::BIO_s_mem())), m_poWriteBIO(::BIO_new(::BIO_s_mem())), m_poSSL(nullptr, ::SSL_free)
 {
     __DebugFunction();
     __DebugAssert(nullptr != poSocket);
 
-    SSL_CTX * poSSL_CTX = nullptr;
+    // Loading and initializing the needed SSL libraries
+    ::SSL_library_init();
+    ::OpenSSL_add_all_algorithms();
+    ::SSL_load_error_strings();
+    ::ERR_load_BIO_strings();
+    ::ERR_load_crypto_strings();
 
-    try
+    // Initalizing the SSL Context structure
+    std::unique_ptr<SSL_CTX, decltype(&::SSL_CTX_free)> poSSL_CTX(::SSL_CTX_new(TLS_method()), ::SSL_CTX_free);
+    _ThrowIfNull(poSSL_CTX, "SSL_CTX_new() failed.", nullptr);
+
+    // TODO temporary resort until the key pair can be provided by the planned TrustStore
+    if (eSSLModeServer == connectionMode)
     {
-
-        m_poSocket = poSocket;
-
-        // Loading and initializing the needed SSL libraries
-        ::SSL_library_init();
-        ::OpenSSL_add_all_algorithms();
-        ::SSL_load_error_strings();
-        ::ERR_load_BIO_strings();
-        ::ERR_load_crypto_strings();
-
-        // Initalizing the SSL Context structure
-        poSSL_CTX = ::SSL_CTX_new(TLS_method());
-        if (nullptr == poSSL_CTX)
-        {
-            ::SSL_CTX_free(poSSL_CTX);
-            _ThrowBaseException("SSL_CTX_new() failed.", nullptr);
-        }
-
-        // TODO temporary resort until the key pair can be provided by the planned TrustStore
-        if (eSSLModeServer == connectionMode)
-        {
-            /* Load certificate and private key files, and check consistency */
-            this->LoadServerCTXKeyAndCertificate(poSSL_CTX);
-        }
-
-        // Options Set: To support just TLS1.2 for now
-        // SSL_OP_ALL: Bug workarounds
-        // SSL_OP_NO_SSLv2: Do not use the SSLv2 protocol
-        // SSL_OP_NO_SSLv3: Do not use the SSLv3 protocol
-        // SSL_OP_NO_TLSv1_1: Do not use the TLSv1.1 protocol
-        // SSL_OP_NO_TLSv1_3: Do not use the TLSv1.3 protocol.
-        // SSL_OP_NO_TLSv1: Do not use the TLSv1 protocol.
-        ::SSL_CTX_set_options(poSSL_CTX, SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1_1|SSL_OP_NO_TLSv1_3|SSL_OP_NO_TLSv1);
-
-        m_poReadBIO = ::BIO_new(BIO_s_mem());
-        m_poWriteBIO = ::BIO_new(BIO_s_mem());
-        m_poSSL = ::SSL_new(poSSL_CTX);
-
-        // Free the pointer
-        ::SSL_CTX_free(poSSL_CTX);
-
-        // Set the SSL Context based on the connection mode
-        if (eSSLModeServer == connectionMode)
-        {
-            ::SSL_set_accept_state(m_poSSL);
-        }
-        else if (eSSLModeClient == connectionMode)
-        {
-            ::SSL_set_connect_state(m_poSSL);
-        }
-
-        ::SSL_set_bio(m_poSSL, m_poReadBIO, m_poWriteBIO);
-    
-        //Perform the TLS Handhshake with a default timeout of 15 second
-        this->SSLHandshake(15000);
+        /* Load certificate and private key files, and check consistency */
+        this->LoadServerCTXKeyAndCertificate(poSSL_CTX.get());
     }
-    catch (BaseException oException)
+
+    // Options Set: To support just TLS1.2 for now
+    // SSL_OP_ALL: Bug workarounds
+    // SSL_OP_NO_SSLv2: Do not use the SSLv2 protocol
+    // SSL_OP_NO_SSLv3: Do not use the SSLv3 protocol
+    // SSL_OP_NO_TLSv1_1: Do not use the TLSv1.1 protocol
+    // SSL_OP_NO_TLSv1_3: Do not use the TLSv1.3 protocol.
+    // SSL_OP_NO_TLSv1: Do not use the TLSv1 protocol.
+    ::SSL_CTX_set_options(poSSL_CTX.get(), SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1_1|SSL_OP_NO_TLSv1_3|SSL_OP_NO_TLSv1);
+    m_poSSL.reset(::SSL_new(poSSL_CTX.get()));
+
+    // Set the SSL Context based on the connection mode
+    if (eSSLModeServer == connectionMode)
     {
-        // Release the pointer then throw an exception
-        if (nullptr != poSSL_CTX)
-        {
-            ::SSL_CTX_free(poSSL_CTX);
-        }
-        _ThrowBaseException(oException.GetExceptionMessage(), nullptr);
+        ::SSL_set_accept_state(m_poSSL.get());
     }
-    catch(...)
+    else if (eSSLModeClient == connectionMode)
     {
-        if (nullptr != poSSL_CTX)
-        {
-            ::SSL_CTX_free(poSSL_CTX);
-        }
-        _ThrowBaseException("Unknown Exception Caught!", nullptr);
+        ::SSL_set_connect_state(m_poSSL.get());
     }
+
+    ::SSL_set_bio(m_poSSL.get(), m_poReadBIO, m_poWriteBIO);
+
+    //Perform the TLS Handhshake with a default timeout of 15 second
+    this->SSLHandshake(15000);
 }
 
 /********************************************************************************************
@@ -133,12 +98,6 @@ TlsNode::~TlsNode(void)
 {
     __DebugFunction();
 
-    // The socket object is released
-    m_poSocket->Release();
-    // Release other data members
-    m_stlTlsHeaderCache.clear();
-    //SSL_free will also free the read/writes BIOs attached to it
-    ::SSL_free(m_poSSL);
 }
 
 /********************************************************************************************
@@ -157,73 +116,83 @@ TlsNode::~TlsNode(void)
 std::vector<Byte> __thiscall TlsNode::Read(
     _in unsigned int unNumberOfDesiredBytes,
     _in unsigned int unMillisecondTimeout
-    )
+    ) throw()
 {
     __DebugFunction();
 
     std::vector<Byte> stlDestinationBuffer;
 
-    // Try to read the unNumberOfDesiredBytes from the cache. It would return the
-    // buffer of unNumberOfDesiredBytes size only if desired bytes are available
-    stlDestinationBuffer = m_oDecryptedBytesCache.Read(unNumberOfDesiredBytes);
-
-    // In case there was no sufficient data in the cache, attempt is made to read from socket
-    if ((0 == stlDestinationBuffer.size()) && (0 < unMillisecondTimeout))
+    try
     {
-        int nBytesRead = 0;
-        Chronometer oChronometer;
-        oChronometer.Start();
+        // Try to read the unNumberOfDesiredBytes from the cache. It would return the
+        // buffer of unNumberOfDesiredBytes size only if desired bytes are available
+        stlDestinationBuffer = m_oDecryptedBytesCache.Read(unNumberOfDesiredBytes);
 
-        while ((nBytesRead < unNumberOfDesiredBytes) && ((unMillisecondTimeout > oChronometer.GetElapsedTimeWithPrecision(Millisecond))))
+        // In case there was no sufficient data in the cache, attempt is made to read from socket
+        if ((0 == stlDestinationBuffer.size()) && (0 < unMillisecondTimeout))
         {
-            // The SSL header is always cached to prevent the data loss in case the data read
-            // times out and the socket FIFO buffer is only left with the data without header.
-            // In case the backed up header is empty, a fresh header is read from the socket.
-            if (5 != m_stlTlsHeaderCache.size())
+            int nBytesRead = 0;
+            Chronometer oChronometer;
+            oChronometer.Start();
+
+            while ((nBytesRead < unNumberOfDesiredBytes) && ((unMillisecondTimeout > oChronometer.GetElapsedTimeWithPrecision(Millisecond))))
             {
-                // First 5 bytes are read, which is the size of the SSL layer header
-                m_stlTlsHeaderCache = m_poSocket->Read(5, (unMillisecondTimeout - oChronometer.GetElapsedTimeWithPrecision(Millisecond)));
-            }
-            else if ((5 == m_stlTlsHeaderCache.size()) && ((unMillisecondTimeout > oChronometer.GetElapsedTimeWithPrecision(Millisecond))))
-            {
-                // the length of SSL record data is extracted from the 4th and 5th byte of
-                // the SSL header. The subsequent read will read the required bytes
-                int nEncryptedDataSize = m_stlTlsHeaderCache.at(3)*256 + m_stlTlsHeaderCache.at(4);
-                std::vector<Byte> stlEncryptedDataReadBuffer = m_poSocket->Read(nEncryptedDataSize, unMillisecondTimeout - oChronometer.GetElapsedTimeWithPrecision(Millisecond));
-                _ThrowBaseExceptionIf((stlEncryptedDataReadBuffer.size() != nEncryptedDataSize), "TLS Read failed: Read Timeout", nullptr);
-
-                // Write the TLS header to the read BIO for the SSL_read to use
-                _ThrowBaseExceptionIf((5 != ::BIO_write(m_poReadBIO, m_stlTlsHeaderCache.data(), 5)), "TLS Read failed: Writing to readBIO failed", nullptr);
-
-                // Since the Header has been consumed and written to the readBIO,
-                // it should be cleaned.
-                m_stlTlsHeaderCache.clear();
-
-                // Write the actual read data to the readBIO. This call only fails when the
-                // process runs out of memory to write more data.
-                _ThrowBaseExceptionIf((nEncryptedDataSize != ::BIO_write(m_poReadBIO, stlEncryptedDataReadBuffer.data(), nEncryptedDataSize)), "TLS Read failed: Writing to readBIO failed", nullptr);
-
-                // Allocating a FIFO buffer reserve for the next SSL_read of dencrypted data.
-                // It is not possible to figure out the amount of data SSL_read will
-                // write beforehand. Assuming that the decrypted data length will not be
-                // larger than the encrypted data length, nEncryptedDataSize is used.
-                Byte * pbCircularBufferDestination = m_oDecryptedBytesCache.WriteLock(nEncryptedDataSize);
-                if (nullptr != pbCircularBufferDestination)
+                // The SSL header is always cached to prevent the data loss in case the data read
+                // times out and the socket FIFO buffer is only left with the data without header.
+                // In case the backed up header is empty, a fresh header is read from the socket.
+                if (5 != m_stlTlsHeaderCache.size())
                 {
-                    // SSL_read will process and decrypt the record and read the bytes
-                    int nBytesActualRead = ::SSL_read(m_poSSL, pbCircularBufferDestination, nEncryptedDataSize);
-                    _ThrowBaseExceptionIf((0 > nBytesActualRead), "TLS Read failed: Reading from readBIO failed", nullptr);
-                    nBytesRead += nBytesActualRead;
-                    // WriteUnlock will put the data into the FIFO buffer.
-                    m_oDecryptedBytesCache.WriteUnlock(nBytesActualRead);
+                    // First 5 bytes are read, which is the size of the SSL layer header
+                    m_stlTlsHeaderCache = m_poSocket->Read(5, (unMillisecondTimeout - oChronometer.GetElapsedTimeWithPrecision(Millisecond)));
+                }
+                else if ((5 == m_stlTlsHeaderCache.size()) && ((unMillisecondTimeout > oChronometer.GetElapsedTimeWithPrecision(Millisecond))))
+                {
+                    // the length of SSL record data is extracted from the 4th and 5th byte of
+                    // the SSL header. The subsequent read will read the required bytes
+                    int nEncryptedDataSize = m_stlTlsHeaderCache.at(3)*256 + m_stlTlsHeaderCache.at(4);
+                    std::vector<Byte> stlEncryptedDataReadBuffer = m_poSocket->Read(nEncryptedDataSize, unMillisecondTimeout - oChronometer.GetElapsedTimeWithPrecision(Millisecond));
+                    _ThrowBaseExceptionIf((stlEncryptedDataReadBuffer.size() != nEncryptedDataSize), "TLS Read failed: Read Timeout", nullptr);
+
+                    // Write the TLS header to the read BIO for the SSL_read to use
+                    _ThrowBaseExceptionIf((5 != ::BIO_write(m_poReadBIO, m_stlTlsHeaderCache.data(), 5)), "TLS Read failed: Writing to readBIO failed", nullptr);
+
+                    // Since the Header has been consumed and written to the readBIO,
+                    // it should be cleaned.
+                    m_stlTlsHeaderCache.clear();
+
+                    // Write the actual read data to the readBIO. This call only fails when the
+                    // process runs out of memory to write more data.
+                    _ThrowBaseExceptionIf((nEncryptedDataSize != ::BIO_write(m_poReadBIO, stlEncryptedDataReadBuffer.data(), nEncryptedDataSize)), "TLS Read failed: Writing to readBIO failed", nullptr);
+
+                    // Allocating a FIFO buffer reserve for the next SSL_read of dencrypted data.
+                    // It is not possible to figure out the amount of data SSL_read will
+                    // write beforehand. Assuming that the decrypted data length will not be
+                    // larger than the encrypted data length, nEncryptedDataSize is used.
+                    Byte * pbCircularBufferDestination = m_oDecryptedBytesCache.WriteLock(nEncryptedDataSize);
+                    if (nullptr != pbCircularBufferDestination)
+                    {
+                        // SSL_read will process and decrypt the record and read the bytes
+                        int nBytesActualRead = ::SSL_read(m_poSSL.get(), pbCircularBufferDestination, nEncryptedDataSize);
+                        _ThrowBaseExceptionIf((0 > nBytesActualRead), "TLS Read failed: Reading from readBIO failed", nullptr);
+                        nBytesRead += nBytesActualRead;
+                        // WriteUnlock will put the data into the FIFO buffer.
+                        m_oDecryptedBytesCache.WriteUnlock(nBytesActualRead);
+                    }
                 }
             }
+            // A new attempt is made to read the unNumberOfDesiredBytes from the FIFO
+            // In case the unNumberOfDesiredBytes are not available it will return
+            // an empty buffer but whatever was cached is not lost
+            stlDestinationBuffer = m_oDecryptedBytesCache.Read(unNumberOfDesiredBytes);
         }
-        
-        // A new attempt is made to read the unNumberOfDesiredBytes from the FIFO
-        // In case the unNumberOfDesiredBytes are not available it will return
-        // an empty buffer but whatever was cached is not lost
-        stlDestinationBuffer = m_oDecryptedBytesCache.Read(unNumberOfDesiredBytes);
+    }
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return stlDestinationBuffer;
@@ -244,27 +213,40 @@ std::vector<Byte> __thiscall TlsNode::Read(
 int __thiscall TlsNode::Write(
     _in const Byte * c_pbSourceBuffer,
     _in unsigned int unNumberOfBytesToWrite
-    )
+    ) throw()
 {
     __DebugFunction();
 
-    // Write the data to the BIO and throw exception in case it fails
-    // c_pbSourceBuffer is the unencrypted data, the data written to the writeBIO is encrypted
-    int nUnencryptedBytesWrittenToBIO = ::SSL_write(m_poSSL, c_pbSourceBuffer, unNumberOfBytesToWrite);
-    _ThrowBaseExceptionIf((nUnencryptedBytesWrittenToBIO != unNumberOfBytesToWrite), "TLS Write failed: Failed to write data to writeBIO", nullptr);
+    int nUnencryptedBytesWrittenToBIO = 0;
 
-    // Get the pointer(pDataInWriteBIO) to the data in the write BIO and
-    // write it to the socket descriptor connected to the other side of the TLS connection
-    Byte * pDataInWriteBIO = nullptr;
-    size_t nDataInWriteBIO = ::BIO_get_mem_data(m_poWriteBIO, &pDataInWriteBIO);
-    if ((0 < nDataInWriteBIO) && (nullptr != pDataInWriteBIO))
+    try
     {
-        int nActualBytesWritten = m_poSocket->Write(pDataInWriteBIO, nDataInWriteBIO);
-        _ThrowBaseExceptionIf((nActualBytesWritten != nDataInWriteBIO), "TLS Write failed: Failed to write data to socket", nullptr);
+        // Write the data to the BIO and throw exception in case it fails
+        // c_pbSourceBuffer is the unencrypted data, the data written to the writeBIO is encrypted
+        nUnencryptedBytesWrittenToBIO = ::SSL_write(m_poSSL.get(), c_pbSourceBuffer, unNumberOfBytesToWrite);
+        _ThrowBaseExceptionIf((nUnencryptedBytesWrittenToBIO != unNumberOfBytesToWrite), "TLS Write failed: Failed to write data to writeBIO", nullptr);
 
-        // Reset the buffer to the original no-data state as all of it has been read
-        // and sent to the socket
-        _ThrowBaseExceptionIf((1 != ::BIO_ctrl(m_poWriteBIO, BIO_CTRL_RESET, 0, nullptr)), "TLS failed: Write BIO reset failed", nullptr);
+        // Get the pointer(pDataInWriteBIO) to the data in the write BIO and
+        // write it to the socket descriptor connected to the other side of the TLS connection
+        Byte * pDataInWriteBIO = nullptr;
+        size_t nDataInWriteBIO = ::BIO_get_mem_data(m_poWriteBIO, &pDataInWriteBIO);
+        if ((0 < nDataInWriteBIO) && (nullptr != pDataInWriteBIO))
+        {
+            int nActualBytesWritten = m_poSocket->Write(pDataInWriteBIO, nDataInWriteBIO);
+            _ThrowBaseExceptionIf((nActualBytesWritten != nDataInWriteBIO), "TLS Write failed: Failed to write data to socket", nullptr);
+
+            // Reset the buffer to the original no-data state as all of it has been read
+            // and sent to the socket
+            _ThrowBaseExceptionIf((1 != ::BIO_ctrl(m_poWriteBIO, BIO_CTRL_RESET, 0, nullptr)), "TLS failed: Write BIO reset failed", nullptr);
+        }
+    }
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
     }
 
     return nUnencryptedBytesWrittenToBIO;
@@ -300,12 +282,12 @@ void __thiscall TlsNode::SSLHandshake(
         int nSSLError = SSL_ERROR_NONE;
         // Client mode handshake will send the 'Client Hello' to server and wait for respnse
         // Server mode handhsake will be in listening mode and wait for 'Client Hello'
-        int nSSLHandhsakeStatus = ::SSL_do_handshake(m_poSSL);
+        int nSSLHandhsakeStatus = ::SSL_do_handshake(m_poSSL.get());
         if (0 > nSSLHandhsakeStatus)
         {
             // Get the state at which the handshake was not completed i.e. if it failed in
             // writing to or reading a response from the underlying BIO
-            nSSLError = ::SSL_get_error(m_poSSL, nSSLHandhsakeStatus);
+            nSSLError = ::SSL_get_error(m_poSSL.get(), nSSLHandhsakeStatus);
         }
 
         // Get the pointer(pDataInWriteBIO) to the data in the write BIO and
@@ -343,7 +325,7 @@ void __thiscall TlsNode::SSLHandshake(
         }
         _ThrowBaseExceptionIf((unMillisecondTimeout < oChronometer.GetElapsedTimeWithPrecision(Millisecond)), "TLS Handshake failed: Handshake Timeout", nullptr);
     }
-    while (1 != SSL_is_init_finished(m_poSSL));
+    while (1 != SSL_is_init_finished(m_poSSL.get()));
 }
 
 /********************************************************************************************
@@ -363,73 +345,39 @@ void __thiscall TlsNode::LoadServerCTXKeyAndCertificate(
     _in SSL_CTX * poSSL_CTX
     ) const
 {
-    EVP_PKEY * poPrivateKey = nullptr;
-    X509 * poX509Certificate = nullptr;
+    __DebugFunction();
 
-    try 
-    {
-        // Create a BIO buffer to read the keys and certificates from
-        std::unique_ptr<BIO, decltype(&::BIO_free)> poBio(::BIO_new(BIO_s_mem()), ::BIO_free);
-        _ThrowBaseExceptionIf((nullptr == poBio), "Creating BIO buffer failed.", nullptr);
+    // Create a BIO buffer to read the keys and certificates from
+    std::unique_ptr<BIO, decltype(&::BIO_free)> poBio(::BIO_new(BIO_s_mem()), ::BIO_free);
+    _ThrowBaseExceptionIf((nullptr == poBio), "Creating BIO buffer failed.", nullptr);
 
-        // Convert the private key from the PEM format to EVP_PKEY
-        int nBytesWrittenToBio = ::BIO_write(poBio.get(), gc_abInitializerTlsPrivateKey, gc_unInitializerTlsPrivateKeySizeInBytes);
-        _ThrowBaseExceptionIf((gc_unInitializerTlsPrivateKeySizeInBytes != nBytesWrittenToBio), "Writing to BIO buffer failed.", nullptr);
+    // Convert the private key from the PEM format to EVP_PKEY
+    int nBytesWrittenToBio = ::BIO_write(poBio.get(), gc_abInitializerTlsPrivateKey, gc_unInitializerTlsPrivateKeySizeInBytes);
+    _ThrowBaseExceptionIf((gc_unInitializerTlsPrivateKeySizeInBytes != nBytesWrittenToBio), "Writing to BIO buffer failed.", nullptr);
 
-        ::PEM_read_bio_PrivateKey(poBio.get(), &poPrivateKey, 0, 0);
+    std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)> poPrivateKey(::PEM_read_bio_PrivateKey(poBio.get(), nullptr, nullptr, nullptr), ::EVP_PKEY_free);
+    _ThrowIfNull(poPrivateKey, "Copy key for TLs failed", nullptr);
 
-        long nBIOctrlStatus = ::BIO_ctrl(poBio.get(), BIO_CTRL_RESET, 0, nullptr);
-        _ThrowBaseExceptionIf((1 != nBIOctrlStatus),"TLS failed: Write BIO reset failed", nullptr);
+    long nBIOctrlStatus = ::BIO_ctrl(poBio.get(), BIO_CTRL_RESET, 0, nullptr);
+    _ThrowBaseExceptionIf((1 != nBIOctrlStatus),"TLS failed: Write BIO reset failed", nullptr);
 
-        // Convert the certificate from PEM to X509
-        nBytesWrittenToBio = ::BIO_write(poBio.get(), gc_abInitializerTlsPublicKeyCertificate, gc_unInitializerTlsPublicKeyCertificateSizeInBytes);
-        _ThrowBaseExceptionIf((gc_unInitializerTlsPublicKeyCertificateSizeInBytes != nBytesWrittenToBio), "Writing to BIO buffer failed.", nullptr);
+    // Convert the certificate from PEM to X509
+    nBytesWrittenToBio = ::BIO_write(poBio.get(), gc_abInitializerTlsPublicKeyCertificate, gc_unInitializerTlsPublicKeyCertificateSizeInBytes);
+    _ThrowBaseExceptionIf((gc_unInitializerTlsPublicKeyCertificateSizeInBytes != nBytesWrittenToBio), "Writing to BIO buffer failed.", nullptr);
 
-        ::PEM_read_bio_X509(poBio.get(), &poX509Certificate, 0, 0);
+    std::unique_ptr<X509, decltype(&X509_free)> poX509Certificate(::PEM_read_bio_X509(poBio.get(), nullptr, nullptr, nullptr), ::X509_free);
+    _ThrowIfNull(poX509Certificate, "Could not create certificate for TLS", nullptr);
 
-        nBIOctrlStatus = ::BIO_ctrl(poBio.get(), BIO_CTRL_RESET, 0, nullptr);
-        _ThrowBaseExceptionIf((1 != nBIOctrlStatus), "TLS failed: Write BIO reset failed", nullptr);
+    nBIOctrlStatus = ::BIO_ctrl(poBio.get(), BIO_CTRL_RESET, 0, nullptr);
+    _ThrowBaseExceptionIf((1 != nBIOctrlStatus), "TLS failed: Write BIO reset failed", nullptr);
 
-        int nSSLStatus = ::SSL_CTX_use_certificate(poSSL_CTX, poX509Certificate);
-        _ThrowBaseExceptionIf((1 != nSSLStatus), "SSL_CTX_use_certificate failed\n", nullptr);
+    int nSSLStatus = ::SSL_CTX_use_certificate(poSSL_CTX, poX509Certificate.get());
+    _ThrowBaseExceptionIf((1 != nSSLStatus), "SSL_CTX_use_certificate failed\n", nullptr);
 
-        nSSLStatus = ::SSL_CTX_use_PrivateKey(poSSL_CTX, poPrivateKey);
-        _ThrowBaseExceptionIf((1 != nSSLStatus), "SSL_CTX_use_PrivateKey_file failed\n", nullptr);
+    nSSLStatus = ::SSL_CTX_use_PrivateKey(poSSL_CTX, poPrivateKey.get());
+    _ThrowBaseExceptionIf((1 != nSSLStatus), "SSL_CTX_use_PrivateKey_file failed\n", nullptr);
 
-        /* Make sure the key and certificate file match. */
-        nSSLStatus = ::SSL_CTX_check_private_key(poSSL_CTX);
-        _ThrowBaseExceptionIf((1 != nSSLStatus), "SSL_CTX_check_private_key failed\n", nullptr);
-
-        // Free the pointers
-        ::EVP_PKEY_free(poPrivateKey);
-        ::X509_free(poX509Certificate);
-    }
-    catch (BaseException oException)
-    {
-        // Release the pointers and then throw the base exception 
-        if (nullptr != poPrivateKey)
-        {
-            ::EVP_PKEY_free(poPrivateKey);
-        }
-        if (nullptr != poX509Certificate)
-        {
-            ::X509_free(poX509Certificate);
-        }
-
-        _ThrowBaseException(oException.GetExceptionMessage(), nullptr);
-    }
-    catch (...)
-    {
-        // Release the pointers and then throw the base exception 
-        if (nullptr != poPrivateKey)
-        {
-            ::EVP_PKEY_free(poPrivateKey);
-        }
-        if (nullptr != poX509Certificate)
-        {
-            ::X509_free(poX509Certificate);
-        }
-
-        _ThrowBaseException("Unknown exception caught.", nullptr);
-    }
+    /* Make sure the key and certificate file match. */
+    nSSLStatus = ::SSL_CTX_check_private_key(poSSL_CTX);
+    _ThrowBaseExceptionIf((1 != nSSLStatus), "SSL_CTX_check_private_key failed\n", nullptr);
 }

@@ -107,7 +107,7 @@ void * __stdcall FileSystemWatcherThread(void * poThreadParameter)
 
 std::string DataConnectorGetTable(
     _in std::string strTableUuid,
-    _in unsigned int unTableId
+    _in std::string strTableName
 )
 {
     __DebugFunction();
@@ -118,7 +118,7 @@ std::string DataConnectorGetTable(
     StructuredBuffer oRequest;
 
     oRequest.PutInt8("RequestType", eGetTable);
-    oRequest.PutUnsignedInt32("TableID", unTableId);
+    oRequest.PutString("TableName", strTableName);
 
     std::vector<Byte> stlResponse = ::PutIpcTransactionAndGetResponse(poSocket, oRequest, false);
 

@@ -5,6 +5,10 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using Microsoft.VisualBasic.FileIO;
+using System.Globalization;
+using CsvHelper;
+using CsvHelper.Configuration;
 
 namespace DataSetSpecification
 {
@@ -63,7 +67,7 @@ namespace DataSetSpecification
             foreach (DataRow row in dataTable.Rows)
             {
                 IEnumerable<string> fields = row.ItemArray.Select(field => field.ToString());
-                sb.AppendLine(string.Join(",", fields));
+                sb.AppendLine(string.Join("\x1f", fields));
             }
             return sb.ToString();
         }
@@ -122,50 +126,75 @@ namespace DataSetSpecification
             FlowPanelColumnInfo.Controls.Clear();
             DataTable dataTable = new DataTable();
             string filePath = textBox1.Text;
+
             if (filePath != "")
             {
                 FileInfo fi = new FileInfo(filePath);
                 filesize.Text = fi.Length.ToString() + " bytes";
-                bool first = true;
-                IEnumerable<string> lines;
-                try
+
+                // find the delimiter
+                string delimiter = ",";
+                int Tchar = 0;
+                StreamReader reader;
+                reader = new StreamReader(filePath);
+                do
                 {
-                    lines = System.IO.File.ReadLines(filePath);
-                    foreach (string line in lines)
+                    char ch = (char)reader.Read();
+                    if (ch == ',')
                     {
-                        string[] oneLine = line.Split(',');
-                        if (first)
-                        {
-                            foreach (string entry in oneLine)
-                            {
-                                dataTable.Columns.Add(m_numberOfColumns.ToString());
-                                m_numberOfColumns++;
-                                UserControlTableColumn cc = new UserControlTableColumn();
-                                cc.Controls.Find("label1", true)[0].Text = entry;
-                                FlowPanelColumnInfo.Controls.Add(cc);
-                            }
-                            first = false;
-                        }
-                        dataTable.Rows.Add(oneLine);
-                        m_numberOfRows++;
+                        delimiter = ",";
+                        break;
                     }
-                    dataGridView1.DataSource = dataTable;
-                    foreach (DataGridViewRow onerow in dataGridView1.Rows)
+                    else if (';' == ch)
                     {
-                        onerow.ReadOnly = true;
+                        delimiter = ";";
+                        break;
                     }
-                    rows.Text = m_numberOfRows.ToString();
-                    columns.Text = m_numberOfColumns.ToString();
-                    m_tableUUID = System.Guid.NewGuid();
-                    ButtonAddHeader.Show();
-                    ButtonEditHeader.Show();
-                    m_addHeaderButtonVisibility = 10;
-                    m_editHeaderButtonVisibility = 10;
-                }
-                catch (System.Exception)
+                    Tchar++;
+                } while (!reader.EndOfStream);
+                reader.Close();
+                reader.Dispose();
+
+                var config = new CsvConfiguration(CultureInfo.CurrentCulture)
                 {
-                    ;
+                    Delimiter = delimiter,
+                    Comment = '#',
+                    Quote = '"',
+                    HasHeaderRecord = true,
+                    MissingFieldFound = null,
+                };
+
+                var oStreamreader = new StreamReader(filePath);
+                var csv = new CsvReader(oStreamreader, config);
+                // Do any configuration to `CsvReader` before creating CsvDataReader.
+                var dr = new CsvDataReader(csv);
+                var dt = new DataTable();
+                dt.Load(dr);
+                DataRow headerRow = dt.NewRow();
+                headerRow.ItemArray = csv.HeaderRecord;
+                dt.Rows.InsertAt(headerRow, 0);
+                dataGridView1.DataSource = dt;
+                m_numberOfRows = (uint)dt.Rows.Count;
+                m_numberOfColumns = (uint)dt.Columns.Count;
+
+                foreach (string field in csv.HeaderRecord)
+                {
+                    UserControlTableColumn cc = new UserControlTableColumn();
+                    cc.Controls.Find("label1", true)[0].Text = field;
+                    FlowPanelColumnInfo.Controls.Add(cc);
                 }
+
+                foreach (DataGridViewRow onerow in dataGridView1.Rows)
+                {
+                    onerow.ReadOnly = true;
+                }
+                rows.Text = m_numberOfRows.ToString();
+                columns.Text = m_numberOfColumns.ToString();
+                m_tableUUID = System.Guid.NewGuid();
+                ButtonAddHeader.Show();
+                ButtonEditHeader.Show();
+                m_addHeaderButtonVisibility = 10;
+                m_editHeaderButtonVisibility = 10;
             }
         }
 

@@ -170,7 +170,7 @@ void __thiscall CommunicationPortal::PersistantConnectionTlsToIpc(
     }
     catch (BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch (std::exception & oException)
     {
@@ -181,6 +181,9 @@ void __thiscall CommunicationPortal::PersistantConnectionTlsToIpc(
     {
         ::RegisterUnknownException(__func__, __LINE__);
     }
+
+    std::cout << "\n\n\n Exiting PersistantConnectionTlsToIpc. Something happened.\n\n\n";
+    fflush(stdout);
 }
 
 /********************************************************************************************
@@ -251,7 +254,7 @@ void __thiscall CommunicationPortal::OneTimeConnectionHandler(
     }
     catch (BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch (std::exception & oException)
     {
@@ -298,6 +301,8 @@ void __thiscall CommunicationPortal::HandleConnection(
             // This is blocking call and will exit only when the end connection signal is received via IPC
             // from the JobEngine
             this->PersistantConnectionIpcToTls(m_stlMapOfProcessToIpcSocket.at(strEndPoint), c_poTlsNode);
+            std::cout << "\n\n\n########### Connection terminated ##############\n\n\n";
+            fflush(stdout);
         }
         else
         {
@@ -307,7 +312,7 @@ void __thiscall CommunicationPortal::HandleConnection(
     }
     catch (BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch (std::exception & oException)
     {

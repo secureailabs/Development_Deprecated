@@ -789,7 +789,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         stlEosb.clear();
     }
     catch (...)
@@ -857,7 +857,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RefreshEosb(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponseEosb.Clear();
     }
     catch (...)
@@ -1071,7 +1071,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RegisterEosb(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponseEosb.Clear();
     }
     catch (...)
@@ -1128,7 +1128,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::UnregisterEosb(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponseEosb.Clear();
     }
     catch (...)
@@ -1181,7 +1181,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::UpdateUserAccessR
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)
@@ -1236,7 +1236,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::UpdateUserInforma
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)
@@ -1288,7 +1288,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::ModifyEosbAccessR
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)
@@ -1343,7 +1343,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::CheckEosbAccessRi
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)
@@ -1572,7 +1572,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::SignMessageDigest
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponseSignature.Clear();
     }
     catch (...)
@@ -1644,7 +1644,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::VerifySignature(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponseSignature.Clear();
     }
     catch (...)
@@ -1860,7 +1860,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::CreateDigitalSign
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)
@@ -1918,7 +1918,7 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GetUserInfoAndUpd
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)

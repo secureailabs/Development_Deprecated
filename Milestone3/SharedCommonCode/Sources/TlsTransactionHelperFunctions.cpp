@@ -97,7 +97,7 @@ std::vector<Byte> __stdcall GetTlsTransaction(
             {
                 // Don't worry about reading things in chunks and caching it since the TlsNode
                 // object does it for us!!!
-                stlSerializedTransactionBuffer = poTlsNode->Read(unSizeInBytesOfSerializedTransactionBuffer, 1000);
+                stlSerializedTransactionBuffer = poTlsNode->Read(unSizeInBytesOfSerializedTransactionBuffer, unMillisecondTimeout);
                 _ThrowBaseExceptionIf(((0 != stlSerializedTransactionBuffer.size())&&(unSizeInBytesOfSerializedTransactionBuffer != stlSerializedTransactionBuffer.size())), "Failed to read data from the Tls tunnel", nullptr);
             }
             while (unSizeInBytesOfSerializedTransactionBuffer != stlSerializedTransactionBuffer.size());

@@ -95,7 +95,7 @@ static void * RootOfTrustIpcListenerThread(
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         // If there is an exception here, this means that the RootOfTrust process is
         // truly wrecked. We need to signal termination across the board
         StatusMonitor oStatusMonitor("void __thiscall RootOfTrustCore::RootOfTrustIpcListenerThread(void)");
@@ -134,7 +134,7 @@ static void * RootOfTrustTransactionHandlerThread(
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     
     catch (...)
@@ -169,7 +169,7 @@ static void * RootOfTrustAuditEventDispatcherThread(
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     
     catch (...)
@@ -338,7 +338,7 @@ void __thiscall RootOfTrustCore::AuditEventDispatcher(void)
         
         catch (BaseException oException)
         {
-            ::RegisterException(oException, __func__, __LINE__);
+            ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         }
         
         catch(...)
@@ -503,7 +503,7 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactGetDataSet(
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponseBuffer.PutBoolean("Success", false);
     }
 
@@ -587,7 +587,7 @@ std::vector<Byte> __thiscall RootOfTrustCore::TransactRecordAuditEvent(
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponseBuffer.PutBoolean("Success", false);
     }
 
@@ -654,7 +654,7 @@ bool __thiscall RootOfTrustCore::InitializeVirtualMachine(void)
 
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
 
     catch(...)
@@ -688,7 +688,7 @@ bool __thiscall RootOfTrustCore::RegisterDataOwnerEosb(void)
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     
     catch(...)
@@ -722,7 +722,7 @@ bool __thiscall RootOfTrustCore::RegisterResearcherEosb(void)
     
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     
     catch(...)

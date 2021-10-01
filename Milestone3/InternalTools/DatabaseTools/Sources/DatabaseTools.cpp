@@ -477,6 +477,7 @@ void __thiscall DatabaseTools::DeleteDatabase(void)
         bool fSuccess = false;
         TlsNode * poTlsNode = nullptr;
         poTlsNode = ::TlsConnectToNetworkSocket(g_szServerIpAddress, g_unPortNumber);
+        _ThrowIfNull(poTlsNode, "TlsConnectToNetworkSocketWithTimeout failed.", nullptr);
 
         std::string strHttpLoginRequest = "DELETE /SAIL/AuthenticationManager/Admin/ResetDatabase HTTP/1.1\r\n"
                                         "Accept: */*\r\n"

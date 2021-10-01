@@ -1,5 +1,6 @@
 ./DataSetSpecification/bin/*
 ./DataSetSpecification/obj/*
+./packages/*
 
 # User-specific files
 *.suo

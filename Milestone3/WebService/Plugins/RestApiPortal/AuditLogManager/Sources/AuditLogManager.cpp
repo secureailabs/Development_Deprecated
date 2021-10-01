@@ -677,7 +677,7 @@ std::vector<Byte> __thiscall AuditLogManager::GetUserInfo(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
     }
     catch (...)
@@ -752,7 +752,7 @@ std::vector<Byte> __thiscall AuditLogManager::AddNonLeafEvent(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -840,7 +840,7 @@ std::vector<Byte> __thiscall AuditLogManager::AddLeafEvent(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oStatus.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -927,7 +927,7 @@ std::vector<Byte> __thiscall AuditLogManager::GetListOfEvents(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oAuditLogs.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1007,7 +1007,7 @@ std::vector<Byte> __thiscall AuditLogManager::DigitalContractBranchExists(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oAuditLog.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)

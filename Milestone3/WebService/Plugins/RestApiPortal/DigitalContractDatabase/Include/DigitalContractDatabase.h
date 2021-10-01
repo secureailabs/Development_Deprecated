@@ -40,7 +40,7 @@ class DigitalContractDatabase : public Object
         DigitalContractDatabase(void);
         DigitalContractDatabase(
             _in const DigitalContractDatabase & c_oDigitalContractDatabase
-          );
+            );
         virtual ~DigitalContractDatabase(void);
 
         // Property accessor methods

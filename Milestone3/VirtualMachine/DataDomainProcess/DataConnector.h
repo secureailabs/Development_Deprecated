@@ -50,7 +50,7 @@ class DataConnector
             _in const std::vector<Byte> c_stlDataset,
             _in RootOfTrustNode * poRootOfTrustNode
             );
-        void __thiscall HandleRequestsUntilClose(
+        void __thiscall HandleRequest(
             _in Socket * poSocket
             ) const throw();
 

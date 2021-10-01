@@ -724,7 +724,7 @@ std::vector<Byte> __thiscall AzureManager::GetUserInfo(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -811,7 +811,7 @@ std::vector<Byte> __thiscall AzureManager::GetListOfAzureSettingsTemplates(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -899,7 +899,7 @@ std::vector<Byte> __thiscall AzureManager::PullAzureSettingsTemplate(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -999,7 +999,7 @@ std::vector<Byte> __thiscall AzureManager::RegisterAzureSettingsTemplate(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1095,7 +1095,7 @@ std::vector<Byte> __thiscall AzureManager::UpdateAzureSettingsTemplate(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1184,7 +1184,7 @@ std::vector<Byte> __thiscall AzureManager::DeleteAzureSettingsTemplate(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1366,7 +1366,7 @@ void __thiscall AzureManager::UpdateAzureTemplateResources(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch (...)
     {
@@ -1389,7 +1389,7 @@ void __thiscall AzureManager::UpdateAzureTemplateResources(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch (...)
     {
@@ -1461,7 +1461,7 @@ std::vector<Byte> __thiscall AzureManager::UpdateAzureTemplateState(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)

@@ -136,7 +136,7 @@
             this.textBox4.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.textBox4.Name = "textBox4";
             this.textBox4.Size = new System.Drawing.Size(683, 24);
-            this.textBox4.TabIndex = 45;
+            this.textBox4.TabIndex = 43;
             // 
             // label3
             // 
@@ -157,7 +157,7 @@
             this.textBox3.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.textBox3.Name = "textBox3";
             this.textBox3.Size = new System.Drawing.Size(683, 24);
-            this.textBox3.TabIndex = 43;
+            this.textBox3.TabIndex = 45;
             // 
             // label1
             // 

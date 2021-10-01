@@ -99,7 +99,7 @@ void __thiscall RemoteDataConnector::SetDatasetFolderAndRun(
         std::cout << "Existing file found " << stlFileInDirectory.path() << std::endl;
         if (true == stlFileInDirectory.is_regular_file())
         {
-            m_stlListOfThreadsForDatasets.push_back(std::thread(&RemoteDataConnector::NewDatasetFoundCallback, this, stlFileInDirectory.path()));
+            std::thread(&RemoteDataConnector::NewDatasetFoundCallback, this, stlFileInDirectory.path()).detach();
         }
     }
 
@@ -124,7 +124,7 @@ void __thiscall RemoteDataConnector::SetDatasetFolderAndRun(
             // For everyfile created we call a JobEngine callback function which should
             // find the most efficient way to handle such a file.
             std::cout << "FileCreateCallback for " << poInotifyEvent->name << std::endl;
-            m_stlListOfThreadsForDatasets.push_back(std::thread(&RemoteDataConnector::NewDatasetFoundCallback, this, c_strFolderName + "/" + poInotifyEvent->name));
+            std::thread(&RemoteDataConnector::NewDatasetFoundCallback, this, c_strFolderName + "/" + poInotifyEvent->name).detach();
         }
     }
 
@@ -184,7 +184,7 @@ void __thiscall RemoteDataConnector::NewDatasetFoundCallback(
     }
     catch (const BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch(...)
     {
@@ -217,7 +217,6 @@ void __thiscall RemoteDataConnector::SendDataConnectorHeartbeat(void) throw()
         // stop this thread.
         StructuredBuffer oHeartbeatRequest;
         oHeartbeatRequest.PutString("RemoteDataConnectorGuid", m_oGuidDataConnector.ToString(eHyphensAndCurlyBraces));
-        std::vector<std::thread> stlThreadsUploadingDataToVMs;
         do
         {
             // Send the ping to the REST portal and get a response stating if any
@@ -247,7 +246,7 @@ void __thiscall RemoteDataConnector::SendDataConnectorHeartbeat(void) throw()
                     if (m_stlSetOfVirtualMachineUploading.end() == m_stlSetOfVirtualMachineUploading.find(oVirtualMachineInformation.GetString("IPAddress")))
                     {
                         m_stlSetOfVirtualMachineUploading.insert(oVirtualMachineInformation.GetString("IPAddress"));
-                        stlThreadsUploadingDataToVMs.push_back(std::thread(&RemoteDataConnector::UploadDataSetToVirtualMachine, this, oVirtualMachineInformation.GetString("IPAddress"), oVirtualMachineInformation.GetString("DatasetGuid")));
+                        std::thread(&RemoteDataConnector::UploadDataSetToVirtualMachine, this, oVirtualMachineInformation.GetString("IPAddress"), oVirtualMachineInformation.GetString("DatasetGuid")).detach();
                     }
                 }
             }
@@ -280,18 +279,10 @@ void __thiscall RemoteDataConnector::SendDataConnectorHeartbeat(void) throw()
                 m_stlMapOfFileToDatasetsUuids.erase(strDatasetRemoved);
             }
         } while(true);
-
-        // Wait for all the threads to join, before thread is exited.
-        // This is a blocking call and will only exit when all the uploading threads have exited
-        // either with success or failure.
-        for (int nIndex = 0; nIndex < stlThreadsUploadingDataToVMs.size(); nIndex++)
-        {
-            stlThreadsUploadingDataToVMs.at(nIndex).join();
-        }
     }
     catch (const BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch(...)
     {
@@ -396,6 +387,7 @@ void __thiscall RemoteDataConnector::UploadDataSetToVirtualMachine(
         // Establish a connection with the Virtual Machine
         // Wait for connetion to establish for 10 minutes with a new attempt every 10 seconds
         TlsNode * poTlsNode = ::TlsConnectToNetworkSocketWithTimeout(c_strVirtualMachineAddress.c_str(), 6800, 10*60*1000, 10*1000);
+        _ThrowIfNull(poTlsNode, "TlsConnectToNetworkSocketWithTimeout failed.", nullptr);
         StructuredBuffer oResponse(::PutTlsTransactionAndGetResponse(poTlsNode, oInitializationParameters, 10*1000));
 
         if ("Success" == oResponse.GetString("Status"))
@@ -409,7 +401,7 @@ void __thiscall RemoteDataConnector::UploadDataSetToVirtualMachine(
     }
     catch (const BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch(...)
     {
@@ -537,7 +529,7 @@ StructuredBuffer __thiscall RemoteDataConnector::VerifyDataset(
     }
     catch (const BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         oDatasetInformation.Clear();
     }
     catch(...)
@@ -584,6 +576,7 @@ void __thiscall RemoteDataConnector::ManualUploadDataSetToVirtualMachine(
         // Establish a connection with the Virtual Machine
         // Wait for connetion to establish for 10 minutes with a new attempt every 10 seconds
         TlsNode * poTlsNode = ::TlsConnectToNetworkSocketWithTimeout(c_strVirtualMachineAddress.c_str(), 6800, 10*60*1000, 10*1000);
+        _ThrowIfNull(poTlsNode, "TlsConnectToNetworkSocketWithTimeout failed.", nullptr);
         StructuredBuffer oResponse(::PutTlsTransactionAndGetResponse(poTlsNode, oInitializationParameters, 10*1000));
 
         if ("Success" == oResponse.GetString("Status"))
@@ -597,7 +590,7 @@ void __thiscall RemoteDataConnector::ManualUploadDataSetToVirtualMachine(
     }
     catch (const BaseException & oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     catch(...)
     {

@@ -34,7 +34,40 @@ static std::string gs_strOrganizationIdentifier;
 static std::string gs_strAuthenticatedUserIdentifier;
 static Qword gs_qwAuthenticatedUserAccessRights;
 // Local global variables used to track information that was fetched from the Sail Web Api Portal
-static std::map<unsigned int, std::string> gs_strIndexedListOfSerializedBase64DigitalContracts;
+static std::map<unsigned int, std::string> gs_stlIndexedListOfSerializedBase64DigitalContracts;
+static Guid gs_oRemoteDataConnectorIdentifier;
+static std::map<Qword, std::string> gs_stlListOfRegisteredDatasetFiles;
+static std::map<Qword, std::string> gs_stlListOfNewDatasetFiles;
+
+/// <summary>
+/// 
+/// </summary>
+/// <param name="c_szFilename"></param>
+/// <returns></returns>
+static std::vector<Byte> __stdcall GetBinaryFileBuffer(
+    const char * c_szFilename
+    )
+{
+    __DebugFunction();
+
+    std::vector<Byte> stlBinaryBuffer;
+
+    // binary mode is only for switching off newline translation
+    std::ifstream stlFile(c_szFilename, std::ios::binary);
+    stlFile.unsetf(std::ios::skipws);
+    // Figure out the total size of the binary file
+    std::streampos stlFileSizeInBytes;
+    stlFile.seekg(0, std::ios::end);
+    stlFileSizeInBytes = stlFile.tellg();
+    // Reset the file pointer to the beginning before reading the file
+    stlFile.seekg(0, std::ios::beg);
+    // Make sure the buffer is large enough to receive the binary file
+    stlBinaryBuffer.reserve(stlFileSizeInBytes);
+    // Read the contents of the binary file into the buffer
+    stlBinaryBuffer.insert(stlBinaryBuffer.begin(), std::istream_iterator<Byte>(stlFile), std::istream_iterator<Byte>());
+
+    return stlBinaryBuffer;
+}
 
 /// <summary>
 /// We need this special function coupled with the SmartMemoryAllocator to make sure that we
@@ -401,7 +434,7 @@ extern "C" __declspec(dllexport) unsigned int __cdecl LoadDigitalContracts(void)
         // Extract the Eosb (in this case an importer EOSB) from the transaction response
         StructuredBuffer oDigitalContracts = oGetDigitalContractsResponse.GetStructuredBuffer("DigitalContracts");
         // Clear the currently cached list of Digital Contracts
-        gs_strIndexedListOfSerializedBase64DigitalContracts.clear();
+        gs_stlIndexedListOfSerializedBase64DigitalContracts.clear();
         // Now let's extract each individual digital contract and registered them in a way
         // were they can be accessed using an index. The StructuredBuffer is a collection of
         // StructuredBuffers whereas the name of each StructuredBuffer is the identifier
@@ -411,12 +444,12 @@ extern "C" __declspec(dllexport) unsigned int __cdecl LoadDigitalContracts(void)
         {
             StructuredBuffer oElement(oDigitalContracts.GetStructuredBuffer(strElement.c_str()));
             oElement.PutString("DigitalContractIdentifier", strElement);
-            gs_strIndexedListOfSerializedBase64DigitalContracts[unIndex] = oElement.GetBase64SerializedBuffer();
+            gs_stlIndexedListOfSerializedBase64DigitalContracts[unIndex] = oElement.GetBase64SerializedBuffer();
             unIndex++;
         }
         // Return the number of digital contracts downloaded
-        __DebugAssert(unIndex == gs_strIndexedListOfSerializedBase64DigitalContracts.size());
-        unDigitalContractsCount = (unsigned int) gs_strIndexedListOfSerializedBase64DigitalContracts.size();
+        __DebugAssert(unIndex == gs_stlIndexedListOfSerializedBase64DigitalContracts.size());
+        unDigitalContractsCount = (unsigned int) gs_stlIndexedListOfSerializedBase64DigitalContracts.size();
     }
 
     catch (BaseException oBaseException)
@@ -458,9 +491,9 @@ extern "C" __declspec(dllexport) BSTR __cdecl GetDigitalContractIdentifierAtInde
         __DebugAssert(0 != gs_qwAuthenticatedUserAccessRights);
 
         // Make sure the index provided is not out of range
-        _ThrowBaseExceptionIf((gs_strIndexedListOfSerializedBase64DigitalContracts.end() == gs_strIndexedListOfSerializedBase64DigitalContracts.find(unIndex)), "Index (%d) out of maximum range (%d)", unIndex, (gs_strIndexedListOfSerializedBase64DigitalContracts.size() - 1));
+        _ThrowBaseExceptionIf((gs_stlIndexedListOfSerializedBase64DigitalContracts.end() == gs_stlIndexedListOfSerializedBase64DigitalContracts.find(unIndex)), "Index (%d) out of maximum range (%d)", unIndex, (gs_stlIndexedListOfSerializedBase64DigitalContracts.size() - 1));
         // Deserialize the Base64 bit serialized StructuredBuffer containing the Digital Contract
-        StructuredBuffer oDigitalContract(gs_strIndexedListOfSerializedBase64DigitalContracts.at(unIndex).c_str());
+        StructuredBuffer oDigitalContract(gs_stlIndexedListOfSerializedBase64DigitalContracts.at(unIndex).c_str());
         // As an optimization, we use GimLet to compute the string hashes of different values at author
         // time so that at runtime, we do not have to do a whole bunch of string compares over and over
         // again
@@ -505,7 +538,7 @@ extern "C" __declspec(dllexport) BSTR __cdecl GetDigitalContractProperty(
         __DebugAssert(false == gs_strAuthenticatedUserIdentifier.empty());
         __DebugAssert(0 != gs_qwAuthenticatedUserAccessRights);
 
-        for (auto base64SerializedDigitalContract : gs_strIndexedListOfSerializedBase64DigitalContracts)
+        for (auto base64SerializedDigitalContract : gs_stlIndexedListOfSerializedBase64DigitalContracts)
         {
             StructuredBuffer oDigitalContract(base64SerializedDigitalContract.second.c_str());
             std::string strDigitalContractIdentifier = oDigitalContract.GetString("DigitalContractIdentifier");
@@ -720,6 +753,199 @@ extern "C" __declspec(dllexport) bool __cdecl UploadInitializationParametersToVi
     }
 
     return fSuccess;
+}
+
+/// <summary>
+/// 
+/// </summary>
+/// <param name=""></param>
+/// <returns></returns>
+extern "C" __declspec(dllexport) bool __cdecl RemoteDataConnectorHeartbeat(void)
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+
+    try
+    {
+        StructuredBuffer oHeartbeatRequest;
+        oHeartbeatRequest.PutString("RemoteDataConnectorGuid", gs_oRemoteDataConnectorIdentifier.ToString(eHyphensAndCurlyBraces));
+        std::vector<std::thread> stlThreadsUploadingDataToVirtualMachines;
+        // Send the ping to the REST portal and get a response stating if any
+        // Virtual Machine is waiting for this dataset
+        std::string strVerb = "PUT";
+        std::string strApiUrl = "/SAIL/RemoteDataConnectorManager/HeartBeat?Eosb=" + gs_strEosb;
+        auto oJsonBody = JsonValue::ParseStructuredBufferToJson(oHeartbeatRequest);
+        std::string strJsonBody = oJsonBody->ToString();
+        oJsonBody->Release();
+        std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfSailWebApiPortal, (Word) gs_unPortAddressOfSailWebApiPortal, strVerb, strApiUrl, strJsonBody, true);
+        std::string strUnescapedResponse = ::UnEscapeJsonString((const char*)stlRestResponse.data());
+        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+        float64_t fl64Response = oResponse.GetFloat64("Status");
+        if (200 == fl64Response)
+        {
+            // The heartbeat was a success
+            fSuccess = true;
+            // Update the Eosb in case it changed
+            if (true == oResponse.IsElementPresent("Eosb", ANSI_CHARACTER_STRING_VALUE_TYPE))
+            {
+                gs_strEosb = oResponse.GetString("Eosb");
+            }
+            // Check if any Virtual Machine is waiting for the dataset, if yes new threads
+            // are created to upload data into those Virutal Machines
+            if (true == oResponse.IsElementPresent("VirtualMachines", INDEXED_BUFFER_VALUE_TYPE))
+            {
+                StructuredBuffer oVirtualMachinesWaiting = oResponse.GetStructuredBuffer("VirtualMachines");
+                for (auto strVirtualMachineUuid : oVirtualMachinesWaiting.GetNamesOfElements())
+                {
+                    // There is a Virtual Machine waiting for data, a new thread is created
+                    // to connect to the Virutal Machine and upload the data
+                    StructuredBuffer oVirtualMachineInformation = oVirtualMachinesWaiting.GetStructuredBuffer(strVirtualMachineUuid.c_str());
+                    // TODOKPMG
+                }
+            }
+        }
+    }
+
+    catch (BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+}
+
+/// <summary>
+/// 
+/// </summary>
+/// <param name="c_szSourceFolder"></param>
+/// <returns></returns>
+extern "C" __declspec(dllexport) int __cdecl RemoteDataConnectorUpdateDatasets(void)
+{
+    __DebugFunction();
+
+    int unNumberOfNewDatasets = (int) gs_stlListOfNewDatasetFiles.size();
+
+    // Only run this function if we have new datasets to register
+    if (0 < gs_stlListOfNewDatasetFiles.size())
+    {
+        // First we need to build a StructuredBuffer of StructuredBuffers which contain
+        // dataset information
+        StructuredBuffer oListOfDatasets;
+        for (auto strDatasetIdentifier : gs_stlListOfNewDatasetFiles)
+        {
+            StructuredBuffer oDatasetInformation;
+
+            oDatasetInformation.PutString("DatasetUuid", strDatasetIdentifier.second);
+            oListOfDatasets.PutStructuredBuffer(strDatasetIdentifier.second.c_str(), oDatasetInformation);
+            gs_stlListOfRegisteredDatasetFiles[strDatasetIdentifier.first] = strDatasetIdentifier.second;
+        }
+        // Now we reset gs_stlListOfNewDatasetFiles since we don't want to register
+        // these files again
+        gs_stlListOfNewDatasetFiles.clear();
+        // Now we upload the new dataset information to the API Portal
+        // TODOKPMG
+    }
+
+    return unNumberOfNewDatasets;
+}
+
+/// <summary>
+/// 
+/// </summary>
+/// <param name="c_szSourceFolder"></param>
+/// <returns></returns>
+extern "C" __declspec(dllexport) void __cdecl RemoteDataConnectorAddDataset(
+    _in const char * c_szDatasetFilename
+    )
+{
+    __DebugFunction();
+
+    try
+    {
+        // Get the has of the dataset filename
+        Qword qwHashOfDatasetFilename = ::Get64BitHashOfNullTerminatedString(c_szDatasetFilename, false);
+        // Check to make sure we haven't registed the file already
+        if ((gs_stlListOfRegisteredDatasetFiles.end() == gs_stlListOfRegisteredDatasetFiles.find(qwHashOfDatasetFilename))&&(gs_stlListOfNewDatasetFiles.end() == gs_stlListOfNewDatasetFiles.find(qwHashOfDatasetFilename)))
+        {
+            // Load the contents of the dataset file into a binary buffer
+            std::vector<Byte> stlBinaryFile = ::GetBinaryFileBuffer(c_szDatasetFilename);
+            // Read the header marker of the file to make sure it's the expected value
+            const Byte* c_pbBinaryBuffer = (Byte*)stlBinaryFile.data();
+            uint64_t un64Header = *((uint64_t*)c_pbBinaryBuffer);
+            _ThrowBaseExceptionIf((0xDEADBEEFDEADBEEF != un64Header), "Expected header to be [0xDEADBEEFDEADBEEF] but found [%xul]", un64Header);
+            c_pbBinaryBuffer += sizeof(un64Header);
+            // Read the size in bytes of the header information structure
+            uint32_t un32SizeOfHeaderStructure = *((uint32_t*)c_pbBinaryBuffer);
+            _ThrowBaseExceptionIf(((un32SizeOfHeaderStructure + sizeof(un64Header) + sizeof(un32SizeOfHeaderStructure)) >= stlBinaryFile.size()), "Unrealistic size of header structure = %d", un32SizeOfHeaderStructure);
+            c_pbBinaryBuffer += sizeof(un32SizeOfHeaderStructure);
+            // Read in the header information structure into a StructuredBuffer
+            StructuredBuffer oHeaderInformation(c_pbBinaryBuffer, un32SizeOfHeaderStructure);
+            uint64_t un64MetaDataOffset = oHeaderInformation.GetUnsignedInt64("MetaDataOffset");
+            int32_t un32MetaDataSizeInBytes = oHeaderInformation.GetInt32("MetaDataSize");
+            _ThrowBaseExceptionIf(((un64MetaDataOffset + un32MetaDataSizeInBytes) > stlBinaryFile.size()), "Unrealistic offset (%ul) and size (%d) of metadata structure = %d", un64MetaDataOffset, un32SizeOfHeaderStructure);
+            // Reset the c_pbBinaryBuffer pointer and then extract the metadata
+            c_pbBinaryBuffer = (Byte*)stlBinaryFile.data();
+            c_pbBinaryBuffer += un64MetaDataOffset;
+            StructuredBuffer oMetadataInformation(c_pbBinaryBuffer, un32MetaDataSizeInBytes);
+            // Get the identifier of the dataset
+            std::string strDatasetIdentifier = oMetadataInformation.GetString("UUID");
+            // Add the new dataset now that we know that the identifier of the dataset is
+            gs_stlListOfNewDatasetFiles[qwHashOfDatasetFilename] = strDatasetIdentifier;
+        }
+    }
+
+    catch (BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+}
+
+/// <summary>
+/// 
+/// </summary>
+/// <param name="c_szSourceFolder"></param>
+/// <returns></returns>
+extern "C" __declspec(dllexport) void __cdecl RemoteDataConnectorRemoveDataset(
+    _in const char * c_szDatasetFilename
+    )
+{
+    __DebugFunction();
+
+    try
+    {
+        // Get the has of the dataset filename
+        Qword qwHashOfDatasetFilename = ::Get64BitHashOfNullTerminatedString(c_szDatasetFilename, false);
+        // Now remove the entries relating to that filename
+        if (gs_stlListOfRegisteredDatasetFiles.end() != gs_stlListOfRegisteredDatasetFiles.find(qwHashOfDatasetFilename))
+        {
+            gs_stlListOfRegisteredDatasetFiles.erase(qwHashOfDatasetFilename);
+        }
+        if (gs_stlListOfNewDatasetFiles.end() != gs_stlListOfNewDatasetFiles.find(qwHashOfDatasetFilename))
+        {
+            gs_stlListOfNewDatasetFiles.erase(qwHashOfDatasetFilename);
+        }
+    }
+    
+    catch (BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
 }
 
 /// <summary>

@@ -242,7 +242,14 @@ std::vector<Byte> __thiscall DatabaseManager::ListOfVmIpAddressesAssociatedWithD
                                 if (oObjectBlob && oObjectBlob.type() == type::k_binary)
                                 {
                                     StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size);
-                                    oListOfVMs.PutString(strVmGuid.c_str(), oObject.GetString("IPAddress"));
+
+                                    if (true == oObject.IsElementPresent("State", DWORD_VALUE_TYPE))
+                                    {
+                                        if (VirtualMachineState::eReadyForComputation == oObject.GetDword("State"))
+                                        {
+                                            oListOfVMs.PutString(strVmGuid.c_str(), oObject.GetString("IPAddress"));
+                                        }
+                                    }
                                     dwStatus = 200;
                                 }
                             }

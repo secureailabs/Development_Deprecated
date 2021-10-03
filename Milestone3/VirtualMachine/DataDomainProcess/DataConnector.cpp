@@ -161,7 +161,7 @@ bool __thiscall DataConnector::LoadAndVerify(
         stlDatasetFile.read((char *)stlTempTableMetadata.data(), stlTableMetadataSizeArray[unTableID]);
         m_stlTableMetaData.push_back(StructuredBuffer(stlTempTableMetadata));
         std::cout << "Table Metadata\n" << StructuredBuffer(stlTempTableMetadata).ToString();
-        oTableMetadata.PutString(std::to_string(unTableID).c_str(), m_stlTableMetaData.at(unTableID).GetGuid("Guid").ToString(eRaw));
+        oTableMetadata.PutString(m_stlTableMetaData[unTableID].GetString("Name").c_str(), m_stlTableMetaData.at(unTableID).GetGuid("Guid").ToString(eRaw));
     }
     m_oAllDatasetIds.PutStructuredBuffer("Tables", oTableMetadata);
     std::cout << "\nDataIds\n" << m_oAllDatasetIds.ToString();
@@ -204,7 +204,7 @@ bool __thiscall DataConnector::LoadAndVerify(
 /********************************************************************************************
  *
  * @class DataConnector
- * @function HandleRequestsUntilClose
+ * @function HandleRequest
  * @brief Handle incoming requests for data from the research process
  * @return void
  * @note
@@ -214,7 +214,7 @@ bool __thiscall DataConnector::LoadAndVerify(
  ********************************************************************************************/
 
 // TODO: implement lazy-loading for some requests
-void __thiscall DataConnector::HandleRequestsUntilClose(
+void __thiscall DataConnector::HandleRequest(
     _in Socket * poSocket
     ) const throw()
 {
@@ -223,133 +223,126 @@ void __thiscall DataConnector::HandleRequestsUntilClose(
 
     try
     {
-        StatusMonitor oStatusMonitor("void __thiscall DataConnector::HandleRequestsUntilClose()");
-        bool fCloseRequest = false;
-        while ((true != fCloseRequest) && (false == oStatusMonitor.IsTerminating()))
+        std::vector<Byte> stlRequestBuffer = ::GetIpcTransaction(poSocket, true);
+        if (0 < stlRequestBuffer.size())
         {
-            std::vector<Byte> stlRequestBuffer = ::GetIpcTransaction(poSocket, true);
-            if (0 < stlRequestBuffer.size())
+            // Respose Structured Buffer
+            StructuredBuffer oDataResponse;
+            StructuredBuffer oResearcherRequest(stlRequestBuffer);
+
+            // Check the digital contract to check if the request is allowed
+            bool fAllowed = this->FilterDataRequest(oResearcherRequest);
+
+            // Get the table ID either from the table name provided or the table ID
+            uint32_t unTableID;
+            if (oResearcherRequest.IsElementPresent("TableID", UINT32_VALUE_TYPE))
             {
-                // Respose Structured Buffer
-                StructuredBuffer oDataResponse;
-                StructuredBuffer oResearcherRequest(stlRequestBuffer);
-
-                // Check the digital contract to check if the request is allowed
-                bool fAllowed = this->FilterDataRequest(oResearcherRequest);
-
-                // Get the table ID either from the table name provided or the table ID
-                uint32_t unTableID;
-                if (oResearcherRequest.IsElementPresent("TableID", UINT32_VALUE_TYPE))
-                {
-                    unTableID = oResearcherRequest.GetUnsignedInt32("TableID");
-                }
-                else
-                {
-                    std::string strTableName = oResearcherRequest.GetString("TableName");
-                    if (m_stlMapOfTableNameToId.end() != m_stlMapOfTableNameToId.find(strTableName))
-                    {
-                        unTableID = m_stlMapOfTableNameToId.at(strTableName);
-                    }
-                    else
-                    {
-                        oDataResponse.PutBoolean("Status", "Fail");
-                        oDataResponse.PutString("ResponseString", "Invalid Table Name");
-                        fAllowed = false;
-                    }
-                }
-
-                if (true == fAllowed)
-                {
-                    uint8_t requestType = oResearcherRequest.GetInt8("RequestType");
-
-                    if (eGetRowRange == requestType)
-                    {
-                        uint32_t unTableRowStart = oResearcherRequest.GetInt32("RowRangeStart");
-                        uint32_t unTableRowEnd = oResearcherRequest.GetInt32("RowRangeEnd");
-                        StructuredBuffer oTempResponse = GetTableRowRange(unTableID, unTableRowStart, unTableRowEnd);
-                        oDataResponse.PutBoolean("Status", oTempResponse.GetBoolean("Status"));
-                        oDataResponse.PutString("ResponseString", oTempResponse.GetString("ResponseString"));
-                        
-                        StructuredBuffer oEventData;
-                        oEventData.PutBoolean("Success", oTempResponse.GetBoolean("Status"));
-                        oEventData.PutUnsignedInt32("TableIdentifier", unTableID);
-                        oEventData.PutInt32("RowRangeStart", unTableRowStart);
-                        oEventData.PutInt32("RowRangeStart", unTableRowEnd);                        
-                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_REQUEST_ROW_RANGE", 0x1100, 0x01, oEventData);
-                    }
-                    else if (eGetColumnRange == requestType)
-                    {
-                        uint32_t unTableColumnStart = oResearcherRequest.GetInt32("ColumnRangeStart");
-                        uint32_t unTableColumnEnd = oResearcherRequest.GetInt32("ColumnRangeEnd");
-                        StructuredBuffer oTempResponse = GetTableColumnRange(unTableID, unTableColumnStart, unTableColumnEnd);
-                        oDataResponse.PutBoolean("Status", oTempResponse.GetBoolean("Status"));
-                        oDataResponse.PutString("ResponseString", oTempResponse.GetString("ResponseString"));
-                        
-                        StructuredBuffer oEventData;
-                        oEventData.PutBoolean("Success", oTempResponse.GetBoolean("Status"));
-                        oEventData.PutUnsignedInt32("TableIdentifier", unTableID);
-                        oEventData.PutInt32("ColumnRangeStart", unTableColumnStart);
-                        oEventData.PutInt32("ColumnRangeEnd", unTableColumnEnd);                        
-                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_REQUEST_COLUMN_RANGE", 0x1100, 0x01, oEventData);
-                    }
-                    else if (eGetTable == requestType)
-                    {
-                        StructuredBuffer oTempResponse = GetTableRowRange(unTableID, 0, m_stlTableMetaData[unTableID].GetInt32("NumberRows")-1);
-                        oDataResponse.PutBoolean("Status", oTempResponse.GetBoolean("Status"));
-                        oDataResponse.PutString("ResponseString", oTempResponse.GetString("ResponseString"));
-                        
-                        StructuredBuffer oEventData;
-                        oEventData.PutBoolean("Success", oTempResponse.GetBoolean("Status"));
-                        oEventData.PutUnsignedInt32("TableIdentifier", unTableID);
-                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_REQUEST_TABLE", 0x1100, 0x01, oEventData);
-                    }
-                    else if (eGetDatasetMetadata == requestType)
-                    {
-                        oDataResponse.PutBoolean("Status", true);
-                        oDataResponse.PutStructuredBuffer("ResponseData", *m_poDataSetMetaDataStructuredBuffer);
-                        
-                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_GET_METADATA", 0x1100, 0x01, oDataResponse);
-                    }
-                    else if (eGetTableMetadata == requestType)
-                    {
-                        oDataResponse.PutBoolean("Status", true);
-                        oDataResponse.PutStructuredBuffer("ResponseData", m_stlTableMetaData[unTableID]);
-                        
-                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_TABLE_GET_METADATA", 0x1100, 0x01, oDataResponse);
-                    }
-                    else if (eCloseFile == requestType)
-                    {
-                        oDataResponse.PutBoolean("Status", true);
-                        fCloseRequest = true;
-
-                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_CLOSE", 0x1100, 0x01, oDataResponse);
-                    }
-                    else if (eGetUuids == requestType)
-                    {
-                        oDataResponse.PutBoolean("Status", true);
-                        oDataResponse.PutStructuredBuffer("ResponseData", m_oAllDatasetIds);
-                        fCloseRequest = true;
-
-                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_TABLE_GET_GUID", 0x1100, 0x01, oDataResponse);
-                    }
-                    else
-                    {
-                        // Do something for invalid rquest
-                        oDataResponse.PutBoolean("Status", false);
-                        oDataResponse.PutString("ResponseData", "Invalid Request Type");
-                        
-                        m_poRootOfTrustNode->RecordAuditEvent("DATASET_INVALID_REQUEST", 0x1100, 0x02, oDataResponse);
-                    }
-                }
-                else
-                {
-                    // Send a reply of invalid request
-                    oDataResponse.PutBoolean("Status", false);
-                    oDataResponse.PutString("ResponseData", "Permission Denied!!");
-                }
-
-                _ThrowBaseExceptionIf((false == ::PutIpcTransaction(poSocket, oDataResponse.GetSerializedBuffer())), "Write response failed.", nullptr);
+                unTableID = oResearcherRequest.GetUnsignedInt32("TableID");
             }
+            else
+            {
+                std::string strTableName = oResearcherRequest.GetString("TableName");
+                if (m_stlMapOfTableNameToId.end() != m_stlMapOfTableNameToId.find(strTableName))
+                {
+                    unTableID = m_stlMapOfTableNameToId.at(strTableName);
+                }
+                else
+                {
+                    oDataResponse.PutBoolean("Status", "Fail");
+                    oDataResponse.PutString("ResponseString", "Invalid Table Name");
+                    fAllowed = false;
+                }
+            }
+
+            if (true == fAllowed)
+            {
+                uint8_t requestType = oResearcherRequest.GetInt8("RequestType");
+
+                if (eGetRowRange == requestType)
+                {
+                    uint32_t unTableRowStart = oResearcherRequest.GetInt32("RowRangeStart");
+                    uint32_t unTableRowEnd = oResearcherRequest.GetInt32("RowRangeEnd");
+                    StructuredBuffer oTempResponse = GetTableRowRange(unTableID, unTableRowStart, unTableRowEnd);
+                    oDataResponse.PutBoolean("Status", oTempResponse.GetBoolean("Status"));
+                    oDataResponse.PutString("ResponseString", oTempResponse.GetString("ResponseString"));
+
+                    StructuredBuffer oEventData;
+                    oEventData.PutBoolean("Success", oTempResponse.GetBoolean("Status"));
+                    oEventData.PutUnsignedInt32("TableIdentifier", unTableID);
+                    oEventData.PutInt32("RowRangeStart", unTableRowStart);
+                    oEventData.PutInt32("RowRangeStart", unTableRowEnd);
+                    m_poRootOfTrustNode->RecordAuditEvent("DATASET_REQUEST_ROW_RANGE", 0x1100, 0x01, oEventData);
+                }
+                else if (eGetColumnRange == requestType)
+                {
+                    uint32_t unTableColumnStart = oResearcherRequest.GetInt32("ColumnRangeStart");
+                    uint32_t unTableColumnEnd = oResearcherRequest.GetInt32("ColumnRangeEnd");
+                    StructuredBuffer oTempResponse = GetTableColumnRange(unTableID, unTableColumnStart, unTableColumnEnd);
+                    oDataResponse.PutBoolean("Status", oTempResponse.GetBoolean("Status"));
+                    oDataResponse.PutString("ResponseString", oTempResponse.GetString("ResponseString"));
+
+                    StructuredBuffer oEventData;
+                    oEventData.PutBoolean("Success", oTempResponse.GetBoolean("Status"));
+                    oEventData.PutUnsignedInt32("TableIdentifier", unTableID);
+                    oEventData.PutInt32("ColumnRangeStart", unTableColumnStart);
+                    oEventData.PutInt32("ColumnRangeEnd", unTableColumnEnd);
+                    m_poRootOfTrustNode->RecordAuditEvent("DATASET_REQUEST_COLUMN_RANGE", 0x1100, 0x01, oEventData);
+                }
+                else if (eGetTable == requestType)
+                {
+                    StructuredBuffer oTempResponse = GetTableRowRange(unTableID, 0, m_stlTableMetaData[unTableID].GetInt32("NumberRows")-1);
+                    oDataResponse.PutBoolean("Status", oTempResponse.GetBoolean("Status"));
+                    oDataResponse.PutString("ResponseString", oTempResponse.GetString("ResponseString"));
+
+                    StructuredBuffer oEventData;
+                    oEventData.PutBoolean("Success", oTempResponse.GetBoolean("Status"));
+                    oEventData.PutUnsignedInt32("TableIdentifier", unTableID);
+                    m_poRootOfTrustNode->RecordAuditEvent("DATASET_REQUEST_TABLE", 0x1100, 0x01, oEventData);
+                }
+                else if (eGetDatasetMetadata == requestType)
+                {
+                    oDataResponse.PutBoolean("Status", true);
+                    oDataResponse.PutStructuredBuffer("ResponseData", *m_poDataSetMetaDataStructuredBuffer);
+
+                    m_poRootOfTrustNode->RecordAuditEvent("DATASET_GET_METADATA", 0x1100, 0x01, oDataResponse);
+                }
+                else if (eGetTableMetadata == requestType)
+                {
+                    oDataResponse.PutBoolean("Status", true);
+                    oDataResponse.PutStructuredBuffer("ResponseData", m_stlTableMetaData[unTableID]);
+
+                    m_poRootOfTrustNode->RecordAuditEvent("DATASET_TABLE_GET_METADATA", 0x1100, 0x01, oDataResponse);
+                }
+                else if (eCloseFile == requestType)
+                {
+                    oDataResponse.PutBoolean("Status", true);
+
+                    m_poRootOfTrustNode->RecordAuditEvent("DATASET_CLOSE", 0x1100, 0x01, oDataResponse);
+                }
+                else if (eGetUuids == requestType)
+                {
+                    oDataResponse.PutBoolean("Status", true);
+                    oDataResponse.PutStructuredBuffer("ResponseData", m_oAllDatasetIds);
+
+                    m_poRootOfTrustNode->RecordAuditEvent("DATASET_TABLE_GET_GUID", 0x1100, 0x01, oDataResponse);
+                }
+                else
+                {
+                    // Do something for invalid rquest
+                    oDataResponse.PutBoolean("Status", false);
+                    oDataResponse.PutString("ResponseData", "Invalid Request Type");
+
+                    m_poRootOfTrustNode->RecordAuditEvent("DATASET_INVALID_REQUEST", 0x1100, 0x02, oDataResponse);
+                }
+            }
+            else
+            {
+                // Send a reply of invalid request
+                oDataResponse.PutBoolean("Status", false);
+                oDataResponse.PutString("ResponseData", "Permission Denied!!");
+            }
+
+            _ThrowBaseExceptionIf((false == ::PutIpcTransaction(poSocket, oDataResponse.GetSerializedBuffer())), "Write response failed.", nullptr);
         }
     }
 

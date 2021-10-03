@@ -218,7 +218,7 @@
             this.textBoxTableDescription.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.textBoxTableDescription.Name = "textBoxTableDescription";
             this.textBoxTableDescription.Size = new System.Drawing.Size(632, 24);
-            this.textBoxTableDescription.TabIndex = 33;
+            this.textBoxTableDescription.TabIndex = 31;
             this.textBoxTableDescription.TextChanged += new System.EventHandler(this.TextBoxTableDescription_TextChanged);
             // 
             // textBox3
@@ -228,7 +228,7 @@
             this.textBox3.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.textBox3.Name = "textBox3";
             this.textBox3.Size = new System.Drawing.Size(632, 24);
-            this.textBox3.TabIndex = 31;
+            this.textBox3.TabIndex = 33;
             this.textBox3.TextChanged += new System.EventHandler(this.textBox3_TextChanged);
             // 
             // label3
@@ -248,10 +248,10 @@
             this.LabelClose.AutoSize = true;
             this.LabelClose.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.LabelClose.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.LabelClose.Font = new System.Drawing.Font("Gill Sans Ultra Bold", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LabelClose.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.LabelClose.Location = new System.Drawing.Point(730, -1);
             this.LabelClose.Name = "LabelClose";
-            this.LabelClose.Size = new System.Drawing.Size(28, 25);
+            this.LabelClose.Size = new System.Drawing.Size(22, 22);
             this.LabelClose.TabIndex = 35;
             this.LabelClose.Text = "X";
             this.LabelClose.Click += new System.EventHandler(this.LabelClose_Click);
@@ -402,10 +402,10 @@
             this.LabelMinimize.AutoSize = true;
             this.LabelMinimize.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.LabelMinimize.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.LabelMinimize.Font = new System.Drawing.Font("Gill Sans Ultra Bold", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.LabelMinimize.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.LabelMinimize.Location = new System.Drawing.Point(702, -1);
             this.LabelMinimize.Name = "LabelMinimize";
-            this.LabelMinimize.Size = new System.Drawing.Size(28, 25);
+            this.LabelMinimize.Size = new System.Drawing.Size(29, 22);
             this.LabelMinimize.TabIndex = 50;
             this.LabelMinimize.Text = "__";
             this.LabelMinimize.Click += new System.EventHandler(this.LabelMinimize_Click);

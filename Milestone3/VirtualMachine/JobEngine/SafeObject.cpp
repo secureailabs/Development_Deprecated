@@ -206,7 +206,7 @@ int __thiscall SafeObject::Run(
                     // output file was not written, that is a failure case and we send a jobfail
                     // signal to the remote orcehstrator
                     // TODO: check for all the output files present along with ProcessExitStatus
-                    if ((0 == nProcessExitStatus))
+                    if (0 == nProcessExitStatus)
                     {
                         // This is already done in the SafeObject code
                         // std::ofstream output(gc_strSignalFolderName + "/" + strOutputFileName);
@@ -215,6 +215,15 @@ int __thiscall SafeObject::Run(
                         oStructruedBufferSignal.PutByte("SignalType", (Byte)JobStatusSignals::eJobDone);
                         oStructruedBufferSignal.PutString("JobUuid", c_strJobUuid);
                         oJobEngine.SendMessageToOrchestrator(oStructruedBufferSignal);
+                    }
+                    else if (123 == nProcessExitStatus)
+                    {
+                        // Send a job fail signal to the orchestrator
+                        oStructruedBufferSignal.PutByte("SignalType", (Byte)JobStatusSignals::ePrivacyViolation);
+                        oStructruedBufferSignal.PutString("JobUuid", c_strJobUuid);
+                        oJobEngine.SendMessageToOrchestrator(oStructruedBufferSignal);
+
+                        // We can potenitally add an audit log here.
                     }
                     else
                     {

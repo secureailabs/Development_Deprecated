@@ -55,6 +55,8 @@ void __stdcall PackageComputeServices()
     oFilesToPut.PutBuffer("SignalTerminationProcess", ::ReadFileAsByteBuffer("SignalTerminationProcess"));
     oFilesToPut.PutBuffer("DataDomainProcess", ::ReadFileAsByteBuffer("DataDomainProcess"));
     oFilesToPut.PutBuffer("JobEngine", ::ReadFileAsByteBuffer("JobEngine"));
+    oFilesToPut.PutBuffer("PrivacySentinel.py", ::ReadFileAsByteBuffer("PrivacySentinel.py"));
+    oFilesToPut.PutBuffer("PrivacySentinelPolicy.json", ::ReadFileAsByteBuffer("PrivacySentinelPolicy.json"));
 
     oPayloadToVm.PutStructuredBuffer("ExecutableFiles", oFilesToPut);
 

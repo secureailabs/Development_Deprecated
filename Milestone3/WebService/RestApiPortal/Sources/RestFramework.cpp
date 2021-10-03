@@ -219,7 +219,7 @@ void __thiscall RestFramework::RunServer(void)
         }
         catch (BaseException oException)
         {
-            ::RegisterException(oException, __func__, __LINE__);
+            ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         }
         catch (...)
         {
@@ -281,7 +281,7 @@ void __thiscall RestFramework::LoadPlugins(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
         // Close all plugin handles
         for (void * pPluginHandle : m_stlPluginHandles)
         {

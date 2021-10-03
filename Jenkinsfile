@@ -1,7 +1,12 @@
 pipeline {
     agent any
+    options {
+    buildDiscarder(logRotator(numToKeepStr: '30', artifactNumToKeepStr: '30'))
+    parallelsAlwaysFailFast()
+    timestamps()
+    }
     stages {
-        stage('Build Binaries') {
+        stage('Git') {
             steps {
                 pwd(tmp: true)
                 sh '''
@@ -25,23 +30,42 @@ pipeline {
                     docker exec -w /Development/Milestone3/ ubuntu_dev_CI ps -ef
                     '''
                 }
+            }
+            post {
+                failure {
+                    echo "Failed during Git stage"
+                }
+            }
+        }
+        stage('Build Backend') {
+            steps {
                 script {
                     echo 'Build Binaries'
                     sh label:
                     'Build Binaries',
                     script:'''
                     set -x
-                    docker exec -w /Development/Milestone3/ ubuntu_dev_CI sh CreateDailyBuild.sh
+                    docker exec -w /Development/Milestone3/ ubuntu_dev_CI ./CreateDailyBuild.sh
                     docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "ls -l"
+                    '''
+                }
+            }
+            post {
+                failure {
+                    echo "Failed during Build Backend stage"
+                }
+            }
+        }
+        stage ('Deploy Backend') {
+            steps {
+                script {
+                    echo 'Deploy DatabaseGateway and RestApiPortal'
+                    sh '''
                     docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseGateway  > database.log &"
                     sleep 1
                     docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./RestApiPortal > portal.log &"
                     sleep 1
                     docker exec -w /Development/Milestone3/ ubuntu_dev_CI ps -ef
-                    # docker stop ubuntu_dev_CI
-                    # docker rm ubuntu_dev_CI
-                    # docker kill $(docker ps -q)
-                    # docker rm $(docker ps -a -q)
                     '''
                 }
                 script {
@@ -61,29 +85,23 @@ pipeline {
                 echo 'Backend Portal Server is Deployed and Ready to use'
                 echo 'Build Successful'
             }
-        }
-        stage('Teardown') {
-            steps {
-                script {
-                    echo 'Teardown'
-                    sh label:
-                    'Teardown',
-                    script:'''
-                    set -x
-                    docker stop ubuntu_dev_CI
-                    docker rm ubuntu_dev_CI
-                    '''
+            post {
+                failure {
+                    echo "Failed during Deploy Backend stage"
                 }
             }
         }
-        
     }
     post {
-        failure {
-            echo 'This will run only if failed'
-        }
-        unstable {
-            echo 'This will run only if the run was marked as unstable'
+        always {
+            echo 'Teardown'
+            sh label:
+            'Teardown',
+            script:'''
+            set -x
+            docker kill $(docker ps -q)
+            docker rm $(docker ps -a -q)
+            '''
         }
     }
 }

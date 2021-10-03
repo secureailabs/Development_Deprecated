@@ -1,3 +1,4 @@
+[![.github/workflows/build.yml](https://github.com/secureailabs/Development/actions/workflows/build.yml/badge.svg)](https://github.com/secureailabs/Development/actions/workflows/build.yml)
 ![alt text](https://github.com/secureailabs/Development/blob/main/Logo.jpg?raw=true)
 
 # Development

@@ -272,7 +272,7 @@ bool __thiscall Guid::operator == (
 
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     
     catch(...)
@@ -334,7 +334,7 @@ bool __thiscall Guid::operator != (
 
     catch (BaseException oException)
     {
-        ::RegisterException(oException, __func__, __LINE__);
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
     }
     
     catch(...)

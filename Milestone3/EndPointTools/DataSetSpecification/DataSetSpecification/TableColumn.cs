@@ -43,6 +43,10 @@ namespace DataSetSpecification
             {
                 m_dataType = 4;
             }
+            else if ("Guid" == stringDataType)
+            {
+                m_dataType = 1;
+            }
         }
 
         private void trackBar1_Scroll_1(object sender, EventArgs e)

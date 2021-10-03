@@ -104,8 +104,6 @@ namespace WindowsRemoteDataConnector
             m_StopButton.Enabled = true;
             m_HeartbeatTimer.Enabled = true;
             m_UpdateDatasetsTimer.Enabled = true;
-            m_FileSystemWatcher.Path = m_SourceFolderTextBox.Text;
-            m_FileSystemWatcher.EnableRaisingEvents = true;
             this.m_HeartbeatTimer_Tick(sender, e);
         }
 
@@ -124,7 +122,6 @@ namespace WindowsRemoteDataConnector
             m_StopButton.Enabled = false;
             m_HeartbeatTimer.Enabled = false;
             m_UpdateDatasetsTimer.Enabled = false;
-            m_FileSystemWatcher.EnableRaisingEvents = false;
             // Put a notification
             this.AddNotification(DateTime.UtcNow.ToString("G") + " (UTC) : Remote Data Connector stopped");
         }
@@ -219,37 +216,30 @@ namespace WindowsRemoteDataConnector
             EventArgs e
             )
         {
-            m_Mutex.WaitOne();
-            int numberOfDatasetsRegistered = SailWebApiPortalInterop.RemoteDataConnectorUpdateDatasets();
-            m_Mutex.ReleaseMutex();
-            if (0 < numberOfDatasetsRegistered)
-            {
-                // Put a notification
-                this.AddNotification(DateTime.UtcNow.ToString("G") + " (UTC) : " + numberOfDatasetsRegistered + " datasets registered.");
-            }
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void m_FileSystemWatcher_Changed(
-            object sender,
-            System.IO.FileSystemEventArgs e
-            )
-        {
+            int numberOfDeletedDatasets = 0;
             // First we figure out if any files have been deleted
+            HashSet<string> listOfDeletedDatasets = new HashSet<string>();
             m_Mutex.WaitOne();
             foreach (string registeredFilename in m_ListOfRegisteredDatasets)
             {
                 if (false == System.IO.File.Exists(registeredFilename))
                 {
                     SailWebApiPortalInterop.RemoteDataConnectorRemoveDataset(registeredFilename);
-                    m_ListOfRegisteredDatasets.Remove(registeredFilename);
+                    listOfDeletedDatasets.Add(registeredFilename);
+                    numberOfDeletedDatasets++;
                 }
             }
             m_Mutex.ReleaseMutex();
+            if (0 < numberOfDeletedDatasets)
+            {
+                // Delete the entries
+                foreach (string registeredFilename in listOfDeletedDatasets)
+                {
+                    m_ListOfRegisteredDatasets.Remove(registeredFilename);
+                }
+                // Put a notification
+                this.AddNotification(DateTime.UtcNow.ToString("G") + " (UTC) : " + numberOfDeletedDatasets + " datasets removed (unregistered).");
+            }
             // Now we need to figure out if any new files were added. We list all files and then
             // compare that list with m_ListOfRegisteredDatasets
             string[] listOfDatasets = System.IO.Directory.GetFiles(m_SourceFolderTextBox.Text, "*.csvp");
@@ -266,6 +256,14 @@ namespace WindowsRemoteDataConnector
                     m_ListOfRegisteredDatasets.Add(filename);
                     m_Mutex.ReleaseMutex();
                 }
+            }
+            m_Mutex.WaitOne();
+            int numberOfDatasetsRegistered = SailWebApiPortalInterop.RemoteDataConnectorUpdateDatasets();
+            m_Mutex.ReleaseMutex();
+            if (0 < numberOfDatasetsRegistered)
+            {
+                // Put a notification
+                this.AddNotification(DateTime.UtcNow.ToString("G") + " (UTC) : " + numberOfDatasetsRegistered + " datasets registered.");
             }
         }
 

@@ -52,11 +52,9 @@ namespace WindowsRemoteDataConnector
             this.m_ExitButton = new System.Windows.Forms.Button();
             this.m_RefreshTimer = new System.Windows.Forms.Timer(this.components);
             this.m_HeartbeatTimer = new System.Windows.Forms.Timer(this.components);
-            this.m_FileSystemWatcher = new System.IO.FileSystemWatcher();
             this.m_UpdateDatasetsTimer = new System.Windows.Forms.Timer(this.components);
             this.m_SourceFolderGroupBox.SuspendLayout();
             this.m_RuntimeGroupBox.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.m_FileSystemWatcher)).BeginInit();
             this.SuspendLayout();
             // 
             // m_SourceFolderGroupBox
@@ -283,13 +281,6 @@ namespace WindowsRemoteDataConnector
             this.m_HeartbeatTimer.Interval = 30000;
             this.m_HeartbeatTimer.Tick += new System.EventHandler(this.m_HeartbeatTimer_Tick);
             // 
-            // m_FileSystemWatcher
-            // 
-            this.m_FileSystemWatcher.EnableRaisingEvents = true;
-            this.m_FileSystemWatcher.Filter = "*.csvp";
-            this.m_FileSystemWatcher.SynchronizingObject = this;
-            this.m_FileSystemWatcher.Changed += new System.IO.FileSystemEventHandler(this.m_FileSystemWatcher_Changed);
-            // 
             // m_UpdateDatasetsTimer
             // 
             this.m_UpdateDatasetsTimer.Interval = 5000;
@@ -313,7 +304,6 @@ namespace WindowsRemoteDataConnector
             this.m_SourceFolderGroupBox.PerformLayout();
             this.m_RuntimeGroupBox.ResumeLayout(false);
             this.m_RuntimeGroupBox.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.m_FileSystemWatcher)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -341,7 +331,6 @@ namespace WindowsRemoteDataConnector
         private System.Windows.Forms.TextBox m_CurrentTimeTextBox;
         private System.Windows.Forms.Timer m_RefreshTimer;
         private System.Windows.Forms.Timer m_HeartbeatTimer;
-        private System.IO.FileSystemWatcher m_FileSystemWatcher;
         private System.Windows.Forms.Timer m_UpdateDatasetsTimer;
     }
 }

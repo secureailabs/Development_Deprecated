@@ -17,7 +17,7 @@
 #define __DebugMessage(Format, ...)
 #define __DebugError(Format, ...)
 #define __DebugWarning(Format, ...)
-#define __DebugAssert(Expression)                           assert(Expression);
+#define __DebugAssert(Expression)                           assert(Expression)
 #define __DebugCount(Name, Expression)                      Expression
 #define __DebugElapsedTime(Name, Expression)                Expression
 #define __DebugRecordUInt8(ValueName, Value, DebugOnly)

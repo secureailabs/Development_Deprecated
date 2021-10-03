@@ -36,8 +36,10 @@ static Qword gs_qwAuthenticatedUserAccessRights;
 // Local global variables used to track information that was fetched from the Sail Web Api Portal
 static std::map<unsigned int, std::string> gs_stlIndexedListOfSerializedBase64DigitalContracts;
 static Guid gs_oRemoteDataConnectorIdentifier;
+static std::map<Qword, std::string> gs_stlListOfRegisteredDatasetFilenames;
 static std::map<Qword, std::string> gs_stlListOfRegisteredDatasetFiles;
 static std::map<Qword, std::string> gs_stlListOfNewDatasetFiles;
+static bool gs_fIsRemoteDataConnectorRegistered = false;
 
 /// <summary>
 /// 
@@ -801,7 +803,30 @@ extern "C" __declspec(dllexport) bool __cdecl RemoteDataConnectorHeartbeat(void)
                     // There is a Virtual Machine waiting for data, a new thread is created
                     // to connect to the Virutal Machine and upload the data
                     StructuredBuffer oVirtualMachineInformation = oVirtualMachinesWaiting.GetStructuredBuffer(strVirtualMachineUuid.c_str());
-                    // TODOKPMG
+                    std::string strVirtualMachineIpAddress = oVirtualMachineInformation.GetString("IPAddress");
+                    std::string strDatasetIdentifier = oVirtualMachineInformation.GetString("DatasetGuid");
+                    // Figure out which dataset filename to send
+                    std::string strDatasetFilename;                    
+                    for (auto strDatasetFile : gs_stlListOfRegisteredDatasetFiles)
+                    {
+                        if (strVirtualMachineUuid == strDatasetFile.second)
+                        {
+                            strDatasetFilename = gs_stlListOfRegisteredDatasetFilenames[strDatasetFile.first];
+                        }
+                    }
+                    _ThrowBaseExceptionIf((0 == strDatasetFilename.size()), "Invalid dataset request %s", strVirtualMachineUuid.c_str());
+                    // Okay, load the file
+                    std::vector<Byte> stlDatasetFiledata = ::GetBinaryFileBuffer(strDatasetFilename.c_str());
+                    StructuredBuffer oVirtualMachineUploadDataset;
+                    oVirtualMachineUploadDataset.PutString("SailWebApiPortalIpAddress", gs_strIpAddressOfSailWebApiPortal);
+                    oVirtualMachineUploadDataset.PutString("Base64EncodedDataset", ::Base64Encode(stlDatasetFiledata.data(), (unsigned int) stlDatasetFiledata.size()));
+                    oVirtualMachineUploadDataset.PutString("DataOwnerAccessToken", gs_strEosb);
+                    oVirtualMachineUploadDataset.PutString("DataOwnerUserIdentifier", gs_strAuthenticatedUserIdentifier);
+                    oVirtualMachineUploadDataset.PutString("DataOwnerOrganizationIdentifier", gs_strOrganizationIdentifier);
+                    oJsonBody = JsonValue::ParseStructuredBufferToJson(oVirtualMachineUploadDataset);
+                    strJsonBody = oJsonBody->ToString();
+                    oJsonBody->Release();
+                    stlRestResponse = ::RestApiCall(strVirtualMachineIpAddress, (Word) 6800, strVerb, "GET", "/something", false);
                 }
             }
         }
@@ -829,30 +854,79 @@ extern "C" __declspec(dllexport) int __cdecl RemoteDataConnectorUpdateDatasets(v
 {
     __DebugFunction();
 
-    int unNumberOfNewDatasets = (int) gs_stlListOfNewDatasetFiles.size();
+    int nNumberOfNewDatasets = 0;  (int)gs_stlListOfNewDatasetFiles.size();
 
-    // Only run this function if we have new datasets to register
-    if (0 < gs_stlListOfNewDatasetFiles.size())
+    try
     {
-        // First we need to build a StructuredBuffer of StructuredBuffers which contain
-        // dataset information
-        StructuredBuffer oListOfDatasets;
-        for (auto strDatasetIdentifier : gs_stlListOfNewDatasetFiles)
+        // Only run this function if we have new datasets to register
+        if (0 < gs_stlListOfNewDatasetFiles.size())
         {
-            StructuredBuffer oDatasetInformation;
+            // First we need to build a StructuredBuffer of StructuredBuffers which contain
+            // dataset information
+            StructuredBuffer oListOfDatasets;
+            for (auto strNewDataset : gs_stlListOfNewDatasetFiles)
+            {
+                StructuredBuffer oDatasetInformation;
 
-            oDatasetInformation.PutString("DatasetUuid", strDatasetIdentifier.second);
-            oListOfDatasets.PutStructuredBuffer(strDatasetIdentifier.second.c_str(), oDatasetInformation);
-            gs_stlListOfRegisteredDatasetFiles[strDatasetIdentifier.first] = strDatasetIdentifier.second;
+                oDatasetInformation.PutString("DatasetUuid", strNewDataset.second);
+                oListOfDatasets.PutStructuredBuffer(strNewDataset.second.c_str(), oDatasetInformation);
+                gs_stlListOfRegisteredDatasetFiles[strNewDataset.first] = strNewDataset.second;
+                __DebugAssert(gs_stlListOfRegisteredDatasetFilenames.end() != gs_stlListOfRegisteredDatasetFilenames.find(strNewDataset.first));
+            }
+            // Now we upload the new dataset information to the API Portal
+            // First, we need to determine if this is the first time since there is difference
+            std::string strVerb = "";
+            std::string strApiUrl = "";
+            if (false == gs_fIsRemoteDataConnectorRegistered)
+            {
+                // Register the DatasetConnector on finding the first valid dataset
+                strVerb = "POST";
+                strApiUrl = "/SAIL/RemoteDataConnectorManager/RegisterConnector?Eosb=" + gs_strEosb;
+                gs_fIsRemoteDataConnectorRegistered = true;
+            }
+            else
+            {
+                // Register the DatasetConnector on finding the first valid dataset
+                strVerb = "PUT";
+                strApiUrl = "/SAIL/RemoteDataConnectorManager/UpdateConnector?Eosb=" + gs_strEosb;
+            }
+            StructuredBuffer oUpdateDataConnector;
+            oUpdateDataConnector.PutString("RemoteDataConnectorGuid", gs_oRemoteDataConnectorIdentifier.ToString(eHyphensAndCurlyBraces));
+            oUpdateDataConnector.PutStructuredBuffer("Datasets", oListOfDatasets);
+            oUpdateDataConnector.PutString("Version", "0.0.1");
+            auto oJsonBody = JsonValue::ParseStructuredBufferToJson(oUpdateDataConnector);
+            std::string strJsonBody = oJsonBody->ToString();
+            oJsonBody->Release();
+            std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfSailWebApiPortal, (Word)gs_unPortAddressOfSailWebApiPortal, strVerb, strApiUrl, strJsonBody, true);
+            std::string strUnescapedResponse = ::UnEscapeJsonString((const char*)stlRestResponse.data());
+            StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+            if ((201 == oResponse.GetFloat64("Status")) || 200 == oResponse.GetFloat64("Status"))
+            {
+                // Update the Eosb in case it changed
+                if (true == oResponse.IsElementPresent("Eosb", ANSI_CHARACTER_STRING_VALUE_TYPE))
+                {
+                    gs_strEosb = oResponse.GetString("Eosb");
+                }
+            }
+
+            // To mark our success, initialize the return value unNumberOfNewDatasets
+            nNumberOfNewDatasets = (int)gs_stlListOfNewDatasetFiles.size();
+            // Make sure to reset gs_stlListOfNewDatasetFiles
+            gs_stlListOfNewDatasetFiles.clear();
         }
-        // Now we reset gs_stlListOfNewDatasetFiles since we don't want to register
-        // these files again
-        gs_stlListOfNewDatasetFiles.clear();
-        // Now we upload the new dataset information to the API Portal
-        // TODOKPMG
     }
 
-    return unNumberOfNewDatasets;
+    catch (BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return nNumberOfNewDatasets;
 }
 
 /// <summary>
@@ -897,6 +971,7 @@ extern "C" __declspec(dllexport) void __cdecl RemoteDataConnectorAddDataset(
             std::string strDatasetIdentifier = oMetadataInformation.GetString("UUID");
             // Add the new dataset now that we know that the identifier of the dataset is
             gs_stlListOfNewDatasetFiles[qwHashOfDatasetFilename] = strDatasetIdentifier;
+            gs_stlListOfRegisteredDatasetFilenames[qwHashOfDatasetFilename] = c_szDatasetFilename;
         }
     }
 
@@ -934,6 +1009,10 @@ extern "C" __declspec(dllexport) void __cdecl RemoteDataConnectorRemoveDataset(
         if (gs_stlListOfNewDatasetFiles.end() != gs_stlListOfNewDatasetFiles.find(qwHashOfDatasetFilename))
         {
             gs_stlListOfNewDatasetFiles.erase(qwHashOfDatasetFilename);
+        }
+        if (gs_stlListOfRegisteredDatasetFilenames.end() != gs_stlListOfRegisteredDatasetFilenames.find(qwHashOfDatasetFilename))
+        {
+            gs_stlListOfRegisteredDatasetFilenames.erase(qwHashOfDatasetFilename);
         }
     }
     

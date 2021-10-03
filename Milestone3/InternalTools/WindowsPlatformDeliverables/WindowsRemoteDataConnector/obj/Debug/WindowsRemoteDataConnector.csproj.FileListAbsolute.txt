@@ -11,3 +11,4 @@ C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalToo
 C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\Binaries\x64\Debug\WindowsRemoteDataConnector.exe.config
 C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\Binaries\x64\Debug\WindowsRemoteDataConnector.exe
 C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\Binaries\x64\Debug\WindowsRemoteDataConnector.pdb
+C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\WindowsRemoteDataConnector\obj\Debug\WindowsRemoteDataConnector.csproj.AssemblyReference.cache

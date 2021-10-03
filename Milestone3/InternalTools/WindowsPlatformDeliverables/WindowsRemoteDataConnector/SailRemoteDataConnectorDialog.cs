@@ -104,6 +104,13 @@ namespace WindowsRemoteDataConnector
             m_StopButton.Enabled = true;
             m_HeartbeatTimer.Enabled = true;
             m_UpdateDatasetsTimer.Enabled = true;
+            m_SourceFolderTextBox.Enabled = false;
+            m_SourceFolderTextBox.BackColor = System.Drawing.SystemColors.InactiveCaption;
+            m_CurrentTimeTextBox.BackColor = System.Drawing.SystemColors.Info;
+            m_LastHeartbeartTimeTextBox.BackColor = System.Drawing.SystemColors.Info;
+            m_NumberOfHeartbeatsTextBox.BackColor = System.Drawing.SystemColors.Info;
+            m_NumberOfFailedHeartbeatsTextBox.BackColor = System.Drawing.SystemColors.Info;
+            m_NotificationsTextBox.BackColor = System.Drawing.SystemColors.Info;
             this.m_HeartbeatTimer_Tick(sender, e);
         }
 
@@ -122,6 +129,14 @@ namespace WindowsRemoteDataConnector
             m_StopButton.Enabled = false;
             m_HeartbeatTimer.Enabled = false;
             m_UpdateDatasetsTimer.Enabled = false;
+            m_SourceFolderTextBox.Enabled = true;
+            m_SourceFolderTextBox.BackColor = System.Drawing.SystemColors.Info;
+            m_CurrentTimeTextBox.BackColor = System.Drawing.SystemColors.InactiveCaption;
+            m_LastHeartbeartTimeTextBox.BackColor = System.Drawing.SystemColors.InactiveCaption;
+            m_NumberOfHeartbeatsTextBox.BackColor = System.Drawing.SystemColors.InactiveCaption;
+            m_NumberOfFailedHeartbeatsTextBox.BackColor = System.Drawing.SystemColors.InactiveCaption;
+            m_NotificationsTextBox.BackColor = System.Drawing.SystemColors.InactiveCaption;
+
             // Put a notification
             this.AddNotification(DateTime.UtcNow.ToString("G") + " (UTC) : Remote Data Connector stopped");
         }

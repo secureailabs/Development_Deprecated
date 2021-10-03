@@ -132,7 +132,7 @@ namespace WindowsRemoteDataConnector
             // 
             // m_NotificationsTextBox
             // 
-            this.m_NotificationsTextBox.BackColor = System.Drawing.SystemColors.Info;
+            this.m_NotificationsTextBox.BackColor = System.Drawing.SystemColors.InactiveCaption;
             this.m_NotificationsTextBox.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.m_NotificationsTextBox.FormattingEnabled = true;
             this.m_NotificationsTextBox.Location = new System.Drawing.Point(9, 191);
@@ -191,7 +191,7 @@ namespace WindowsRemoteDataConnector
             // 
             // m_NumberOfFailedHeartbeatsTextBox
             // 
-            this.m_NumberOfFailedHeartbeatsTextBox.BackColor = System.Drawing.SystemColors.Info;
+            this.m_NumberOfFailedHeartbeatsTextBox.BackColor = System.Drawing.SystemColors.InactiveCaption;
             this.m_NumberOfFailedHeartbeatsTextBox.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.m_NumberOfFailedHeartbeatsTextBox.Location = new System.Drawing.Point(570, 161);
             this.m_NumberOfFailedHeartbeatsTextBox.Name = "m_NumberOfFailedHeartbeatsTextBox";
@@ -203,7 +203,7 @@ namespace WindowsRemoteDataConnector
             // 
             // m_NumberOfHeartbeatsTextBox
             // 
-            this.m_NumberOfHeartbeatsTextBox.BackColor = System.Drawing.SystemColors.Info;
+            this.m_NumberOfHeartbeatsTextBox.BackColor = System.Drawing.SystemColors.InactiveCaption;
             this.m_NumberOfHeartbeatsTextBox.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.m_NumberOfHeartbeatsTextBox.Location = new System.Drawing.Point(172, 161);
             this.m_NumberOfHeartbeatsTextBox.Name = "m_NumberOfHeartbeatsTextBox";
@@ -215,7 +215,7 @@ namespace WindowsRemoteDataConnector
             // 
             // m_LastHeartbeartTimeTextBox
             // 
-            this.m_LastHeartbeartTimeTextBox.BackColor = System.Drawing.SystemColors.Info;
+            this.m_LastHeartbeartTimeTextBox.BackColor = System.Drawing.SystemColors.InactiveCaption;
             this.m_LastHeartbeartTimeTextBox.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.m_LastHeartbeartTimeTextBox.Location = new System.Drawing.Point(570, 133);
             this.m_LastHeartbeartTimeTextBox.Name = "m_LastHeartbeartTimeTextBox";
@@ -226,7 +226,7 @@ namespace WindowsRemoteDataConnector
             // 
             // m_CurrentTimeTextBox
             // 
-            this.m_CurrentTimeTextBox.BackColor = System.Drawing.SystemColors.Info;
+            this.m_CurrentTimeTextBox.BackColor = System.Drawing.SystemColors.InactiveCaption;
             this.m_CurrentTimeTextBox.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.m_CurrentTimeTextBox.Location = new System.Drawing.Point(172, 133);
             this.m_CurrentTimeTextBox.Name = "m_CurrentTimeTextBox";

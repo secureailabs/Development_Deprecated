@@ -762,71 +762,77 @@ extern "C" __declspec(dllexport) bool __cdecl UploadInitializationParametersToVi
 /// </summary>
 /// <param name=""></param>
 /// <returns></returns>
-extern "C" __declspec(dllexport) bool __cdecl RemoteDataConnectorHeartbeat(void)
+extern "C" __declspec(dllexport) int __cdecl RemoteDataConnectorHeartbeat(void)
 {
     __DebugFunction();
 
-    bool fSuccess = false;
+    int nReturnCode = 0;    // Return code used to denote that there is no heartbeat to give yet
 
     try
     {
-        StructuredBuffer oHeartbeatRequest;
-        oHeartbeatRequest.PutString("RemoteDataConnectorGuid", gs_oRemoteDataConnectorIdentifier.ToString(eHyphensAndCurlyBraces));
-        std::vector<std::thread> stlThreadsUploadingDataToVirtualMachines;
-        // Send the ping to the REST portal and get a response stating if any
-        // Virtual Machine is waiting for this dataset
-        std::string strVerb = "PUT";
-        std::string strApiUrl = "/SAIL/RemoteDataConnectorManager/HeartBeat?Eosb=" + gs_strEosb;
-        auto oJsonBody = JsonValue::ParseStructuredBufferToJson(oHeartbeatRequest);
-        std::string strJsonBody = oJsonBody->ToString();
-        oJsonBody->Release();
-        std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfSailWebApiPortal, (Word) gs_unPortAddressOfSailWebApiPortal, strVerb, strApiUrl, strJsonBody, true);
-        std::string strUnescapedResponse = ::UnEscapeJsonString((const char*)stlRestResponse.data());
-        StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
-        float64_t fl64Response = oResponse.GetFloat64("Status");
-        if (200 == fl64Response)
+        if (true == gs_fIsRemoteDataConnectorRegistered)
         {
-            // The heartbeat was a success
-            fSuccess = true;
-            // Update the Eosb in case it changed
-            if (true == oResponse.IsElementPresent("Eosb", ANSI_CHARACTER_STRING_VALUE_TYPE))
+            // Return code used to denote that the heatbeat has failed
+            nReturnCode = -1;
+            // Build API packet
+            StructuredBuffer oHeartbeatRequest;
+            oHeartbeatRequest.PutString("RemoteDataConnectorGuid", gs_oRemoteDataConnectorIdentifier.ToString(eHyphensAndCurlyBraces));
+            std::vector<std::thread> stlThreadsUploadingDataToVirtualMachines;
+            // Send the ping to the REST portal and get a response stating if any
+            // Virtual Machine is waiting for this dataset
+            std::string strVerb = "PUT";
+            std::string strApiUrl = "/SAIL/RemoteDataConnectorManager/HeartBeat?Eosb=" + gs_strEosb;
+            auto oJsonBody = JsonValue::ParseStructuredBufferToJson(oHeartbeatRequest);
+            std::string strJsonBody = oJsonBody->ToString();
+            oJsonBody->Release();
+            std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfSailWebApiPortal, (Word)gs_unPortAddressOfSailWebApiPortal, strVerb, strApiUrl, strJsonBody, true);
+            std::string strUnescapedResponse = ::UnEscapeJsonString((const char*)stlRestResponse.data());
+            StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
+            float64_t fl64Response = oResponse.GetFloat64("Status");
+            if (200 == fl64Response)
             {
-                gs_strEosb = oResponse.GetString("Eosb");
-            }
-            // Check if any Virtual Machine is waiting for the dataset, if yes new threads
-            // are created to upload data into those Virutal Machines
-            if (true == oResponse.IsElementPresent("VirtualMachines", INDEXED_BUFFER_VALUE_TYPE))
-            {
-                StructuredBuffer oVirtualMachinesWaiting = oResponse.GetStructuredBuffer("VirtualMachines");
-                for (auto strVirtualMachineUuid : oVirtualMachinesWaiting.GetNamesOfElements())
+                // The heartbeat was a success
+                nReturnCode = 1;
+                // Update the Eosb in case it changed
+                if (true == oResponse.IsElementPresent("Eosb", ANSI_CHARACTER_STRING_VALUE_TYPE))
                 {
-                    // There is a Virtual Machine waiting for data, a new thread is created
-                    // to connect to the Virutal Machine and upload the data
-                    StructuredBuffer oVirtualMachineInformation = oVirtualMachinesWaiting.GetStructuredBuffer(strVirtualMachineUuid.c_str());
-                    std::string strVirtualMachineIpAddress = oVirtualMachineInformation.GetString("IPAddress");
-                    std::string strDatasetIdentifier = oVirtualMachineInformation.GetString("DatasetGuid");
-                    // Figure out which dataset filename to send
-                    std::string strDatasetFilename;                    
-                    for (auto strDatasetFile : gs_stlListOfRegisteredDatasetFiles)
+                    gs_strEosb = oResponse.GetString("Eosb");
+                }
+                // Check if any Virtual Machine is waiting for the dataset, if yes new threads
+                // are created to upload data into those Virutal Machines
+                if (true == oResponse.IsElementPresent("VirtualMachines", INDEXED_BUFFER_VALUE_TYPE))
+                {
+                    StructuredBuffer oVirtualMachinesWaiting = oResponse.GetStructuredBuffer("VirtualMachines");
+                    for (auto strVirtualMachineUuid : oVirtualMachinesWaiting.GetNamesOfElements())
                     {
-                        if (strVirtualMachineUuid == strDatasetFile.second)
+                        // There is a Virtual Machine waiting for data, a new thread is created
+                        // to connect to the Virutal Machine and upload the data
+                        StructuredBuffer oVirtualMachineInformation = oVirtualMachinesWaiting.GetStructuredBuffer(strVirtualMachineUuid.c_str());
+                        std::string strVirtualMachineIpAddress = oVirtualMachineInformation.GetString("IPAddress");
+                        std::string strDatasetIdentifier = oVirtualMachineInformation.GetString("DatasetGuid");
+                        // Figure out which dataset filename to send
+                        std::string strDatasetFilename;
+                        for (auto strDatasetFile : gs_stlListOfRegisteredDatasetFiles)
                         {
-                            strDatasetFilename = gs_stlListOfRegisteredDatasetFilenames[strDatasetFile.first];
+                            if (strVirtualMachineUuid == strDatasetFile.second)
+                            {
+                                strDatasetFilename = gs_stlListOfRegisteredDatasetFilenames[strDatasetFile.first];
+                            }
                         }
+                        _ThrowBaseExceptionIf((0 == strDatasetFilename.size()), "Invalid dataset request %s", strVirtualMachineUuid.c_str());
+                        // Okay, load the file
+                        std::vector<Byte> stlDatasetFiledata = ::GetBinaryFileBuffer(strDatasetFilename.c_str());
+                        StructuredBuffer oVirtualMachineUploadDataset;
+                        oVirtualMachineUploadDataset.PutString("SailWebApiPortalIpAddress", gs_strIpAddressOfSailWebApiPortal);
+                        oVirtualMachineUploadDataset.PutString("Base64EncodedDataset", ::Base64Encode(stlDatasetFiledata.data(), (unsigned int)stlDatasetFiledata.size()));
+                        oVirtualMachineUploadDataset.PutString("DataOwnerAccessToken", gs_strEosb);
+                        oVirtualMachineUploadDataset.PutString("DataOwnerUserIdentifier", gs_strAuthenticatedUserIdentifier);
+                        oVirtualMachineUploadDataset.PutString("DataOwnerOrganizationIdentifier", gs_strOrganizationIdentifier);
+                        oJsonBody = JsonValue::ParseStructuredBufferToJson(oVirtualMachineUploadDataset);
+                        strJsonBody = oJsonBody->ToString();
+                        oJsonBody->Release();
+                        stlRestResponse = ::RestApiCall(strVirtualMachineIpAddress, (Word)6800, strVerb, "GET", "/something", false);
                     }
-                    _ThrowBaseExceptionIf((0 == strDatasetFilename.size()), "Invalid dataset request %s", strVirtualMachineUuid.c_str());
-                    // Okay, load the file
-                    std::vector<Byte> stlDatasetFiledata = ::GetBinaryFileBuffer(strDatasetFilename.c_str());
-                    StructuredBuffer oVirtualMachineUploadDataset;
-                    oVirtualMachineUploadDataset.PutString("SailWebApiPortalIpAddress", gs_strIpAddressOfSailWebApiPortal);
-                    oVirtualMachineUploadDataset.PutString("Base64EncodedDataset", ::Base64Encode(stlDatasetFiledata.data(), (unsigned int) stlDatasetFiledata.size()));
-                    oVirtualMachineUploadDataset.PutString("DataOwnerAccessToken", gs_strEosb);
-                    oVirtualMachineUploadDataset.PutString("DataOwnerUserIdentifier", gs_strAuthenticatedUserIdentifier);
-                    oVirtualMachineUploadDataset.PutString("DataOwnerOrganizationIdentifier", gs_strOrganizationIdentifier);
-                    oJsonBody = JsonValue::ParseStructuredBufferToJson(oVirtualMachineUploadDataset);
-                    strJsonBody = oJsonBody->ToString();
-                    oJsonBody->Release();
-                    stlRestResponse = ::RestApiCall(strVirtualMachineIpAddress, (Word) 6800, strVerb, "GET", "/something", false);
                 }
             }
         }
@@ -842,7 +848,7 @@ extern "C" __declspec(dllexport) bool __cdecl RemoteDataConnectorHeartbeat(void)
         ::RegisterUnknownException(__func__, __LINE__);
     }
 
-    return fSuccess;
+    return nReturnCode;
 }
 
 /// <summary>
@@ -854,7 +860,7 @@ extern "C" __declspec(dllexport) int __cdecl RemoteDataConnectorUpdateDatasets(v
 {
     __DebugFunction();
 
-    int nNumberOfNewDatasets = 0;  (int)gs_stlListOfNewDatasetFiles.size();
+    int nNumberOfNewDatasets = 0;
 
     try
     {

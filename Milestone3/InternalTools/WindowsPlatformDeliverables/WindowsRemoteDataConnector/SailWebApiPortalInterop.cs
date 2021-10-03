@@ -100,7 +100,7 @@ public class SailWebApiPortalInterop
     /// 
     /// </summary>
     [DllImport("SailWebApiPortalFunctions.dll", CallingConvention = CallingConvention.Cdecl)]
-    static extern public bool RemoteDataConnectorHeartbeat();
+    static extern public int RemoteDataConnectorHeartbeat();
 
     /// <summary>
     /// 

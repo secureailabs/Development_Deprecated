@@ -93,6 +93,7 @@ namespace WindowsRemoteDataConnector
             this.m_SourceFolderTextBox.ReadOnly = true;
             this.m_SourceFolderTextBox.Size = new System.Drawing.Size(641, 25);
             this.m_SourceFolderTextBox.TabIndex = 1;
+            this.m_SourceFolderTextBox.TabStop = false;
             // 
             // m_SourceFolderInformationLabel
             // 
@@ -199,6 +200,7 @@ namespace WindowsRemoteDataConnector
             this.m_NumberOfFailedHeartbeatsTextBox.ReadOnly = true;
             this.m_NumberOfFailedHeartbeatsTextBox.Size = new System.Drawing.Size(109, 22);
             this.m_NumberOfFailedHeartbeatsTextBox.TabIndex = 8;
+            this.m_NumberOfFailedHeartbeatsTextBox.TabStop = false;
             this.m_NumberOfFailedHeartbeatsTextBox.Text = "0";
             // 
             // m_NumberOfHeartbeatsTextBox
@@ -210,6 +212,7 @@ namespace WindowsRemoteDataConnector
             this.m_NumberOfHeartbeatsTextBox.ReadOnly = true;
             this.m_NumberOfHeartbeatsTextBox.Size = new System.Drawing.Size(109, 22);
             this.m_NumberOfHeartbeatsTextBox.TabIndex = 7;
+            this.m_NumberOfHeartbeatsTextBox.TabStop = false;
             this.m_NumberOfHeartbeatsTextBox.Text = "0";
             // 
             // m_LastHeartbeartTimeTextBox
@@ -221,6 +224,7 @@ namespace WindowsRemoteDataConnector
             this.m_LastHeartbeartTimeTextBox.ReadOnly = true;
             this.m_LastHeartbeartTimeTextBox.Size = new System.Drawing.Size(217, 22);
             this.m_LastHeartbeartTimeTextBox.TabIndex = 6;
+            this.m_LastHeartbeartTimeTextBox.TabStop = false;
             // 
             // m_CurrentTimeTextBox
             // 
@@ -231,6 +235,7 @@ namespace WindowsRemoteDataConnector
             this.m_CurrentTimeTextBox.ReadOnly = true;
             this.m_CurrentTimeTextBox.Size = new System.Drawing.Size(217, 22);
             this.m_CurrentTimeTextBox.TabIndex = 5;
+            this.m_CurrentTimeTextBox.TabStop = false;
             // 
             // m_StopButton
             // 
@@ -280,6 +285,7 @@ namespace WindowsRemoteDataConnector
             // 
             // m_FileSystemWatcher
             // 
+            this.m_FileSystemWatcher.EnableRaisingEvents = true;
             this.m_FileSystemWatcher.Filter = "*.csvp";
             this.m_FileSystemWatcher.SynchronizingObject = this;
             this.m_FileSystemWatcher.Changed += new System.IO.FileSystemEventHandler(this.m_FileSystemWatcher_Changed);

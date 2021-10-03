@@ -329,8 +329,8 @@ std::vector<Byte> __stdcall JsonValue::ParseDataToStructuredBuffer(
             {
                 // Parse json object to a StructuredBuffer and return the serialized buffer
                 stlJsonValue = JsonToStructuredBuffer(poJsonValue);
-                delete poJsonValue;
             }
+            delete poJsonValue;
         }
         else
         {

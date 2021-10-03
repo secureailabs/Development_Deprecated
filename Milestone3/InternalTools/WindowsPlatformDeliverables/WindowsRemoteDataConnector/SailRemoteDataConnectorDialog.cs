@@ -93,6 +93,8 @@ namespace WindowsRemoteDataConnector
             EventArgs e
             )
         {
+            // Put a notification
+            this.AddNotification(DateTime.UtcNow.ToString("G") + " (UTC) : Remote Data Connector started");
             // First we need to list all of the files within the source folder. For each dataset, this
             // function will call to register the dataset
             this.InitialScanForDatasets();
@@ -105,8 +107,6 @@ namespace WindowsRemoteDataConnector
             m_FileSystemWatcher.Path = m_SourceFolderTextBox.Text;
             m_FileSystemWatcher.EnableRaisingEvents = true;
             this.m_HeartbeatTimer_Tick(sender, e);
-            // Put a notification
-            this.AddNotification(DateTime.UtcNow.ToString("G") + " (UTC) : Remote Data Connector started");
         }
 
         /// <summary>
@@ -191,19 +191,20 @@ namespace WindowsRemoteDataConnector
             )
         {
             m_Mutex.WaitOne();
-            bool successfulHeartbeat = SailWebApiPortalInterop.RemoteDataConnectorHeartbeat();
+            int nReturnCode = SailWebApiPortalInterop.RemoteDataConnectorHeartbeat();
             m_Mutex.ReleaseMutex();
 
-            if (true == successfulHeartbeat)
+            if (1 == nReturnCode)
             {
                 m_NumberOfHeartbeats++;
                 m_NumberOfHeartbeatsTextBox.Text = m_NumberOfHeartbeats.ToString();
                 m_LastHeartbeartTimeTextBox.Text = DateTime.UtcNow.ToString("G");
             }
-            else
+            else if (0 != nReturnCode)
             {
                 m_NumberOfFailedHeartbeats++;
                 m_NumberOfFailedHeartbeatsTextBox.Text = m_NumberOfFailedHeartbeats.ToString();
+                m_NumberOfFailedHeartbeatsTextBox.ClearUndo();
             }
         }
 

@@ -205,7 +205,9 @@ void __thiscall RestFramework::RunServer(void)
                 // Make sure never to create more threads than the number of available logical cores
                 if (unNumberOfResources > poRestFrameworkRuntimeData->GetNumberOfActiveConnections())
                 {
-                    poRestFrameworkRuntimeData->HandleConnection(m_poTlsServer->Accept());
+                    TlsNode * poTlsNode = m_poTlsServer->Accept();
+                    _ThrowIfNull(poTlsNode, "Could not establish connection", nullptr);
+                    poRestFrameworkRuntimeData->HandleConnection(poTlsNode);
                 }
                 else
                 {

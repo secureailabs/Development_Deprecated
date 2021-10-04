@@ -82,10 +82,10 @@ static std::vector<Byte> __stdcall WaitForInitializationParameters(void)
     _ThrowBaseExceptionIf((nullptr == poTlsNode), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
 
     StructuredBuffer oRemoteDatasetParameters(::GetTlsTransaction(poTlsNode, 60*60*1000));
-    oAllInitializationParameters.PutString("DataOwnerAccessToken", oRemoteDatasetParameters.GetString("DataOwnerAccessToken"));
+    oAllInitializationParameters.PutString("DataOwnerAccessToken", ::UnEscapeJsonString(oRemoteDatasetParameters.GetString("DataOwnerAccessToken").c_str()));
     oAllInitializationParameters.PutString("SailWebApiPortalIpAddress", oRemoteDatasetParameters.GetString("SailWebApiPortalIpAddress"));
     oAllInitializationParameters.PutString("DataOwnerUserIdentifier", oRemoteDatasetParameters.GetString("DataOwnerUserIdentifier"));
-    oAllInitializationParameters.PutString("Base64EncodedDataset", oRemoteDatasetParameters.GetString("Base64EncodedDataset"));
+    oAllInitializationParameters.PutString("Base64EncodedDataset", ::UnEscapeJsonString(oRemoteDatasetParameters.GetString("Base64EncodedDataset").c_str()));
     oAllInitializationParameters.PutString("DataOwnerOrganizationIdentifier", oRemoteDatasetParameters.GetString("DataOwnerOrganizationIdentifier"));
 
     ::PutTlsTransaction(poTlsNode, oStructuredBufferResponse);

@@ -814,7 +814,7 @@ extern "C" __declspec(dllexport) int __cdecl RemoteDataConnectorHeartbeat(void)
                         std::string strDatasetFilename;
                         for (auto strDatasetFile : gs_stlListOfRegisteredDatasetFiles)
                         {
-                            if (strVirtualMachineUuid == strDatasetFile.second)
+                            if (strDatasetIdentifier == strDatasetFile.second)
                             {
                                 strDatasetFilename = gs_stlListOfRegisteredDatasetFilenames[strDatasetFile.first];
                             }
@@ -824,14 +824,15 @@ extern "C" __declspec(dllexport) int __cdecl RemoteDataConnectorHeartbeat(void)
                         std::vector<Byte> stlDatasetFiledata = ::GetBinaryFileBuffer(strDatasetFilename.c_str());
                         StructuredBuffer oVirtualMachineUploadDataset;
                         oVirtualMachineUploadDataset.PutString("SailWebApiPortalIpAddress", gs_strIpAddressOfSailWebApiPortal);
-                        oVirtualMachineUploadDataset.PutString("Base64EncodedDataset", ::Base64Encode(stlDatasetFiledata.data(), (unsigned int)stlDatasetFiledata.size()));
+                        std::string strEncoded = ::Base64Encode(stlDatasetFiledata.data(), stlDatasetFiledata.size());
+                        oVirtualMachineUploadDataset.PutString("Base64EncodedDataset", strEncoded);
                         oVirtualMachineUploadDataset.PutString("DataOwnerAccessToken", gs_strEosb);
                         oVirtualMachineUploadDataset.PutString("DataOwnerUserIdentifier", gs_strAuthenticatedUserIdentifier);
                         oVirtualMachineUploadDataset.PutString("DataOwnerOrganizationIdentifier", gs_strOrganizationIdentifier);
                         oJsonBody = JsonValue::ParseStructuredBufferToJson(oVirtualMachineUploadDataset);
                         strJsonBody = oJsonBody->ToString();
                         oJsonBody->Release();
-                        stlRestResponse = ::RestApiCall(strVirtualMachineIpAddress, (Word)6800, strVerb, "GET", "/something", false);
+                        stlRestResponse = ::RestApiCall(strVirtualMachineIpAddress, (Word)6800, "GET", "/something", strJsonBody, false);
                     }
                 }
             }

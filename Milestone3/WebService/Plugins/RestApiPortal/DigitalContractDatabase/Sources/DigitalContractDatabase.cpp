@@ -2691,10 +2691,38 @@ std::vector<Byte> __thiscall DigitalContractDatabase::DeprovisionDigitalContract
                         if ((0 < oAzureTemplateResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oAzureTemplateResponse.GetDword("Status")))
                         {
                             StructuredBuffer oTemplateData = oAzureTemplateResponse.GetStructuredBuffer("Template");
-                            auto oListOfVirtualMachines = StructuredBuffer(this->GetProvisioningStatus(c_oRequest)).GetStructuredBuffer("VirtualMachines").GetNamesOfElements();
+                            // auto oListOfVirtualMachines = StructuredBuffer(this->GetProvisioningStatus(c_oRequest)).GetStructuredBuffer("VirtualMachines").GetNamesOfElements();
+                            StructuredBuffer oListOfVirtualMachines;
+                            // Make a Tls connection with the database portal
+                            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                            // Create a request to get the list of VMs
+                            StructuredBuffer oRequest;
+                            oRequest.PutString("PluginName", "DatabaseManager");
+                            oRequest.PutString("Verb", "GET");
+                            oRequest.PutString("Resource", "/SAIL/DatabaseManager/ListOfVMsAssociatedWithDC");
+                            oRequest.PutString("DigitalContractGuid", strDcGuid);
+                            std::vector<Byte> stlRequest = ::CreateRequestPacket(oRequest);
+                            // Send request packet
+                            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                            // Read header and body of the response
+                            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
+                            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                            unsigned int unResponseDataSizeInBytes = *((uint32_t *) stlRestResponseLength.data());
+                            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 2000);
+                            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                            // Make sure to release the poTlsNode
+                            poTlsNode->Release();
+                            poTlsNode = nullptr;
+
+                            StructuredBuffer oDatabaseResponse(stlResponse);
+                            if (404 != oDatabaseResponse.GetDword("Status"))
+                            {
+                                oListOfVirtualMachines = oDatabaseResponse.GetStructuredBuffer("VirtualMachines");
+                            }
 
                             // If the DataConnector is active, start the VM provisioning in a different async thread
-                            for (auto strVirtualMachineName : oListOfVirtualMachines)
+                            for (auto strVirtualMachineName : oListOfVirtualMachines.GetNamesOfElements())
                             {
                                 // Get the information about the Vitual Machine and deprovision
                                 // it only if it was not already deleted or attempted to be deleted

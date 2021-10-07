@@ -124,6 +124,7 @@ std::vector<Byte> __stdcall GetTlsTransaction(
             }
             std::string strStartOfValue = strLineWithKey.substr(strLineWithKey.find(": ")+2);
             unsigned int unSizeOfPayload = std::stoi(strStartOfValue.c_str());
+            std::cout << "Content length " << unSizeOfPayload << std::endl;
 
             // Read the data as the content lenght is now known
             std::vector<Byte> stlFileToDownload = poTlsNode->Read(unSizeOfPayload, unMillisecondTimeout);

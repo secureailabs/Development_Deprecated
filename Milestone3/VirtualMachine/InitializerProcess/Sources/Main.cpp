@@ -46,7 +46,7 @@ static std::vector<Byte> __stdcall WaitForInitializationParameters(void)
     TlsNode * poTlsNode = oTlsServer.Accept();
     _ThrowBaseExceptionIf((nullptr == poTlsNode), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
 
-    StructuredBuffer oBackendInitializationParameters(::GetTlsTransaction(poTlsNode, 10*1000));
+    StructuredBuffer oBackendInitializationParameters(::GetTlsTransaction(poTlsNode, 60*10*1000));
     oAllInitializationParameters.PutString("NameOfVirtualMachine", oBackendInitializationParameters.GetString("NameOfVirtualMachine"));
     oAllInitializationParameters.PutString("IpAddressOfVirtualMachine", oBackendInitializationParameters.GetString("IpAddressOfVirtualMachine"));
     oAllInitializationParameters.PutString("VirtualMachineIdentifier", oBackendInitializationParameters.GetString("VirtualMachineIdentifier"));

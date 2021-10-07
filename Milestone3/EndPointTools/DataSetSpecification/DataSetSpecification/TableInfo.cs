@@ -237,7 +237,12 @@ namespace DataSetSpecification
                     oDataTableToDisplay.Columns.Add(dataColumn);
                     i++;
                 }
-                for (i = 0; i < 50; i++)
+                int upper = 50;
+                if (upper > dt.Rows.Count)
+                {
+                    upper = dt.Rows.Count;
+                }
+                for (i = 0; i < upper; i++)
                 {
                     oDataTableToDisplay.Rows.Add(dt.Rows[i].ItemArray);
                 }

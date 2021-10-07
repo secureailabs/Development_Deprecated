@@ -53,20 +53,51 @@ static std::vector<Byte> __stdcall GetBinaryFileBuffer(
     __DebugFunction();
 
     std::vector<Byte> stlBinaryBuffer;
+    HANDLE hFileHandle = ::CreateFileA(c_szFilename, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 
-    // binary mode is only for switching off newline translation
-    std::ifstream stlFile(c_szFilename, std::ios::binary);
-    stlFile.unsetf(std::ios::skipws);
-    // Figure out the total size of the binary file
-    std::streampos stlFileSizeInBytes;
-    stlFile.seekg(0, std::ios::end);
-    stlFileSizeInBytes = stlFile.tellg();
-    // Reset the file pointer to the beginning before reading the file
-    stlFile.seekg(0, std::ios::beg);
-    // Make sure the buffer is large enough to receive the binary file
-    stlBinaryBuffer.reserve(stlFileSizeInBytes);
-    // Read the contents of the binary file into the buffer
-    stlBinaryBuffer.insert(stlBinaryBuffer.begin(), std::istream_iterator<Byte>(stlFile), std::istream_iterator<Byte>());
+    try
+    {
+        _ThrowBaseExceptionIf((INVALID_HANDLE_VALUE == hFileHandle), "Failed to open file %s", c_szFilename);
+        BY_HANDLE_FILE_INFORMATION sFileInformation;
+        bool fSuccess = ::GetFileInformationByHandle(hFileHandle, &sFileInformation);
+        _ThrowBaseExceptionIf((TRUE != fSuccess), "Failed to get file information for %s", c_szFilename);
+        uint64_t un64FileSizeInBytes = (uint64_t) MAKE_QWORD(sFileInformation.nFileSizeHigh, sFileInformation.nFileSizeLow);
+        // Make sure the buffer is large enough to receive the binary file
+        stlBinaryBuffer.resize(un64FileSizeInBytes);
+        // Read in the data
+        Byte* pbBuffer = (Byte *) stlBinaryBuffer.data();
+        uint64_t un64RemainingBytes = un64FileSizeInBytes;
+        do
+        {
+            unsigned int unNumberOfBytesToRead = (unsigned int) min(un64RemainingBytes, 0xFFFFFFFF);
+            unsigned int unNumberOfBytesRead = 0;
+            fSuccess = ::ReadFile(hFileHandle, (void *) stlBinaryBuffer.data(), (DWORD)unNumberOfBytesToRead, (DWORD*)&unNumberOfBytesRead, nullptr);
+            _ThrowBaseExceptionIf((TRUE != fSuccess), "Failed to read file with GetLastError() = %d", ::GetLastError());
+            un64RemainingBytes -= unNumberOfBytesRead;
+            if (0 < un64RemainingBytes)
+            {
+                pbBuffer += unNumberOfBytesRead;
+                unNumberOfBytesToRead -= unNumberOfBytesRead;
+            }
+        }
+        while (0 < un64RemainingBytes);
+    }
+    
+    catch (BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    // Make sure to close the file if required
+    if (INVALID_HANDLE_VALUE != hFileHandle)
+    {
+        ::CloseHandle(hFileHandle);
+    }
 
     return stlBinaryBuffer;
 }
@@ -824,7 +855,7 @@ extern "C" __declspec(dllexport) int __cdecl RemoteDataConnectorHeartbeat(void)
                         std::vector<Byte> stlDatasetFiledata = ::GetBinaryFileBuffer(strDatasetFilename.c_str());
                         StructuredBuffer oVirtualMachineUploadDataset;
                         oVirtualMachineUploadDataset.PutString("SailWebApiPortalIpAddress", gs_strIpAddressOfSailWebApiPortal);
-                        std::string strEncoded = ::Base64Encode(stlDatasetFiledata.data(), stlDatasetFiledata.size());
+                        std::string strEncoded = ::Base64Encode(stlDatasetFiledata.data(), (unsigned int) stlDatasetFiledata.size());
                         oVirtualMachineUploadDataset.PutString("Base64EncodedDataset", strEncoded);
                         oVirtualMachineUploadDataset.PutString("DataOwnerAccessToken", gs_strEosb);
                         oVirtualMachineUploadDataset.PutString("DataOwnerUserIdentifier", gs_strAuthenticatedUserIdentifier);

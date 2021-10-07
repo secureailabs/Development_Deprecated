@@ -95,6 +95,8 @@ namespace DataSetSpecification
                         metadatSize[i] = (UInt64)tablesMetaData[i].GetSerializedBufferRawDataSizeInBytes();
                         currentTableOffset += (UInt64)table.Length;
                         i++;
+
+                        System.GC.Collect();
                     }
 
                     Byte[] byteArray;
@@ -109,6 +111,8 @@ namespace DataSetSpecification
 
                         // Writing the table MetaData to the buffer
                         tableAndMetadataBuffer = tableAndMetadataBuffer.Concat(byteArray).ToArray();
+
+                        System.GC.Collect();
                     }
 
                     // dataset Metadata StructuredBuffer

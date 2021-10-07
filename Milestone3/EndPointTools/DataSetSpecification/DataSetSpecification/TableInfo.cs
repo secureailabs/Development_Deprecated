@@ -23,6 +23,7 @@ namespace DataSetSpecification
         public string m_columnNames = "";
         public string m_columnTypes = "";
         public Byte m_tablePrivacy = 0;
+        public string m_strFilename = "";
 
         // To store the Visibility state of the 3 Add Header Button status
         // 0 : Add/Edit Header Button
@@ -62,13 +63,67 @@ namespace DataSetSpecification
 
         public string GetTableAsCSVString()
         {
-            DataTable dataTable = (DataTable)dataGridView1.DataSource;
             StringBuilder sb = new StringBuilder();
-            foreach (DataRow row in dataTable.Rows)
+            if (m_strFilename != "")
             {
-                IEnumerable<string> fields = row.ItemArray.Select(field => field.ToString());
-                sb.AppendLine(string.Join("\x1f", fields));
+                FileInfo fi = new FileInfo(m_strFilename);
+                filesize.Text = fi.Length.ToString() + " bytes";
+
+                // find the delimiter
+                string delimiter = ",";
+                int Tchar = 0;
+                StreamReader reader;
+                reader = new StreamReader(m_strFilename);
+                do
+                {
+                    char ch = (char)reader.Read();
+                    if (ch == ',')
+                    {
+                        delimiter = ",";
+                        break;
+                    }
+                    else if (';' == ch)
+                    {
+                        delimiter = ";";
+                        break;
+                    }
+                    Tchar++;
+                } while (!reader.EndOfStream);
+                reader.Close();
+                reader.Dispose();
+
+                var config = new CsvConfiguration(CultureInfo.CurrentCulture)
+                {
+                    Delimiter = delimiter,
+                    Comment = '#',
+                    Quote = '"',
+                    HasHeaderRecord = true,
+                    MissingFieldFound = null,
+                };
+
+                var oStreamreader = new StreamReader(m_strFilename);
+                var csv = new CsvReader(oStreamreader, config);
+                // Do any configuration to `CsvReader` before creating CsvDataReader.
+                var dr = new CsvDataReader(csv);
+                var dt = new DataTable();
+                dt.Load(dr);
+                DataRow headerRow = dt.NewRow();
+                headerRow.ItemArray = csv.HeaderRecord;
+                dt.Rows.InsertAt(headerRow, 0);
+
+                int i = 0;
+                foreach (DataRow row in dt.Rows)
+                {
+                    IEnumerable<string> fields = row.ItemArray.Select(field => field.ToString());
+                    sb.AppendLine(string.Join("\x1f", fields));
+                    if (0 == i % 500)
+                    {
+                        System.GC.Collect();
+                    }
+                    i++;
+                }
             }
+            System.GC.Collect();
             return sb.ToString();
         }
 
@@ -126,7 +181,7 @@ namespace DataSetSpecification
             FlowPanelColumnInfo.Controls.Clear();
             DataTable dataTable = new DataTable();
             string filePath = textBox1.Text;
-
+            m_strFilename = filePath;
             if (filePath != "")
             {
                 FileInfo fi = new FileInfo(filePath);
@@ -173,7 +228,21 @@ namespace DataSetSpecification
                 DataRow headerRow = dt.NewRow();
                 headerRow.ItemArray = csv.HeaderRecord;
                 dt.Rows.InsertAt(headerRow, 0);
-                dataGridView1.DataSource = dt;
+
+                var oDataTableToDisplay = new DataTable();
+                int i = 0;
+                foreach (object oColumnName in dt.Rows[0].ItemArray)
+                {
+                    DataColumn dataColumn = new DataColumn(i.ToString(), oColumnName.GetType());
+                    oDataTableToDisplay.Columns.Add(dataColumn);
+                    i++;
+                }
+                for (i = 0; i < 50; i++)
+                {
+                    oDataTableToDisplay.Rows.Add(dt.Rows[i].ItemArray);
+                }
+
+                dataGridView1.DataSource = oDataTableToDisplay;
                 m_numberOfRows = (uint)dt.Rows.Count;
                 m_numberOfColumns = (uint)dt.Columns.Count;
 
@@ -184,10 +253,6 @@ namespace DataSetSpecification
                     FlowPanelColumnInfo.Controls.Add(cc);
                 }
 
-                foreach (DataGridViewRow onerow in dataGridView1.Rows)
-                {
-                    onerow.ReadOnly = true;
-                }
                 rows.Text = m_numberOfRows.ToString();
                 columns.Text = m_numberOfColumns.ToString();
                 m_tableUUID = System.Guid.NewGuid();
@@ -196,6 +261,7 @@ namespace DataSetSpecification
                 m_addHeaderButtonVisibility = 10;
                 m_editHeaderButtonVisibility = 10;
             }
+            System.GC.Collect();
         }
 
         private void LabelClose_Click(object sender, EventArgs e)

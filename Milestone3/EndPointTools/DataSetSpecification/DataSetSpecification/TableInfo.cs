@@ -103,21 +103,17 @@ namespace DataSetSpecification
 
                 var oStreamreader = new StreamReader(m_strFilename);
                 var csv = new CsvReader(oStreamreader, config);
-                // Do any configuration to `CsvReader` before creating CsvDataReader.
                 var dr = new CsvDataReader(csv);
-                var dt = new DataTable();
-                dt.Load(dr);
-                DataRow headerRow = dt.NewRow();
-                headerRow.ItemArray = csv.HeaderRecord;
-                dt.Rows.InsertAt(headerRow, 0);
-
+                sb.AppendLine(string.Join("\x1f", csv.HeaderRecord));
                 int i = 0;
-                foreach (DataRow row in dt.Rows)
+                // Don't call GC until the memory usage is less than 4GB
+                while (csv.Read())
                 {
-                    IEnumerable<string> fields = row.ItemArray.Select(field => field.ToString());
+                    string[] fields = csv.Parser.Record;
                     sb.AppendLine(string.Join("\x1f", fields));
-                    if (0 == i % 500)
+                    if (0 == (i % 100000))
                     {
+                        Console.WriteLine("Calling GC" + i);
                         System.GC.Collect();
                     }
                     i++;
@@ -179,7 +175,6 @@ namespace DataSetSpecification
             m_numberOfColumns = 0;
             m_numberOfRows = 0;
             FlowPanelColumnInfo.Controls.Clear();
-            DataTable dataTable = new DataTable();
             string filePath = textBox1.Text;
             m_strFilename = filePath;
             if (filePath != "")
@@ -221,35 +216,27 @@ namespace DataSetSpecification
 
                 var oStreamreader = new StreamReader(filePath);
                 var csv = new CsvReader(oStreamreader, config);
-                // Do any configuration to `CsvReader` before creating CsvDataReader.
                 var dr = new CsvDataReader(csv);
-                var dt = new DataTable();
-                dt.Load(dr);
-                DataRow headerRow = dt.NewRow();
-                headerRow.ItemArray = csv.HeaderRecord;
-                dt.Rows.InsertAt(headerRow, 0);
-
                 var oDataTableToDisplay = new DataTable();
                 int i = 0;
-                foreach (object oColumnName in dt.Rows[0].ItemArray)
+                foreach (object oColumnName in csv.HeaderRecord)
                 {
                     DataColumn dataColumn = new DataColumn(i.ToString(), oColumnName.GetType());
                     oDataTableToDisplay.Columns.Add(dataColumn);
                     i++;
                 }
-                int upper = 50;
-                if (upper > dt.Rows.Count)
+                m_numberOfColumns = (uint)i;
+
+                i = 0;
+                oDataTableToDisplay.Rows.Add(csv.HeaderRecord);
+                while (csv.Read() && (i < 50))
                 {
-                    upper = dt.Rows.Count;
-                }
-                for (i = 0; i < upper; i++)
-                {
-                    oDataTableToDisplay.Rows.Add(dt.Rows[i].ItemArray);
+                    oDataTableToDisplay.Rows.Add(csv.Parser.Record);
+                    i++;
                 }
 
                 dataGridView1.DataSource = oDataTableToDisplay;
-                m_numberOfRows = (uint)dt.Rows.Count;
-                m_numberOfColumns = (uint)dt.Columns.Count;
+                m_numberOfRows = 0;
 
                 foreach (string field in csv.HeaderRecord)
                 {
@@ -258,7 +245,7 @@ namespace DataSetSpecification
                     FlowPanelColumnInfo.Controls.Add(cc);
                 }
 
-                rows.Text = m_numberOfRows.ToString();
+                //rows.Text = m_numberOfRows.ToString();
                 columns.Text = m_numberOfColumns.ToString();
                 m_tableUUID = System.Guid.NewGuid();
                 ButtonAddHeader.Show();

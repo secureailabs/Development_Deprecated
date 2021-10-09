@@ -25,6 +25,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <thread>
 
 // SAIL Web Api Portal specific global data.
 static std::string gs_strIpAddressOfSailWebApiPortal;
@@ -40,6 +41,8 @@ static std::map<Qword, std::string> gs_stlListOfRegisteredDatasetFilenames;
 static std::map<Qword, std::string> gs_stlListOfRegisteredDatasetFiles;
 static std::map<Qword, std::string> gs_stlListOfNewDatasetFiles;
 static bool gs_fIsRemoteDataConnectorRegistered = false;
+static std::mutex gs_stlVirtualMachineUploadMutex;
+static std::set<Qword> gs_stlListOfCurrentlyRunningUploads;
 
 /// <summary>
 /// 
@@ -165,6 +168,73 @@ static std::string __cdecl GetDateStringFromEpochMillisecondTimestamp(
     ::sprintf_s(szTemporaryBuffer, sizeof(szTemporaryBuffer), "%s %02d%s, %04d @ %02d:%02d:%02d", c_szMonths[sTime.tm_mon], sTime.tm_mday, c_szDayIth[sTime.tm_mday], (sTime.tm_year + 1900), sTime.tm_hour, sTime.tm_min, sTime.tm_sec);
 
     return std::string(szTemporaryBuffer);
+}
+
+/// <summary>
+/// 
+/// </summary>
+/// <param name="c_poUploadParameters"></param>
+static void UploadDatasetToVirtualMachine(
+    _in const std::string c_strBase64SerializedParameters
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+    std::string strVirtualMachineIpAddress;
+    std::string strDatasetFilename;
+    Qword qw64BitHashOfConcatenatedIdentifiers = 0;
+
+    try
+    {
+        // Deserialize the incoming base64 string into the target StructuredBuffer
+        StructuredBuffer oVirtualMachineInformation(c_strBase64SerializedParameters.c_str());
+        // Extract some basic information
+        qw64BitHashOfConcatenatedIdentifiers = oVirtualMachineInformation.GetQword("64BitHashOfConcatenatedIdentifiers");
+        strVirtualMachineIpAddress = oVirtualMachineInformation.GetString("IPAddress");
+        strDatasetFilename = oVirtualMachineInformation.GetString("DatasetFilename");
+        // Load the file into a binary buffer and add it to the StructuredBuffer
+        std::vector<Byte> stlDatasetFiledata = ::GetBinaryFileBuffer(strDatasetFilename.c_str());
+        std::string strEncoded = ::Base64Encode(stlDatasetFiledata.data(), (unsigned int)stlDatasetFiledata.size());
+        oVirtualMachineInformation.PutString("Base64EncodedDataset", strEncoded);
+        // Prepare the JSON blob
+        auto oJsonBody = JsonValue::ParseStructuredBufferToJson(oVirtualMachineInformation);
+        std::string strJsonBody = oJsonBody->ToString();
+        oJsonBody->Release();
+        // Add notification to mark the beginning of the upload transaction
+        ::RegisterExceptionalMessage("Began uploading dataset %s to %s", strDatasetFilename.c_str(), strVirtualMachineIpAddress.c_str());
+        // Execute the upload transaction
+        auto stlRestResponse = ::RestApiCall(strVirtualMachineIpAddress, (Word)6800, "GET", "/something", strJsonBody, false);
+        fSuccess = true;
+    }
+
+    catch (BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    // Add notification to mark the end of the upload transaction. This is done regardless
+    // of how the transaction pans out
+    if (true == fSuccess)
+    {
+        ::RegisterExceptionalMessage("Successfully finished uploading dataset %s to %s", strDatasetFilename.c_str(), strVirtualMachineIpAddress.c_str());
+    }
+    else
+    {
+        ::RegisterExceptionalMessage("Failed to upload dataset %s to %s", strDatasetFilename.c_str(), strVirtualMachineIpAddress.c_str());
+    }
+
+    // No matter what happens, always remove gs_stlListOfCurrentlyRunningUploads entry
+    const std::lock_guard<std::mutex> stlVirtualMachineUploadMutexLock(gs_stlVirtualMachineUploadMutex);
+    if (gs_stlListOfCurrentlyRunningUploads.end() != gs_stlListOfCurrentlyRunningUploads.find(qw64BitHashOfConcatenatedIdentifiers))
+    {
+        gs_stlListOfCurrentlyRunningUploads.erase(qw64BitHashOfConcatenatedIdentifiers);
+    }
 }
 
 /// <summary>
@@ -834,36 +904,50 @@ extern "C" __declspec(dllexport) int __cdecl RemoteDataConnectorHeartbeat(void)
                 if (true == oResponse.IsElementPresent("VirtualMachines", INDEXED_BUFFER_VALUE_TYPE))
                 {
                     StructuredBuffer oVirtualMachinesWaiting = oResponse.GetStructuredBuffer("VirtualMachines");
-                    for (auto strVirtualMachineUuid : oVirtualMachinesWaiting.GetNamesOfElements())
+                    for (auto strVirtualMachineIdentifier : oVirtualMachinesWaiting.GetNamesOfElements())
                     {
                         // There is a Virtual Machine waiting for data, a new thread is created
                         // to connect to the Virutal Machine and upload the data
-                        StructuredBuffer oVirtualMachineInformation = oVirtualMachinesWaiting.GetStructuredBuffer(strVirtualMachineUuid.c_str());
-                        std::string strVirtualMachineIpAddress = oVirtualMachineInformation.GetString("IPAddress");
+                        StructuredBuffer oVirtualMachineInformation = oVirtualMachinesWaiting.GetStructuredBuffer(strVirtualMachineIdentifier.c_str());
                         std::string strDatasetIdentifier = oVirtualMachineInformation.GetString("DatasetGuid");
-                        // Figure out which dataset filename to send
-                        std::string strDatasetFilename;
-                        for (auto strDatasetFile : gs_stlListOfRegisteredDatasetFiles)
+                        // Figure out if we are already dealing with uploading this dataset to the target virtual machine
+                        bool fIsNewRequest = true;
                         {
-                            if (strDatasetIdentifier == strDatasetFile.second)
+                            std::string strConcatenatedIdentifiers = strVirtualMachineIdentifier + "<--" + strDatasetIdentifier;
+                            Qword qw64BitHashOfConcatenatedIdentifiers = ::Get64BitHashOfNullTerminatedString(strConcatenatedIdentifiers.c_str(), false);
+                            const std::lock_guard<std::mutex> stlVirtualMachineUploadMutexLock(gs_stlVirtualMachineUploadMutex);
+                            if (gs_stlListOfCurrentlyRunningUploads.end() != gs_stlListOfCurrentlyRunningUploads.find(qw64BitHashOfConcatenatedIdentifiers))
                             {
-                                strDatasetFilename = gs_stlListOfRegisteredDatasetFilenames[strDatasetFile.first];
+                                // There is already a running thread dedicated to uploading the requested dataset
+                                // to the target virtual machine. So we ignore it.
+                                fIsNewRequest = false;
                             }
+                            else
+                            {
+                                // Insert the request now
+                                gs_stlListOfCurrentlyRunningUploads.insert(qw64BitHashOfConcatenatedIdentifiers);
+                            }
+                            oVirtualMachineInformation.PutQword("64BitHashOfConcatenatedIdentifiers", qw64BitHashOfConcatenatedIdentifiers);
                         }
-                        _ThrowBaseExceptionIf((0 == strDatasetFilename.size()), "Invalid dataset request %s", strVirtualMachineUuid.c_str());
-                        // Okay, load the file
-                        std::vector<Byte> stlDatasetFiledata = ::GetBinaryFileBuffer(strDatasetFilename.c_str());
-                        StructuredBuffer oVirtualMachineUploadDataset;
-                        oVirtualMachineUploadDataset.PutString("SailWebApiPortalIpAddress", gs_strIpAddressOfSailWebApiPortal);
-                        std::string strEncoded = ::Base64Encode(stlDatasetFiledata.data(), (unsigned int) stlDatasetFiledata.size());
-                        oVirtualMachineUploadDataset.PutString("Base64EncodedDataset", strEncoded);
-                        oVirtualMachineUploadDataset.PutString("DataOwnerAccessToken", gs_strEosb);
-                        oVirtualMachineUploadDataset.PutString("DataOwnerUserIdentifier", gs_strAuthenticatedUserIdentifier);
-                        oVirtualMachineUploadDataset.PutString("DataOwnerOrganizationIdentifier", gs_strOrganizationIdentifier);
-                        oJsonBody = JsonValue::ParseStructuredBufferToJson(oVirtualMachineUploadDataset);
-                        strJsonBody = oJsonBody->ToString();
-                        oJsonBody->Release();
-                        stlRestResponse = ::RestApiCall(strVirtualMachineIpAddress, (Word)6800, "GET", "/something", strJsonBody, false);
+                        // Only create a new thread if this is a new request.
+                        if (true == fIsNewRequest)
+                        {
+                            std::string strDatasetFilename;
+                            for (auto strDatasetFile : gs_stlListOfRegisteredDatasetFiles)
+                            {
+                                if (strDatasetIdentifier == strDatasetFile.second)
+                                {
+                                    strDatasetFilename = gs_stlListOfRegisteredDatasetFilenames[strDatasetFile.first];
+                                }
+                            }
+                            _ThrowBaseExceptionIf((0 == strDatasetFilename.size()), "Invalid dataset request from VM %s", strVirtualMachineIdentifier.c_str());
+                            oVirtualMachineInformation.PutString("DatasetFilename", strDatasetFilename);
+                            oVirtualMachineInformation.PutString("SailWebApiPortalIpAddress", gs_strIpAddressOfSailWebApiPortal);
+                            oVirtualMachineInformation.PutString("DataOwnerAccessToken", gs_strEosb);
+                            oVirtualMachineInformation.PutString("DataOwnerUserIdentifier", gs_strAuthenticatedUserIdentifier);
+                            oVirtualMachineInformation.PutString("DataOwnerOrganizationIdentifier", gs_strOrganizationIdentifier);
+                            std::thread newThread(UploadDatasetToVirtualMachine, oVirtualMachineInformation.GetBase64SerializedBuffer());
+                        }
                     }
                 }
             }
@@ -928,6 +1012,7 @@ extern "C" __declspec(dllexport) int __cdecl RemoteDataConnectorUpdateDatasets(v
                 strVerb = "PUT";
                 strApiUrl = "/SAIL/RemoteDataConnectorManager/UpdateConnector?Eosb=" + gs_strEosb;
             }
+
             StructuredBuffer oUpdateDataConnector;
             oUpdateDataConnector.PutString("RemoteDataConnectorGuid", gs_oRemoteDataConnectorIdentifier.ToString(eHyphensAndCurlyBraces));
             oUpdateDataConnector.PutStructuredBuffer("Datasets", oListOfDatasets);

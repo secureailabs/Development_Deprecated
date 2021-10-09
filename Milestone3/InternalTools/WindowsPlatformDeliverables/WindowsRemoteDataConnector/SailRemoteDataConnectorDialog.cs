@@ -31,7 +31,7 @@ namespace WindowsRemoteDataConnector
             {
                 m_SourceFolderTextBox.Text = registryKey.GetValue("RemoteDataConnectorSourceFolder").ToString();
                 // Put a notification
-                this.AddNotification(DateTime.UtcNow.ToString("G") + " (UTC) : Source folder selected (" + m_SourceFolderTextBox.Text + ")");
+                this.AddNotification("Source folder selected (" + m_SourceFolderTextBox.Text + ")");
             }
             else
             {
@@ -45,7 +45,7 @@ namespace WindowsRemoteDataConnector
                     // application later.
                     registryKey.SetValue("RemoteDataConnectorSourceFolder", m_SourceFolderTextBox.Text);
                     // Put a notification
-                    this.AddNotification(DateTime.UtcNow.ToString("G") + " (UTC) : Default source folder created (" + m_SourceFolderTextBox.Text + ")");
+                    this.AddNotification("Default source folder created (" + m_SourceFolderTextBox.Text + ")");
                 }
             }
             registryKey.Close();
@@ -79,7 +79,7 @@ namespace WindowsRemoteDataConnector
                 registryKey.SetValue("RemoteDataConnectorSourceFolder", m_SourceFolderTextBox.Text);
                 registryKey.Close();
                 // Put a notification
-                this.AddNotification(DateTime.UtcNow.ToString("G") + " (UTC) : New source folder selected (" + m_SourceFolderTextBox.Text + ")");
+                this.AddNotification("New source folder selected (" + m_SourceFolderTextBox.Text + ")");
             }
         }
 
@@ -94,7 +94,7 @@ namespace WindowsRemoteDataConnector
             )
         {
             // Put a notification
-            this.AddNotification(DateTime.UtcNow.ToString("G") + " (UTC) : Remote Data Connector started");
+            this.AddNotification("Remote Data Connector started");
             // First we need to list all of the files within the source folder. For each dataset, this
             // function will call to register the dataset
             this.InitialScanForDatasets();
@@ -138,7 +138,7 @@ namespace WindowsRemoteDataConnector
             m_NotificationsTextBox.BackColor = System.Drawing.SystemColors.InactiveCaption;
 
             // Put a notification
-            this.AddNotification(DateTime.UtcNow.ToString("G") + " (UTC) : Remote Data Connector stopped");
+            this.AddNotification("Remote Data Connector stopped");
         }
 
         /// <summary>
@@ -161,7 +161,7 @@ namespace WindowsRemoteDataConnector
             if (0 < numberOfDatasetsRegistered)
             {
                 // Put a notification
-                this.AddNotification(DateTime.UtcNow.ToString("G") + " (UTC) : " + numberOfDatasetsRegistered + " datasets registered.");
+                this.AddNotification(numberOfDatasetsRegistered + " datasets registered.");
             }
         }
 
@@ -189,6 +189,17 @@ namespace WindowsRemoteDataConnector
             )
         {
             m_CurrentTimeTextBox.Text = DateTime.UtcNow.ToString("G");
+
+            string exceptionMessage;
+            do
+            {
+                exceptionMessage = SailWebApiPortalInterop.GetNextException();
+                if (0 < exceptionMessage.Length)
+                {
+                    this.AddNotification(exceptionMessage);
+                }
+            }
+            while (0 < exceptionMessage.Length);
         }
 
         /// <summary>
@@ -253,7 +264,7 @@ namespace WindowsRemoteDataConnector
                     m_ListOfRegisteredDatasets.Remove(registeredFilename);
                 }
                 // Put a notification
-                this.AddNotification(DateTime.UtcNow.ToString("G") + " (UTC) : " + numberOfDeletedDatasets + " datasets removed (unregistered).");
+                this.AddNotification(numberOfDeletedDatasets + " datasets removed (unregistered).");
             }
             // Now we need to figure out if any new files were added. We list all files and then
             // compare that list with m_ListOfRegisteredDatasets
@@ -278,7 +289,7 @@ namespace WindowsRemoteDataConnector
             if (0 < numberOfDatasetsRegistered)
             {
                 // Put a notification
-                this.AddNotification(DateTime.UtcNow.ToString("G") + " (UTC) : " + numberOfDatasetsRegistered + " datasets registered.");
+                this.AddNotification(numberOfDatasetsRegistered + " datasets registered.");
             }
         }
 
@@ -290,8 +301,51 @@ namespace WindowsRemoteDataConnector
             string notification
             )
         {
+            string[] notificationStrings = notification.Split('\r');
+            if (1 == notificationStrings.Length)
+            {
+                notificationStrings = notification.Split('\n');
+            }
+            foreach (string singleNotificationString in notificationStrings)
+            {
+                singleNotificationString.Trim();
+                singleNotificationString.Replace("\r", "");
+                singleNotificationString.Replace("\n", "");
+                singleNotificationString.Replace("\t", "    ");
+            }
+
+            string dateTime = DateTime.UtcNow.ToString("G") + " (UTC)";
             m_NotificationsTextBox.BeginUpdate();
-            m_NotificationsTextBox.Items.Add(notification);
+            for (int index = 0; index < notificationStrings.Length; ++index)
+            {
+                string displayString;
+
+                if (0 == index)
+                {
+                    if (27 == dateTime.Length)
+                    {
+                        displayString = dateTime + "  | " + notificationStrings[index];
+                    }
+                    else if (26 == dateTime.Length)
+                    {
+                        displayString = dateTime + "   | " + notificationStrings[index];
+                    }
+                    else if (25 == dateTime.Length)
+                    {
+                        displayString = dateTime + "    | " + notificationStrings[index];
+                    }
+                    else
+                    {
+                        displayString = dateTime + " | " + notificationStrings[index];
+                    }
+                }
+                else
+                {
+                    displayString = "                             | " + notificationStrings[index];
+                }
+                m_NotificationsTextBox.Items.Add(displayString);
+            }
+            
             m_NotificationsTextBox.EndUpdate();
         }
 

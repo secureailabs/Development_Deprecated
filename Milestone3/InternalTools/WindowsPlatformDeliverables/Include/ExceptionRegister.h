@@ -24,6 +24,10 @@
 
 /********************************************************************************************/
 
+extern void __cdecl RegisterExceptionalMessage(
+    _in const char * c_szMessageFormat,
+    _in ...
+    );
 extern void __cdecl RegisterException(
     _in const BaseException & c_oBaseException,
     _in const char * c_szFunctionName,

@@ -21,10 +21,54 @@
 
 #include <mutex>
 #include <queue>
+#include <stdarg.h>
 #include <string>
 
 static std::queue<std::string> gs_stlQueueOfExceptions;
 static std::mutex gs_stlMutex;
+
+/// <summary>
+/// 
+/// </summary>
+/// <param name="c_szMessageFormat"></param>
+/// <param name="..."></param>
+/// <returns></returns>
+void __cdecl RegisterExceptionalMessage(
+    _in const char * c_szMessageFormat,
+    _in ...
+    )
+{
+    __DebugFunction();
+
+    try
+    {
+        va_list pListOfArguments;
+        va_start(pListOfArguments, c_szMessageFormat);
+        unsigned int unSizeInCharactersIncludingNull = ::vsnprintf(nullptr, 0, c_szMessageFormat, pListOfArguments) + 1;
+        // Unlike most other components who will use the MemoryAllocation library, this component calls
+        // malloc directly. This is to ensure that if the actual MemoryAllocation components throws
+        // an exception, this doesn't lead to an infinite loop.
+        char * szMessage = (char *) ::malloc(unSizeInCharactersIncludingNull * sizeof(char));
+        if (nullptr != szMessage)
+        {
+            (void)::vsnprintf(szMessage, unSizeInCharactersIncludingNull, c_szMessageFormat, pListOfArguments);
+            // Use a lock_guard to make sure that if gs_stlQueueOfExceptions.push throws and
+            // exception, the mutex gets unlocked automatically
+            const std::lock_guard<std::mutex> lock(gs_stlMutex);
+            // Push the new exception event onto the queue of exception events
+            std::string finalMessage = szMessage;
+            gs_stlQueueOfExceptions.push(finalMessage);
+            // Free the allocated string
+            ::free(szMessage);
+        }
+        va_end(pListOfArguments);
+    }
+
+    catch (...)
+    {
+
+    }
+}
 
 /// <summary>
 /// Register a BaseException in the internal queue

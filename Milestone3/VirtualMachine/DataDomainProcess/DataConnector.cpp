@@ -107,7 +107,7 @@ bool __thiscall DataConnector::LoadAndVerify(
     __DebugFunction();
 
     m_poRootOfTrustNode = poRootOfTrustNode;
-    
+
     // Set the stream to take input from the data vector;
     std::stringstream stlDatasetFile;
     stlDatasetFile.rdbuf()->pubsetbuf((char *)c_stlDataset.data(), c_stlDataset.size());
@@ -197,7 +197,7 @@ bool __thiscall DataConnector::LoadAndVerify(
     oEventData.PutStructuredBuffer("DatasetHeaderData", oHeaderStructuredBuffer);
     oEventData.PutStructuredBuffer("DatasetMetadata", *m_poDataSetMetaDataStructuredBuffer);
     m_poRootOfTrustNode->RecordAuditEvent("LOAD_DATASET", 0x1111, 0x05, oEventData);
-        
+
     return true;
 }
 
@@ -410,7 +410,7 @@ StructuredBuffer __thiscall DataConnector::GetTableRowRange(
                 }
                 else
                 {
-                    strResponseString.append(m_stlTableData[unTableID][unRowNumber][unColumnNumber] + ",");
+                    strResponseString.append(m_stlTableData[unTableID][unRowNumber][unColumnNumber] + "\x1f");
                 }
             }
         }
@@ -461,7 +461,7 @@ StructuredBuffer __thiscall DataConnector::GetTableColumnRange(
                 }
                 else
                 {
-                    strResponseString.append(m_stlTableData[unTableID][unRowNumber][unColumnNumber] + ",");
+                    strResponseString.append(m_stlTableData[unTableID][unRowNumber][unColumnNumber] + "\x1f");
                 }
             }
         }

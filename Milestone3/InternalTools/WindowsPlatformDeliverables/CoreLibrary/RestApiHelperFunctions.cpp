@@ -119,7 +119,7 @@ std::vector<Byte> RestApiCall(
     {
         // Initialize CURL
         CURL * psCurl = nullptr;
-        ::curl_global_init(CURL_GLOBAL_DEFAULT);
+        ::curl_global_init(CURL_GLOBAL_ALL);
         psCurl = ::curl_easy_init();
         _ThrowBaseExceptionIf((nullptr == psCurl), "curl_easy_init() has failed", nullptr);
 

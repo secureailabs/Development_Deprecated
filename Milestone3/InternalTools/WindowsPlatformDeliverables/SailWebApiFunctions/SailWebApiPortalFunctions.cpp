@@ -174,25 +174,28 @@ static std::string __cdecl GetDateStringFromEpochMillisecondTimestamp(
 /// 
 /// </summary>
 /// <param name="c_poUploadParameters"></param>
-static void UploadDatasetToVirtualMachine(
-    _in const std::string c_strBase64SerializedParameters
+static Dword __stdcall UploadDatasetToVirtualMachine(
+    _in void * pParameters
     )
 {
     __DebugFunction();
 
     bool fSuccess = false;
-    std::string strVirtualMachineIpAddress;
-    std::string strDatasetFilename;
+    std::string strVirtualMachineIpAddress = "";
+    std::string strDatasetFilename = "";
     Qword qw64BitHashOfConcatenatedIdentifiers = 0;
 
     try
     {
         // Deserialize the incoming base64 string into the target StructuredBuffer
-        StructuredBuffer oVirtualMachineInformation(c_strBase64SerializedParameters.c_str());
+        StructuredBuffer oVirtualMachineInformation((char *) pParameters);
         // Extract some basic information
         qw64BitHashOfConcatenatedIdentifiers = oVirtualMachineInformation.GetQword("64BitHashOfConcatenatedIdentifiers");
         strVirtualMachineIpAddress = oVirtualMachineInformation.GetString("IPAddress");
         strDatasetFilename = oVirtualMachineInformation.GetString("DatasetFilename");
+        oVirtualMachineInformation.RemoveElement("64BitHashOfConcatenatedIdentifiers");
+        oVirtualMachineInformation.RemoveElement("IPAddress");
+        oVirtualMachineInformation.RemoveElement("DatasetFilename");
         // Load the file into a binary buffer and add it to the StructuredBuffer
         std::vector<Byte> stlDatasetFiledata = ::GetBinaryFileBuffer(strDatasetFilename.c_str());
         std::string strEncoded = ::Base64Encode(stlDatasetFiledata.data(), (unsigned int)stlDatasetFiledata.size());
@@ -235,6 +238,8 @@ static void UploadDatasetToVirtualMachine(
     {
         gs_stlListOfCurrentlyRunningUploads.erase(qw64BitHashOfConcatenatedIdentifiers);
     }
+
+    return 0;
 }
 
 /// <summary>
@@ -946,7 +951,12 @@ extern "C" __declspec(dllexport) int __cdecl RemoteDataConnectorHeartbeat(void)
                             oVirtualMachineInformation.PutString("DataOwnerAccessToken", gs_strEosb);
                             oVirtualMachineInformation.PutString("DataOwnerUserIdentifier", gs_strAuthenticatedUserIdentifier);
                             oVirtualMachineInformation.PutString("DataOwnerOrganizationIdentifier", gs_strOrganizationIdentifier);
-                            std::thread newThread(UploadDatasetToVirtualMachine, oVirtualMachineInformation.GetBase64SerializedBuffer());
+                            std::string strBase64EncodedSerializedBuffer = oVirtualMachineInformation.GetBase64SerializedBuffer();
+                            char * c_szBased64EncodedSerializedBuffer = (char *) ::malloc(strBase64EncodedSerializedBuffer.size() + 1);
+                            _ThrowOutOfMemoryExceptionIfNull(c_szBased64EncodedSerializedBuffer);
+                            ::memcpy((void *) c_szBased64EncodedSerializedBuffer, (const void *) strBase64EncodedSerializedBuffer.c_str(), strBase64EncodedSerializedBuffer.size() + 1);
+                            strBase64EncodedSerializedBuffer.clear();
+                            ::CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE) UploadDatasetToVirtualMachine, (void*) c_szBased64EncodedSerializedBuffer, 0, nullptr);
                         }
                     }
                 }

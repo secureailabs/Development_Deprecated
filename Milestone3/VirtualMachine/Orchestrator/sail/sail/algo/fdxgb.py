@@ -14,18 +14,20 @@ class fdxgb(BaseEstimator):
         self.hash_sigma = hash_sigma
         self.params_hash_functions =0
         self.hash_tables = 0
-        self.model = self.init_model()
+        #self.model = self.init_model()
         self.fns = self.setfn()
         self.initvms()
     
     def setfn(self):
         fndict = {}
+        fndict['preprocess'] = "EE2B0B20C4574FCE9F97F54CEE58B4A4"
         fndict['handlehash'] = "B804C0767CCB4B01A6BAF5A2F782BD31"
         fndict['train_init'] = "D708DABA545346409FB835560140E882"
         fndict['train_update'] = "BE9644CBB2DC4FCD9FD2AF1733550A7E"
         fndict['conf_mat'] = "A5E177C364604D759518CF618CF2F9C1"
         fndict['shap'] = "CA459C663543457FAA0F8F2444D61728"
         fndict['accuracy_score']="BD9552F72CA94350BDF72207B6E33080"
+        fndict['aucpr']="72701C420FF64DA9A28310345472CFDE"
         return fndict
     
     def initvms(self):
@@ -52,6 +54,18 @@ class fdxgb(BaseEstimator):
         model = xgb.Booster(self.params, [dtrain_all])
         self.trypickle(model)
         return model
+
+    def data_preprocess(self, data):
+        res = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            inputs = data[i]
+            setparameter(self.vms[i], jobid, self.fns['preprocess'], inputs)
+            submitjob(self.vms[i], self.fns['preprocess'], jobid)
+            pulldata(self.vms[i], jobid, self.fns['preprocess'])
+            result = queryresult(jobid, self.fns['preprocess'])
+            res.append(result)
+        return res
     
     def gen_hashfn(self, num_dim, r, L, mu, sigma):
         hash_functions = []
@@ -113,8 +127,13 @@ class fdxgb(BaseEstimator):
         pickle.dump(model, open("test.pkl", 'wb'))
     
     def train(self, model, X, y):
-        for i in range(20):
-            print("Training round %d"%i)
+        num_of_trees = 0
+        if "n_estimators" in self.params:
+            num_of_trees = self.params["n_estimators"]
+        else:    
+            num_of_trees = 20
+        for i in range(num_of_trees):
+            print("Tree {0}".format(i+1))
             training_node = i % len(self.vms)
             local_gradients=[]
             jobids = []
@@ -193,7 +212,7 @@ class fdxgb(BaseEstimator):
         model = self.train(self.model, X, y)
         return model
     
-    def score(self, X, y):
+    def acc_score(self, X, y):
         jobids = []
         for i in range(len(self.vms)):
             jobid = newguid()
@@ -210,6 +229,35 @@ class fdxgb(BaseEstimator):
         import statistics
         meanval = statistics.mean(ret)
         return meanval
+    
+    def aucpr_score(self, model, X, y):
+        jobids = []
+        p_thresholds = np.linspace(0, 1, num=100)
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            jobids.append(jobid)
+            data_id = pushdata(self.vms[i], [model, p_thresholds])
+            setparameter(self.vms[i],  jobid, self.fns['aucpr'],  [data_id[0], data_id[1], X[i], y[i]])
+            submitjob(self.vms[i], self.fns['aucpr'], jobid)
+            pulldata(self.vms[i], jobid, self.fns['aucpr'])
+        results = queryresults_parallel(jobids, self.fns['aucpr'])
+        print(results)
+        precision = []
+        recall = []
+        for i in range(100):
+            tmp = (0,0,0,0)
+            for j in range(len(self.vms)):
+                tmp[0]+=results[j][i][0]
+                tmp[1]+=results[j][i][1]
+                tmp[2]+=results[j][i][2]
+                tmp[3]+=results[j][i][3]
+            prec = tmp[3]/(tmp[3]+tmp[1])
+            reca = tmp[3]/(tmp[3]+tmp[2])
+            precision.append(prec)
+            recall.append(reca)
+        
+        return precision, recall
+
     
     def cv_score(self, models, X, y):
         scores = []

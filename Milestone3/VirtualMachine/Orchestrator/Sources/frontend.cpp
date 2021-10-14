@@ -32,7 +32,7 @@
 
 #ifndef SERVER_IP_ADDRESS
     #define SERVER_PORT 6200
-    #define SERVER_IP_ADDRESS "40.76.22.246"
+    #define SERVER_IP_ADDRESS "20.185.6.111"
 #endif
 
 Frontend::Frontend(void):

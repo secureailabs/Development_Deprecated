@@ -325,6 +325,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterDataset(
         oObject.PutUnsignedInt64("PublishDate", oDatasetMetadata.GetUnsignedInt64("PublishDate"));
         oObject.PutByte("PrivacyLevel", oDatasetMetadata.GetByte("PrivacyLevel"));
         oObject.PutString("JurisdictionalLimitations", oDatasetMetadata.GetString("JurisdictionalLimitations"));
+        oObject.PutStructuredBuffer("Tables", oDatasetMetadata.GetStructuredBuffer("Tables"));
         bsoncxx::types::b_binary oObjectBlob
         {
             bsoncxx::binary_sub_type::k_binary,

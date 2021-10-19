@@ -79,22 +79,24 @@ void __thiscall DatabaseTools::InitializeMembers(void)
     // Add Organizations information
     m_stlOrganizations.push_back(OrganizationInformation{"International Genetics Research Facility", "New York City", "Lily Bart", "System Administrator", "lbart@igr.com", "000-000-0000", "Philip Carey", "Network Engineer", "pcarey@igr.com", "000-000-0000"});
     m_stlOrganizations.push_back(OrganizationInformation{"Mercy General Hospital", "Los Angeles", "Nick Adams", "System Administrator", "nadams@mghl.com", "000-000-0000", "Nora Helmer", "Network Engineer", "nhelmer@mghl.com", "000-000-0000"});
+    m_stlOrganizations.push_back(OrganizationInformation{"Kidney Cancer Association", "San Francisco", "Isabel Archer", "System Administrator", "iarcher@kca.com", "000-000-0000", "Sally Bowles", "Network Engineer", "sbowles@kca.com", "000-000-0000"});
+    m_stlOrganizations.push_back(OrganizationInformation{"Cancer Research Hospital", "Seattle", "Anna Christie", "System Administrator", "achristie@crh.com", "000-000-0000", "Nick Carter", "Network Engineer", "ncarter@crh.com", "000-000-0000"});
     // Add super admins information
     m_stlAdmins.push_back(UserInformation{"lbart@igr.com", "Lily Bart", "System Administrator", "000-000-0000", eAdmin});
     m_stlAdmins.push_back(UserInformation{"nadams@mghl.com", "Nick Adams", "System Administrator", "000-000-0000", eAdmin});
+    m_stlAdmins.push_back(UserInformation{"iarcher@kca.com", "Isabel Archer", "System Administrator", "000-000-0000", eAdmin});
+    m_stlAdmins.push_back(UserInformation{"achristie@crh.com", "Anna Christie", "System Administrator", "000-000-0000", eAdmin});
     // Add other users information
-    m_stlUsers.push_back(UserInformation{"iarcher@igr.com", "Isabel Archer", "Security Expert", "000-000-0000", eOrganizationUser});
-    m_stlUsers.push_back(UserInformation{"abede@igr.com", "Adam Bede", "Supply Generator", "000-000-0000", eOrganizationUser});
     m_stlUsers.push_back(UserInformation{"pcarey@igr.com", "Philip Carey", "Network Engineer", "000-000-0000", eAuditor});
-    m_stlUsers.push_back(UserInformation{"achristie@igr.com", "Anna Christie", "Research Scientist", "000-000-0000", eDigitalContractAdmin});
-    m_stlUsers.push_back(UserInformation{"rcory@igr.com", "Richard Cory", "Data Scientist", "000-000-0000", eDatasetAdmin});
-    m_stlUsers.push_back(UserInformation{"sbowles@mghl.com", "Sally Bowles", "Hardware Engineer", "000-000-0000", eOrganizationUser});
-    m_stlUsers.push_back(UserInformation{"ncarter@mghl.com", "Nick Carter", "Supply Generator", "000-000-0000", eOrganizationUser});
+    m_stlUsers.push_back(UserInformation{"abede@igr.com", "Adam Bede", "Supply Generator", "000-000-0000", eOrganizationUser});
     m_stlUsers.push_back(UserInformation{"nhelmer@mghl.com", "Nora Helmer", "Network Engineer", "000-000-0000", eAuditor});
-    m_stlUsers.push_back(UserInformation{"pmason@mghl.com", "Perry Mason", "Research Scientist", "000-000-0000", eDigitalContractAdmin});
-    m_stlUsers.push_back(UserInformation("dquilp@mghl.com", "Daniel Quilp", "Data Scientist", "000-000-0000", eDatasetAdmin));
+    m_stlUsers.push_back(UserInformation{"rcory@mghl.com", "Richard Cory", "Data Scientist", "000-000-0000", eOrganizationUser});
+    m_stlUsers.push_back(UserInformation{"sbowles@kca.com", "Sally Bowles", "Network Engineer", "000-000-0000", eAuditor});
+    m_stlUsers.push_back(UserInformation{"pmason@kca.com", "Perry Mason", "Research Scientist", "000-000-0000", eOrganizationUser});
+    m_stlUsers.push_back(UserInformation{"ncarter@crh.com", "Nick Carter", "Network Engineer", "000-000-0000", eAuditor});
+    m_stlUsers.push_back(UserInformation("dquilp@crh.com", "Daniel Quilp", "Data Scientist", "000-000-0000", eOrganizationUser));
     // Initialize to the number of other users that will be added for each organization
-    m_unNumberOfOtherUsers = 5;
+    m_unNumberOfOtherUsers = 2;
     // Add datasets information
     m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","Chronic Kidney Disease dataset","Data has 25 features which may predict a patient with chronic kidney disease","Health conditions",GetEpochTimeInSeconds(),1,"N/A"));
     m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","Raman spectroscopy of Diabetes","Raman Spectroscopy to Screen Diabetes Mellitus with Machine Learning Tools","computer science,health,classification,diabetes,healthcare,nutrition,medicine",GetEpochTimeInSeconds(),1,"N/A"));
@@ -106,8 +108,8 @@ void __thiscall DatabaseTools::InitializeMembers(void)
     m_stlDatasets.push_back(DatasetInformation(Guid(eDataset).ToString(eHyphensAndCurlyBraces),"0x00000001","KCA Breast Cancer Dataset - III","Predict whether the cancer is benign or malignant","breast cancer,cancer,healthcare,benign,malignant",GetEpochTimeInSeconds(),1,"N/A"));
     // Add digital contracts information
     std::string strLegalAgreement = "The Parties acknowledge and agree that this Agreement represents the entire agreement between the Parties. "
-    "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";  
-    std::string strDescription = "The dataset will be used to train models for academic research purposes.";  
+    "In the event that the Parties desire to change, add, or otherwise modify any terms, they shall do so in writing to be signed by both parties.";
+    std::string strDescription = "The dataset will be used to train models for academic research purposes.";
     m_stlDigitalContracts.push_back(DigitalContractInformation{"Kidney Cancer Research Consortium", 10, strLegalAgreement, 16186603, strDescription, "Researcher", 2, 8, "East US"});
     m_stlDigitalContracts.push_back(DigitalContractInformation{"Diabetes Re-admission Model Phase 1", 28, strLegalAgreement, 24117352, strDescription, "Data Owner", 4, 8, "East US"});
     m_stlDigitalContracts.push_back(DigitalContractInformation{"Churn Prediction Project", 35, strLegalAgreement, 60768913, strDescription, "Researcher", 5, 8, "West Europe"});
@@ -121,7 +123,7 @@ void __thiscall DatabaseTools::AddOrganizationsAndSuperAdmins(void)
 {
     __DebugFunction();
 
-    // Register organizations and super admins 
+    // Register organizations and super admins
     for (unsigned int unIndex = 0; unIndex < m_stlOrganizations.size(); ++unIndex)
     {
         StructuredBuffer oOrganizationInformation;
@@ -167,7 +169,7 @@ void __thiscall DatabaseTools::AddOtherUsers(void)
         m_stlOrganizations.at(unIndex).m_strOrganizationGuid = strOrganizationGuid;
         // Add m_unNumberOfOtherUsers for each organization
         // Calculate index based on the number of other users per organization
-        unsigned int unUserIndex = unIndex * m_unNumberOfOtherUsers;  
+        unsigned int unUserIndex = unIndex * m_unNumberOfOtherUsers;
         for (; unUserIndex < (unIndex * m_unNumberOfOtherUsers + m_unNumberOfOtherUsers); ++unUserIndex)
         {
             StructuredBuffer oUserInformation;
@@ -181,7 +183,7 @@ void __thiscall DatabaseTools::AddOtherUsers(void)
         }
     }
 
-    std::cout << "Users added successfully." << std::endl;;
+    std::cout << "Users added to organizations successfully." << std::endl;;
 }
 
 /********************************************************************************************/
@@ -194,12 +196,14 @@ void __thiscall DatabaseTools::AddDatasets(void)
     // Login to the web services as one of the users from the data owner organization
     std::string strEncodedEosb = Login(m_stlAdmins.at(unDooIndex).m_strEmail, m_strPassword);
     _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
-    StructuredBuffer oDsetInformation;
     // Register five datasets for the data owner organizations
     // The dataset guids will later be used in the digital contracts
     for (unsigned int unIndex = 0; unIndex < m_stlDatasets.size(); ++unIndex)
     {
-        oDsetInformation.PutString("DatasetGuid", m_stlDatasets.at(unIndex).m_strDatasetGuid);
+        StructuredBuffer oPacket;
+        oPacket.PutString("DatasetGuid", m_stlDatasets.at(unIndex).m_strDatasetGuid);
+
+        StructuredBuffer oDsetInformation;
         oDsetInformation.PutString("VersionNumber", m_stlDatasets.at(unIndex).m_strVersionNumber);
         oDsetInformation.PutString("DatasetName", m_stlDatasets.at(unIndex).m_strName);
         oDsetInformation.PutString("Description", m_stlDatasets.at(unIndex).m_strDescription);
@@ -207,8 +211,19 @@ void __thiscall DatabaseTools::AddDatasets(void)
         oDsetInformation.PutUnsignedInt64("PublishDate", m_stlDatasets.at(unIndex).m_un64PublishTime);
         oDsetInformation.PutByte("PrivacyLevel", m_stlDatasets.at(unIndex).m_bPrivacyLevel);
         oDsetInformation.PutString("JurisdictionalLimitations", m_stlDatasets.at(unIndex).m_strLimitations);
+        StructuredBuffer oTables;
+        StructuredBuffer oSingleTable;
+        oSingleTable.PutString("ColumnName", ",AGE,BMI,PD-L1 level before treatment,PD-L1 level after treatment,PD-L2 level before treatment,PD-L2 level after treatment,PD1 level before treatment,PD1 level after treatment,");
+        oSingleTable.PutString("Description", "table 1_2");
+        oSingleTable.PutString("Hashtags", "t1h2");
+        oSingleTable.PutString("Name", "1_2.csv");
+        oSingleTable.PutDword("NumberColumns", 9);
+        oSingleTable.PutDword("NumberRows", 30);
+        oTables.PutStructuredBuffer("52d7aa80-f18f-4932-af61-ecf6fd74c064", oSingleTable);
+        oDsetInformation.PutStructuredBuffer("Tables", oTables);
+        oPacket.PutStructuredBuffer("DatasetData", oDsetInformation);
         // Register dataset
-        ::RegisterDataset(strEncodedEosb, oDsetInformation);
+        ::RegisterDataset(strEncodedEosb, oPacket);
     }
 
     std::cout << "Datasets added successfully." << std::endl;
@@ -254,8 +269,8 @@ void __thiscall DatabaseTools::AcceptDigitalContracts(void)
 
     // Login to the web services as the data owner's dataset admin
     // As the Rest API requires dataset admin privileges 
-    unsigned int unDatasetAdminIndex = 9;
-    std::string strEncodedEosb = Login(m_stlUsers.at(unDatasetAdminIndex).m_strEmail, m_strPassword);
+    unsigned int unDatasetAdminIndex = 1;
+    std::string strEncodedEosb = Login(m_stlAdmins.at(unDatasetAdminIndex).m_strEmail, m_strPassword);
     _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
     // Get list of all digital contracts for the data owner organization
     StructuredBuffer oDigitalContracts = ::ListDigitalContracts(strEncodedEosb);
@@ -300,8 +315,8 @@ void __thiscall DatabaseTools::ActivateDigitalContracts(void)
 
     // Login to the web services as the researcher's digital contract admin
     // As the Rest API requires digital contract admin privileges 
-    unsigned int unDcAdminIndex = 3;
-    std::string strEncodedEosb = Login(m_stlUsers.at(unDcAdminIndex).m_strEmail, m_strPassword);
+    unsigned int unDcAdminIndex = 0;
+    std::string strEncodedEosb = Login(m_stlAdmins.at(unDcAdminIndex).m_strEmail, m_strPassword);
     _ThrowBaseExceptionIf((0 == strEncodedEosb.size()), "Exiting!", nullptr);
 
     // Activate all five digital contracts

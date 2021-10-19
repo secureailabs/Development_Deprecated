@@ -233,7 +233,7 @@ class DatabaseTools : public Object
     private:
 
         // Data members
-        std::string m_strPassword = "sailpassword";
+        std::string m_strPassword = "SailPassword@123";
         unsigned int m_unNumberOfOtherUsers;
         std::vector<OrganizationInformation> m_stlOrganizations;
         std::vector<UserInformation> m_stlAdmins;

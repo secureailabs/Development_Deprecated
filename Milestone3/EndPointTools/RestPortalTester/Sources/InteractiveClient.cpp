@@ -2150,25 +2150,16 @@ bool RegisterDataset(
         // Create rest request
         std::string strVerb = "POST";
         std::string strApiUrl = "/SAIL/DatasetManager/RegisterDataset?Eosb="+ c_strEosb;
-        std::string strContent = "{\n   \"DatasetGuid\": \""+ c_oDsetInformation.GetString("DatasetGuid") +"\","
-                                "\n   \"DatasetData\": {"
-                                "\n   \"VersionNumber\": \""+ c_oDsetInformation.GetString("VersionNumber") +"\","
-                                "\n   \"DatasetName\": \""+ c_oDsetInformation.GetString("DatasetName") +"\","
-                                "\n   \"Description\": \""+ c_oDsetInformation.GetString("Description") +"\","
-                                "\n   \"Keywords\": \""+ c_oDsetInformation.GetString("Keywords") +"\","
-                                "\n   \"PublishDate\": "+ std::to_string(c_oDsetInformation.GetUnsignedInt64("PublishDate")) +","
-                                "\n   \"PrivacyLevel\": "+ std::to_string(c_oDsetInformation.GetByte("PrivacyLevel")) +","
-                                "\n   \"JurisdictionalLimitations\": \""+ c_oDsetInformation.GetString("JurisdictionalLimitations") +"\""
-                                "\n   }"
-                                "\n}";
+        auto strJsonValue = JsonValue::ParseStructuredBufferToJson(c_oDsetInformation)->ToString();
+
         // Make the API call and get REST response
-        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strContent, true);
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strJsonValue, true);
         std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
         StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error registering the dataset.", nullptr);
         fSuccess = true;
     }
-    
+
     catch(BaseException oBaseException)
     {
         ::RegisterException(oBaseException, __func__, __LINE__);

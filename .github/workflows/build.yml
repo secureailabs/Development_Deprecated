@@ -28,9 +28,19 @@ jobs:
       - name: Start self-hosted runner
         run: |
           az vm start --subscription Build -g Dev-CI -n github-runner1
-  build:
+  clean:
     runs-on: [self-hosted, docker]
     needs: start-runner
+    steps:
+      - name: cleanup
+        run: |
+          echo "${{ github.head_ref }}"
+          echo "${{ github.workspace }}"
+          sudo chown -R $USER:$USER ${{ github.workspace }}
+          
+  build:
+    runs-on: [self-hosted, docker]
+    needs: clean
     steps:
       - uses: actions/checkout@v2   
       - name: Run a multi-line script, Build Binaries   

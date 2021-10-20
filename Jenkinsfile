@@ -17,7 +17,7 @@ pipeline {
                 script {
                     docker.build('ubuntu-development:1.0', '--build-arg git_personal_token=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 -f Dockerfile.development .')
                     sh 'pwd'
-                    sh 'docker run --name ubuntu_dev_CI -dit -p 6200:6200 -p 27017:27017 ubuntu-development:1.0 /bin/bash'
+                    sh 'docker run --name ubuntu_dev_CI -dit -p 6200:6200 -p 27017:27017 -v ${PWD}:/Workspace -w="/Workspace" ubuntu-development:1.0 /bin/bash'
                     sh  label:
                     'Update Repo and start Mongod',
                     script:'''
@@ -45,8 +45,8 @@ pipeline {
                     'Build Binaries',
                     script:'''
                     set -x
-                    docker exec -w /Development/Milestone3/ ubuntu_dev_CI ./CreateDailyBuild.sh
-                    docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "ls -l"
+                    docker exec -w /Workspace/Milestone3/ ubuntu_dev_CI ./CreateDailyBuild.sh
+                    docker exec -w /Workspace/Milestone3/Binary ubuntu_dev_CI sh -c "ls -l"
                     '''
                 }
             }
@@ -61,24 +61,24 @@ pipeline {
                 script {
                     echo 'Deploy DatabaseGateway and RestApiPortal'
                     sh '''
-                    docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseGateway  > database.log &"
+                    docker exec -w /Workspace/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseGateway  > database.log &"
                     sleep 1
-                    docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./RestApiPortal > portal.log &"
+                    docker exec -w /Workspace/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./RestApiPortal > portal.log &"
                     sleep 1
-                    docker exec -w /Development/Milestone3/ ubuntu_dev_CI ps -ef
+                    docker exec -w /Workspace/Milestone3/ ubuntu_dev_CI ps -ef
                     '''
                 }
                 script {
                     try {
                         echo 'Load Database'
-                        sh 'docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "ls -l"'
-                        sh 'docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseTools --PortalIp=127.0.0.1 --Port=6200"'
+                        sh 'docker exec -w /Workspace/Milestone3/Binary ubuntu_dev_CI sh -c "ls -l"'
+                        sh 'docker exec -w /Workspace/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseTools --PortalIp=127.0.0.1 --Port=6200"'
                     }catch (exception) {
                         echo getStackTrace(exception)
                         echo 'Error detected, retrying...'
                         sh '''
-                        docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseTools --PortalIp=127.0.0.1 --Port=6200 -d"
-                        docker exec -w /Development/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseTools --PortalIp=127.0.0.1 --Port=6200"
+                        docker exec -w /Workspace/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseTools --PortalIp=127.0.0.1 --Port=6200 -d"
+                        docker exec -w /Workspace/Milestone3/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseTools --PortalIp=127.0.0.1 --Port=6200"
                         ''' 
                     }
                 }

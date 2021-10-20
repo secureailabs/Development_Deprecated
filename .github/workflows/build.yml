@@ -41,7 +41,7 @@ jobs:
           sudo chmod 666 /var/run/docker.sock
           docker build -t ubuntu-development:1.0 --build-arg git_personal_token=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 -f Dockerfile.development .
           docker stop ubuntu_dev_CI || true && docker rm ubuntu_dev_CI || true
-          docker run --name ubuntu_dev_CI--rm -dit -p 6200:6200 -p 27017:27017 -v ${PWD}:/Workspace -w="/Workspace" ubuntu-development:1.0 /bin/bash
+          docker run --name ubuntu_dev_CI --rm -dit -p 6200:6200 -p 27017:27017 -v ${PWD}:/Workspace -w="/Workspace" ubuntu-development:1.0 /bin/bash
           docker exec -w /Development/ ubuntu_dev_CI git pull
           docker exec -w /Development/Milestone3/ ubuntu_dev_CI sudo mongod --port 27017 --dbpath /srv/mongodb/db0 --replSet rs0 --bind_ip localhost --fork --logpath /var/log/mongod.log
           docker exec -w /Development/Milestone3/ ubuntu_dev_CI ps -ef

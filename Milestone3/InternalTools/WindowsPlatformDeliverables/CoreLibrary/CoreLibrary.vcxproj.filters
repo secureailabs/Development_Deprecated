@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\LzmaSdk">
+      <UniqueIdentifier>{88188550-353c-406b-b860-c012e40d9517}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="64BitHashes.cpp">
@@ -50,6 +53,45 @@
     </ClCompile>
     <ClCompile Include="ExceptionRegister.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LzmaSdk\7zFile.c">
+      <Filter>Source Files\LzmaSdk</Filter>
+    </ClCompile>
+    <ClCompile Include="LzmaSdk\7zStream.c">
+      <Filter>Source Files\LzmaSdk</Filter>
+    </ClCompile>
+    <ClCompile Include="LzmaSdk\Alloc.c">
+      <Filter>Source Files\LzmaSdk</Filter>
+    </ClCompile>
+    <ClCompile Include="LzmaSdk\LzFind.c">
+      <Filter>Source Files\LzmaSdk</Filter>
+    </ClCompile>
+    <ClCompile Include="LzmaSdk\LzFindMt.c">
+      <Filter>Source Files\LzmaSdk</Filter>
+    </ClCompile>
+    <ClCompile Include="LzmaSdk\LzmaDec.c">
+      <Filter>Source Files\LzmaSdk</Filter>
+    </ClCompile>
+    <ClCompile Include="LzmaSdk\LzmaEnc.c">
+      <Filter>Source Files\LzmaSdk</Filter>
+    </ClCompile>
+    <ClCompile Include="LzmaSdk\Threads.c">
+      <Filter>Source Files\LzmaSdk</Filter>
+    </ClCompile>
+    <ClCompile Include="CompressionHelperFunctions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LzmaSdk\Lzma2Dec.c">
+      <Filter>Source Files\LzmaSdk</Filter>
+    </ClCompile>
+    <ClCompile Include="LzmaSdk\Lzma2Enc.c">
+      <Filter>Source Files\LzmaSdk</Filter>
+    </ClCompile>
+    <ClCompile Include="LzmaSdk\MtCoder.c">
+      <Filter>Source Files\LzmaSdk</Filter>
+    </ClCompile>
+    <ClCompile Include="LzmaSdk\MtDec.c">
+      <Filter>Source Files\LzmaSdk</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -90,6 +132,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\Include\ExceptionRegister.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Include\CompressionHelperFunctions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

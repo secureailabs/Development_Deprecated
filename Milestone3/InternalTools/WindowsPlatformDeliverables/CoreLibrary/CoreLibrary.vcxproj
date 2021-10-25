@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -22,9 +22,22 @@
     <ClCompile Include="64BitHashes.cpp" />
     <ClCompile Include="Base64Encoder.cpp" />
     <ClCompile Include="BaseException.cpp" />
+    <ClCompile Include="CompressionHelperFunctions.cpp" />
     <ClCompile Include="ExceptionRegister.cpp" />
     <ClCompile Include="Guid.cpp" />
     <ClCompile Include="JsonValue.cpp" />
+    <ClCompile Include="LzmaSdk\7zFile.c" />
+    <ClCompile Include="LzmaSdk\7zStream.c" />
+    <ClCompile Include="LzmaSdk\Alloc.c" />
+    <ClCompile Include="LzmaSdk\LzFind.c" />
+    <ClCompile Include="LzmaSdk\LzFindMt.c" />
+    <ClCompile Include="LzmaSdk\Lzma2Dec.c" />
+    <ClCompile Include="LzmaSdk\Lzma2Enc.c" />
+    <ClCompile Include="LzmaSdk\LzmaDec.c" />
+    <ClCompile Include="LzmaSdk\LzmaEnc.c" />
+    <ClCompile Include="LzmaSdk\MtCoder.c" />
+    <ClCompile Include="LzmaSdk\MtDec.c" />
+    <ClCompile Include="LzmaSdk\Threads.c" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="RestApiHelperFunctions.cpp" />
     <ClCompile Include="SmartMemoryAllocator.cpp" />
@@ -35,6 +48,7 @@
   <ItemGroup>
     <ClInclude Include="..\Include\64BitHashes.h" />
     <ClInclude Include="..\Include\Base64Encoder.h" />
+    <ClInclude Include="..\Include\CompressionHelperFunctions.h" />
     <ClInclude Include="..\Include\CoreTypes.h" />
     <ClInclude Include="..\Include\DebugLibrary.h" />
     <ClInclude Include="..\Include\Exceptions.h" />
@@ -114,6 +128,7 @@
     <TargetName>$(ProjectName)</TargetName>
     <OutDir>$(SolutionDir)Libraries\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>$(ProjectDir)\..\Include\LzmaSdk;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>

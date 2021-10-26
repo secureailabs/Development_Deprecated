@@ -29,6 +29,7 @@
     <ClCompile Include="LzmaSdk\7zFile.c" />
     <ClCompile Include="LzmaSdk\7zStream.c" />
     <ClCompile Include="LzmaSdk\Alloc.c" />
+    <ClCompile Include="LzmaSdk\CpuArch.c" />
     <ClCompile Include="LzmaSdk\LzFind.c" />
     <ClCompile Include="LzmaSdk\LzFindMt.c" />
     <ClCompile Include="LzmaSdk\Lzma2Dec.c" />
@@ -60,6 +61,9 @@
     <ClInclude Include="..\Include\SmartMemoryAllocator.h" />
     <ClInclude Include="..\Include\StructuredBuffer.h" />
     <ClInclude Include="..\Include\Utils.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="LzmaSdk\LzFindOpt.asm" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

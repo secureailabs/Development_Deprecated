@@ -93,6 +93,9 @@
     <ClCompile Include="LzmaSdk\MtDec.c">
       <Filter>Source Files\LzmaSdk</Filter>
     </ClCompile>
+    <ClCompile Include="LzmaSdk\CpuArch.c">
+      <Filter>Source Files\LzmaSdk</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Include\64BitHashes.h">
@@ -137,5 +140,10 @@
     <ClInclude Include="..\Include\CompressionHelperFunctions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="LzmaSdk\LzFindOpt.asm">
+      <Filter>Source Files\LzmaSdk</Filter>
+    </None>
   </ItemGroup>
 </Project>

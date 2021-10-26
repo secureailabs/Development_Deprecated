@@ -2198,7 +2198,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ProvisionDigitalContract(
                                             break;
                                         case 32
                                         :
-                                            oVirtualMachineCreateParameter.PutString("vmSize", "Standard_D32_v4");
+                                            oVirtualMachineCreateParameter.PutString("vmSize", "Standard_D8_v4");
                                             break;
                                         case 48
                                         :

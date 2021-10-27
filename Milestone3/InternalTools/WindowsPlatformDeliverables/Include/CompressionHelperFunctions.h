@@ -16,11 +16,11 @@
 
 /********************************************************************************************/
 extern StructuredBuffer CompressToStructuredBuffer(
-	const void* c_pbRawBytes,
-	uint64_t unRawBufferSizeInBytes
+    const void* c_pbRawBytes,
+    uint64_t unRawBufferSizeInBytes
 ) throw();
 
 /********************************************************************************************/
 std::vector<Byte> DecompressStructuredBuffer(
-	const StructuredBuffer& compressedBuffer
+    const StructuredBuffer& compressedBuffer
 ) throw();

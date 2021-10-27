@@ -141,9 +141,4 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="LzmaSdk\LzFindOpt.asm">
-      <Filter>Source Files\LzmaSdk</Filter>
-    </None>
-  </ItemGroup>
 </Project>

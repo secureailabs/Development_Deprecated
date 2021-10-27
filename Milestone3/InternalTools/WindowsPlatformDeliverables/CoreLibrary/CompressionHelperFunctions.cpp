@@ -38,7 +38,7 @@ extern StructuredBuffer CompressToStructuredBuffer(
     // In a very worst case scenario data which is completely random will bloat
     // our compressed size.  We don't expect this in reality, but we also shouldn't
     // fail if we encounter it - hence the multiply by 1.1
-    std::vector<Byte> stlCompressedDestination(unRawBufferSizeInBytes * 1.1);
+    std::vector<Byte> stlCompressedDestination( static_cast<uint64_t>(unRawBufferSizeInBytes * 1.1));
     size_t unOutBufSize = stlCompressedDestination.size();
 
     CLzma2EncHandle hEncodeHandle = Lzma2Enc_Create(&g_Alloc, &g_BigAlloc);

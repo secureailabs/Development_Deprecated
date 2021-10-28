@@ -1,0 +1,220 @@
+/*********************************************************************************************
+ *
+ * @file DatasetFamilyFunctions.cpp
+ * @author David Gascon
+ * @date 01 November 2021
+ * @License Private and Confidential. Internal Use Only.
+ * @copyright Copyright (C) 2021 Secure AI Labs, Inc. All Rights Reserved.
+ * @brief
+ ********************************************************************************************/
+
+#include "DatabaseManager.h"
+
+/********************************************************************************************
+ *
+ * @class RegisterDatasetFamily
+ * @function RegisterDatasetFamily
+ * @brief Save a Dataset family in the database
+ * @param[in] c_oRequest contains the information for the new dataset
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Serialized StructuredBuffer containing the response
+ *
+ ********************************************************************************************/
+// Register a dataset family
+std::vector<Byte> __thiscall DatabaseManager::RegisterDatasetFamily(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    StructuredBuffer oResponse;
+
+    Dword dwStatus = 204;
+    try
+    {
+        Guid oObjectGuid, oPlainTextObjectBlobGuid;
+
+        bsoncxx::document::value oDatasetFamilyDocumentValue = bsoncxx::builder::stream::document{}
+        << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
+        << "DatasetFamilyGuid" << c_oRequest.GetString("DatasetFamilyGuid")
+        << "DatasetFamilyOwnerOrganizationGuid" << c_oRequest.GetString("DatasetFamilyOwnerGuid")
+        << finalize;
+
+        // Create the object to write to the database
+        StructuredBuffer oObject;
+
+        oObject.PutString("DatasetFamilyOwnerGuid", c_oRequest.GetString("DatasetFamilyOwnerGuid"));
+        oObject.PutString("DatasetFamilyGuid", c_oRequest.GetString("DatasetFamilyGuid"));
+        oObject.PutString("DatasetFamilyTitle", c_oRequest.GetString("DatasetFamilyTitle"));
+        oObject.PutString("DatasetFamilyDescription", c_oRequest.GetString("DatasetFamilyDescription"));
+        oObject.PutString("DatasetFamilyTags", c_oRequest.GetString("DatasetFamilyTags"));
+        oObject.PutString("VersionNumber", c_oRequest.GetString("VersionNumber"));
+
+        // Create a blob for the serialized structured buffer
+        bsoncxx::types::b_binary oObjectBlob
+        {
+            bsoncxx::binary_sub_type::k_binary,
+            uint32_t(oObject.GetSerializedBufferRawDataSizeInBytes()),
+            oObject.GetSerializedBufferRawDataPtr()
+        };
+
+        // Create a document that has our object's GUID and its serialized data
+        bsoncxx::document::value oObjectDocumentValue = bsoncxx::builder::stream::document{}
+        << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
+        << "ObjectBlob" << oObjectBlob
+        << finalize;
+
+        // Create a plain text object document - telling us this GUID is a dataset family
+        bsoncxx::document::value oPlainTextObjectDocumentValue = bsoncxx::builder::stream::document{}
+        << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
+        << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
+        << "ObjectType" << GuidOfObjectType::eDatasetFamily
+        << finalize;
+
+        // Each client and transaction can only be used in a single thread
+        mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+        // Access SailDatabase
+        mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+        // Access Dataset Family collection
+        mongocxx::collection oDatasetFamilyCollection = oSailDatabase["DatasetFamily"];
+
+        // Create a transaction callback
+        mongocxx::client_session::with_transaction_cb oCallback = [&](mongocxx::client_session * poSession) 
+        {
+            // Insert document in the Dataset family collection
+            auto oResult = oDatasetFamilyCollection.insert_one(*poSession, oDatasetFamilyDocumentValue.view());
+            if (!oResult) {
+                std::cout << "Error while writing to the database." << std::endl;
+            }
+            else
+            {
+                // Access Object collection
+                mongocxx::collection oObjectCollection = oSailDatabase["Object"];
+                // Insert document in the Object collection
+                oResult = oObjectCollection.insert_one(*poSession, oObjectDocumentValue.view());
+                if (!oResult) {
+                    std::cout << "Error while writing to the database." << std::endl;
+                }
+                else
+                {
+                    // Access PlainTextObjectBlob collection
+                    mongocxx::collection oPlainTextObjectCollection = oSailDatabase["PlainTextObjectBlob"];
+                    // Insert document in the PlainTextObjectBlob collection
+                    oResult = oPlainTextObjectCollection.insert_one(*poSession, oPlainTextObjectDocumentValue.view());
+                    if (!oResult) {
+                        std::cout << "Error while writing to the database." << std::endl;
+                    }
+                    else
+                    {
+                        dwStatus = 201;
+                    }
+                }
+            }
+        };
+
+        // Create a session and start the transaction
+        mongocxx::client_session oSession = oClient->start_session();
+        try
+        {
+            oSession.with_transaction(oCallback);
+        }
+        catch (mongocxx::exception& e)
+        {
+            std::cout << "Collection transaction exception: " << e.what() << std::endl;
+        }
+
+    }
+
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        oResponse.Clear();
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    // Send back the status of the transaction
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class ListDatasetFamilies
+ * @function ListDatasetFamilies
+ * @brief Get a list of all the dataset families associated with an organization
+ * @param[in] c_oRequest contains the information for the query
+ * @throw BaseException Error StructuredBuffer element not found
+ * @returns Serialized StructuredBuffer containing the response
+ *
+ ********************************************************************************************/
+// Fetch list of all dataset families associated with the user's organization
+std::vector<Byte> __thiscall DatabaseManager::ListDatasetFamilies(
+    _in const StructuredBuffer &c_oRequest
+    )
+{
+    __DebugFunction();
+
+    Dword dwStatus;
+    StructuredBuffer oResponse;
+    // Each client and transaction can only be used in a single thread
+    mongocxx::pool::entry oClient = m_poMongoPool->acquire();
+    // Access SailDatabase
+    mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
+    // Fetch all digital contract records associated with a researcher's or data owner's organization
+    mongocxx::cursor oDcRecords = oSailDatabase["DatasetFamily"].find(document{}
+                                                                        << "DatasetFamilyOwnerOrganizationGuid" << c_oRequest.GetString("OrganizationGuid")
+                                                                        << finalize);
+
+    // Loop through returned documents and add information to the list
+    StructuredBuffer oListOfDatasetFamilies;
+    for (auto&& oDocumentView : oDcRecords)
+    {
+        bsoncxx::document::element oDatasetFamilyGuid = oDocumentView["DatasetFamilyGuid"];
+        bsoncxx::document::element oDatasetFamilyOwnerGuid = oDocumentView["DatasetFamilyOwnerOrganizationGuid"];
+        if ((oDatasetFamilyGuid && oDatasetFamilyGuid.type() == type::k_utf8) && (oDatasetFamilyOwnerGuid && oDatasetFamilyOwnerGuid.type() == type::k_utf8) )
+        {
+            std::string strDatasetFamilyGuid = oDatasetFamilyGuid.get_utf8().value.to_string();
+            std::string strDatasetFamilyOwnerGuid = oDatasetFamilyOwnerGuid.get_utf8().value.to_string();
+
+            bsoncxx::document::element oPlainTextObjectBlobGuid = oDocumentView["PlainTextObjectBlobGuid"];
+            if (oPlainTextObjectBlobGuid && oPlainTextObjectBlobGuid.type() == type::k_utf8)
+            {
+                std::string strPlainTextObjectBlobGuid = oPlainTextObjectBlobGuid.get_utf8().value.to_string();
+                bsoncxx::stdx::optional<bsoncxx::document::value> oPlainTextObjectBlobDocument = oSailDatabase["PlainTextObjectBlob"].find_one(document{}
+                                                                                                                                               << "PlainTextObjectBlobGuid" << strPlainTextObjectBlobGuid
+                                                                                                                                               << finalize);
+
+                if (bsoncxx::stdx::nullopt != oPlainTextObjectBlobDocument)
+                {
+                    bsoncxx::document::element oObjectGuid = oPlainTextObjectBlobDocument->view()["ObjectGuid"];
+                    if (oObjectGuid && oObjectGuid.type() == type::k_utf8)
+                    {
+                        std::string strObjectGuid = oObjectGuid.get_utf8().value.to_string();
+
+                        // Fetch digital contract from the Object collection associated with the digital contract guid
+                        bsoncxx::stdx::optional<bsoncxx::document::value> oObjectDocument = oSailDatabase["Object"].find_one(document{} << "ObjectGuid" << strObjectGuid << finalize);
+                        if (bsoncxx::stdx::nullopt != oObjectDocument)
+                        {
+                            bsoncxx::document::element oObjectBlob = oObjectDocument->view()["ObjectBlob"];
+                            if (oObjectBlob && oObjectBlob.type() == type::k_binary)
+                            {
+                                StructuredBuffer oObject;
+                                oListOfDatasetFamilies.PutStructuredBuffer(strDatasetFamilyGuid.c_str(), StructuredBuffer(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    oResponse.PutStructuredBuffer("DatasetFamilies", oListOfDatasetFamilies);
+    dwStatus = 200;
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}

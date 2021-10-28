@@ -287,6 +287,10 @@ void __thiscall DatabaseManager::InitializePlugin(void)
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/DeleteAzureTemplate");
     // Remove VM information as waiting for data
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/RemoveVmAsWaitingForData");
+    // Add metadata of a dataset family to the database
+    m_oDictionary.AddDictionaryEntry("POST", "/SAIL/DatabaseManager/RegisterDatasetFamily");
+    // Add metadata of a dataset family to the database
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatabaseManager/DatasetFamilies");
     // Reset the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatabaseManager/ResetDatabase");
 }
@@ -407,6 +411,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             {
                 stlResponseBuffer = this->GetVmsWaitingForData(c_oRequestStructuredBuffer);
             }
+            else if ("/SAIL/DatabaseManager/DatasetFamilies" == strResource)
+            {
+                stlResponseBuffer = this->ListDatasetFamilies(c_oRequestStructuredBuffer);
+            }
             else
             {
                 _ThrowBaseException("Invalid resource.", nullptr);
@@ -457,6 +465,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             else if ("/SAIL/DatabaseManager/ShutdownPortal" == strResource)
             {
                 stlResponseBuffer = this->ShutdownPortal(c_oRequestStructuredBuffer);
+            }
+            else if("/SAIL/DatabaseManager/RegisterDatasetFamily" == strResource)
+            {
+                stlResponseBuffer = this->RegisterDatasetFamily(c_oRequestStructuredBuffer);
             }
             else
             {

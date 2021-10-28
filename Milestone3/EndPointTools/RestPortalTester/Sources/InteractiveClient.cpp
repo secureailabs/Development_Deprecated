@@ -411,6 +411,38 @@ std::string RegisterVirtualMachine(
 
 /********************************************************************************************/
 
+bool RegisterDatasetFamily(
+    _in const StructuredBuffer & c_oDatasetFamilyInformation
+    )
+{
+    __DebugFunction();
+
+    bool fSuccess = false;
+
+    try
+    {
+        std::string strVerb = "POST";
+
+        std::string strApiUrl = "/SAIL/DatasetFamilyManager/RegisterDatasetFamily";
+        auto oJsonRepresentation = JsonValue::ParseStructuredBufferToJson(c_oDatasetFamilyInformation);
+        std::string strJsonValue = oJsonRepresentation->ToString();
+
+        std::vector<Byte> stlRestResponse = ::RestApiCall(g_szServerIpAddress, (Word) g_unPortNumber, strVerb, strApiUrl, strJsonValue, true);
+        fSuccess = true;
+    }
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+
+    return fSuccess;
+
+}
 std::string RegisterVirtualMachine(
     _in const std::string & c_strEncodedIEosb,
     _in const std::string & c_strVmGuid,

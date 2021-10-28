@@ -78,6 +78,9 @@ Guid::Guid(void)
  *    (8) 0111 --> Audit Event (Branch Node)
  *    (9) 1000 --> Audit Event (Encrypted Leaf Node)
  *    (10) 10001 --> Audit Evet (Plain-text Leaf Node)
+ *    (11) 10010 --> Azure settings template
+ *    (12) 10011 --> Remote data connector
+ *    (13) 10100 --> Dataset family
  *    (2) 1111 --> Others
  *
  ********************************************************************************************/

@@ -366,6 +366,23 @@ void __thiscall DatabaseTools::AddVirtualMachine(void)
     this->RegisterVmForComputation(strVmGuid);
 }
 
+void __thiscall DatabaseTools::AddDatasetFamilies(void)
+{
+    __DebugFunction();
+
+    std::string strEncodedEosb = Login(m_stlUsers.at(0).m_strEmail, m_strPassword);
+    _ThrowBaseExceptionIf(0 == strEncodedEosb.size(), "Failed to login, exiting!", nullptr);
+
+    StructuredBuffer oFamilyInformation;
+    oFamilyInformation.PutString("DatasetFamilyTitle","Database Tools Dataset Family");
+    oFamilyInformation.PutString("DatasetFamilyDescription", "This is a test dataset family generated from the database tools");
+    oFamilyInformation.PutString("DatasetFamilyTags","DBTools, CMDLINE, TDD");
+    oFamilyInformation.PutString("VersionNumber", "0x00000001");
+    oFamilyInformation.PutString("Eosb", strEncodedEosb);
+
+    ::RegisterDatasetFamily(oFamilyInformation);
+}
+
 /********************************************************************************************/
 
 void __thiscall DatabaseTools::RegisterVmAfterDataUpload(

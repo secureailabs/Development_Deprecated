@@ -8,7 +8,6 @@ agreement_df = __data0
 contact_df = __data1
 payment_df = __data2
 
-
 contact_df = contact_df.drop(["ContactID", "CreateReasonGUID", "CancelReasonGUID", "Age"], axis=1)
 
 agreement_df = agreement_df.drop(["ContactGUID", "AgreementID", "ChannelName", "FutureCancelDate", "ContactID"], axis=1)
@@ -81,23 +80,44 @@ merged_df["days_since_missing_payment"] = result
 one_hot_list = ["PaymentMethod", "PaymentStatus", "ChannelD", "AgreementType", "CreateReason"]
 merged_df = pd.get_dummies(merged_df, columns = one_hot_list)
 
-agg_dict = {
-    'PaidAmount': 'sum',
-    'AgreementGUID' : 'count',
-    'PaymentGUID' : 'count',
-    'CancelDate_y': 'min',
-    'PostalCode': ['min', 'max'],
-    'Donation': 'sum',
-    'Medlemskab': 'sum',
-    'Product': 'sum',
-    'Lottery': 'sum',
-    'payment_on_agreement': 'sum',
-    'days_since_start': ['min', 'max'],
-    'days_since_last_payment' : ['min', 'max'],
-    'days_since_missing_payment' : ['min', 'max'],
-    'missing_payment' : 'sum',
-    'is_churned': 'max'
-}
+
+agg_dict = 0
+if(__flag == 1):
+	agg_dict = {
+	    'PaidAmount': 'sum',
+	    'AgreementGUID' : 'count',
+	    'PaymentGUID' : 'count',
+	    'CancelDate_y': 'min',
+	    'PostalCode': ['min', 'max'],
+	    'Donation': 'sum',
+	    'Medlemskab': 'sum',
+	    'Product': 'sum',
+	    'Lottery': 'sum',
+	    'payment_on_agreement': 'sum',
+	    'days_since_start': ['min', 'max'],
+	    'days_since_last_payment' : ['min', 'max'],
+	    'days_since_missing_payment' : ['min', 'max'],
+	    'missing_payment' : 'sum',
+	    'is_churned': 'max'
+	}
+else:
+	agg_dict = {
+	    'PaidAmount': 'sum',
+	    'AgreementGUID' : 'count',
+	    'PaymentGUID' : 'count',
+	    'CancelDate_y': 'min',
+	    'PostalCode': ['min', 'max'],
+	    'Donation': 'sum',
+	    'Membership': 'sum',
+	    'Product': 'sum',
+	    'Lottery': 'sum',
+	    'payment_on_agreement': 'sum',
+	    'days_since_start': ['min', 'max'],
+	    'days_since_last_payment' : ['min', 'max'],
+	    'days_since_missing_payment' : ['min', 'max'],
+	    'missing_payment' : 'sum',
+	    'is_churned': 'max'
+	}
 
 for one_hot_col in one_hot_list:
     tmp_dict = {x: 'sum' for x in merged_df.columns if one_hot_col in x}
@@ -154,14 +174,24 @@ final_df = final_df.set_index(["ContactGUID_", "PaymentDate_"])
 final_df = final_df.drop(["index", "CancelDate_y_min", "is_churned_max",
                          "PostalCode_max", "PostalCode_min", "Lottery_sum", "_merge"], axis=1)
 
+a_vc =final_df["is_churned_in3m"].value_counts() 
+print(a_vc)
+
 final_df["is_churned_in3m"] = final_df["is_churned_in3m"].astype(int)
+
+
+print(final_df["is_churned_in3m"].value_counts())
+
 
 __X = final_df.drop(["is_churned_in3m"], axis=1)
 __y = final_df["is_churned_in3m"]
 
 __X['Donation_sum'].astype(float)
 #__X['Product_sum'].astype(float)
-__X['Medlemskab_sum'].astype(float)
+if(__flag == 1):
+	__X['Medlemskab_sum'].astype(float)
+else:
+	__X['Membership_sum'].astype(float)
 __X['Product_sum']=__X['Product_sum'].astype('category')
 __X['Product_sum'] = __X['Product_sum'].cat.codes
 

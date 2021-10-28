@@ -1,5 +1,6 @@
 from .. import SAILPyAPI
 import pickle, json, requests, pprint, time
+import pandas
 from concurrent.futures import ThreadPoolExecutor
 
 def connect(serverIP, port):
@@ -66,13 +67,15 @@ def queryresult(jobid, fnid):
         errstr = "\x1b[31m Cannot complete the requested job due to a possible privacy violation: too few samples \x1b[0m"
         raise RuntimeError(X(errstr))
 
-    bytelist =  SAILPyAPI.queryresult(jobid, fnid)
+    resdict =  SAILPyAPI.queryresult(jobid, fnid)
     reslist = []
-    for buf in bytelist:
-        try:
-            reslist.append(pickle.loads(buf))
-        except pickle.UnpicklingError:
-            reslist.append(buf.decode("utf-8"))
+    for key in resdict:
+        if(resdict[key]==0):
+            fname = "/tmp/"+key
+            with open(fname, 'rb') as f:
+                reslist.append(pickle.load(f))
+        else:
+            reslist.append(key)
     return reslist
 
 def queryresults_parallel(jobids, fnid):

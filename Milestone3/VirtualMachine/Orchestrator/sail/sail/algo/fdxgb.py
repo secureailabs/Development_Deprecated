@@ -20,14 +20,16 @@ class fdxgb(BaseEstimator):
     
     def setfn(self):
         fndict = {}
-        fndict['preprocess'] = "EE2B0B20C4574FCE9F97F54CEE58B4A4"
+        fndict['preprocess'] = "53D9F7CF2CE5428D9ECF6C7C00A9C284"
+        fndict['test_preprocess'] = "217443048261497ABCB2E058E9FB622E"
         fndict['handlehash'] = "B804C0767CCB4B01A6BAF5A2F782BD31"
         fndict['train_init'] = "D708DABA545346409FB835560140E882"
         fndict['train_update'] = "BE9644CBB2DC4FCD9FD2AF1733550A7E"
         fndict['conf_mat'] = "A5E177C364604D759518CF618CF2F9C1"
         fndict['shap'] = "CA459C663543457FAA0F8F2444D61728"
         fndict['accuracy_score']="BD9552F72CA94350BDF72207B6E33080"
-        fndict['aucpr']="72701C420FF64DA9A28310345472CFDE"
+        fndict['aucpr']="D692FF19A7F0416398C9FB28EE36C3A9"
+        fndict['test_compare'] = "18DE7CAFB31C410190A04693667CB26B"
         return fndict
     
     def initvms(self):
@@ -55,15 +57,29 @@ class fdxgb(BaseEstimator):
         self.trypickle(model)
         return model
 
-    def data_preprocess(self, data):
+    def data_preprocess(self, flag, data):
         res = []
         for i in range(len(self.vms)):
             jobid = newguid()
-            inputs = data[i]
+            inputs = pushdata(self.vms[i], [flag])
+            inputs.extend(data[i])
             setparameter(self.vms[i], jobid, self.fns['preprocess'], inputs)
             submitjob(self.vms[i], self.fns['preprocess'], jobid)
             pulldata(self.vms[i], jobid, self.fns['preprocess'])
             result = queryresult(jobid, self.fns['preprocess'])
+            res.append(result)
+        return res
+
+    def data_test_preprocess(self, flag, data):
+        res = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            inputs = pushdata(self.vms[i], [flag])
+            inputs.extend(data[i])
+            setparameter(self.vms[i], jobid, self.fns['test_preprocess'], inputs)
+            submitjob(self.vms[i], self.fns['test_preprocess'], jobid)
+            pulldata(self.vms[i], jobid, self.fns['test_preprocess'])
+            result = queryresult(jobid, self.fns['test_preprocess'])
             res.append(result)
         return res
     
@@ -188,6 +204,17 @@ class fdxgb(BaseEstimator):
         for item in results:
             ret.append(item[0])
         return ret
+    
+    def test_compare(self, X, y):
+        jobids = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            jobids.append(jobid)
+            setparameter(self.vms[i],  jobid, self.fns['test_compare'], [X[i], y[i]])
+            submitjob(self.vms[i], self.fns['test_compare'], jobid)
+            pulldata(self.vms[i], jobid, self.fns['test_compare'])
+        results = queryresults_parallel(jobids, self.fns['test_compare'])
+        return results
 
     def shap(self, df):
         jobids = []
@@ -241,22 +268,23 @@ class fdxgb(BaseEstimator):
             submitjob(self.vms[i], self.fns['aucpr'], jobid)
             pulldata(self.vms[i], jobid, self.fns['aucpr'])
         results = queryresults_parallel(jobids, self.fns['aucpr'])
-        print(results)
-        precision = []
-        recall = []
-        for i in range(100):
-            tmp = (0,0,0,0)
-            for j in range(len(self.vms)):
-                tmp[0]+=results[j][i][0]
-                tmp[1]+=results[j][i][1]
-                tmp[2]+=results[j][i][2]
-                tmp[3]+=results[j][i][3]
-            prec = tmp[3]/(tmp[3]+tmp[1])
-            reca = tmp[3]/(tmp[3]+tmp[2])
-            precision.append(prec)
-            recall.append(reca)
+        # print(results)
+        # precision = []
+        # recall = []
+        # for i in range(100):
+        #     tmp = [0,0,0,0]
+        #     for j in range(len(self.vms)):
+        #         tmp[0]+=results[j][0][i].ravel()[0]
+        #         tmp[1]+=results[j][0][i].ravel()[1]
+        #         tmp[2]+=results[j][0][i].ravel()[2]
+        #         tmp[3]+=results[j][0][i].ravel()[3]
+        #     prec = tmp[3]/(tmp[3]+tmp[1])
+        #     reca = tmp[3]/(tmp[3]+tmp[2])
+        #     precision.append(prec)
+        #     recall.append(reca)
         
-        return precision, recall
+        #return precision, recall
+        return results
 
     
     def cv_score(self, models, X, y):

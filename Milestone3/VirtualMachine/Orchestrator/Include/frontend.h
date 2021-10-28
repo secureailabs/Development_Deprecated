@@ -19,6 +19,7 @@
 #include <map>
 #include <memory>
 #include <future>
+#include <unordered_set>
 
 /********************************************************************************************/
 enum class EngineRequest
@@ -114,7 +115,7 @@ class Frontend : public Object{
         (
             _in std::string& strJobID,
             _in std::string& strFNID,
-            _inout std::vector<std::vector<Byte>>& stlOutput
+            _inout std::map<std::string, int>& stlOutput
         );
         JobStatusSignals __thiscall QueryJobStatus(
             _in std::string& strJobID
@@ -136,6 +137,10 @@ class Frontend : public Object{
         (
             _in std::string& strFilePath
         );
+        void __thiscall SaveBuffer(
+            _in std::string& strDataID,
+            _in std::vector<Byte>& stlVars
+        );
         
     private:
         std::map<std::string, std::shared_ptr<TlsNode>> m_stlConnectionMap;
@@ -144,7 +149,8 @@ class Frontend : public Object{
         //std::string m_strWebPortalIP;
         //std::string m_strWebPortalPort;
         std::map<std::string, std::unique_ptr<SafeObject>> m_stlFNTable;
-        std::map<std::string, std::vector<Byte>> m_stlResultMap;
+        //std::map<std::string, std::vector<Byte>> m_stlResultMap;
+        std::unordered_set<std::string> m_stlResultSet;
         std::string m_strUsername;
         std::string m_strEOSB;
         std::mutex m_stlResultMapMutex;

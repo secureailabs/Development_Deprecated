@@ -46,6 +46,7 @@ $(OBJDIR)%.o: $(ABSROOTDIR)%.cpp
 $(OUTPUT): $(OBJS)
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ -o $@ $(LDFLAGS) $(LDLIBS)
+	@cp $@ ./sail/sail/
 
 cleanall:
 	rm -rf $(ABSROOTDIR)/Binary

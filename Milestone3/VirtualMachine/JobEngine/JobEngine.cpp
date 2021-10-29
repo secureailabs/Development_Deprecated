@@ -105,6 +105,9 @@ void JobEngine::StartServer(
     // We reset the job engine, it will create all the necessary files and folders necessary
     this->ResetJobEngine();
 
+    // Start the thread to send heartbeat messages to the orchestrator
+    std::thread(&JobEngine::Heartbeat, this).detach();
+
     // Start listening to requests and fullfill them
     this->ListenToRequests();
 }
@@ -145,6 +148,7 @@ void __thiscall JobEngine::ListenToRequests(void)
         // This should be a blocking call, because we have a persistant connection
         std::cout << "Waiting for request..\n";
         StructuredBuffer oNewRequest(::GetIpcTransaction(m_poSocket, true));
+        m_oTimeOfLastOrchestratorMessageArrival = std::time(nullptr);
 
         // Get the type of request
         EngineRequest eRequestType = (EngineRequest)oNewRequest.GetByte("RequestType");
@@ -179,6 +183,10 @@ void __thiscall JobEngine::ListenToRequests(void)
                 // This job does not need to be async, it will block for the cleanup to be performed
                 // before new requests can be accpeted and fulfilled
                 this->ResetJobEngine();
+                break;
+            case EngineRequest::eHeartBeatPong
+            :
+                // We do nothing for this as the time is already recorded above
                 break;
             case EngineRequest::eVmShutdown
             :
@@ -230,6 +238,9 @@ void __thiscall JobEngine::ConnectVirtualMachine(
     oStructuredBufferLoginResponse.PutBoolean("Success", true);
     oStructuredBufferLoginResponse.PutStructuredBuffer("Dataset", oAvailableGuids);
     this->SendMessageToOrchestrator(oStructuredBufferLoginResponse);
+
+    // Mark the JobEngine as connected
+    m_fIsConnected = true;
 
     // TODO: Update this data
     StructuredBuffer oEventData;
@@ -782,4 +793,57 @@ void __thiscall JobEngine::ResetJobEngine(void)
     m_FileListenerId = poThreadManager->CreateThread("JobEngineThreads", ::FileSystemWatcherThread, (void *)nullptr);
 
     std::cout << "..Job Engine reset..\n";
+}
+
+
+/********************************************************************************************
+ *
+ * @class JobEngine
+ * @function Heartbeat
+ * @brief Send a heartbeat to the Orchestrator if no message is received for a certain time
+ *
+ ********************************************************************************************/
+void __thiscall JobEngine::Heartbeat(void)
+{
+    __DebugFunction();
+
+    try
+    {
+        while (true)
+        {
+            // Sleep for 30 seconds
+            std::this_thread::sleep_for(std::chrono::seconds(30));
+
+            if (true == m_fIsConnected)
+            {
+                if(60 < std::difftime(std::time(nullptr), m_oTimeOfLastOrchestratorMessageArrival))
+                {
+                    // TODO: Prawal If there was no message from the Orchestrator for the past 60 seconds, kill the connection
+                    m_fIsConnected = false;
+                }
+                else if(30 < std::difftime(std::time(nullptr), m_oTimeOfLastOrchestratorMessageArrival))
+                {
+                    // If there was no message from the Orchestrator for the past 30 seconds, send a eHeartBeatPing
+                    // Send the message to the Orchestrator
+                    StructuredBuffer oStructuredBuffer;
+                    oStructuredBuffer.PutByte("SignalType", (Byte)JobStatusSignals::eHeartBeatPing);
+                    this->SendMessageToOrchestrator(oStructuredBuffer);
+                }
+                else
+                {
+                    // All good. We are alive
+                }
+            }
+        }
+    }
+
+    catch(BaseException & oBaseException)
+    {
+        std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
+    }
+
+    catch(...)
+    {
+        std::cout << "Some exceptional error in " << __func__ << std::endl;
+    }
 }

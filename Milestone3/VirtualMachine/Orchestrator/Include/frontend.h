@@ -32,7 +32,8 @@ enum class EngineRequest
     eSetParameters = 5,
     eHaltAllJobs = 6,
     eJobStatusSignal = 7,
-    eConnectVirtualMachine = 8
+    eConnectVirtualMachine = 8,
+    eHeartBeatPong = 9
 };
 
 enum class JobStatusSignals
@@ -42,7 +43,8 @@ enum class JobStatusSignals
     eJobFail = 2,
     ePostValue = 3,
     eVmShutdown = 4,
-    ePrivacyViolation = 5
+    ePrivacyViolation = 5,
+    eHeartBeatPing = 6
 };
 
 class Frontend : public Object{
@@ -62,7 +64,7 @@ class Frontend : public Object{
             _in std::string& strVMID
         );
         void __thiscall Listener(
-            _in TlsNode* poSocket
+            _in std::string strVMID
         );
         std::string Login(
             _in const std::string& c_strEmail,
@@ -96,18 +98,18 @@ class Frontend : public Object{
         (
             _in std::string& strVMID,
             _in std::vector<std::string>& stlInputIds,
-            _in std::vector<std::vector<Byte>> & stlInputVars   
+            _in std::vector<std::vector<Byte>> & stlInputVars
         );
         void __thiscall HandleSetParameters
         (
-            _in std::string& strVMID, 
-            _in std::string& strFNID, 
-            _in std::string& strJobID, 
+            _in std::string& strVMID,
+            _in std::string& strFNID,
+            _in std::string& strJobID,
             _in std::vector<std::string>stlParams
         );
         void __thiscall HandlePullData
         (
-            _in std::string& strVMID, 
+            _in std::string& strVMID,
             _in std::string& strJobID,
             _in std::string & strFNID
         );
@@ -129,7 +131,7 @@ class Frontend : public Object{
         //     _in std::vector<std::string>& stlvarID
         // );
         void __thiscall HandlePushSafeObject
-	    (
+        (
             _in std::string& strVMID,
             _in std::string& strFNID
         );
@@ -141,9 +143,14 @@ class Frontend : public Object{
             _in std::string& strDataID,
             _in std::vector<Byte>& stlVars
         );
-        
+        void __thiscall SendDataToJobEngine(
+            _in const std::string& strVMID,
+            _in StructuredBuffer & c_oStructuredBuffer
+        );
+
     private:
         std::map<std::string, std::shared_ptr<TlsNode>> m_stlConnectionMap;
+        std::map<std::string, std::shared_ptr<std::mutex>> m_stlConnectionMutexMap;
         std::map<std::string, JobStatusSignals> m_stlJobStatusMap;
         std::map<std::string, std::map<std::string, std::string>> m_stlDataTableMap;
         //std::string m_strWebPortalIP;
@@ -158,4 +165,3 @@ class Frontend : public Object{
         std::mutex m_stlFlagMutex;
         bool m_fStop;
 };
-

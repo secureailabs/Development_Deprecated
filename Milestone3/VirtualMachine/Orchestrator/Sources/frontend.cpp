@@ -96,75 +96,84 @@ std::string Frontend::Login(
 }
 
 void __thiscall Frontend::Listener(
-    _in TlsNode* poSocket
+    _in std::string strVMID
 )
 {
     __DebugFunction();
-	
+
     while (!m_fStop)
     {
-		try
-		{
-		        std::cout << "Waiting for data" << std::endl;
-                       fflush(stdout);
-			std::vector<Byte> stlResponseBuffer = GetTlsTransaction(poSocket, 0);
-			StructuredBuffer oResponse(stlResponseBuffer);
-			JobStatusSignals eStatusSignalType = (JobStatusSignals)oResponse.GetByte("SignalType");
-			
-			switch(eStatusSignalType)
-			{
-				case JobStatusSignals::eJobStart:
-				{
-					std::string strJobID = oResponse.GetString("JobUuid");
-					std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
-					//m_stlJobStatusMap.emplace(strJobID, JobStatusSignals::eJobStart); 
-					m_stlJobStatusMap[strJobID] = JobStatusSignals::eJobStart;
-					break;
-				}
-				case JobStatusSignals::eJobDone:
-				{
-					std::string strJobID = oResponse.GetString("JobUuid");
-					std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
-					m_stlJobStatusMap[strJobID] = JobStatusSignals::eJobDone;
-					std::cout<<"Job status of: "<<strJobID<<" set to: "<<(int)m_stlJobStatusMap[strJobID]<<std::endl;
-					break;
-				}
-				case JobStatusSignals::eJobFail:
-				{
-					std::string strJobID = oResponse.GetString("JobUuid");
-					std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
-					m_stlJobStatusMap[strJobID] = JobStatusSignals::eJobFail;
-					break;
-				}
-				case JobStatusSignals::ePostValue:
-				{
-					std::vector<Byte> stlData = oResponse.GetBuffer("FileData");
-					std::string strDataID = oResponse.GetString("ValueName");
-					std::cout<<"Get result posted: "<<strDataID<<" Data length: "<<stlData.size()<<std::endl;
-					//std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
-					//m_stlResultMap.emplace(strDataID, stlData);
-					//m_stlResultMap[strDataID] = stlData;
-					SaveBuffer(strDataID, stlData);
-					m_stlResultSet.emplace(strDataID);
-					break;
-				}
-				case JobStatusSignals::eVmShutdown: break;
-				default: break;
-			}
-        }
-		
-		catch(BaseException oBaseException)
-		{
-			::RegisterException(oBaseException, __func__, __LINE__);
-		}
+        try
+        {
+            std::cout << "Waiting for data" << std::endl;
+            fflush(stdout);
+            std::vector<Byte> stlResponseBuffer = ::GetTlsTransaction(m_stlConnectionMap[strVMID].get(), 0);
+            StructuredBuffer oResponse(stlResponseBuffer);
+            JobStatusSignals eStatusSignalType = (JobStatusSignals)oResponse.GetByte("SignalType");
 
-		catch(...)
-		{
-			::RegisterUnknownException(__func__, __LINE__);
-		}
+            switch(eStatusSignalType)
+            {
+                case JobStatusSignals::eJobStart:
+                {
+                    std::string strJobID = oResponse.GetString("JobUuid");
+                    std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
+                    //m_stlJobStatusMap.emplace(strJobID, JobStatusSignals::eJobStart);
+                    m_stlJobStatusMap[strJobID] = JobStatusSignals::eJobStart;
+                    break;
+                }
+                case JobStatusSignals::eJobDone:
+                {
+                    std::string strJobID = oResponse.GetString("JobUuid");
+                    std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
+                    m_stlJobStatusMap[strJobID] = JobStatusSignals::eJobDone;
+                    std::cout<<"Job status of: "<<strJobID<<" set to: "<<(int)m_stlJobStatusMap[strJobID]<<std::endl;
+                    break;
+                }
+                case JobStatusSignals::eJobFail:
+                {
+                    std::string strJobID = oResponse.GetString("JobUuid");
+                    std::lock_guard<std::mutex> lock(m_stlJobStatusMapMutex);
+                    m_stlJobStatusMap[strJobID] = JobStatusSignals::eJobFail;
+                    break;
+                }
+                case JobStatusSignals::ePostValue:
+                {
+                    std::vector<Byte> stlData = oResponse.GetBuffer("FileData");
+                    std::string strDataID = oResponse.GetString("ValueName");
+                    std::cout<<"Get result posted: "<<strDataID<<" Data length: "<<stlData.size()<<std::endl;
+                    //std::lock_guard<std::mutex> lock(m_stlResultMapMutex);
+                    //m_stlResultMap.emplace(strDataID, stlData);
+                    //m_stlResultMap[strDataID] = stlData;
+                    SaveBuffer(strDataID, stlData);
+                    m_stlResultSet.emplace(strDataID);
+                    break;
+                }
+                case JobStatusSignals::eHeartBeatPing:
+                {
+                    // Send a response to the JobEngine to keep the connection alive
+                    StructuredBuffer oResponse;
+                    oResponse.PutString("EndPoint", "JobEngine");
+                    oResponse.PutByte("RequestType", (Byte)EngineRequest::eHeartBeatPong);
+                    this->SendDataToJobEngine(strVMID, oResponse);
+                    break;
+                }
+                case JobStatusSignals::eVmShutdown: break;
+                default: break;
+            }
+        }
+
+        catch(BaseException oBaseException)
+        {
+            ::RegisterException(oBaseException, __func__, __LINE__);
+        }
+
+        catch(...)
+        {
+            ::RegisterUnknownException(__func__, __LINE__);
+        }
     }
 
-    poSocket->Release();
+    m_stlConnectionMap[strVMID].get()->Release();
     // for(auto const& i: m_stlConnectionMap)
     // {
     //     i.second->Release();
@@ -186,7 +195,7 @@ void __thiscall Frontend::SaveBuffer(
 
 
 void __thiscall Frontend::SetFrontend(
-    _in std::string & strServerIP, 
+    _in std::string & strServerIP,
     _in Word wPort,
     _in std::string & strVMID
     )
@@ -237,6 +246,10 @@ void __thiscall Frontend::SetFrontend(
 
             std::shared_ptr<TlsNode> stlSocket(poSocket);
             m_stlConnectionMap.emplace(strVMID, stlSocket);
+
+            // Create and insert a mutex to m_stlConnectionMutexMap for this strVmID
+            std::shared_ptr<std::mutex> stlMutex(new std::mutex);
+            m_stlConnectionMutexMap.insert(std::make_pair(strVMID, stlMutex));
         }
     }
     
@@ -250,8 +263,7 @@ void __thiscall Frontend::SetFrontend(
         ::RegisterUnknownException(__func__, __LINE__);
     }
 
-    std::thread stlListener(&Frontend::Listener, this, m_stlConnectionMap[strVMID].get());
-    stlListener.detach();
+    std::thread(&Frontend::Listener, this, strVMID).detach();
 }
 
 /********************************************************************************************
@@ -279,10 +291,9 @@ void __thiscall Frontend::HandleSubmitJob(
 
     try
     {
-        //PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
-        PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer.GetSerializedBuffer());
+        this->SendDataToJobEngine(strVMID, oBuffer);
     }
-    
+
     catch(BaseException oBaseException)
     {
         ::RegisterException(oBaseException, __func__, __LINE__);
@@ -391,7 +402,7 @@ void __thiscall Frontend::HandleSubmitJob(
  * @function HandleQuit
  * @param [in] oBuffer Reference of the structured buffer going to be send
  * @brief Prepare the structured buffer going to be send for quitting
- * 
+ *
  ********************************************************************************************/
 
 void __thiscall Frontend::HandleQuit(void)
@@ -402,13 +413,12 @@ void __thiscall Frontend::HandleQuit(void)
     oBuffer.PutByte("RequestType", (Byte)EngineRequest::eVmShutdown);
     
     for(auto const& i : m_stlConnectionMap)
-    {   
+    {
         try
         {
-            //PutTlsTransactionAndGetResponse(i.second.get(), oBuffer, 100);
-            PutTlsTransaction(i.second.get(), oBuffer.GetSerializedBuffer());
+            this->SendDataToJobEngine(i.first, oBuffer);
         }
-        
+
         catch(BaseException oBaseException)
         {
             ::RegisterException(oBaseException, __func__, __LINE__);
@@ -443,10 +453,9 @@ void __thiscall Frontend::HandlePushData(
 
         try
         {
-            //PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
-            PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer.GetSerializedBuffer());
+            this->SendDataToJobEngine(strVMID, oBuffer);
         }
-        
+
         catch(BaseException oBaseException)
         {
             ::RegisterException(oBaseException, __func__, __LINE__);
@@ -483,10 +492,9 @@ void __thiscall Frontend::HandleSetParameters(
         
         try
         {
-            //PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
-            PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer.GetSerializedBuffer());
+            this->SendDataToJobEngine(strVMID, oBuffer);
         }
-        
+
         catch(BaseException oBaseException)
         {
             ::RegisterException(oBaseException, __func__, __LINE__);
@@ -523,7 +531,7 @@ void __thiscall Frontend::HandlePullData(
             
             try
             {
-                PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer.GetSerializedBuffer());
+                this->SendDataToJobEngine(strVMID, oBuffer);
                 std::cout<<"pull data for: "<<strOutputFilename<<std::endl;
             }
             
@@ -554,9 +562,9 @@ void __thiscall Frontend::QueryResult(
     {
     
         std::string strDataID = strJobID + "." + stlOutputID[i];
-        
+
         std::cout<<"query result data id: "<<strDataID<<std::endl;
-       
+
         if(stlOutputConf[i].compare("0")==0)
         {
             while(m_stlResultSet.end()==m_stlResultSet.find(strDataID))
@@ -625,7 +633,7 @@ std::map<std::string, std::string> __thiscall Frontend::QueryDataset(
 //     {
 //         ::RegisterUnknownException(__func__, __LINE__);
 //     }
-    
+
 //     if (nullptr != poSocket)
 //     {
 //         poSocket->Release();
@@ -647,19 +655,19 @@ void __thiscall Frontend::HandlePushSafeObject(
 {
     std::cout<<"push safe object: "<<strFNID<<std::endl;
     StructuredBuffer oBuffer;
-    
+
     oBuffer.PutByte("RequestType", (Byte)EngineRequest::ePushSafeObject);
     oBuffer.PutString("EndPoint", "JobEngine");
-    
+
     oBuffer.PutString("SafeObjectUuid", strFNID);
     oBuffer.PutString("Title", m_stlFNTable[strFNID]->GetTitle());
     oBuffer.PutString("Description", m_stlFNTable[strFNID]->GetDescription());
 
     std::string strCode =  m_stlFNTable[strFNID]->GetScript();
     oBuffer.PutBuffer("Payload", (Byte*)strCode.c_str(), strCode.size());
-    
-    std::vector<std::string> stlInputIDs = m_stlFNTable[strFNID]->GetInput(); 
-    std::vector<std::string> stlOutputIDs = m_stlFNTable[strFNID]->GetOutput(); 
+
+    std::vector<std::string> stlInputIDs = m_stlFNTable[strFNID]->GetInput();
+    std::vector<std::string> stlOutputIDs = m_stlFNTable[strFNID]->GetOutput();
 
     StructuredBuffer oInputParams;
     for(size_t i = 0; i<stlInputIDs.size(); i++)
@@ -680,13 +688,12 @@ void __thiscall Frontend::HandlePushSafeObject(
         oOutputParams.PutStructuredBuffer(std::to_string(i).c_str(), oOutputElement);
     }
     oBuffer.PutStructuredBuffer("OutputParameters", oOutputParams);
-    
+
     try
     {
-        //PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer);
-        PutTlsTransaction(m_stlConnectionMap[strVMID].get(), oBuffer.GetSerializedBuffer());
+        this->SendDataToJobEngine(strVMID, oBuffer);
     }
-    
+
     catch(BaseException oBaseException)
     {
         ::RegisterException(oBaseException, __func__, __LINE__);
@@ -729,3 +736,42 @@ void __thiscall Frontend::RegisterSafeObject(
         std::cout<<"end"<<std::endl;
     }
 }
+
+
+/********************************************************************************************
+ *
+ * @class Frontend
+ * @function SendDataToJobEngine
+ * @param [in] strVMID Id of the VM to send the data to to
+ * @param [in] c_oStructuredBuffer StructuredBUffer to send
+ * @brief Prepare the structured buffer going to be send for quitting
+ *
+ ********************************************************************************************/
+void __thiscall Frontend::SendDataToJobEngine(
+    _in const std::string& strVMID,
+    _in StructuredBuffer & c_oStructuredBuffer
+)
+{
+    __DebugFunction();
+
+    try
+    {
+        std::lock_guard<std::mutex> lock(*m_stlConnectionMutexMap.at(strVMID).get());
+        ::PutTlsTransaction(m_stlConnectionMap[strVMID].get(), c_oStructuredBuffer);
+    }
+
+    catch(BaseException oBaseException)
+    {
+        ::RegisterException(oBaseException, __func__, __LINE__);
+    }
+    catch(std::exception & e)
+    {
+        std::cout << "Exception: " << e.what() << '\n';
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+    catch(...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+}
+

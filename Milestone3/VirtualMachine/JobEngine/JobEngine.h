@@ -27,6 +27,7 @@
 #include <future>
 #include <unordered_map>
 #include <unordered_set>
+#include <ctime>
 
 enum class EngineRequest
 {
@@ -38,7 +39,8 @@ enum class EngineRequest
     eSetParameters = 5,
     eHaltAllJobs = 6,
     eJobStatusSignal = 7,
-    eConnectVirtualMachine = 8
+    eConnectVirtualMachine = 8,
+    eHeartBeatPong = 9
 };
 
 enum class JobStatusSignals
@@ -48,7 +50,8 @@ enum class JobStatusSignals
     eJobFail = 2,
     ePostValue = 3,
     eVmShutdown = 4,
-    ePrivacyViolation = 5
+    ePrivacyViolation = 5,
+    eHeartBeatPing = 6
 };
 
 /********************************************************************************************/
@@ -105,14 +108,18 @@ class JobEngine : public Object
             _in const StructuredBuffer & oStructuredBuffer
             );
         void __thiscall ResetJobEngine(void);
+        void __thiscall Heartbeat(void);
 
         // Private data members
+        bool m_fIsConnected = false;
         static JobEngine m_oJobEngine;
         RootOfTrustNode * m_poRootOfTrustNode;
         std::unordered_map<std::string, std::string> m_stlMapOfDataConnectorGuidsToName;
         uint64_t m_FileListenerId = 0;
         Socket * m_poSocket;
         std::unordered_map<std::string, std::shared_ptr<Job>> m_stlMapOfJobs;
+        // TODO: Prawal use recursive locks here from
+        // https://en.cppreference.com/w/cpp/thread/recursive_mutex
         std::mutex m_oMutexOnJobsMap;
         std::unordered_map<std::string, std::shared_ptr<SafeObject>> m_stlMapOfSafeObjects;
         std::mutex m_oMutexOnSafeObjectMap;
@@ -121,4 +128,5 @@ class JobEngine : public Object
         std::unordered_set<std::string> m_stlSetOfPullObjects;
         std::mutex m_oMutexOnSetOfPullObjects;
         std::mutex m_oMutexOnIpcSocket;
+        std::time_t m_oTimeOfLastOrchestratorMessageArrival;
 };

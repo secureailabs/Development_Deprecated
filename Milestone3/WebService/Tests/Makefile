@@ -10,30 +10,34 @@ endif
 
 # The Root directory containing all the code
 ROOTDIR=../..
-ABSROOTDIR=$(shell realpath $(ROOTDIR))
-OBJDIR=$(ABSROOTDIR)/Binary/Objects
+
+include $(ROOTDIR)/Common.mk
 
 # Add the new include folders here
 INCLUDE+=-I$(shell realpath ./Include)
-INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
 INCLUDE+=-I$(shell realpath ../../EndPointTools/RestPortalTester/Sources)
 INCLUDE+=-I$(shell realpath ../../WebService/RestApiPortal/Include)
 
 # Add the new source directory here
 SRCDIRS+=$(shell realpath ./Sources)
-SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
 
-FINDFILES = $(wildcard $(DIR)/*.cpp)
+C_SOURCES := $(foreach DIR,$(SRCDIRS),$(C_FINDFILES))
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
 SOURCES+=$(shell realpath ../../EndPointTools/RestPortalTester/Sources/InteractiveClient.cpp)
 SOURCES+=$(shell realpath ../../EndPointTools/RestPortalTester/Sources/GuiTerminal.cpp)
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
+OBJS+=$(C_SOURCES:$(ABSROOTDIR)%.c=$(OBJDIR)%.o)
+
 OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))
 
 all: $(OUTPUT)
 
 $(OBJDIR)%.o: $(ABSROOTDIR)%.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $^ -o $@
+
+$(OBJDIR)%.o: $(ABSROOTDIR)%.c
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $^ -o $@
 

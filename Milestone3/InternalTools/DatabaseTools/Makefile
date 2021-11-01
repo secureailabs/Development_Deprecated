@@ -10,14 +10,13 @@ endif
 
 # The Root directory containing all the code
 ROOTDIR=../..
-ABSROOTDIR=$(shell realpath $(ROOTDIR))
-OBJDIR=$(ABSROOTDIR)/Binary/Objects
+
+include $(ROOTDIR)/Common.mk
 
 # Add the new include folders here
 INCLUDE+=-I$(shell realpath ./Sources)
 INCLUDE+=-I$(shell realpath ../../InternalTools/CryptographicTools/Include)
 INCLUDE+=-I$(shell realpath ../../EndPointTools/RestPortalTester/Sources)
-INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
 INCLUDE+=-I$(shell realpath ../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement)
 INCLUDE+=-I$(shell realpath ../../WebService/RestApiPortal/Include)
 INCLUDE+=-I$(shell realpath ../../WebService/SharedCommonCode/Include)
@@ -26,10 +25,9 @@ INCLUDE+=-I/usr/local/include/mongocxx/v_noabi -I/usr/local/include/libmongoc-1.
 
 # Add the new source directory here
 SRCDIRS+=$(shell realpath ./Sources)
-SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
 
-FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
+C_SOURCES := $(foreach DIR,$(SRCDIRS),$(C_FINDFILES))
 SOURCES += $(shell realpath ../../InternalTools/CryptographicTools/Sources/CryptoUtils.cpp)
 SOURCES += $(shell realpath ../../EndPointTools/RestPortalTester/Sources/InteractiveClient.cpp)
 SOURCES += $(shell realpath ../../EndPointTools/RestPortalTester/Sources/GuiTerminal.cpp)
@@ -38,11 +36,17 @@ SOURCES += $(shell realpath ../../WebService/Plugins/RestApiPortal/Cryptographic
 SOURCES += $(shell realpath ../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement/CryptographyHelperFunctions.cpp)
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
+OBJS+=$(C_SOURCES:$(ABSROOTDIR)%.c=$(OBJDIR)%.o)
+
 OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))
 
 all: $(OUTPUT)
 
 $(OBJDIR)%.o: $(ABSROOTDIR)%.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $^ -o $@
+
+$(OBJDIR)%.o: $(ABSROOTDIR)%.c
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $^ -o $@
 

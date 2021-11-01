@@ -22,13 +22,11 @@ INCLUDE+=-I$(shell realpath ./Include)
 INCLUDE+=-I$(shell realpath ../../SharedCommonCode/Include)
 INCLUDE+=-I$(shell realpath ../../WebService/RestApiPortal/Include)
 INCLUDE+=-I$(shell realpath ../../WebService/SharedCommonCode/Include)
-INCLUDE+=-I$(shell realpath ./Utils/Include)
 INCLUDE+=-I$(shell realpath ../../VirtualMachine/ComputationalDomainProcess/Include)
 INCLUDE+=-I$(shell realpath ../../VirtualMachine/SharedComponents/Include)
 
 # Add the new source directory here
 SRCDIRS+=$(shell realpath ./Sources)
-SRCDIRS+=$(shell realpath ./Utils/Sources)
 SRCDIRS+=$(shell realpath ../../SharedCommonCode/Sources)
 SRCDIRS+=$(shell realpath ../../WebService/RestApiPortal/Sources)
 SRCDIRS+=$(shell realpath ../../VirtualMachine/SharedComponents/Sources)
@@ -48,6 +46,7 @@ $(OBJDIR)%.o: $(ABSROOTDIR)%.cpp
 $(OUTPUT): $(OBJS)
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ -o $@ $(LDFLAGS) $(LDLIBS)
+	@cp $@ ./sail/sail/
 
 cleanall:
 	rm -rf $(ABSROOTDIR)/Binary

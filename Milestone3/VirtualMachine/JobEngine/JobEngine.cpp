@@ -105,6 +105,9 @@ void JobEngine::StartServer(
     // We reset the job engine, it will create all the necessary files and folders necessary
     this->ResetJobEngine();
 
+    // Start the thread to send heartbeat messages to the orchestrator
+    std::thread(&JobEngine::Heartbeat, this).detach();
+
     // Start listening to requests and fullfill them
     this->ListenToRequests();
 }
@@ -145,6 +148,7 @@ void __thiscall JobEngine::ListenToRequests(void)
         // This should be a blocking call, because we have a persistant connection
         std::cout << "Waiting for request..\n";
         StructuredBuffer oNewRequest(::GetIpcTransaction(m_poSocket, true));
+        m_oTimeOfLastOrchestratorMessageArrival = std::time(nullptr);
 
         // Get the type of request
         EngineRequest eRequestType = (EngineRequest)oNewRequest.GetByte("RequestType");
@@ -179,6 +183,10 @@ void __thiscall JobEngine::ListenToRequests(void)
                 // This job does not need to be async, it will block for the cleanup to be performed
                 // before new requests can be accpeted and fulfilled
                 this->ResetJobEngine();
+                break;
+            case EngineRequest::eHeartBeatPong
+            :
+                // We do nothing for this as the time is already recorded above
                 break;
             case EngineRequest::eVmShutdown
             :
@@ -230,6 +238,9 @@ void __thiscall JobEngine::ConnectVirtualMachine(
     oStructuredBufferLoginResponse.PutBoolean("Success", true);
     oStructuredBufferLoginResponse.PutStructuredBuffer("Dataset", oAvailableGuids);
     this->SendMessageToOrchestrator(oStructuredBufferLoginResponse);
+
+    // Mark the JobEngine as connected
+    m_fIsConnected = true;
 
     // TODO: Update this data
     StructuredBuffer oEventData;
@@ -306,10 +317,12 @@ void __thiscall JobEngine::PushSafeObject(
             }
         }
     }
+
     catch(BaseException & oBaseException)
     {
         std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
     }
+
     catch(...)
     {
         std::cout << "Some exceptional error in " << __func__ << std::endl;
@@ -381,8 +394,11 @@ void __thiscall JobEngine::PullData(
         // Check if the signal file already exists, if the file exists already exists
         // push it to the orchestrator otherwise just register the request and
         // wait for the file to be created in future.
-        std::lock_guard<std::mutex> lockSetOfPullObjects(m_oMutexOnSetOfPullObjects);
-        m_stlSetOfPullObjects.insert(c_strFileNametoSend);
+
+        {
+            std::lock_guard<std::mutex> lockSetOfPullObjects(m_oMutexOnSetOfPullObjects);
+            m_stlSetOfPullObjects.insert(c_strFileNametoSend);
+        }
 
         if (true == std::filesystem::exists(strSignalFile.c_str()))
         {
@@ -396,18 +412,23 @@ void __thiscall JobEngine::PullData(
             // The Pull data response to the orchestrator is sent as a signal with data
             this->SendMessageToOrchestrator(oResponse);
 
-            // Remove the file from the set
-            m_stlSetOfPullObjects.erase(c_strFileNametoSend);
+            {
+                std::lock_guard<std::mutex> lockSetOfPullObjects(m_oMutexOnSetOfPullObjects);
+                // Remove the file from the set
+                m_stlSetOfPullObjects.erase(c_strFileNametoSend);
+            }
 
             // We delete the signal file and the data file after we have consumed it.
             ::remove(strSignalFile.c_str());
             //::remove(c_strFileNametoSend.c_str());
         }
     }
+
     catch(BaseException & oBaseException)
     {
         std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
     }
+
     catch(...)
     {
         std::cout << "Some exceptional error in " << __func__ << std::endl;
@@ -592,9 +613,12 @@ void __thiscall JobEngine::FileCreateCallback(
     __DebugFunction();
 
     bool fIsParameterValue = false;
+    bool fPullData = false;
 
     try
     {
+        std::shared_ptr<Job> poJob = nullptr;
+
         // The scope is defined for the lock to free up as soon as it is not needed anymore.
         // Taking up two locks at the same time is risky and should be avoided to prevent deadlocks.
         // The mutex needed to be locked before the start of the if condition, hence a forced scope
@@ -602,19 +626,29 @@ void __thiscall JobEngine::FileCreateCallback(
             std::lock_guard<std::mutex> lockParameterValuesToJobMap(m_oMutexOnParameterValuesToJobMap);
             if(m_stlMapOfParameterValuesToJob.end() != m_stlMapOfParameterValuesToJob.find(c_strFileCreatedName))
             {
-                std::shared_ptr<Job> poJob = m_stlMapOfParameterValuesToJob.at(c_strFileCreatedName);
-                std::thread(&Job::RemoveAvailableDependency, poJob, c_strFileCreatedName).detach();
+                poJob = m_stlMapOfParameterValuesToJob.at(c_strFileCreatedName);
                 m_stlMapOfParameterValuesToJob.erase(c_strFileCreatedName);
                 fIsParameterValue = true;
             }
         }
 
-        // Since the new file could either be a pull object or a valueId needed by a job,
-        // there is an additional check to ensure that it was not a job parameter value
-        if (false == fIsParameterValue)
+        if (true == fIsParameterValue)
         {
-            std::lock_guard<std::mutex> lockSetOfPullObjects(m_oMutexOnSetOfPullObjects);
-            if (m_stlSetOfPullObjects.end() != m_stlSetOfPullObjects.find(c_strFileCreatedName))
+            std::thread(&Job::RemoveAvailableDependency, poJob, c_strFileCreatedName).detach();
+        }
+        else
+        {
+            // Since the new file could either be a pull object or a valueId needed by a job,
+            // there is an additional check to ensure that it was not a job parameter value
+            {
+                std::lock_guard<std::mutex> lockSetOfPullObjects(m_oMutexOnSetOfPullObjects);
+                if (m_stlSetOfPullObjects.end() != m_stlSetOfPullObjects.find(c_strFileCreatedName))
+                {
+                    fPullData = true;
+                }
+            }
+
+            if (true == fPullData)
             {
                 // Send the file back to the orchestrator asynchronously
                 // The mutex locked up here will not block the next PullData call because it is async
@@ -623,10 +657,12 @@ void __thiscall JobEngine::FileCreateCallback(
             }
         }
     }
+
     catch(BaseException & oBaseException)
     {
         std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
     }
+
     catch(...)
     {
         std::cout << "Some exceptional error in " << __func__ << std::endl;
@@ -676,11 +712,14 @@ void __thiscall JobEngine::SendMessageToOrchestrator(
         }
         std::lock_guard<std::mutex> lock(m_oMutexOnIpcSocket);
         ::PutIpcTransaction(m_poSocket, c_oStructuredBuffer);
+        std::cout << "Sent to orchestrator " << StructuredBuffer(c_oStructuredBuffer).ToString();
     }
+
     catch(BaseException & oBaseException)
     {
         std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
     }
+
     catch(...)
     {
         std::cout << "Some exceptional error in " << __func__ << std::endl;
@@ -754,4 +793,57 @@ void __thiscall JobEngine::ResetJobEngine(void)
     m_FileListenerId = poThreadManager->CreateThread("JobEngineThreads", ::FileSystemWatcherThread, (void *)nullptr);
 
     std::cout << "..Job Engine reset..\n";
+}
+
+
+/********************************************************************************************
+ *
+ * @class JobEngine
+ * @function Heartbeat
+ * @brief Send a heartbeat to the Orchestrator if no message is received for a certain time
+ *
+ ********************************************************************************************/
+void __thiscall JobEngine::Heartbeat(void)
+{
+    __DebugFunction();
+
+    try
+    {
+        while (true)
+        {
+            // Sleep for 30 seconds
+            std::this_thread::sleep_for(std::chrono::seconds(30));
+
+            if (true == m_fIsConnected)
+            {
+                if(60 < std::difftime(std::time(nullptr), m_oTimeOfLastOrchestratorMessageArrival))
+                {
+                    // TODO: Prawal If there was no message from the Orchestrator for the past 60 seconds, kill the connection
+                    m_fIsConnected = false;
+                }
+                else if(30 < std::difftime(std::time(nullptr), m_oTimeOfLastOrchestratorMessageArrival))
+                {
+                    // If there was no message from the Orchestrator for the past 30 seconds, send a eHeartBeatPing
+                    // Send the message to the Orchestrator
+                    StructuredBuffer oStructuredBuffer;
+                    oStructuredBuffer.PutByte("SignalType", (Byte)JobStatusSignals::eHeartBeatPing);
+                    this->SendMessageToOrchestrator(oStructuredBuffer);
+                }
+                else
+                {
+                    // All good. We are alive
+                }
+            }
+        }
+    }
+
+    catch(BaseException & oBaseException)
+    {
+        std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
+    }
+
+    catch(...)
+    {
+        std::cout << "Some exceptional error in " << __func__ << std::endl;
+    }
 }

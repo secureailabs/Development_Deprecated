@@ -8,6 +8,7 @@
  *
  ********************************************************************************************/
 
+#include "Base64Encoder.h"
 #include "JsonValue.h"
 #include "DebugLibrary.h"
 #include "Exceptions.h"
@@ -960,7 +961,7 @@ JsonObject __stdcall JsonValue::StructuredBufferToJson(
             :
             {
                 std::vector<Byte> stlValue = c_oStructuredBufferObject.GetBuffer(strNameOfElement.c_str());
-                poJsonValue = new JsonValue(::Base64Encode(std::string(stlValue.begin(), stlValue.end())));
+                poJsonValue = new JsonValue(::Base64Encode(&stlValue[0], static_cast<unsigned int>(stlValue.size())));
                 break;
             }
             case INDEXED_BUFFER_VALUE_TYPE

@@ -63,7 +63,7 @@ static std::vector<Byte> __stdcall GetBinaryFileBuffer(
         _ThrowBaseExceptionIf((INVALID_HANDLE_VALUE == hFileHandle), "Failed to open file %s", c_szFilename);
         BY_HANDLE_FILE_INFORMATION sFileInformation;
         bool fSuccess = ::GetFileInformationByHandle(hFileHandle, &sFileInformation);
-        _ThrowBaseExceptionIf((TRUE != fSuccess), "Failed to get file information for %s", c_szFilename);
+        _ThrowBaseExceptionIf((true != fSuccess), "Failed to get file information for %s", c_szFilename);
         uint64_t un64FileSizeInBytes = (uint64_t) MAKE_QWORD(sFileInformation.nFileSizeHigh, sFileInformation.nFileSizeLow);
         // Make sure the buffer is large enough to receive the binary file
         stlBinaryBuffer.resize(un64FileSizeInBytes);
@@ -75,7 +75,7 @@ static std::vector<Byte> __stdcall GetBinaryFileBuffer(
             unsigned int unNumberOfBytesToRead = (unsigned int) min(un64RemainingBytes, 0xFFFFFFFF);
             unsigned int unNumberOfBytesRead = 0;
             fSuccess = ::ReadFile(hFileHandle, (void *) stlBinaryBuffer.data(), (DWORD)unNumberOfBytesToRead, (DWORD*)&unNumberOfBytesRead, nullptr);
-            _ThrowBaseExceptionIf((TRUE != fSuccess), "Failed to read file with GetLastError() = %d", ::GetLastError());
+            _ThrowBaseExceptionIf((true != fSuccess), "Failed to read file with GetLastError() = %d", ::GetLastError());
             un64RemainingBytes -= unNumberOfBytesRead;
             if (0 < un64RemainingBytes)
             {
@@ -1085,31 +1085,61 @@ extern "C" __declspec(dllexport) void __cdecl RemoteDataConnectorAddDataset(
         // Check to make sure we haven't registed the file already
         if ((gs_stlListOfRegisteredDatasetFiles.end() == gs_stlListOfRegisteredDatasetFiles.find(qwHashOfDatasetFilename))&&(gs_stlListOfNewDatasetFiles.end() == gs_stlListOfNewDatasetFiles.find(qwHashOfDatasetFilename)))
         {
-            // Load the contents of the dataset file into a binary buffer
-            std::vector<Byte> stlBinaryFile = ::GetBinaryFileBuffer(c_szDatasetFilename);
-            // Read the header marker of the file to make sure it's the expected value
-            const Byte* c_pbBinaryBuffer = (Byte*)stlBinaryFile.data();
-            uint64_t un64Header = *((uint64_t*)c_pbBinaryBuffer);
-            _ThrowBaseExceptionIf((0xDEADBEEFDEADBEEF != un64Header), "Expected header to be [0xDEADBEEFDEADBEEF] but found [%xul]", un64Header);
-            c_pbBinaryBuffer += sizeof(un64Header);
-            // Read the size in bytes of the header information structure
-            uint32_t un32SizeOfHeaderStructure = *((uint32_t*)c_pbBinaryBuffer);
-            _ThrowBaseExceptionIf(((un32SizeOfHeaderStructure + sizeof(un64Header) + sizeof(un32SizeOfHeaderStructure)) >= stlBinaryFile.size()), "Unrealistic size of header structure = %d", un32SizeOfHeaderStructure);
-            c_pbBinaryBuffer += sizeof(un32SizeOfHeaderStructure);
-            // Read in the header information structure into a StructuredBuffer
-            StructuredBuffer oHeaderInformation(c_pbBinaryBuffer, un32SizeOfHeaderStructure);
-            uint64_t un64MetaDataOffset = oHeaderInformation.GetUnsignedInt64("MetaDataOffset");
-            int32_t un32MetaDataSizeInBytes = oHeaderInformation.GetInt32("MetaDataSize");
-            _ThrowBaseExceptionIf(((un64MetaDataOffset + un32MetaDataSizeInBytes) > stlBinaryFile.size()), "Unrealistic offset (%ul) and size (%d) of metadata structure = %d", un64MetaDataOffset, un32SizeOfHeaderStructure);
-            // Reset the c_pbBinaryBuffer pointer and then extract the metadata
-            c_pbBinaryBuffer = (Byte*)stlBinaryFile.data();
-            c_pbBinaryBuffer += un64MetaDataOffset;
-            StructuredBuffer oMetadataInformation(c_pbBinaryBuffer, un32MetaDataSizeInBytes);
-            // Get the identifier of the dataset
-            std::string strDatasetIdentifier = oMetadataInformation.GetString("UUID");
-            // Add the new dataset now that we know that the identifier of the dataset is
-            gs_stlListOfNewDatasetFiles[qwHashOfDatasetFilename] = strDatasetIdentifier;
-            gs_stlListOfRegisteredDatasetFilenames[qwHashOfDatasetFilename] = c_szDatasetFilename;
+            unsigned int unNumberOfRetries = 0;
+            bool fSuccess = false;
+
+            // Because it is possible for this function to fire when someone is still writing to the
+            // dataset, there are a series of race conditions that we must deal with in order for
+            // the process not to crash.
+            while ((false == fSuccess) && (5 > unNumberOfRetries))
+            {
+                try
+                {
+                    // Load the contents of the dataset file into a binary buffer
+                    std::vector<Byte> stlBinaryFile = ::GetBinaryFileBuffer(c_szDatasetFilename);
+                    _ThrowBaseExceptionIf((0 == stlBinaryFile.size()), "Failed to open file %s", c_szDatasetFilename);
+                    // Read the header marker of the file to make sure it's the expected value
+                    const Byte* c_pbBinaryBuffer = (Byte*)stlBinaryFile.data();
+                    uint64_t un64Header = *((uint64_t*)c_pbBinaryBuffer);
+                    _ThrowBaseExceptionIf((0xDEADBEEFDEADBEEF != un64Header), "Expected header to be [0xDEADBEEFDEADBEEF] but found [%xul]", un64Header);
+                    c_pbBinaryBuffer += sizeof(un64Header);
+                    // Read the size in bytes of the header information structure
+                    uint32_t un32SizeOfHeaderStructure = *((uint32_t*)c_pbBinaryBuffer);
+                    _ThrowBaseExceptionIf(((un32SizeOfHeaderStructure + sizeof(un64Header) + sizeof(un32SizeOfHeaderStructure)) >= stlBinaryFile.size()), "Unrealistic size of header structure = %d", un32SizeOfHeaderStructure);
+                    c_pbBinaryBuffer += sizeof(un32SizeOfHeaderStructure);
+                    // Read in the header information structure into a StructuredBuffer
+                    StructuredBuffer oHeaderInformation(c_pbBinaryBuffer, un32SizeOfHeaderStructure);
+                    uint64_t un64MetaDataOffset = oHeaderInformation.GetUnsignedInt64("MetaDataOffset");
+                    int32_t un32MetaDataSizeInBytes = oHeaderInformation.GetInt32("MetaDataSize");
+                    _ThrowBaseExceptionIf(((un64MetaDataOffset + un32MetaDataSizeInBytes) > stlBinaryFile.size()), "Unrealistic offset (%ul) and size (%d) of metadata structure = %d", un64MetaDataOffset, un32SizeOfHeaderStructure);
+                    // Reset the c_pbBinaryBuffer pointer and then extract the metadata
+                    c_pbBinaryBuffer = (Byte*)stlBinaryFile.data();
+                    c_pbBinaryBuffer += un64MetaDataOffset;
+                    StructuredBuffer oMetadataInformation(c_pbBinaryBuffer, un32MetaDataSizeInBytes);
+                    // Get the identifier of the dataset
+                    std::string strDatasetIdentifier = oMetadataInformation.GetString("UUID");
+                    // Add the new dataset now that we know that the identifier of the dataset is
+                    gs_stlListOfNewDatasetFiles[qwHashOfDatasetFilename] = strDatasetIdentifier;
+                    gs_stlListOfRegisteredDatasetFilenames[qwHashOfDatasetFilename] = c_szDatasetFilename;
+                    fSuccess = true;
+                }
+
+                catch (BaseException oBaseException)
+                {
+                    ::RegisterException(oBaseException, __func__, __LINE__);
+                    // Sleep for 5 seconds to give time for the dataset file to be fully copied to the folder
+                    ::Sleep(5000);
+                    unNumberOfRetries++;
+                }
+
+                catch (...)
+                {
+                    ::RegisterUnknownException(__func__, __LINE__);
+                    // Sleep for 5 seconds to give time for the dataset file to be fully copied to the folder
+                    ::Sleep(5000);
+                    unNumberOfRetries++;
+                }
+            }
         }
     }
 

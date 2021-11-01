@@ -40,7 +40,6 @@
 // during reset, need to know how the SafeObect works.
 // 3. The SafeObject is not deleted on Job finish/fail. Should it be ? It could be re-used
 // by other jobs as well
-// 4. Job Destructor is not called, call it after job fail/finish
 
 /********************************************************************************************
  *
@@ -107,6 +106,7 @@ void JobEngine::StartServer(
 
     // Start the thread to send heartbeat messages to the orchestrator
     std::thread(&JobEngine::Heartbeat, this).detach();
+    std::thread(&FileSystemWatcherThread, (void *)nullptr).detach();
 
     // Start listening to requests and fullfill them
     this->ListenToRequests();
@@ -221,28 +221,44 @@ void __thiscall JobEngine::ConnectVirtualMachine(
 {
     __DebugFunction();
 
-    Guid oGuidVmId;
-    std::cout << "The Virtual Machine Uuid is " << oGuidVmId.ToString(eHyphensAndCurlyBraces);
-
-    // Get the Set of available Guids from the DataConnector
-    StructuredBuffer oAvailableGuids = ::DataConnectorGetFetchableUuid();
-    StructuredBuffer oStructuredBufferOfGuids = oAvailableGuids.GetStructuredBuffer("Tables");
-    auto oListOfGuids = oStructuredBufferOfGuids.GetNamesOfElements();
-    for (auto strName : oListOfGuids)
+    if (false == m_fIsInitialized)
     {
-        m_stlMapOfDataConnectorGuidsToName.insert(std::make_pair(oStructuredBufferOfGuids.GetString(strName.c_str()), strName));
+        std::cout << "The Virtual Machine Uuid is " << m_GuidVmId.ToString(eHyphensAndCurlyBraces);
+
+        // Get the Set of available Guids from the DataConnector
+        m_oDataConnectorAvailableGuids = ::DataConnectorGetFetchableUuid();
+        StructuredBuffer oStructuredBufferOfGuids = m_oDataConnectorAvailableGuids.GetStructuredBuffer("Tables");
+        auto oListOfGuids = oStructuredBufferOfGuids.GetNamesOfElements();
+        for (auto strName : oListOfGuids)
+        {
+            m_stlMapOfDataConnectorGuidsToName.insert(std::make_pair(oStructuredBufferOfGuids.GetString(strName.c_str()), strName));
+        }
+        m_fIsInitialized = true;
+    }
+    else
+    {
+        if (true == m_fIsConnected)
+        {
+            // If a connection with the orchestrator already exists, we will reset the JobEngine and send a message to
+            // the thread that was handling the connection, otherwise treat it as if
+            StructuredBuffer oKillThread;
+            oKillThread.PutBoolean("KeepAlive", false);
+            this->SendMessageToOrchestrator(oKillThread);
+        }
+
+        this->ResetJobEngine();
     }
 
     StructuredBuffer oStructuredBufferLoginResponse;
-    oStructuredBufferLoginResponse.PutString("VirtualMachineUuid", oGuidVmId.ToString(eHyphensAndCurlyBraces));
+    oStructuredBufferLoginResponse.PutString("VirtualMachineUuid", m_GuidVmId.ToString(eHyphensAndCurlyBraces));
     oStructuredBufferLoginResponse.PutBoolean("Success", true);
-    oStructuredBufferLoginResponse.PutStructuredBuffer("Dataset", oAvailableGuids);
+    oStructuredBufferLoginResponse.PutStructuredBuffer("Dataset", m_oDataConnectorAvailableGuids);
     this->SendMessageToOrchestrator(oStructuredBufferLoginResponse);
 
     // Mark the JobEngine as connected
     m_fIsConnected = true;
 
-    // TODO: Update this data
+    // TODO: check if this audit log needs to be generated at every connect
     StructuredBuffer oEventData;
     oEventData.PutBoolean("Success", true);
     oEventData.PutString("Username", c_oStructuredBuffer.GetString("Username"));
@@ -710,9 +726,17 @@ void __thiscall JobEngine::SendMessageToOrchestrator(
                 fflush(stdout);
             }
         }
-        std::lock_guard<std::mutex> lock(m_oMutexOnIpcSocket);
-        ::PutIpcTransaction(m_poSocket, c_oStructuredBuffer);
-        std::cout << "Sent to orchestrator " << StructuredBuffer(c_oStructuredBuffer).ToString();
+        {
+            std::lock_guard<std::mutex> lock(m_oMutexOnIpcSocket);
+            ::PutIpcTransaction(m_poSocket, c_oStructuredBuffer);
+        }
+        std::string strListOfNames;
+        for (auto strElement : c_oStructuredBuffer.GetNamesOfElements())
+        {
+            strListOfNames += " " + strElement;
+        }
+        std::cout << "Sent to orchestrator " << strListOfNames << std::endl;
+        fflush(stdout);
     }
 
     catch(BaseException & oBaseException)
@@ -739,17 +763,10 @@ void __thiscall JobEngine::ResetJobEngine(void)
 {
     __DebugFunction();
 
-    // Kill all the threads created that belong to the JobEngine thread group
-    ThreadManager * poThreadManager = ThreadManager::GetInstance();
-    if (0 != m_FileListenerId)
-    {
-        poThreadManager->TerminateThread(m_FileListenerId);
-    }
-
     // Create a kill running job signal file that will inform all the running jobs to quit
     std::ofstream output(gc_strJobsSignalFolderName + "/" + gc_strHaltAllJobsSignalFilename);
 
-    // TODO: Prawal. Stop all running threads
+    // TODO: Prawal. Stop all running threads including the FileListener
 
     // Call destructor on all the job objects as soon as they have killed the running jobs
     // are are stable
@@ -789,12 +806,8 @@ void __thiscall JobEngine::ResetJobEngine(void)
     _ThrowBaseExceptionIf((false == std::filesystem::create_directory(gc_strDataFolderName, oErrorCode)), "Could not create Data Folder. %s", oErrorCode.message().c_str());
     _ThrowBaseExceptionIf((false == std::filesystem::create_directory(gc_strJobsSignalFolderName, oErrorCode)), "Could not create Signal All Jobs Folder. %s", oErrorCode.message().c_str());
 
-    // Create a new thread to listen to all the files being created and a callback to the JobEngine
-    m_FileListenerId = poThreadManager->CreateThread("JobEngineThreads", ::FileSystemWatcherThread, (void *)nullptr);
-
     std::cout << "..Job Engine reset..\n";
 }
-
 
 /********************************************************************************************
  *
@@ -818,7 +831,11 @@ void __thiscall JobEngine::Heartbeat(void)
             {
                 if(60 < std::difftime(std::time(nullptr), m_oTimeOfLastOrchestratorMessageArrival))
                 {
-                    // TODO: Prawal If there was no message from the Orchestrator for the past 60 seconds, kill the connection
+                    StructuredBuffer oStructuredBuffer;
+                    oStructuredBuffer.PutBoolean("Timeout", true);
+                    this->SendMessageToOrchestrator(oStructuredBuffer);
+
+                    // Mark the JobEngine as not connected
                     m_fIsConnected = false;
                 }
                 else if(30 < std::difftime(std::time(nullptr), m_oTimeOfLastOrchestratorMessageArrival))

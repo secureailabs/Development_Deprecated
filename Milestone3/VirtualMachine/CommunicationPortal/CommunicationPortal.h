@@ -54,11 +54,12 @@ class CommunicationPortal : public Object
         // Private member methods
         void __thiscall PersistantConnectionTlsToIpc(
             _in TlsNode * const c_oTlsNode,
-            _in StructuredBuffer c_oStructuredBuffer
+            _in const std::string c_strEndpoint,
+            _in const StructuredBuffer oStructuredBuffer
             );
-        void __thiscall PersistantConnectionIpcToTls(
-            _in Socket * const c_poSocketIpc,
-            _in TlsNode * const c_oTlsNode
+            void __thiscall PersistantConnectionIpcToTls(
+            _in TlsNode * const c_poTlsNode,
+            _in const std::string c_strEndpoint
             );
         void __thiscall OneTimeConnectionHandler(
             _in TlsNode * const c_oTlsNode,
@@ -71,5 +72,8 @@ class CommunicationPortal : public Object
         // Private data members
         std::unordered_set<std::string> m_oSetOfAllowedProcesses;
         std::unordered_map<std::string, Socket *> m_stlMapOfProcessToIpcSocket;
-        std::unordered_map<TlsNode *, std::mutex> m_stlListOfReadWriteLocks;
+        // TODO: Prawal take recursive locks for this
+        std::unordered_map<std::string, bool> m_stlKillTlsToIpcConnection;
+        std::unordered_map<std::string, bool> m_stlIpcToTlsConnectionConnected;
+        std::unordered_map<std::string, bool> m_stlTlsToIpcConnectionConnected;
 };

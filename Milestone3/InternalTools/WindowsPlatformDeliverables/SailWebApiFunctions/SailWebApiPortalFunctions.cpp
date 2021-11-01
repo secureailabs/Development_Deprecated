@@ -372,6 +372,7 @@ extern "C" __declspec(dllexport) bool __cdecl Login(
         std::string strJsonBody = "";
         // Send the REST API call to the SAIL Web Api Portal
         std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfSailWebApiPortal, (Word) gs_unPortAddressOfSailWebApiPortal, strVerb, strApiUri, strJsonBody, true);
+        _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Failed to log in. API call failed to complete.", nullptr);
         stlRestResponse.push_back(0);
         // Parse the returning value.
         StructuredBuffer oLoginResponse = JsonValue::ParseDataToStructuredBuffer((const char*) stlRestResponse.data());
@@ -485,6 +486,7 @@ extern "C" __declspec(dllexport) BSTR __cdecl GetSailWebApiPortalImpostorEosb(vo
         std::string strJsonBody = "";
         // Send the REST API call to the SAIL Web Api Portal
         std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfSailWebApiPortal, (Word) gs_unPortAddressOfSailWebApiPortal, strVerb, strApiUri, strJsonBody, true);
+        _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Failed to get impostor EOSB. API call failed to complete.", nullptr);
         // Parse the returning value.
         StructuredBuffer oGetSailWebApiPortalImpostorEosbResponse = JsonValue::ParseDataToStructuredBuffer((const char*) stlRestResponse.data());
         // Did the transaction succeed?
@@ -534,6 +536,7 @@ extern "C" __declspec(dllexport) unsigned int __cdecl LoadDigitalContracts(void)
         std::string strJsonBody = "{\n    \"Eosb\": \"" + gs_strEosb + "\"\n}";
         // Send the REST API call to the SAIL Web Api Portal
         std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfSailWebApiPortal, (Word) gs_unPortAddressOfSailWebApiPortal, strVerb, strApiUri, strJsonBody, true);
+        _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Failed to get list of digital contracts. API call failed to complete.", nullptr);
         // Parse the returning value.
         stlRestResponse.push_back(0);
         StructuredBuffer oGetDigitalContractsResponse = JsonValue::ParseDataToStructuredBuffer((const char*) stlRestResponse.data());
@@ -892,6 +895,7 @@ extern "C" __declspec(dllexport) int __cdecl RemoteDataConnectorHeartbeat(void)
             std::string strJsonBody = oJsonBody->ToString();
             oJsonBody->Release();
             std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfSailWebApiPortal, (Word)gs_unPortAddressOfSailWebApiPortal, strVerb, strApiUrl, strJsonBody, true);
+            _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Failed to send a heartbeat to the SAIL API Web Services. API call failed to complete.", nullptr);
             std::string strUnescapedResponse = ::UnEscapeJsonString((const char*)stlRestResponse.data());
             StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
             float64_t fl64Response = oResponse.GetFloat64("Status");
@@ -952,11 +956,11 @@ extern "C" __declspec(dllexport) int __cdecl RemoteDataConnectorHeartbeat(void)
                             oVirtualMachineInformation.PutString("DataOwnerUserIdentifier", gs_strAuthenticatedUserIdentifier);
                             oVirtualMachineInformation.PutString("DataOwnerOrganizationIdentifier", gs_strOrganizationIdentifier);
                             std::string strBase64EncodedSerializedBuffer = oVirtualMachineInformation.GetBase64SerializedBuffer();
-                            char * c_szBased64EncodedSerializedBuffer = (char *) ::malloc(strBase64EncodedSerializedBuffer.size() + 1);
+                            char* c_szBased64EncodedSerializedBuffer = (char*) ::malloc(strBase64EncodedSerializedBuffer.size() + 1);
                             _ThrowOutOfMemoryExceptionIfNull(c_szBased64EncodedSerializedBuffer);
-                            ::memcpy((void *) c_szBased64EncodedSerializedBuffer, (const void *) strBase64EncodedSerializedBuffer.c_str(), strBase64EncodedSerializedBuffer.size() + 1);
+                            ::memcpy((void*)c_szBased64EncodedSerializedBuffer, (const void*)strBase64EncodedSerializedBuffer.c_str(), strBase64EncodedSerializedBuffer.size() + 1);
                             strBase64EncodedSerializedBuffer.clear();
-                            ::CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE) UploadDatasetToVirtualMachine, (void*) c_szBased64EncodedSerializedBuffer, 0, nullptr);
+                            ::CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)UploadDatasetToVirtualMachine, (void*)c_szBased64EncodedSerializedBuffer, 0, nullptr);
                         }
                     }
                 }
@@ -1031,6 +1035,7 @@ extern "C" __declspec(dllexport) int __cdecl RemoteDataConnectorUpdateDatasets(v
             std::string strJsonBody = oJsonBody->ToString();
             oJsonBody->Release();
             std::vector<Byte> stlRestResponse = ::RestApiCall(gs_strIpAddressOfSailWebApiPortal, (Word)gs_unPortAddressOfSailWebApiPortal, strVerb, strApiUrl, strJsonBody, true);
+            _ThrowBaseExceptionIf((0 == stlRestResponse.size()), "Failed to upload available datasets. API call failed to complete.", nullptr);
             std::string strUnescapedResponse = ::UnEscapeJsonString((const char*)stlRestResponse.data());
             StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
             if ((201 == oResponse.GetFloat64("Status")) || 200 == oResponse.GetFloat64("Status"))

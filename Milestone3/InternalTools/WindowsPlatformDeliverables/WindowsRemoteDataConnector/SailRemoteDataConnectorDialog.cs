@@ -51,12 +51,32 @@ namespace WindowsRemoteDataConnector
             registryKey.Close();
 
             // Setup default values
+            m_ExitCode = 0x76541234;
             m_NumberOfHeartbeats = 0;
             m_NumberOfFailedHeartbeats = 0;
             m_NumberOfHeartbeatsTextBox.Text = "0";
             m_NumberOfFailedHeartbeatsTextBox.Text = "0";
             m_LastHeartbeartTimeTextBox.Text = "Never";
             m_CurrentTimeTextBox.Text = DateTime.UtcNow.ToString("G");
+
+            // Put a notification
+            this.AddNotification("Remote Data Connector starting");
+            // First we need to list all of the files within the source folder. For each dataset, this
+            // function will call to register the dataset
+            this.InitialScanForDatasets();
+            // Now we set some properties to get things rolling
+            m_BrowseForSourceFolderButton.Enabled = false;
+            m_StartButton.Enabled = false;
+            m_StopButton.Enabled = true;
+            m_HeartbeatTimer.Enabled = true;
+            m_UpdateDatasetsTimer.Enabled = true;
+            m_SourceFolderTextBox.Enabled = false;
+            m_SourceFolderTextBox.BackColor = System.Drawing.SystemColors.InactiveCaption;
+            m_CurrentTimeTextBox.BackColor = System.Drawing.SystemColors.Info;
+            m_LastHeartbeartTimeTextBox.BackColor = System.Drawing.SystemColors.Info;
+            m_NumberOfHeartbeatsTextBox.BackColor = System.Drawing.SystemColors.Info;
+            m_NumberOfFailedHeartbeatsTextBox.BackColor = System.Drawing.SystemColors.Info;
+            m_NotificationsTextBox.BackColor = System.Drawing.SystemColors.Info;
         }
 
         /// <summary>
@@ -225,9 +245,11 @@ namespace WindowsRemoteDataConnector
             }
             else if (0 != nReturnCode)
             {
-                m_NumberOfFailedHeartbeats++;
-                m_NumberOfFailedHeartbeatsTextBox.Text = m_NumberOfFailedHeartbeats.ToString();
-                m_NumberOfFailedHeartbeatsTextBox.ClearUndo();
+                // Communication with the API portal was most likely lost. This
+                // will cause the parent to attempt reconnection before respawning
+                // a child instance.
+                m_ExitCode = 0x13131313;
+                this.Close();
             }
         }
 
@@ -301,6 +323,7 @@ namespace WindowsRemoteDataConnector
             string notification
             )
         {
+            List<string> linesToDisplay = new List<string>();
             string[] notificationStrings = notification.Split('\r');
             if (1 == notificationStrings.Length)
             {
@@ -343,13 +366,86 @@ namespace WindowsRemoteDataConnector
                 {
                     displayString = "                             | " + notificationStrings[index];
                 }
+                linesToDisplay.Add(displayString);
                 m_NotificationsTextBox.Items.Add(displayString);
             }
-            
+
             m_NotificationsTextBox.EndUpdate();
+
+            foreach(string displayString in linesToDisplay)
+            { 
+                // Also output the notifications to a log file
+                System.Diagnostics.Process currentProcess = System.Diagnostics.Process.GetCurrentProcess();
+                string filename = "RemoteDataConnect_" + currentProcess.Id + ".log";
+                string destinationFolder = System.IO.Path.Combine(System.Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "SailLogs");
+                if (false == System.IO.Directory.Exists(destinationFolder))
+                {
+                    // Create the destination folder
+                    System.IO.Directory.CreateDirectory(destinationFolder);
+                }
+                // Now figure out the full filename
+                string destinationFile = System.IO.Path.Combine(destinationFolder, filename);
+                if (false == System.IO.File.Exists(destinationFile))
+                {
+                    System.IO.StreamWriter textFile = System.IO.File.CreateText(destinationFile);
+                    textFile.WriteLine(displayString);
+                    textFile.Close();
+                }
+                else
+                {
+                    System.IO.StreamWriter textFile = System.IO.File.AppendText(destinationFile);
+                    textFile.WriteLine(displayString);
+                    textFile.Close();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void m_CopyLabel_LinkClicked(
+            object sender, 
+            LinkLabelLinkClickedEventArgs e
+            )
+        {
+            string copiedContent = "";
+            foreach (string notificationString in m_NotificationsTextBox.Items)
+            {
+                copiedContent += notificationString;
+                copiedContent += "\n";
+            }
+
+            System.Windows.Forms.Clipboard.SetText(copiedContent);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void m_ClearNotificationsLinkLabel_LinkClicked(
+            object sender,
+            LinkLabelLinkClickedEventArgs e
+            )
+        {
+            m_NotificationsTextBox.Items.Clear();
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public int ExitCode
+        {
+            get
+            {
+                return m_ExitCode;
+            }
         }
 
         private System.Threading.Mutex m_Mutex;
+        private int m_ExitCode;
         private int m_NumberOfHeartbeats;
         private int m_NumberOfFailedHeartbeats;
         private HashSet<string> m_ListOfRegisteredDatasets;

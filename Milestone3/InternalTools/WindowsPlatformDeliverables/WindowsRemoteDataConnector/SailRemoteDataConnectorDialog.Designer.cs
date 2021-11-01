@@ -37,6 +37,8 @@ namespace WindowsRemoteDataConnector
             this.m_SourceFolderInformationLabel = new System.Windows.Forms.Label();
             this.m_FolderBrowserDialog = new System.Windows.Forms.FolderBrowserDialog();
             this.m_RuntimeGroupBox = new System.Windows.Forms.GroupBox();
+            this.m_ClearNotificationsLinkLabel = new System.Windows.Forms.LinkLabel();
+            this.m_CopyLinkLabel = new System.Windows.Forms.LinkLabel();
             this.m_NotificationsTextBox = new System.Windows.Forms.ListBox();
             this.label5 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
@@ -111,6 +113,8 @@ namespace WindowsRemoteDataConnector
             // 
             // m_RuntimeGroupBox
             // 
+            this.m_RuntimeGroupBox.Controls.Add(this.m_ClearNotificationsLinkLabel);
+            this.m_RuntimeGroupBox.Controls.Add(this.m_CopyLinkLabel);
             this.m_RuntimeGroupBox.Controls.Add(this.m_NotificationsTextBox);
             this.m_RuntimeGroupBox.Controls.Add(this.label5);
             this.m_RuntimeGroupBox.Controls.Add(this.label4);
@@ -125,16 +129,39 @@ namespace WindowsRemoteDataConnector
             this.m_RuntimeGroupBox.Controls.Add(this.m_StartButton);
             this.m_RuntimeGroupBox.Location = new System.Drawing.Point(12, 167);
             this.m_RuntimeGroupBox.Name = "m_RuntimeGroupBox";
-            this.m_RuntimeGroupBox.Size = new System.Drawing.Size(808, 411);
+            this.m_RuntimeGroupBox.Size = new System.Drawing.Size(808, 447);
             this.m_RuntimeGroupBox.TabIndex = 1;
             this.m_RuntimeGroupBox.TabStop = false;
             this.m_RuntimeGroupBox.Text = "Status";
+            // 
+            // m_ClearNotificationsLinkLabel
+            // 
+            this.m_ClearNotificationsLinkLabel.AutoSize = true;
+            this.m_ClearNotificationsLinkLabel.Location = new System.Drawing.Point(9, 393);
+            this.m_ClearNotificationsLinkLabel.Name = "m_ClearNotificationsLinkLabel";
+            this.m_ClearNotificationsLinkLabel.Size = new System.Drawing.Size(120, 19);
+            this.m_ClearNotificationsLinkLabel.TabIndex = 15;
+            this.m_ClearNotificationsLinkLabel.TabStop = true;
+            this.m_ClearNotificationsLinkLabel.Text = "Clear Notifications";
+            this.m_ClearNotificationsLinkLabel.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.m_ClearNotificationsLinkLabel_LinkClicked);
+            // 
+            // m_CopyLinkLabel
+            // 
+            this.m_CopyLinkLabel.AutoSize = true;
+            this.m_CopyLinkLabel.Location = new System.Drawing.Point(747, 393);
+            this.m_CopyLinkLabel.Name = "m_CopyLinkLabel";
+            this.m_CopyLinkLabel.Size = new System.Drawing.Size(41, 19);
+            this.m_CopyLinkLabel.TabIndex = 14;
+            this.m_CopyLinkLabel.TabStop = true;
+            this.m_CopyLinkLabel.Text = "Copy";
+            this.m_CopyLinkLabel.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.m_CopyLabel_LinkClicked);
             // 
             // m_NotificationsTextBox
             // 
             this.m_NotificationsTextBox.BackColor = System.Drawing.SystemColors.InactiveCaption;
             this.m_NotificationsTextBox.Font = new System.Drawing.Font("Consolas", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.m_NotificationsTextBox.FormattingEnabled = true;
+            this.m_NotificationsTextBox.HorizontalScrollbar = true;
             this.m_NotificationsTextBox.Location = new System.Drawing.Point(9, 191);
             this.m_NotificationsTextBox.Name = "m_NotificationsTextBox";
             this.m_NotificationsTextBox.Size = new System.Drawing.Size(778, 199);
@@ -263,7 +290,7 @@ namespace WindowsRemoteDataConnector
             // 
             this.m_ExitButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.m_ExitButton.ImageAlign = System.Drawing.ContentAlignment.TopCenter;
-            this.m_ExitButton.Location = new System.Drawing.Point(689, 584);
+            this.m_ExitButton.Location = new System.Drawing.Point(689, 623);
             this.m_ExitButton.Name = "m_ExitButton";
             this.m_ExitButton.Size = new System.Drawing.Size(131, 25);
             this.m_ExitButton.TabIndex = 5;
@@ -290,7 +317,7 @@ namespace WindowsRemoteDataConnector
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 17F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(835, 617);
+            this.ClientSize = new System.Drawing.Size(835, 654);
             this.Controls.Add(this.m_ExitButton);
             this.Controls.Add(this.m_RuntimeGroupBox);
             this.Controls.Add(this.m_SourceFolderGroupBox);
@@ -332,5 +359,7 @@ namespace WindowsRemoteDataConnector
         private System.Windows.Forms.Timer m_RefreshTimer;
         private System.Windows.Forms.Timer m_HeartbeatTimer;
         private System.Windows.Forms.Timer m_UpdateDatasetsTimer;
+        private System.Windows.Forms.LinkLabel m_CopyLinkLabel;
+        private System.Windows.Forms.LinkLabel m_ClearNotificationsLinkLabel;
     }
 }

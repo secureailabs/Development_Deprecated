@@ -44,6 +44,9 @@ namespace WindowsRemoteDataConnector
                     m_UsernameEditBox.Select();
                 }
             }
+
+            m_ValidUsername = "";
+            m_ValidPassword = "";
         }
 
         /// <summary>
@@ -67,7 +70,7 @@ namespace WindowsRemoteDataConnector
                     bool successfulLogin = SailWebApiPortalInterop.Login(m_UsernameEditBox.Text, m_PasswordEditBox.Text);
                     if (false == successfulLogin)
                     {
-                        MessageBox.Show(this, "Invalid credentials provided. Try again!!", "AuthenticationFailure", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show(this, "Invalid credentials provided. Try again!!", "Authentication Failure", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                     else
                     {
@@ -80,8 +83,44 @@ namespace WindowsRemoteDataConnector
                         this.DialogResult = DialogResult.OK;
                         this.m_RefreshTimer.Stop();
                         this.Close();
+                        // Make sure that the successful login updates the valid username and password
+                        m_ValidIpAddress = m_IpAddressTextBox.Text;
+                        m_ValidUsername = m_UsernameEditBox.Text;
+                        m_ValidPassword = m_PasswordEditBox.Text;
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public string IpAddress
+        {
+            get
+            {
+                return m_ValidIpAddress;
+            }
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string Username
+        {
+            get
+            {
+                return m_ValidUsername;
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public string Password
+        {
+            get
+            {
+                return m_ValidPassword;
             }
         }
 
@@ -138,5 +177,9 @@ namespace WindowsRemoteDataConnector
         {
 
         }
+
+        private string m_ValidIpAddress;
+        private string m_ValidUsername;
+        private string m_ValidPassword;
     }
 }

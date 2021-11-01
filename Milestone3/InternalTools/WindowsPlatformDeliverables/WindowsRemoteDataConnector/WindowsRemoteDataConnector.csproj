@@ -46,6 +46,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ConnectToApiWebServices.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ConnectToApiWebServices.Designer.cs">
+      <DependentUpon>ConnectToApiWebServices.cs</DependentUpon>
+    </Compile>
     <Compile Include="SailRemoteDataConnectorDialog.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -61,6 +67,9 @@
     <Compile Include="SailWebApiPortalLoginDialog.Designer.cs">
       <DependentUpon>SailWebApiPortalLoginDialog.cs</DependentUpon>
     </Compile>
+    <EmbeddedResource Include="ConnectToApiWebServices.resx">
+      <DependentUpon>ConnectToApiWebServices.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="SailRemoteDataConnectorDialog.resx">
       <DependentUpon>SailRemoteDataConnectorDialog.cs</DependentUpon>
     </EmbeddedResource>

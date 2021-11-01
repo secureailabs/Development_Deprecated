@@ -4,5 +4,6 @@
     <LocalDebuggerCommand>$(SolutionDir)Binaries\$(Platform)\$(Configuration)\WindowsRemoteDataConnector.exe</LocalDebuggerCommand>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerWorkingDirectory>$(SolutionDir)Binaries\$(Platform)\$(Configuration)</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommandArguments>NDAuNzYuMjIuMjQ2 bGJhcnRAaWdyLmNvbQ== c2FpbHBhc3N3b3Jk</LocalDebuggerCommandArguments>
   </PropertyGroup>
 </Project>

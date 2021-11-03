@@ -64,13 +64,23 @@ class DatasetFamilyManager : public Object
     private:
 
         // Register dataset family
-        std::vector<Byte> __thiscall RegisterDataset(
+        std::vector<Byte> __thiscall RegisterDatasetFamily(
             _in const StructuredBuffer & c_oRequest
             );
 
         std::vector<Byte> __thiscall ListDatasetFamilies(
             _in const StructuredBuffer & c_oRequest
             );
+
+        // Update dataset family information
+        std::vector<Byte> __thiscall EditDatasetFamilyInformation(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        std::vector<Byte> __thiscall PullDatasetFamily(
+            _in const StructuredBuffer & c_oRequest
+            );
+
 
         // Private data members
         mutable pthread_mutex_t m_sMutex;

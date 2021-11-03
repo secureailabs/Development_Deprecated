@@ -343,6 +343,10 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        std::vector<Byte> __thiscall UpdateDatasetFamily(
+            _in const StructuredBuffer &c_oRequest
+            );
+
         // Shutdown the server
         std::vector<Byte> __thiscall ShutdownPortal(
             _in const StructuredBuffer & c_oRequest

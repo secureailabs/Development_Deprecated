@@ -505,6 +505,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             {
                 stlResponseBuffer = this->UpdateRemoteDataConnector(c_oRequestStructuredBuffer);
             }
+            else if ("/SAIL/DatabaseManager/UpdateDatasetFamily" == strResource)
+            {
+                stlResponseBuffer = this->UpdateDatasetFamily(c_oRequestStructuredBuffer);
+            }
             else
             {
                 _ThrowBaseException("Invalid resource.", nullptr);

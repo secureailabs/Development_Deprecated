@@ -240,6 +240,16 @@ void __thiscall DatasetFamilyManager::InitializePlugin(void)
     oEosb.PutByte("ElementType", BUFFER_VALUE_TYPE);
     oEosb.PutBoolean("IsRequired", true);
 
+    StructuredBuffer oDatasetFamilyDefinition;
+    oDatasetFamilyDefinition.PutByte("ElementType", INDEXED_BUFFER_VALUE_TYPE);
+    oDatasetFamilyDefinition.PutBoolean("IsRequired", true);
+    oDatasetFamilyDefinition.PutStructuredBuffer("DatasetFamilyDescription",oRequiredStringElement);
+    oDatasetFamilyDefinition.PutStructuredBuffer("DatasetFamilyGuid",oRequiredStringElement);
+    oDatasetFamilyDefinition.PutStructuredBuffer("DatasetFamilyOwnerGuid",oRequiredStringElement);
+    oDatasetFamilyDefinition.PutStructuredBuffer("DatasetFamilyTags",oRequiredStringElement);
+    oDatasetFamilyDefinition.PutStructuredBuffer("DatasetFamilyTitle", oRequiredStringElement);
+    oDatasetFamilyDefinition.PutStructuredBuffer("VersionNumber", oRequiredStringElement);
+
     StructuredBuffer oCreateNewDatasetFamilyParameters;
     oCreateNewDatasetFamilyParameters.PutStructuredBuffer("Eosb", oEosb);
     oCreateNewDatasetFamilyParameters.PutStructuredBuffer("DatasetFamilyDescription",oRequiredStringElement);
@@ -250,7 +260,12 @@ void __thiscall DatasetFamilyManager::InitializePlugin(void)
     StructuredBuffer oListDatasetFamilyParameters;
     oListDatasetFamilyParameters.PutStructuredBuffer("Eosb", oRequriedBufferElement);
 
+    StructuredBuffer oUpdateDatasetFamilyParameters;
+    oUpdateDatasetFamilyParameters.PutStructuredBuffer("Eosb", oEosb);
+    oUpdateDatasetFamilyParameters.PutStructuredBuffer("DatasetFamily", oDatasetFamilyDefinition);
+
     m_oDictionary.AddDictionaryEntry("POST","/SAIL/DatasetFamilyManager/RegisterDatasetFamily",oCreateNewDatasetFamilyParameters, 1);
+    m_oDictionary.AddDictionaryEntry("PUT","/SAIL/DatasetFamilyManager/UpdateDatasetFamily",oUpdateDatasetFamilyParameters, 1);
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatasetFamilyManager/DatasetFamilies", oListDatasetFamilyParameters, 1);
 
 }
@@ -259,17 +274,16 @@ void __thiscall DatasetFamilyManager::InitializePlugin(void)
 /********************************************************************************************
  *
  * @class DatasetFamilyManager
- * @function SubmitRequest
+ * @function RegisterDatasetFamily
  * @brief Method called by flat function SubmitRequest when a client requests for the plugin's resource
- * @param[in] c_oRequestStructuredBuffer points to the request body
- * @param[out] punSerializedResponseSizeInBytes stores the size of the response
+ * @param[in] c_oRequest the structued buffer that contains the request's information
  * @throw BaseException Element not found
  * @throw BaseException Error generating challenge nonce
- * @returns a 64 bit unique transaction identifier
+ * @returns std::vector<Byte> stores the serialized response
  *
  ********************************************************************************************/
 // Register dataset family
-std::vector<Byte> __thiscall DatasetFamilyManager::RegisterDataset(
+std::vector<Byte> __thiscall DatasetFamilyManager::RegisterDatasetFamily(
     _in const StructuredBuffer & c_oRequest
     )
 {
@@ -298,11 +312,11 @@ std::vector<Byte> __thiscall DatasetFamilyManager::RegisterDataset(
         oRequest.PutString("PluginName", "DatabaseManager");
         oRequest.PutString("Verb", "POST");
         oRequest.PutString("Resource", "/SAIL/DatabaseManager/RegisterDatasetFamily");
+        oRequest.PutString("DatasetFamilyDescription", c_oRequest.GetString("DatasetFamilyDescription"));
         oRequest.PutString("DatasetFamilyGuid", strNewGuid);
         oRequest.PutString("DatasetFamilyOwnerGuid", strDatasetFamilyOwner);
-        oRequest.PutString("DatasetFamilyTitle", c_oRequest.GetString("DatasetFamilyTitle"));
-        oRequest.PutString("DatasetFamilyDescription", c_oRequest.GetString("DatasetFamilyDescription"));
         oRequest.PutString("DatasetFamilyTags", c_oRequest.GetString("DatasetFamilyTags"));
+        oRequest.PutString("DatasetFamilyTitle", c_oRequest.GetString("DatasetFamilyTitle"));
         oRequest.PutString("VersionNumber", c_oRequest.GetString("VersionNumber"));
 
         std::vector<Byte> stlRequest = ::CreateRequestPacketFromStructuredBuffer(oRequest);
@@ -349,6 +363,17 @@ std::vector<Byte> __thiscall DatasetFamilyManager::RegisterDataset(
     return oResponse.GetSerializedBuffer();
 }
 
+/********************************************************************************************
+ *
+ * @class DatasetFamilyManager
+ * @function ListDatasetFamilies
+ * @brief Method called by flat function SubmitRequest when a client requests for the plugin's resource
+ * @param[in] c_oRequest the structued buffer that contains the request's information
+ * @throw BaseException Element not found
+ * @throw BaseException Error generating challenge nonce
+ * @returns std::vector<Byte> stores the serialized response
+ *
+ ********************************************************************************************/
 std::vector<Byte> __thiscall DatasetFamilyManager::ListDatasetFamilies(
     _in const StructuredBuffer & c_oRequest
     )
@@ -357,53 +382,54 @@ std::vector<Byte> __thiscall DatasetFamilyManager::ListDatasetFamilies(
 
     StructuredBuffer oResponse;
     TlsNode* poTlsNode{nullptr};
-    Dword dwStatus;
+    Dword dwStatus = 404;
 
     try
     {
         std::vector<Byte> stlUserInfo = ::GetUserInfoFromEosb(c_oRequest);
-        // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket(gs_strDatabaseIpAddr, gs_unDatabasePort);
         StructuredBuffer oUserInfo(stlUserInfo);
-        Guid oNewOrganization = oUserInfo.GetGuid("OrganizationGuid");
-
-        std::string strOrganizationGuid = oNewOrganization.ToString(eHyphensAndCurlyBraces);
-
-        // Create a request to get the database manager to query for the organization GUID
-        StructuredBuffer oRequest;
-        oRequest.PutString("PluginName", "DatabaseManager");
-        oRequest.PutString("Verb", "GET");
-        oRequest.PutString("Resource", "/SAIL/DatabaseManager/DatasetFamilies");
-        oRequest.PutString("OrganizationGuid", strOrganizationGuid);
-
-        std::vector<Byte> stlRequest = ::CreateRequestPacketFromStructuredBuffer(oRequest);
-
-        // Send request packet
-        poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
-
-        // Read header and body of the response
-        std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 3000);
-        _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-        unsigned int unResponseDataSizeInBytes = *((uint32_t *)stlRestResponseLength.data());
-        std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-        _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-        // Make sure to release the poTlsNode
-        poTlsNode->Release();
-        poTlsNode = nullptr;
-
-        StructuredBuffer oDatabaseResponse(stlResponse);
-        if (404 != oDatabaseResponse.GetDword("Status"))
+        if (200 == oUserInfo.GetDword("Status"))
         {
-            StructuredBuffer oDatasetFamilies = oDatabaseResponse.GetStructuredBuffer("DatasetFamilies");
-            for (const std::string& strDatasetFamilyGuid : oDatasetFamilies.GetNamesOfElements())
-            {
-                StructuredBuffer oDatasetFamilyRecord = oDatasetFamilies.GetStructuredBuffer(strDatasetFamilyGuid.c_str());
+            Guid oUserOrganization = oUserInfo.GetGuid("OrganizationGuid");
+            std::string strOrganizationGuid = oUserOrganization.ToString(eHyphensAndCurlyBraces);
 
-                oDatasetFamilies.PutStructuredBuffer(strDatasetFamilyGuid.c_str(), oDatasetFamilyRecord);
+            // Create a request to get the database manager to query for the organization GUID
+            StructuredBuffer oRequest;
+            oRequest.PutString("PluginName", "DatabaseManager");
+            oRequest.PutString("Verb", "GET");
+            oRequest.PutString("Resource", "/SAIL/DatabaseManager/DatasetFamilies");
+            oRequest.PutString("OrganizationGuid", strOrganizationGuid);
+
+            std::vector<Byte> stlRequest = ::CreateRequestPacketFromStructuredBuffer(oRequest);
+            poTlsNode = ::TlsConnectToNetworkSocket(gs_strDatabaseIpAddr, gs_unDatabasePort);
+
+            // Send request packet
+            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+            // Read header and body of the response
+            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 3000);
+            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+            unsigned int unResponseDataSizeInBytes = *((uint32_t *)stlRestResponseLength.data());
+            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+            // Make sure to release the poTlsNode
+            poTlsNode->Release();
+            poTlsNode = nullptr;
+
+            StructuredBuffer oDatabaseResponse(stlResponse);
+            if (404 != oDatabaseResponse.GetDword("Status"))
+            {
+                StructuredBuffer oDatasetFamilies = oDatabaseResponse.GetStructuredBuffer("DatasetFamilies");
+                for (const std::string& strDatasetFamilyGuid : oDatasetFamilies.GetNamesOfElements())
+                {
+                    StructuredBuffer oDatasetFamilyRecord = oDatasetFamilies.GetStructuredBuffer(strDatasetFamilyGuid.c_str());
+
+                    oDatasetFamilies.PutStructuredBuffer(strDatasetFamilyGuid.c_str(), oDatasetFamilyRecord);
+                }
+                oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                oResponse.PutStructuredBuffer("DatasetFamilies", oDatasetFamilies);
+                dwStatus = 200;
             }
-            oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
-            oResponse.PutStructuredBuffer("DatasetFamilies", oDatasetFamilies);
-            dwStatus = 200;
         }
     }
     catch (BaseException oException)
@@ -431,6 +457,107 @@ std::vector<Byte> __thiscall DatasetFamilyManager::ListDatasetFamilies(
 
     return oResponse.GetSerializedBuffer();
 }
+
+/********************************************************************************************
+ *
+ * @class DatasetFamilyManager
+ * @function EditDatasetFamilyInformation
+ * @brief Method called by flat function SubmitRequest when a client requests for the plugin's resource
+ * @param[in] c_oRequest the structued buffer that contains the request's information
+ * @throw BaseException Element not found
+ * @throw BaseException Error generating challenge nonce
+ * @returns std::vector<Byte> stores the serialized response
+ *
+ ********************************************************************************************/
+std::vector<Byte> __thiscall DatasetFamilyManager::EditDatasetFamilyInformation(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+    __DebugFunction();
+
+    __DebugAssert( true == c_oRequest.IsElementPresent("DatasetFamily", INDEXED_BUFFER_VALUE_TYPE) );
+    __DebugAssert( true == c_oRequest.GetStructuredBuffer("DatasetFamily").IsElementPresent("DatasetFamilyGuid", ANSI_CHARACTER_STRING_VALUE_TYPE) );
+    __DebugAssert( true == c_oRequest.GetStructuredBuffer("DatasetFamily").IsElementPresent("DatasetFamilyOwnerGuid", ANSI_CHARACTER_STRING_VALUE_TYPE) );
+
+    StructuredBuffer oResponse;
+    TlsNode* poTlsNode{nullptr};
+    Dword dwStatus{204};
+
+    try
+    {
+        std::vector<Byte> stlUserInfo = ::GetUserInfoFromEosb(c_oRequest);
+        StructuredBuffer oUserInfo = ::GetUserInfoFromEosb(c_oRequest);
+
+        if ( 200 == oUserInfo.GetDword("Status")  )
+        {
+            Guid oUserOrganization = oUserInfo.GetGuid("OrganizationGuid");
+            std::string strUserOrganizationGuid = oUserOrganization.ToString(eHyphensAndCurlyBraces);
+            if ( strUserOrganizationGuid == c_oRequest.GetStructuredBuffer("DatasetFamily").GetString("DatasetFamilyOwnerGuid"))
+            {
+                // Create a request to get the database manager to query for the organization GUID
+                StructuredBuffer oDatabaseRequest;
+                oDatabaseRequest.PutString("PluginName", "DatabaseManager");
+                oDatabaseRequest.PutString("Verb", "PUT");
+                oDatabaseRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateDatasetFamily");
+                oDatabaseRequest.PutStructuredBuffer("DatasetFamily", c_oRequest.GetStructuredBuffer("DatasetFamily"));
+
+                std::vector<Byte> stlRequest = ::CreateRequestPacketFromStructuredBuffer(oDatabaseRequest);
+                poTlsNode = ::TlsConnectToNetworkSocket(gs_strDatabaseIpAddr, gs_unDatabasePort);
+
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 3000);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *)stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                poTlsNode = nullptr;
+
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                if (204 != oDatabaseResponse.GetDword("Status"))
+                {
+                    oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+                    dwStatus = 201;
+                }
+            }
+            else
+            {
+                // The logged in user doesn't belong to the organization that owns this
+                // datset family
+                dwStatus = 403;
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+        oResponse.Clear();
+    }
+
+    if (nullptr != poTlsNode)
+    {
+        poTlsNode->Release();
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
 /********************************************************************************************
  *
  * @class DatasetFamilyManager
@@ -472,9 +599,16 @@ uint64_t __thiscall DatasetFamilyManager::SubmitRequest(
     }
     else if ("POST" == strVerb)
     {
-         if ("/SAIL/DatasetFamilyManager/RegisterDatasetFamily" == strResource)
+        if ("/SAIL/DatasetFamilyManager/RegisterDatasetFamily" == strResource)
         {
-            stlResponseBuffer = RegisterDataset(c_oRequestStructuredBuffer);
+            stlResponseBuffer = RegisterDatasetFamily(c_oRequestStructuredBuffer);
+        }
+    }
+    else if ("PUT" == strVerb)
+    {
+        if ("/SAIL/DatasetFamilyManager/UpdateDatasetFamily" == strResource)
+        {
+            stlResponseBuffer = EditDatasetFamilyInformation(c_oRequestStructuredBuffer);
         }
     }
 

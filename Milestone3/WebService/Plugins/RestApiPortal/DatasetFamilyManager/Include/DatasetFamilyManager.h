@@ -81,6 +81,9 @@ class DatasetFamilyManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        std::vector<Byte> __thiscall DeleteDatasetFamily(
+            _in const StructuredBuffer & c_oRequest
+            );
 
         // Private data members
         mutable pthread_mutex_t m_sMutex;

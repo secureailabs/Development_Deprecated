@@ -415,6 +415,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             {
                 stlResponseBuffer = this->ListDatasetFamilies(c_oRequestStructuredBuffer);
             }
+            else if ("/SAIL/DatabaseManager/PullDatatsetFamily" == strResource)
+            {
+                stlResponseBuffer = this->PullDatasetFamily(c_oRequestStructuredBuffer);
+            }
             else
             {
                 _ThrowBaseException("Invalid resource.", nullptr);
@@ -542,6 +546,10 @@ uint64_t __thiscall DatabaseManager::SubmitRequest(
             else if ("/SAIL/DatabaseManager/DeleteDataset" == strResource)
             {
                 stlResponseBuffer = this->DeleteDataset(c_oRequestStructuredBuffer);
+            }
+            else if ("/SAIL/DatabaseManager/DeleteDatasetFamily" == strResource)
+            {
+                stlResponseBuffer = this->DeleteDatasetFamily(c_oRequestStructuredBuffer);
             }
             else if ("/SAIL/DatabaseManager/DeleteAzureTemplate" == strResource)
             {

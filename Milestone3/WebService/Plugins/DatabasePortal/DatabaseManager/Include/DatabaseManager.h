@@ -343,7 +343,16 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Fetch a single dataset family's metadata
+        std::vector<Byte> __thiscall PullDatasetFamily(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         std::vector<Byte> __thiscall UpdateDatasetFamily(
+            _in const StructuredBuffer &c_oRequest
+            );
+
+        std::vector<Byte> __thiscall DeleteDatasetFamily(
             _in const StructuredBuffer &c_oRequest
             );
 

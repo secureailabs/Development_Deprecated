@@ -249,7 +249,6 @@ void __thiscall DatasetFamilyManager::InitializePlugin(void)
     oCreateNewDatasetFamilyParameters.PutStructuredBuffer("DatasetFamilyDescription",oRequiredStringElement);
     oCreateNewDatasetFamilyParameters.PutStructuredBuffer("DatasetFamilyTags",oRequiredStringElement);
     oCreateNewDatasetFamilyParameters.PutStructuredBuffer("DatasetFamilyTitle", oRequiredStringElement);
-    oCreateNewDatasetFamilyParameters.PutStructuredBuffer("VersionNumber", oRequiredStringElement);
 
     StructuredBuffer oListDatasetFamilyParameters;
     oListDatasetFamilyParameters.PutStructuredBuffer("Eosb", oRequriedBufferElement);
@@ -326,7 +325,7 @@ std::vector<Byte> __thiscall DatasetFamilyManager::RegisterDatasetFamily(
         oDatasetFamily.PutString("DatasetFamilyOwnerGuid", strDatasetFamilyOwner);
         oDatasetFamily.PutString("DatasetFamilyTags", c_oRequest.GetString("DatasetFamilyTags"));
         oDatasetFamily.PutString("DatasetFamilyTitle", c_oRequest.GetString("DatasetFamilyTitle"));
-        oDatasetFamily.PutString("VersionNumber", c_oRequest.GetString("VersionNumber"));
+        oDatasetFamily.PutString("VersionNumber", "0x00000001");
 
         oRequest.PutStructuredBuffer("DatasetFamily",oDatasetFamily);
 
@@ -690,40 +689,79 @@ std::vector<Byte> __thiscall DatasetFamilyManager::DeleteDatasetFamily(
 
         if ( 200 == oUserInfo.GetDword("Status")  )
         {
-            // Check if any datasets are using this family, if they are, just mark this inactive
+
+            // TODO - When we have the associating of dataset families and datsets check
+            // if any dataset is using this family
+            bool fDatasetFamilyInUse{false};
+
             Guid oUserOrganization = oUserInfo.GetGuid("OrganizationGuid");
             std::string strUserOrganizationGuid = oUserOrganization.ToString(eHyphensAndCurlyBraces);
 
-            // Create a request to get the database manager to query for the organization GUID
-            StructuredBuffer oDatabaseRequest;
-            oDatabaseRequest.PutString("PluginName", "DatabaseManager");
-            oDatabaseRequest.PutString("Verb", "DELETE");
-            oDatabaseRequest.PutString("Resource", "/SAIL/DatabaseManager/DeleteDatasetFamily");
-            oDatabaseRequest.PutString("DatasetFamilyGuid", c_oRequest.GetString("DatasetFamilyGuid"));
-            oDatabaseRequest.PutString("OrganizationGuid", strUserOrganizationGuid);
-
-            std::vector<Byte> stlRequest = ::CreateRequestPacketFromStructuredBuffer(oDatabaseRequest);
-            poTlsNode = ::TlsConnectToNetworkSocket(gs_strDatabaseIpAddr, gs_unDatabasePort);
-
-            // Send request packet
-            poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
-
-            // Read header and body of the response
-            std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 3000);
-            _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
-            unsigned int unResponseDataSizeInBytes = *((uint32_t *)stlRestResponseLength.data());
-            std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
-            _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
-            // Make sure to release the poTlsNode
-            poTlsNode->Release();
-            poTlsNode = nullptr;
-
-            StructuredBuffer oDatabaseResponse(stlResponse);
-            if (204 != oDatabaseResponse.GetDword("Status"))
+            if ( !fDatasetFamilyInUse )
             {
-                oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
-                dwStatus = 201;
+                // Create a request to get the database manager to query for the organization GUID
+                StructuredBuffer oDatabaseRequest;
+                oDatabaseRequest.PutString("PluginName", "DatabaseManager");
+                oDatabaseRequest.PutString("Verb", "DELETE");
+                oDatabaseRequest.PutString("Resource", "/SAIL/DatabaseManager/DeleteDatasetFamily");
+                oDatabaseRequest.PutString("DatasetFamilyGuid", c_oRequest.GetString("DatasetFamilyGuid"));
+                oDatabaseRequest.PutString("OrganizationGuid", strUserOrganizationGuid);
+
+                std::vector<Byte> stlRequest = ::CreateRequestPacketFromStructuredBuffer(oDatabaseRequest);
+                poTlsNode = ::TlsConnectToNetworkSocket(gs_strDatabaseIpAddr, gs_unDatabasePort);
+
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 3000);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *)stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                poTlsNode = nullptr;
+
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                dwStatus = oDatabaseResponse.GetDword("Status");
             }
+            else
+            {
+                std::vector<Byte> stlDatasetFamily = this->PullDatasetFamily(c_oRequest);
+                StructuredBuffer oPullResponse(stlDatasetFamily);
+                StructuredBuffer oDatasetFamily = oPullResponse.GetStructuredBuffer("DatasetFamily");
+                oDatasetFamily.PutBoolean("DatasetFamilyActive",false);
+
+                StructuredBuffer oEditDatasetFamilyRequest;
+                oEditDatasetFamilyRequest.PutStructuredBuffer("DatasetFamily", oDatasetFamily);
+
+                StructuredBuffer oDatabaseRequest;
+                oDatabaseRequest.PutString("PluginName", "DatabaseManager");
+                oDatabaseRequest.PutString("Verb", "PUT");
+                oDatabaseRequest.PutString("Resource", "/SAIL/DatabaseManager/UpdateDatasetFamily");
+                oDatabaseRequest.PutStructuredBuffer("DatasetFamily", oDatasetFamily);
+
+                std::vector<Byte> stlRequest = ::CreateRequestPacketFromStructuredBuffer(oDatabaseRequest);
+                poTlsNode = ::TlsConnectToNetworkSocket(gs_strDatabaseIpAddr, gs_unDatabasePort);
+
+                // Send request packet
+                poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
+
+                // Read header and body of the response
+                std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 3000);
+                _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
+                unsigned int unResponseDataSizeInBytes = *((uint32_t *)stlRestResponseLength.data());
+                std::vector<Byte> stlResponse = poTlsNode->Read(unResponseDataSizeInBytes, 100);
+                _ThrowBaseExceptionIf((0 == stlResponse.size()), "Dead Packet.", nullptr);
+                // Make sure to release the poTlsNode
+                poTlsNode->Release();
+                poTlsNode = nullptr;
+
+                StructuredBuffer oDatabaseResponse(stlResponse);
+                dwStatus = oDatabaseResponse.GetDword("Status");
+            }
+            oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
         }
     }
     catch (BaseException oException)

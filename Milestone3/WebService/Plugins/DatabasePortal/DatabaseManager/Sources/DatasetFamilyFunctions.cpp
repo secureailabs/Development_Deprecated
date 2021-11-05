@@ -453,7 +453,7 @@ std::vector<Byte> __thiscall DatabaseManager::DeleteDatasetFamily(
                                                                                                                 << finalize);
 
             if (bsoncxx::stdx::nullopt != oDatasetFamilyDocument)
-            {                                                                         
+            {
                 bsoncxx::document::element oPlainTextObjectBlobGuid = oDatasetFamilyDocument->view()["PlainTextObjectBlobGuid"];
                 if (oPlainTextObjectBlobGuid && oPlainTextObjectBlobGuid.type() == type::k_utf8)
                 {
@@ -473,6 +473,7 @@ std::vector<Byte> __thiscall DatabaseManager::DeleteDatasetFamily(
                             oSailDatabase["PlainTextObjectBlob"].delete_one(*poSession, document{} << "PlainTextObjectBlobGuid" << strPlainTextObjectBlobGuid << finalize);
                             // Delete document from Dataset collection associated with DatasetrGuid
                             oSailDatabase["DatasetFamily"].delete_one(*poSession, document{} << "DatasetGuid" << strDatasetFamilyGuid << "DatasetFamilyOwnerOrganizationGuid" << strOrganizationGuid << finalize);
+                            dwStatus = 200;
                         }
                     }
                 }
@@ -484,7 +485,6 @@ std::vector<Byte> __thiscall DatabaseManager::DeleteDatasetFamily(
         try 
         {
             oSession.with_transaction(oCallback);
-            dwStatus = 200;
         }
         catch (mongocxx::exception & e)
         {

@@ -622,14 +622,14 @@ std::vector<Byte> __thiscall DatasetFamilyManager::EditDatasetFamilyInformation(
                 if (204 != oDatabaseResponse.GetDword("Status"))
                 {
                     oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
-                    dwStatus = 201;
+                    dwStatus = oDatabaseResponse.GetDword("Status");
                 }
             }
             else
             {
                 // The logged in user doesn't belong to the organization that owns this
                 // datset family
-                dwStatus = 403;
+                dwStatus = 404;
             }
         }
     }

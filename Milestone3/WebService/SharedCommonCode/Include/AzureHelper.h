@@ -72,3 +72,9 @@ bool DeleteAzureResources(
     _in const std::string & c_strSecret,
     _in const std::vector<std::string> & c_stlResourceId
     );
+
+std::vector<std::string> AzureResourcesAssociatedWithVirtualMachine(
+    const std::string & c_strSubscriptionID,
+    const std::string & c_strResourceGroup,
+    const std::string & c_strVirtualMachineName
+);

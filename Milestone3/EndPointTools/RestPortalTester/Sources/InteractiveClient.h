@@ -233,6 +233,10 @@ extern bool RegisterDataset(
     _in const StructuredBuffer & c_oDsetInformation
     );
 
+extern bool RegisterDatasetFamily(
+    _in const StructuredBuffer & c_oDatasetFamilyInformation
+    );
+
 extern bool ListDatasets(
     _in const std::string & c_strEosb
     );

@@ -105,6 +105,8 @@ int main(
             oDatabaseTools.AcceptDigitalContracts();
             // Activate digital contracts
             oDatabaseTools.ActivateDigitalContracts();
+
+            oDatabaseTools.AddDatasetFamilies();
         }
     }
     catch(BaseException & oBaseException)

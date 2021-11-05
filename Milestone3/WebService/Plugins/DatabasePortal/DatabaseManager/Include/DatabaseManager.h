@@ -333,6 +333,29 @@ class DatabaseManager : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Register a dataset family
+        std::vector<Byte> __thiscall RegisterDatasetFamily(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch list of all digital contracts associated with the user's organization
+        std::vector<Byte> __thiscall ListDatasetFamilies(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        // Fetch a single dataset family's metadata
+        std::vector<Byte> __thiscall PullDatasetFamily(
+            _in const StructuredBuffer & c_oRequest
+            );
+
+        std::vector<Byte> __thiscall UpdateDatasetFamily(
+            _in const StructuredBuffer &c_oRequest
+            );
+
+        std::vector<Byte> __thiscall DeleteDatasetFamily(
+            _in const StructuredBuffer &c_oRequest
+            );
+
         // Shutdown the server
         std::vector<Byte> __thiscall ShutdownPortal(
             _in const StructuredBuffer & c_oRequest

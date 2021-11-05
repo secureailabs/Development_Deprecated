@@ -227,6 +227,8 @@ class DatabaseTools : public Object
             _in const std::string & c_strVmGuid
             );
 
+        void __thiscall AddDatasetFamilies(void);
+
         // Delete database
         void __thiscall DeleteDatabase();
 

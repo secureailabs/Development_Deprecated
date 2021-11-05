@@ -269,7 +269,7 @@ void __thiscall DatasetFamilyManager::InitializePlugin(void)
 
     m_oDictionary.AddDictionaryEntry("PUT","/SAIL/DatasetFamilyManager/UpdateDatasetFamily",oUpdateDatasetFamilyParameters, 1);
 
-    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatasetFamilyManager/DatasetFamilies", oListDatasetFamilyParameters, 1);
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatasetFamilyManager/ListDatasetFamilies", oListDatasetFamilyParameters, 1);
     m_oDictionary.AddDictionaryEntry("GET", "/SAIL/DatasetFamilyManager/PullDatasetFamily", oPullDatasetFamilyParameters, 1);
 
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatasetFamilyManager/DeleteDatasetFamily", oDeleteDatasetFamilyParameters, 1);
@@ -823,7 +823,7 @@ uint64_t __thiscall DatasetFamilyManager::SubmitRequest(
 
     if ( "GET" == strVerb)
     {
-        if ("/SAIL/DatasetFamilyManager/DatasetFamilies" == strResource)
+        if ("/SAIL/DatasetFamilyManager/ListDatasetFamilies" == strResource)
         {
             stlResponseBuffer = ListDatasetFamilies(c_oRequestStructuredBuffer);
         }

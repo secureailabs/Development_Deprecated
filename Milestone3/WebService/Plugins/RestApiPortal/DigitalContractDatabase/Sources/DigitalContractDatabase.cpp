@@ -2356,6 +2356,20 @@ void __thiscall DigitalContractDatabase::ProvisionVirtualMachine(
             // TODO: Prawal add a check if the VM creation fails and mark the Digital contract as fail too possibly with an error message
             if("Success" != oDeployResponse.GetString("Status"))
             {
+                // Delete the resources associated with the VM
+                std::vector<std::string> stlListOfResourcesToDelete = ::AzureResourcesAssociatedWithVirtualMachine(c_szSubscriptionIdentifier, c_szResourceGroup, c_szVirtualMachineIdentifier);
+                if (false == ::DeleteAzureResources(c_szApplicationIdentifier, c_szTenantIdentifier, c_szSecret, stlListOfResourcesToDelete))
+                {
+                    if (true == oDeployResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE))
+                    {
+                        _ThrowBaseException("Delete Azure resources failed. It may have to be done manually on the portal. %s", oDeployResponse.GetString("error").c_str());
+                    }
+                    else
+                    {
+                        _ThrowBaseException("Delete Azure resources failed. It may have to be done manually on the portal. Virtual Machine provisioning failed with unknown error.", nullptr);
+                    }
+                }
+
                 if (true == oDeployResponse.IsElementPresent("error", ANSI_CHARACTER_STRING_VALUE_TYPE))
                 {
                     _ThrowBaseException("%s", oDeployResponse.GetString("error").c_str());
@@ -2826,17 +2840,7 @@ void __thiscall DigitalContractDatabase::DeleteVirtualMachineResources(
         std::string strApplicationID = c_oTemplateData.GetString("ApplicationID");
         std::string strResourceGroup = c_oTemplateData.GetString("ResourceGroup");
 
-        std::vector<std::string> stlListOfResourcesToDelete;
-        // VirtualMachineId
-        stlListOfResourcesToDelete.push_back(::CreateAzureResourceId(strSubscriptionID, strResourceGroup, "providers/Microsoft.Compute", "virtualMachines", c_strVirtualMachineName));
-        // OsDisk Id
-        std::string strResourceGroupUpperCase = strResourceGroup;
-        std::transform(strResourceGroupUpperCase.begin(), strResourceGroupUpperCase.end(),strResourceGroupUpperCase.begin(), ::toupper);
-        stlListOfResourcesToDelete.push_back(::CreateAzureResourceId(strSubscriptionID, strResourceGroupUpperCase, "providers/Microsoft.Compute", "disks", c_strVirtualMachineName + "-disk"));
-        // Network Interface Id
-        stlListOfResourcesToDelete.push_back(::CreateAzureResourceId(strSubscriptionID, strResourceGroup, "providers/Microsoft.Network", "networkInterfaces", c_strVirtualMachineName + "-nic"));
-        // IpAddressId
-        stlListOfResourcesToDelete.push_back(::CreateAzureResourceId(strSubscriptionID, strResourceGroup, "providers/Microsoft.Network", "publicIPAddresses", c_strVirtualMachineName + "-ip"));
+        std::vector<std::string> stlListOfResourcesToDelete = ::AzureResourcesAssociatedWithVirtualMachine(strSubscriptionID, strResourceGroup, c_strVirtualMachineName);
 
         // Update the Virtual machine status to eShutingDown.
         StructuredBuffer oUpdateVmStateRequest;

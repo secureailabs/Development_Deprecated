@@ -1,6 +1,6 @@
 BUILD_MODE?=debug
 CXXFLAGS=-std=c++17 -fPIC -fstack-protector -DUNIX -DOS_UNIX -fPIC
-LDFLAGS=-lpthread -ldl -luuid -lrt -lcrypto -lssl -lstdc++fs -lssl -lcurl
+LDFLAGS=-lSharedCommonCode -lpthread -ldl -luuid -lrt -lcrypto -lssl -lstdc++fs -lssl -lcurl
 
 ifeq ($(BUILD_MODE), debug)
 	CXXFLAGS+= -ggdb
@@ -27,9 +27,10 @@ SOURCES+=$(shell realpath ../../EndPointTools/RestPortalTester/Sources/Interacti
 SOURCES+=$(shell realpath ../../EndPointTools/RestPortalTester/Sources/GuiTerminal.cpp)
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
-OBJS+=$(C_SOURCES:$(ABSROOTDIR)%.c=$(OBJDIR)%.o)
 
 OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))
+
+.PHONY: all, clean, cleanall
 
 all: $(OUTPUT)
 
@@ -37,13 +38,9 @@ $(OBJDIR)%.o: $(ABSROOTDIR)%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $^ -o $@
 
-$(OBJDIR)%.o: $(ABSROOTDIR)%.c
+$(OUTPUT): $(OBJS) SharedCommonCode
 	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $^ -o $@
-
-$(OUTPUT): $(OBJS)
-	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ -o $@ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) $(filter %.o,$^) -o $@ $(LDFLAGS)
 
 clean:
 	rm -rf $(OUTPUT) $(OBJS)

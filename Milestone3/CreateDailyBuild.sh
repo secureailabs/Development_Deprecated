@@ -2,10 +2,12 @@
 # set -e
 declare -a StringArray=("BaseVmImageInit" "CommunicationPortal" "DataDomainProcess" "DatabaseGateway"
 "DatabaseTools" "InitializerProcess" "JobEngine" "RestApiPortal" "RootOfTrustProcess" "SignalTerminationProcess"
-"Tests" "libDatabaseManager.so" "libAccountDatabase.so" "libAuditLogManager.so" "libAzureManager.so"
+"Tests")
+
+declare -a StringArray2=("libDatabaseManager.so" "libAccountDatabase.so" "libAuditLogManager.so" "libAzureManager.so"
 "libCryptographicKeyManagement.so" "libDatasetDatabase.so" "libDigitalContractDatabase.so"
 "libRemoteDataConnectorManager.so" "libSailAuthentication.so" "libVirtualMachineManager.so"
-"libDatasetFamilyManager.so" "DatabaseTools")
+"libDatasetFamilyManager.so")
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 set -x
@@ -30,8 +32,19 @@ cd $SCRIPT_DIR/InternalTools/DatabaseTools/
 make all -j && returncode=$? || returncode=$?
 
 set +x
-# Verify files exist
+# Verify files exists
 for val in "${StringArray[@]}"; do
+    echo -e "\nsearching for ${val} ..."
+    ls -rt $SCRIPT_DIR/Binary/ | grep $val
+    retVal=$?
+    if [ $retVal -ne 0 ]; then
+        echo "Error ${val} does not exist"
+        exit $retVal
+    fi
+done
+
+# Verify .so files exists
+for val in "${StringArray2[@]}"; do
     echo -e "\nsearching for ${val} ..."
     ls -Rt $SCRIPT_DIR/Binary/ | grep $val
     retVal=$?
@@ -40,7 +53,6 @@ for val in "${StringArray[@]}"; do
         exit $retVal
     fi
 done
-
 set -e
 
 cd $SCRIPT_DIR/Binary

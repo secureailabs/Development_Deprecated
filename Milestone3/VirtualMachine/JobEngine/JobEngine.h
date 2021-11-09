@@ -112,6 +112,7 @@ class JobEngine : public Object
 
         // Private data members
         bool m_fIsConnected = false;
+        bool m_fIsInitialized = false;
         static JobEngine m_oJobEngine;
         RootOfTrustNode * m_poRootOfTrustNode;
         std::unordered_map<std::string, std::string> m_stlMapOfDataConnectorGuidsToName;
@@ -129,4 +130,6 @@ class JobEngine : public Object
         std::mutex m_oMutexOnSetOfPullObjects;
         std::mutex m_oMutexOnIpcSocket;
         std::time_t m_oTimeOfLastOrchestratorMessageArrival;
+        Guid m_GuidVmId;
+        StructuredBuffer m_oDataConnectorAvailableGuids;
 };

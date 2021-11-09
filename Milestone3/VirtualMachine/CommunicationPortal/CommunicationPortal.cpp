@@ -23,6 +23,7 @@
 
 #include <iostream>
 #include <thread>
+#include <future>
 
 /********************************************************************************************
  *
@@ -136,9 +137,104 @@ void __thiscall CommunicationPortal::WaitForProcessToRegister(void)
  *
  ********************************************************************************************/
 
+void __thiscall CommunicationPortal::HandleConnection(
+    _in TlsNode * const c_poTlsNode
+)
+{
+    __DebugFunction();
+
+    try
+    {
+        std::vector<std::thread> stlListOfThreads;
+        std::cout << "New Connection.. Waiting for data" << std::endl;
+        StructuredBuffer oStructuredBufferNewRequest(::GetTlsTransaction(c_poTlsNode, 0));
+
+        // If the connection was established with the JobEngine it will be a persistant connection,
+        // otherwise it will be a single transaction function.
+        std::string strEndPoint = oStructuredBufferNewRequest.GetString("EndPoint");
+        if ("JobEngine" == strEndPoint)
+        {
+            // Send a kill signal to the TlsToIpc thread to kill the connection
+            if (m_stlTlsToIpcConnectionConnected.end() != m_stlTlsToIpcConnectionConnected.find(strEndPoint))
+            {
+                if (true == m_stlTlsToIpcConnectionConnected.at(strEndPoint))
+                {
+                    m_stlKillTlsToIpcConnection.at(strEndPoint) = true;
+
+                    // Busy wait for the existing connections to be terminated
+                    std::cout << "Waiting for existing TlsToIpc thread to die" << std::endl;
+                    while(true == m_stlTlsToIpcConnectionConnected.at(strEndPoint))
+                    {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                    }
+                }
+                m_stlKillTlsToIpcConnection.at(strEndPoint) = false;
+            }
+
+            // A new thread is created for the reading requests on the TlsNode and forwarding them
+            // to the IPC connection while forwarding the data read on IPC connection
+            // will be handled in this thread.
+            auto stlFutureToWait = std::async(&CommunicationPortal::PersistantConnectionTlsToIpc, this, c_poTlsNode, strEndPoint, oStructuredBufferNewRequest);
+
+            // Wait for the IpcToTls connection to be terminated if it exists.
+            if (m_stlIpcToTlsConnectionConnected.end() != m_stlIpcToTlsConnectionConnected.find(strEndPoint))
+            {
+                if (true == m_stlIpcToTlsConnectionConnected.at(strEndPoint))
+                {
+                    // Busy wait for the existing connections to be terminated
+                    std::cout << "Waiting for existing IpcToTls thread to die" << std::endl;
+                    while(true == m_stlIpcToTlsConnectionConnected.at(strEndPoint))
+                    {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                    }
+                }
+            }
+
+            // This is blocking call and will exit only when the end connection signal is received via IPC
+            // from the JobEngine
+            std::cout << "Creating a PersistantConnectionIpcToTls thread" << std::endl;
+            this->PersistantConnectionIpcToTls(c_poTlsNode, strEndPoint);
+
+            // Once the Ipc to Tls is terminiated we also wait for TlsToIpc to end
+            stlFutureToWait.get();
+
+            std::cout << "\n\n\n########### Connection terminated ##############\n\n\n";
+            fflush(stdout);
+        }
+        else
+        {
+            this->OneTimeConnectionHandler(c_poTlsNode, oStructuredBufferNewRequest);
+        }
+        c_poTlsNode->Release();
+    }
+    catch (BaseException & oException)
+    {
+        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+    }
+    catch (std::exception & oException)
+    {
+        std::cout << "std::exception " << oException.what() << std::endl;
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __LINE__);
+    }
+}
+
+/********************************************************************************************
+ *
+ * @class CommunicationPortal
+ * @function StartServer
+ * @brief Constructor to create a CommunicationPortal object
+ * @param[in] poSocket Inout Request Params
+ *
+ ********************************************************************************************/
+
 void __thiscall CommunicationPortal::PersistantConnectionTlsToIpc(
     _in TlsNode * const c_poTlsNode,
-    _in StructuredBuffer c_oStructuredBufferMessageToPass
+    _in const std::string c_strEndpoint,
+    _in const StructuredBuffer oStructuredBuffer
 )
 {
     __DebugFunction();
@@ -146,27 +242,60 @@ void __thiscall CommunicationPortal::PersistantConnectionTlsToIpc(
     try
     {
         bool fKeepRunning = true;
-        StructuredBuffer oStructuredBufferMessageToPass = c_oStructuredBufferMessageToPass;
+
+        if (m_stlTlsToIpcConnectionConnected.end() != m_stlTlsToIpcConnectionConnected.find(c_strEndpoint))
+        {
+            m_stlTlsToIpcConnectionConnected.at(c_strEndpoint) = true;
+        }
+        else
+        {
+            m_stlTlsToIpcConnectionConnected.insert(std::make_pair(c_strEndpoint, true));
+            m_stlKillTlsToIpcConnection.insert(std::make_pair(c_strEndpoint, false));
+        }
+
+        StructuredBuffer oStructuredBufferMessageToPass = oStructuredBuffer;
+        std::vector<Byte> stlTlsPacket;
+
         do
         {
-            std::string strEndpointName = oStructuredBufferMessageToPass.GetString("EndPoint");
-            if (m_stlMapOfProcessToIpcSocket.end() != m_stlMapOfProcessToIpcSocket.find(strEndpointName))
+            if (true == fKeepRunning)
             {
-                if (oStructuredBufferMessageToPass.IsElementPresent("EndConnection", BOOLEAN_VALUE_TYPE))
+                if (0 < stlTlsPacket.size())
                 {
-                    if (true == oStructuredBufferMessageToPass.GetBoolean("EndConnection"))
+                    oStructuredBufferMessageToPass = stlTlsPacket;
+                }
+                std::string strEndpointName = oStructuredBufferMessageToPass.GetString("EndPoint");
+                if (m_stlMapOfProcessToIpcSocket.end() != m_stlMapOfProcessToIpcSocket.find(strEndpointName))
+                {
+                    if (oStructuredBufferMessageToPass.IsElementPresent("EndConnection", BOOLEAN_VALUE_TYPE))
                     {
-                        fKeepRunning = false;
+                        if (true == oStructuredBufferMessageToPass.GetBoolean("EndConnection"))
+                        {
+                            fKeepRunning = false;
+                        }
+                    }
+                    else
+                    {
+                        ::PutIpcTransaction(m_stlMapOfProcessToIpcSocket.at(strEndpointName), oStructuredBufferMessageToPass);
                     }
                 }
-                else
-                {
-                    ::PutIpcTransaction(m_stlMapOfProcessToIpcSocket.at(strEndpointName), oStructuredBufferMessageToPass);
-                }
             }
-            oStructuredBufferMessageToPass = StructuredBuffer(::GetTlsTransaction(c_poTlsNode, 0));
+
+            // Keep listening for 5 second, if no packet was received do it again.
+            // But if the signal is received from the IPC to TLs thread for shutting this connection,
+            // everything is ignored and the thread is shutdown.
+            do
+            {
+                stlTlsPacket = ::GetTlsTransaction(c_poTlsNode, 5000);
+                // Keep running if there is no new connection request or kill signal
+                fKeepRunning = !m_stlKillTlsToIpcConnection.at(c_strEndpoint);
+            }
+            while((0 == stlTlsPacket.size()) && (true == fKeepRunning));
         }
         while(true == fKeepRunning);
+
+        // Mark the connection as disconnected
+        m_stlTlsToIpcConnectionConnected.at(c_strEndpoint) = false;
     }
     catch (BaseException & oException)
     {
@@ -184,6 +313,8 @@ void __thiscall CommunicationPortal::PersistantConnectionTlsToIpc(
 
     std::cout << "\n\n\n Exiting PersistantConnectionTlsToIpc. Something happened.\n\n\n";
     fflush(stdout);
+
+    return;
 }
 
 /********************************************************************************************
@@ -196,16 +327,28 @@ void __thiscall CommunicationPortal::PersistantConnectionTlsToIpc(
  ********************************************************************************************/
 
 void __thiscall CommunicationPortal::PersistantConnectionIpcToTls(
-    _in Socket * const c_poSocketIpc,
-    _in TlsNode * const c_poTlsNode
+    _in TlsNode * const c_poTlsNode,
+    _in const std::string c_strEndpoint
 )
 {
     __DebugFunction();
 
     bool fKeepRunning = true;
+
+    if (m_stlIpcToTlsConnectionConnected.end() != m_stlIpcToTlsConnectionConnected.find(c_strEndpoint))
+    {
+        m_stlIpcToTlsConnectionConnected.at(c_strEndpoint) = true;
+    }
+    else
+    {
+        m_stlIpcToTlsConnectionConnected.insert(std::make_pair(c_strEndpoint, true));
+    }
+
     do
     {
-        StructuredBuffer oStructuredBuffer(::GetIpcTransaction(c_poSocketIpc, true));
+        StructuredBuffer oStructuredBuffer(::GetIpcTransaction(m_stlMapOfProcessToIpcSocket.at(c_strEndpoint), true));
+        std::cout << "PersistantConnectionIpcToTls " << oStructuredBuffer.ToString() << std::endl;
+        fflush(stdout);
         if (oStructuredBuffer.IsElementPresent("KeepAlive", BOOLEAN_VALUE_TYPE))
         {
             if (false == oStructuredBuffer.GetBoolean("KeepAlive"))
@@ -213,9 +356,25 @@ void __thiscall CommunicationPortal::PersistantConnectionIpcToTls(
                 fKeepRunning = false;
             }
         }
-        ::PutTlsTransaction(c_poTlsNode, oStructuredBuffer.GetSerializedBuffer());
+        else if (oStructuredBuffer.IsElementPresent("Timeout", BOOLEAN_VALUE_TYPE))
+        {
+            if (true == oStructuredBuffer.GetBoolean("Timeout"))
+            {
+                fKeepRunning = false;
+                // The TlsToIpc connection is closed here only if the connection timedout.
+                // In case of new request the TlsToIpc connection is already killed.
+                m_stlKillTlsToIpcConnection.at(c_strEndpoint) = true;
+            }
+        }
+        if (true == fKeepRunning)
+        {
+            ::PutTlsTransaction(c_poTlsNode, oStructuredBuffer);
+        }
     }
     while(fKeepRunning);
+
+    // Mark the connection as disconnected
+    m_stlIpcToTlsConnectionConnected.at(c_strEndpoint) = false;
 }
 
 /********************************************************************************************
@@ -251,64 +410,6 @@ void __thiscall CommunicationPortal::OneTimeConnectionHandler(
             oStructuredBufferFailureResponse.PutDword("Status", 404);
             ::PutTlsTransaction(c_poTlsNode, oStructuredBufferFailureResponse.GetSerializedBuffer());
         }
-    }
-    catch (BaseException & oException)
-    {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
-    }
-    catch (std::exception & oException)
-    {
-        std::cout << "std::exception " << oException.what() << std::endl;
-        ::RegisterUnknownException(__func__, __LINE__);
-    }
-    catch (...)
-    {
-        ::RegisterUnknownException(__func__, __LINE__);
-    }
-}
-
-/********************************************************************************************
- *
- * @class CommunicationPortal
- * @function StartServer
- * @brief Constructor to create a CommunicationPortal object
- * @param[in] poSocket Inout Request Params
- *
- ********************************************************************************************/
-
-void __thiscall CommunicationPortal::HandleConnection(
-    _in TlsNode * const c_poTlsNode
-)
-{
-    __DebugFunction();
-
-    try
-    {
-        std::vector<std::thread> stlListOfThreads;
-        std::cout << "New Connection.. Waiting for data" << std::endl;
-        StructuredBuffer oStructuredBufferNewRequest(::GetTlsTransaction(c_poTlsNode, 0));
-
-        // If the connection was established with the JobEngine it will be a persistant connection,
-        // otherwise it will be a single transaction function.
-        std::string strEndPoint = oStructuredBufferNewRequest.GetString("EndPoint");
-        if ("JobEngine" == strEndPoint)
-        {
-            // A new thread is created for the reading requests on the TlsNode and forwarding them
-            // to the IPC connection while forwarding the data read on IPC connection will be handled
-            // in this thread.
-            std::thread(&CommunicationPortal::PersistantConnectionTlsToIpc, this, c_poTlsNode, oStructuredBufferNewRequest).detach();
-
-            // This is blocking call and will exit only when the end connection signal is received via IPC
-            // from the JobEngine
-            this->PersistantConnectionIpcToTls(m_stlMapOfProcessToIpcSocket.at(strEndPoint), c_poTlsNode);
-            std::cout << "\n\n\n########### Connection terminated ##############\n\n\n";
-            fflush(stdout);
-        }
-        else
-        {
-            this->OneTimeConnectionHandler(c_poTlsNode, oStructuredBufferNewRequest);
-        }
-        c_poTlsNode->Release();
     }
     catch (BaseException & oException)
     {

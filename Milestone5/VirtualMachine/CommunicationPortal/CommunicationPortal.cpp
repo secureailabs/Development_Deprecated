@@ -209,16 +209,16 @@ void __thiscall CommunicationPortal::HandleConnection(
     }
     catch (BaseException & oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
     }
     catch (std::exception & oException)
     {
         std::cout << "std::exception " << oException.what() << std::endl;
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }
 
@@ -299,16 +299,16 @@ void __thiscall CommunicationPortal::PersistantConnectionTlsToIpc(
     }
     catch (BaseException & oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
     }
     catch (std::exception & oException)
     {
         std::cout << "std::exception " << oException.what() << std::endl;
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 
     std::cout << "\n\n\n Exiting PersistantConnectionTlsToIpc. Something happened.\n\n\n";
@@ -413,16 +413,16 @@ void __thiscall CommunicationPortal::OneTimeConnectionHandler(
     }
     catch (BaseException & oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
     }
     catch (std::exception & oException)
     {
         std::cout << "std::exception " << oException.what() << std::endl;
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }
 

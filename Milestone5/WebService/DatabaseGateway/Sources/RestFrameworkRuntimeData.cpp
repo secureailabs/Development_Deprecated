@@ -278,7 +278,7 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
 
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
         // send back error message
         unsigned int unErrorResponseSizeInBytes = sizeof(uint32_t) + strlen(oBaseException.GetExceptionMessage());
         std::vector<Byte> stlErrorMessage(unErrorResponseSizeInBytes);
@@ -291,7 +291,7 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
 
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         // send back error message
         Byte bErrorResponse[] = "DatabaseGateway Error: processing the request failed.";
         unsigned int unErrorResponseSizeInBytes = sizeof(uint32_t) + sizeof(bErrorResponse);

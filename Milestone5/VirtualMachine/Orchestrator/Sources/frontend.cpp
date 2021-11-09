@@ -82,12 +82,12 @@ std::string Frontend::Login(
 
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 
     m_strEOSB = strEosb;
@@ -164,12 +164,12 @@ void __thiscall Frontend::Listener(
 
         catch(BaseException oBaseException)
         {
-            ::RegisterException(oBaseException, __func__, __LINE__);
+            ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
         }
 
         catch(...)
         {
-            ::RegisterUnknownException(__func__, __LINE__);
+            ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         }
     }
 
@@ -255,12 +255,12 @@ void __thiscall Frontend::SetFrontend(
     
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 
     std::thread(&Frontend::Listener, this, strVMID).detach();
@@ -296,12 +296,12 @@ void __thiscall Frontend::HandleSubmitJob(
 
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }
 
@@ -340,12 +340,12 @@ void __thiscall Frontend::HandleSubmitJob(
     
 //     catch(BaseException oBaseException)
 //     {
-//         ::RegisterException(oBaseException, __func__, __LINE__);
+//         ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
 //     }
 
 //     catch(...)
 //     {
-//         ::RegisterUnknownException(__func__, __LINE__);
+//         ::RegisterUnknownException(__func__, __FILE__, __LINE__);
 //     }
     
 //     if (nullptr != poSocket)
@@ -381,12 +381,12 @@ void __thiscall Frontend::HandleSubmitJob(
     
 //     catch(BaseException oBaseException)
 //     {
-//         ::RegisterException(oBaseException, __func__, __LINE__);
+//         ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
 //     }
 
 //     catch(...)
 //     {
-//         ::RegisterUnknownException(__func__, __LINE__);
+//         ::RegisterUnknownException(__func__, __FILE__, __LINE__);
 //     }
     
 //     if (nullptr != poSocket)
@@ -421,12 +421,12 @@ void __thiscall Frontend::HandleQuit(void)
 
         catch(BaseException oBaseException)
         {
-            ::RegisterException(oBaseException, __func__, __LINE__);
+            ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
         }
 
         catch(...)
         {
-            ::RegisterUnknownException(__func__, __LINE__);
+            ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         }
     }
 
@@ -458,12 +458,12 @@ void __thiscall Frontend::HandlePushData(
 
         catch(BaseException oBaseException)
         {
-            ::RegisterException(oBaseException, __func__, __LINE__);
+            ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
         }
 
         catch(...)
         {
-            ::RegisterUnknownException(__func__, __LINE__);
+            ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         }
     }  
 }
@@ -497,12 +497,12 @@ void __thiscall Frontend::HandleSetParameters(
 
         catch(BaseException oBaseException)
         {
-            ::RegisterException(oBaseException, __func__, __LINE__);
+            ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
         }
 
         catch(...)
         {
-            ::RegisterUnknownException(__func__, __LINE__);
+            ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         }
 
     }
@@ -537,12 +537,12 @@ void __thiscall Frontend::HandlePullData(
             
             catch(BaseException oBaseException)
             {
-                ::RegisterException(oBaseException, __func__, __LINE__);
+                ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
             }
 
             catch(...)
             {
-                ::RegisterUnknownException(__func__, __LINE__);
+                ::RegisterUnknownException(__func__, __FILE__, __LINE__);
             }
         }
     }
@@ -626,12 +626,12 @@ std::map<std::string, std::string> __thiscall Frontend::QueryDataset(
     
 //     catch(BaseException oBaseException)
 //     {
-//         ::RegisterException(oBaseException, __func__, __LINE__);
+//         ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
 //     }
 
 //     catch(...)
 //     {
-//         ::RegisterUnknownException(__func__, __LINE__);
+//         ::RegisterUnknownException(__func__, __FILE__, __LINE__);
 //     }
 
 //     if (nullptr != poSocket)
@@ -696,12 +696,12 @@ void __thiscall Frontend::HandlePushSafeObject(
 
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }
 
@@ -762,16 +762,16 @@ void __thiscall Frontend::SendDataToJobEngine(
 
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
     catch(std::exception & e)
     {
         std::cout << "Exception: " << e.what() << '\n';
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }
 

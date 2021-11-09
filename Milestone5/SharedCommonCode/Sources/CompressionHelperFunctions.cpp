@@ -11,9 +11,9 @@
 #include "DebugLibrary.h"
 #include "StructuredBuffer.h"
 
-#include <LzmaSdk/Alloc.h>
-#include <LzmaSdk/Lzma2Dec.h>
-#include <LzmaSdk/Lzma2Enc.h>
+#include <Alloc.h>
+#include <Lzma2Dec.h>
+#include <Lzma2Enc.h>
 
 #include <iostream>
 
@@ -27,9 +27,8 @@
  *
  ********************************************************************************************/
 extern StructuredBuffer CompressToStructuredBuffer(
-    const void* c_pbRawBytes,
-    uint64_t unRawBufferSizeInBytes
-) throw()
+    const void *c_pbRawBytes,
+    uint64_t unRawBufferSizeInBytes) throw()
 {
     __DebugFunction();
 
@@ -69,11 +68,11 @@ extern StructuredBuffer CompressToStructuredBuffer(
     __DebugAssert(SZ_OK == nLzmaStatus);
 
     nLzmaStatus = Lzma2Enc_Encode2(hEncodeHandle,
-        nullptr,
-        reinterpret_cast<Byte*>(&stlCompressedDestination[0]), &unOutBufSize,
-        nullptr,
-        reinterpret_cast<const Byte*>(c_pbRawBytes), unRawBufferSizeInBytes,
-        nullptr);
+                                   nullptr,
+                                   reinterpret_cast<Byte *>(&stlCompressedDestination[0]), &unOutBufSize,
+                                   nullptr,
+                                   reinterpret_cast<const Byte *>(c_pbRawBytes), unRawBufferSizeInBytes,
+                                   nullptr);
 
     // Clean-up the operation before any assertions
     Lzma2Enc_Destroy(hEncodeHandle);
@@ -87,7 +86,7 @@ extern StructuredBuffer CompressToStructuredBuffer(
     compressedBuffer.PutByte("EncodingProperty", Lzma2Enc_WriteProperties(hEncodeHandle));
 
     std::cout << "Compression ratio: " << (1 - (double(unOutBufSize) / double(unRawBufferSizeInBytes))) * 100.0f << "% ("
-        << unRawBufferSizeInBytes << " -> " << unOutBufSize << ")" << std::endl;
+              << unRawBufferSizeInBytes << " -> " << unOutBufSize << ")" << std::endl;
 
     return compressedBuffer;
 }
@@ -101,8 +100,7 @@ extern StructuredBuffer CompressToStructuredBuffer(
  *
  ********************************************************************************************/
 std::vector<Byte> DecompressStructuredBuffer(
-    const StructuredBuffer& compressedBuffer
-) throw()
+    const StructuredBuffer &compressedBuffer) throw()
 {
     __DebugFunction();
 
@@ -116,12 +114,11 @@ std::vector<Byte> DecompressStructuredBuffer(
     std::vector<Byte> stlDecompressedBuffer(unOriginalSize);
 
     SRes nLzmaStatus = Lzma2Decode(stlDecompressedBuffer.data(), &unOriginalSize,
-        stlCompressedBuffer.data(), &unCompressedSize,
-        bEncodingProperties, LZMA_FINISH_END, &pLzmaStatus, &g_Alloc);
+                                   stlCompressedBuffer.data(), &unCompressedSize,
+                                   bEncodingProperties, LZMA_FINISH_END, &pLzmaStatus, &g_Alloc);
 
     // LZMA_STATUS_FINISHED_WITH_MARK tells us we found our end marker
     __DebugAssert(SZ_OK == nLzmaStatus && pLzmaStatus == LZMA_STATUS_FINISHED_WITH_MARK);
 
     return stlDecompressedBuffer;
 }
-

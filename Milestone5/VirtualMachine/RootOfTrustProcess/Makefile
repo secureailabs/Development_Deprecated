@@ -24,7 +24,6 @@ SRCDIRS+=$(shell realpath ../SharedComponents/Sources)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
-OBJS+=$(C_SOURCES:$(ABSROOTDIR)%.c=$(OBJDIR)%.o)
 
 OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))
 

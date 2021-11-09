@@ -37,7 +37,7 @@ pipeline {
                 }
             }
         }
-        stage('Build Backend') {
+        stage('Build Backend3') {
             steps {
                 script {
                     echo 'Build Binaries'
@@ -56,7 +56,7 @@ pipeline {
                 }
             }
         }
-        stage ('Deploy Backend') {
+        stage ('Deploy Backend3') {
             steps {
                 script {
                     echo 'Deploy DatabaseGateway and RestApiPortal'
@@ -84,6 +84,66 @@ pipeline {
                 }
                 echo 'Backend Portal Server is Deployed and Ready to use'
                 echo 'Build Successful'
+                sh '''
+                killall -9  ./DatabaseGateway &&  killall -9 ./RestApiPortal
+                '''
+            }
+            post {
+                failure {
+                    echo "Failed during Deploy Backend stage"
+                }
+            }
+        }
+        stage('Build Backend5') {
+            steps {
+                script {
+                    echo 'Build Binaries'
+                    sh label:
+                    'Build Binaries',
+                    script:'''
+                    set -x
+                    docker exec -w /Workspace/Milestone5/ ubuntu_dev_CI ./CreateDailyBuild.sh
+                    docker exec -w /Workspace/Milestone5/Binary ubuntu_dev_CI sh -c "ls -l"
+                    '''
+                }
+            }
+            post {
+                failure {
+                    echo "Failed during Build Backend stage"
+                }
+            }
+        }
+        stage ('Deploy Backend5') {
+            steps {
+                script {
+                    echo 'Deploy DatabaseGateway and RestApiPortal'
+                    sh '''
+                    docker exec -w /Workspace/Milestone5/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseGateway  > database.log &"
+                    sleep 1
+                    docker exec -w /Workspace/Milestone5/Binary ubuntu_dev_CI sh -c "sudo ./RestApiPortal > portal.log &"
+                    sleep 1
+                    docker exec -w /Workspace/Milestone5/ ubuntu_dev_CI ps -ef
+                    '''
+                }
+                script {
+                    try {
+                        echo 'Load Database'
+                        sh 'docker exec -w /Workspace/Milestone5/Binary ubuntu_dev_CI sh -c "ls -l"'
+                        sh 'docker exec -w /Workspace/Milestone5/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseTools --PortalIp=127.0.0.1 --Port=6200"'
+                    }catch (exception) {
+                        echo getStackTrace(exception)
+                        echo 'Error detected, retrying...'
+                        sh '''
+                        docker exec -w /Workspace/Milestone5/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseTools --PortalIp=127.0.0.1 --Port=6200 -d"
+                        docker exec -w /Workspace/Milestone5/Binary ubuntu_dev_CI sh -c "sudo ./DatabaseTools --PortalIp=127.0.0.1 --Port=6200"
+                        ''' 
+                    }
+                }
+                echo 'Backend Portal Server is Deployed and Ready to use'
+                echo 'Build Successful'
+                sh '''
+                killall -9  ./DatabaseGateway &&  killall -9 ./RestApiPortal
+                '''
             }
             post {
                 failure {

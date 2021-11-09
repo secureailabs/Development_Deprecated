@@ -1,6 +1,6 @@
 BUILD_MODE?=debug
 CXXFLAGS=-std=c++17 -fstack-protector -DUNIX -DOS_UNIX -fPIC
-LDFLAGS=-lpthread -ldl -luuid -lrt -lcrypto -lssl -lcurl
+LDFLAGS=-lSharedCommonCode -lpthread -ldl -luuid -lrt -lcrypto -lssl -lcurl
 
 ifeq ($(BUILD_MODE), debug)
 	CXXFLAGS+= -ggdb
@@ -26,12 +26,11 @@ SRCDIRS+=$(shell realpath ../SharedComponents/Sources)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
 SOURCES+=$(shell realpath ../CommunicationPortal/CommunicationPortal.cpp)
 
-C_SOURCES := $(foreach DIR,$(SRCDIRS),$(C_FINDFILES))
-
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
-OBJS+=$(C_SOURCES:$(ABSROOTDIR)%.c=$(OBJDIR)%.o)
 
 OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))
+
+.PHONY: all, clean, cleanall
 
 all: $(OUTPUT)
 
@@ -43,9 +42,9 @@ $(OBJDIR)%.o: $(ABSROOTDIR)%.c
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $^ -o $@
 
-$(OUTPUT): $(OBJS)
+$(OUTPUT): $(OBJS) SharedCommonCode
 	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ -o $@ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) $(filter %.o,$^) -o $@ $(LDFLAGS)
 
 clean:
 	rm -rf $(OUTPUT) $(OBJS)

@@ -1,6 +1,6 @@
 BUILD_MODE?=debug
 CXXFLAGS=-std=c++17 -fPIC -fstack-protector -DUNIX -DOS_UNIX
-LDFLAGS=-pthread -ldl -luuid -lcrypto -lssl -lstdc++fs -lssl -lmongocxx -lbsoncxx -lcurl
+LDFLAGS= -lSharedCommonCode -pthread -ldl -luuid -lcrypto -lssl -lstdc++fs -lssl -lmongocxx -lbsoncxx -lcurl
 
 ifeq ($(BUILD_MODE), debug)
 	CXXFLAGS+= -ggdb
@@ -13,11 +13,13 @@ ROOTDIR=../../../..
 ABSROOTDIR=$(shell realpath $(ROOTDIR))
 OBJDIR=$(ABSROOTDIR)/Binary/Objects
 
+# Build rules for the SharedCommonCode directory
+include $(ROOTDIR)/Common.mk
+
 # Add the new include folders here
 INCLUDE+=-I$(shell realpath ./Include)
 INCLUDE+=-I$(shell realpath ../../../../WebService/SharedCommonCode/Include)
 INCLUDE+=-I$(shell realpath ../../../../WebService/DatabaseGateway/Include)
-INCLUDE+=-I$(shell realpath ../../../../SharedCommonCode/Include)
 INCLUDE+=-I$(shell realpath ../../../../InternalTools/CryptographicTools/Include)
 INCLUDE+=-I$(shell realpath ../../../../WebService/Plugins/RestApiPortal/CryptographicKeyManagement)
 # Includes for MongoDB C++ driver
@@ -26,7 +28,6 @@ INCLUDE+=-I/usr/local/include/mongocxx/v_noabi -I/usr/local/include/libmongoc-1.
 # Add the new source directory here
 SRCDIRS+=$(shell realpath ./Sources)
 SRCDIRS+=$(shell realpath ../../../../WebService/DatabaseGateway/Sources)
-SRCDIRS+=$(shell realpath ../../../../SharedCommonCode/Sources)
 
 FINDFILES = $(wildcard $(DIR)/*.cpp)
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
@@ -38,15 +39,17 @@ SOURCES += $(shell realpath ../../../../WebService/Plugins/RestApiPortal/Cryptog
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
 OUTPUT=$(ABSROOTDIR)/Binary/SharedLibraries/DatabasePortal/lib$(notdir $(shell pwd)).so
 
+.PHONY: all,clean
+
 all: $(OUTPUT)
 
 $(OBJDIR)%.o: $(ABSROOTDIR)%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $^ -o $@
 
-$(OUTPUT): $(OBJS)
+$(OUTPUT): $(OBJS) SharedCommonCode
 	@mkdir -p $(@D)
-	$(CXX) -shared $(CXXFLAGS) $(INCLUDE) $^ -o $@ $(LDFLAGS)
+	$(CXX) -shared $(CXXFLAGS) $(INCLUDE) $(filter %.o,$^) -o $@ $(LDFLAGS)
 
 clean:
 	rm -rf $(OBJS) $(OUTPUT) $(LOCAL_BIN)

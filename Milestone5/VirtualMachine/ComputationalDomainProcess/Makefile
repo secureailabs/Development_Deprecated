@@ -1,7 +1,7 @@
 BUILD_MODE?=debug
 CXXFLAGS=-std=c++17 -fstack-protector -DUNIX -DOS_UNIX -Wall -g -MMD -MP -fPIC
 LDFLAGS = -Xlinker -export-dynamic
-LDLIBS = -lpthread -ldl -luuid -lrt -lcrypto -lssl -lutil -lm -lstdc++fs -lpython3.8 -lcurl
+LDLIBS = -lSharedCommonCode -lpthread -ldl -luuid -lrt -lcrypto -lssl -lutil -lm -lstdc++fs -lpython3.8 -lcurl
 
 ifeq ($(BUILD_MODE), debug)
 	CXXFLAGS+= -ggdb -O0
@@ -29,12 +29,12 @@ SRCDIRS+=$(shell realpath ../../EndPointTools/ResearcherInterface/Utils/Sources)
 SRCDIRS+=$(shell realpath ../SharedComponents/Sources)
 
 SOURCES := $(foreach DIR,$(SRCDIRS),$(FINDFILES))
-C_SOURCES := $(foreach DIR,$(SRCDIRS),$(C_FINDFILES))
 
 OBJS=$(SOURCES:$(ABSROOTDIR)%.cpp=$(OBJDIR)%.o)
-OBJS+=$(C_SOURCES:$(ABSROOTDIR)%.c=$(OBJDIR)%.o)
 
 OUTPUT=$(ABSROOTDIR)/Binary/$(notdir $(shell pwd))
+
+.PHONY: all, clean, cleanall
 
 all: $(OUTPUT)
 
@@ -42,13 +42,9 @@ $(OBJDIR)%.o: $(ABSROOTDIR)%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $^ -o $@
 
-$(OBJDIR)%.o: $(ABSROOTDIR)%.c
+$(OUTPUT): $(OBJS) SharedCommonCode
 	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) -c $^ -o $@
-
-$(OUTPUT): $(OBJS)
-	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ -o $@ $(LDFLAGS) $(LDLIBS)
+	$(CXX) $(CXXFLAGS) $(INCLUDE) $(filter %.o,$^) -o $@ $(LDFLAGS) $(LDLIBS)
 
 clean:
 	rm -rf $(OUTPUT) $(OBJS)

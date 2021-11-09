@@ -85,7 +85,8 @@ pipeline {
                 echo 'Backend Portal Server is Deployed and Ready to use'
                 echo 'Build Successful'
                 sh '''
-                killall -9  ./DatabaseGateway &&  killall -9 ./RestApiPortal
+                ps -ef | egrep "DatabaseGateway|RestApiPortal"
+                killall -9 DatabaseGateway &&  killall -9 RestApiPortal
                 '''
             }
             post {
@@ -142,7 +143,8 @@ pipeline {
                 echo 'Backend Portal Server is Deployed and Ready to use'
                 echo 'Build Successful'
                 sh '''
-                killall -9  ./DatabaseGateway &&  killall -9 ./RestApiPortal
+                ps -ef | egrep "DatabaseGateway|RestApiPortal"
+                killall -9  DatabaseGateway &&  killall -9 RestApiPortal
                 '''
             }
             post {

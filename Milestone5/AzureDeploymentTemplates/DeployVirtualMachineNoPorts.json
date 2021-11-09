@@ -1,0 +1,120 @@
+{
+    "$schema":"https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+    "contentVersion":"1.0.0.1",
+    "parameters":{
+        "vmName":{
+            "type":"string"
+        },
+        "vmSize":{
+            "type":"string",
+            "defaultValue":"Standard_B4ms"
+        },
+        "vmImageId":{
+            "type":"string"
+        },
+        "adminUserName": {
+            "type": "string"
+        },
+        "adminPassword": {
+            "type": "securestring"
+        },
+        "NetworkSecurityGroupId":{
+            "type": "string"
+        },
+        "VirtualNetworkId":{
+            "type": "string"
+        }
+    },
+    "variables":{
+        "networkInterfaceName":"[concat(parameters('vmName'), '-nic')]",
+        "publicIPAddressName":"[concat(parameters('vmName'), '-ip')]"
+    },
+    "resources":[
+        {
+            "type":"Microsoft.Network/publicIPAddresses",
+            "apiVersion":"2019-02-01",
+            "name":"[variables('publicIPAddressName')]",
+            "location":"[resourceGroup().location]",
+            "sku":{
+                "name":"Basic"
+            },
+            "properties":{
+                "publicIpAllocationMethod":"Dynamic"
+            }
+        },
+        {
+            "type":"Microsoft.Network/networkInterfaces",
+            "apiVersion":"2019-07-01",
+            "name":"[variables('networkInterfaceName')]",
+            "location":"[resourceGroup().location]",
+            "dependsOn":[
+                "[concat('Microsoft.Network/publicIpAddresses/', variables('publicIpAddressName'))]"
+            ],
+            "properties":
+            {
+                "ipConfigurations":
+                [
+                    {
+                        "name":"ipConfigNode",
+                        "properties":
+                        {
+                            "privateIPAllocationMethod":"Dynamic",
+                            "subnet":
+                            {
+                                "id":"[concat(parameters('VirtualNetworkId'), '/subnets/default')]"
+                            },
+                            "publicIpAddress":
+                            {
+                                "id":"[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+                            }
+                        }
+                    }
+                ],
+                "networkSecurityGroup":
+                {
+                    "id":"[parameters('NetworkSecurityGroupId')]"
+                }
+            }
+        },
+        {
+            "type":"Microsoft.Compute/virtualMachines",
+            "apiVersion":"2020-12-01",
+            "name":"[parameters('vmName')]",
+            "location":"[resourceGroup().location]",
+            "dependsOn":
+            [
+                "[concat('Microsoft.Network/networkInterfaces/', variables('networkInterfaceName'))]"
+            ],
+            "properties":{
+                "hardwareProfile":{
+                    "vmSize":"[parameters('vmSize')]"
+                },
+                "osProfile": {
+                    "computerName": "[parameters('vmName')]",
+                    "adminUsername": "[parameters('adminUsername')]",
+                    "adminPassword": "[parameters('adminPassword')]"
+                },
+                "storageProfile": {
+                    "osDisk": {
+                        "createOption": "fromImage",
+                        "name": "[concat(parameters('vmName'), '-disk')]",
+                        "caching": "ReadWrite",
+                        "managedDisk": {
+                            "storageAccountType": null
+                        }
+                    },
+                    "imageReference": {
+                        "id": "[parameters('vmImageId')]"
+                    }
+                },
+                "networkProfile":{
+                    "networkInterfaces":[
+                        {
+                            "id":"[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+                        }
+                    ]
+                }
+            }
+        }
+    ]
+}

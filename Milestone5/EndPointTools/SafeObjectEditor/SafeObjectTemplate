@@ -1,0 +1,85 @@
+# from StructuredBuffer import *
+import json
+import sys
+import pickle
+
+class SAFE_{{safeObjectId}}:
+    """Calculate the mean of two numbers"""
+    m_SafeObjectIdentifier = "{{safeObjectId}}"
+    def __init__(self, jobIdendifier, baseFolder):
+        # Validate and record job identifier. Right now this code
+        # is just recording. Additional code should be added
+        # to verify (i.e. make sure it's an identifier, make sure
+        # the MSB of the identifier are correct
+        self.m_JobIdentifier = jobIdendifier
+        # Validate and record base folder. Right now this code
+        # is just recording. Additional code should be added
+        # to verify (i.e. make sure folder exists)
+        self.m_BaseFolder = baseFolder
+
+    def LoadInputParameters(self):
+        # Insert code here which loads parameters from a file called
+        # <JobIdentifier>.inputs. The file is a serialized structured
+        # buffer containing all data or refenreces to data (in case
+        # some data is really big
+        # LoadInputParameters() should effectively initialize
+        # a whole bunch of local variables with data
+        # the input parameters can be found in the m_BaseFolder
+        InputDataFile = open(self.m_JobIdentifier+".inputs", mode='rb')
+        InputData = InputDataFile.read()
+        # oInputParameters = StructuredBuffer.InitWithSerializedBuffer(InputData)
+        oInputParameters = json.loads(InputData)
+        InputDataFile.close()
+        {{ParamterSet}}
+
+        return True
+
+    def ValidateInputParameters(self):
+        # Once the input parameters are all initialized, we need
+        # to validate them but also, look at the surrounding context
+        # for this operation and decide whether or not this particular
+        # operation is a risk. This can end up making some output
+        # parameters as "encrypted" (i.e. originally, output parameters
+        # was marked as plain-text, but this function decides that
+        # is too risky and makes the output parameter as encrypted
+        return True
+
+    def Run(self):
+        # Do the calculations here
+        {{code}}
+        return True
+
+    def Finish(self):
+        # Once the computation is done, there may be some cleanup
+        # tasks to do, such as make sure all output parameters are
+        # serialized and saved to disk, etc... This is the function
+        # which does all this final work. All output must be
+        # written to the m_BaseFolder
+        {{WriteOutputToFile}}
+        return True
+
+    def SignalDone(self):
+        # This method will write out a special file which signals
+        # to the job engine that the job is complete. There are
+        # actually TWO signal files. One used to mark that the
+        # computation was successful, the other to show failure
+        # Once the job engine detects either files, it can
+        # delete them. These files contain NOTHING, their
+        # creation alone IS the signal.
+        with open(self.m_JobIdentifier+".output", 'w') as fp:
+            pass
+        return True
+
+    # Classes can contain other user supplied methods if required, but the
+    # methods above are the MANDATORY methods that must exist.
+if __name__ == "__main__":
+    commandLineArguments = sys.argv[1:]
+    if len(commandLineArguments) == 2:
+        safe{{safeObjectId}} = SAFE_{{safeObjectId}}(commandLineArguments[0], commandLineArguments[1])
+        safe{{safeObjectId}}.LoadInputParameters()
+
+        if (True == safe{{safeObjectId}}.ValidateInputParameters()):
+            safe{{safeObjectId}}.Run()
+
+        safe{{safeObjectId}}.Finish()
+        safe{{safeObjectId}}.SignalDone()

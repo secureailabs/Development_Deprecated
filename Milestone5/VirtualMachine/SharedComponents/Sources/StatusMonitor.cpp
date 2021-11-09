@@ -53,12 +53,12 @@ StatusMonitor::StatusMonitor(
 
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
     
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }
 
@@ -82,12 +82,12 @@ StatusMonitor::~StatusMonitor(void)
     
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
     
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }
 
@@ -122,12 +122,12 @@ bool __thiscall StatusMonitor::IsTerminating(void) const throw()
     
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
     
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
     
     return fIsTerminating;
@@ -156,12 +156,12 @@ void __thiscall StatusMonitor::SignalTermination(
     
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
     
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }
             
@@ -200,12 +200,12 @@ void __thiscall StatusMonitor::UpdateStatus(
     
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
     
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
     
     // No matter what happens, we must free the szResultingString. This is done outside the

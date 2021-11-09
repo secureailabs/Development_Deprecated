@@ -73,12 +73,12 @@ std::vector<Byte> __thiscall DatabaseManager::GetListOfEvents(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -417,12 +417,12 @@ std::vector<Byte> __thiscall DatabaseManager::AddNonLeafEvent(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -561,12 +561,12 @@ std::vector<Byte> __thiscall DatabaseManager::AddLeafEvent(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 

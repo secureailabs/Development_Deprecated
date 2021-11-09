@@ -172,11 +172,11 @@ std::string __stdcall LoginToMicrosoftAzureApiPortal(
     }
     catch (BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 
     return strAccessToken;
@@ -275,12 +275,12 @@ StructuredBuffer __stdcall CreateResourceGroup(
     }
     catch (BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
         oResponse.PutString("error", oBaseException.GetExceptionMessage());
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.PutString("error", "std error");
     }
 
@@ -416,12 +416,12 @@ StructuredBuffer DeployVirtualMachineAndWait(
     }
     catch (BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
         oResponse.PutString("error", oBaseException.GetExceptionMessage());
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.PutString("error", "std error");
     }
 
@@ -545,12 +545,12 @@ StructuredBuffer CreateAzureDeployment(
     }
     catch (BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
         oDeploymentResult.PutString("error", oBaseException.GetExceptionMessage());
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oDeploymentResult.PutString("error", "std error");
     }
     return oDeploymentResult;
@@ -962,12 +962,12 @@ StructuredBuffer CopyVirtualMachineImage(
     }
     catch (BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
         oCopyImageResult.PutString("error", oBaseException.GetExceptionMessage());
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oCopyImageResult.PutString("error", "std error");
     }
 

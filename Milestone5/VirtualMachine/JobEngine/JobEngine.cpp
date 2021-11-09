@@ -17,6 +17,7 @@
 #include "IpcTransactionHelperFunctions.h"
 #include "JobEngineHelper.h"
 #include "FileUtils.h"
+#include "ExceptionRegister.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -336,12 +337,12 @@ void __thiscall JobEngine::PushSafeObject(
 
     catch(BaseException & oBaseException)
     {
-        std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        std::cout << "Some exceptional error in " << __func__ << std::endl;
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }
 
@@ -376,11 +377,11 @@ void __thiscall JobEngine::PushData(
     }
     catch(BaseException & oBaseException)
     {
-        std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
     catch(...)
     {
-        std::cout << "Some exceptional error in " << __func__ << std::endl;
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }
 
@@ -442,12 +443,12 @@ void __thiscall JobEngine::PullData(
 
     catch(BaseException & oBaseException)
     {
-        std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        std::cout << "Some exceptional error in " << __func__ << std::endl;
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }
 
@@ -530,7 +531,7 @@ void __thiscall JobEngine::SubmitJob(
     }
     catch(...)
     {
-        std::cout << "Some exceptional error in " << __func__ << std::endl;
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }
 
@@ -605,11 +606,11 @@ void __thiscall JobEngine::SetJobParameter(
     }
     catch(BaseException & oBaseException)
     {
-        std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
     catch(...)
     {
-        std::cout << "Some exceptional error in " << __func__ << std::endl;
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }
 
@@ -676,12 +677,12 @@ void __thiscall JobEngine::FileCreateCallback(
 
     catch(BaseException & oBaseException)
     {
-        std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        std::cout << "Some exceptional error in " << __func__ << std::endl;
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }
 
@@ -741,12 +742,12 @@ void __thiscall JobEngine::SendMessageToOrchestrator(
 
     catch(BaseException & oBaseException)
     {
-        std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        std::cout << "Some exceptional error in " << __func__ << std::endl;
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }
 
@@ -856,11 +857,11 @@ void __thiscall JobEngine::Heartbeat(void)
 
     catch(BaseException & oBaseException)
     {
-        std::cout << "Exception: " << oBaseException.GetExceptionMessage() << std::endl;
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        std::cout << "Some exceptional error in " << __func__ << std::endl;
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 }

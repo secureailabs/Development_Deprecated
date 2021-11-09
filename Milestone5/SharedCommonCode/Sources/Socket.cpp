@@ -186,12 +186,12 @@ std::vector<Byte> __thiscall Socket::Read(
     
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
     
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 
     return stlDestinationBuffer;

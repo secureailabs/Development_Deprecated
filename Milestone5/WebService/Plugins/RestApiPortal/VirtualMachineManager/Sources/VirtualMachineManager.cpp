@@ -775,7 +775,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetListOfOrganizationVMs(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -785,7 +785,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetListOfOrganizationVMs(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -864,7 +864,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetListOfVmIpAddressesAssoci
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -874,7 +874,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetListOfVmIpAddressesAssoci
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -938,12 +938,12 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetUserInfo(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1026,7 +1026,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetVmInformation(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1036,7 +1036,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetVmInformation(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1123,12 +1123,12 @@ std::vector<Byte> __thiscall VirtualMachineManager::VerifyDigitalContract(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1253,7 +1253,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1263,7 +1263,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1358,7 +1358,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmAfterDataUpload(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1368,7 +1368,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmAfterDataUpload(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1453,12 +1453,12 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmForComputation(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1548,12 +1548,12 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmAuditEvent(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1726,7 +1726,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::UpdateVirtualMachineStatus(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1736,7 +1736,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::UpdateVirtualMachineStatus(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1818,7 +1818,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::AddVirtualMachineIpAddress(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1828,7 +1828,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::AddVirtualMachineIpAddress(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 

@@ -38,6 +38,7 @@ static std::mutex gs_stlMutex;
 void __cdecl RegisterException(
     _in const BaseException & c_oBaseException,
     _in const char * c_szFunctionName,
+    _in const char * c_szFileName,
     _in unsigned int unLineNumber
     ) throw()
 {
@@ -57,7 +58,7 @@ void __cdecl RegisterException(
         strExceptionMessage += "\r\n               |Message = ";
         strExceptionMessage += c_oBaseException.GetExceptionMessage();
         strExceptionMessage += "\r\nCaught in ---->|File = ";
-        strExceptionMessage += __FILE__;
+        strExceptionMessage += c_szFileName;
         strExceptionMessage += "\r\n               |Function = ";
         strExceptionMessage += c_szFunctionName;
         strExceptionMessage += "\r\n               |Line Number = ";
@@ -86,6 +87,7 @@ void __cdecl RegisterException(
 /// <returns></returns>
 void __cdecl RegisterUnknownException(
     _in const char * c_szFunctionName,
+    _in const char * c_szFileName,
     _in unsigned int unLineNumber
     ) throw()
 {
@@ -98,7 +100,7 @@ void __cdecl RegisterUnknownException(
 
         strExceptionMessage = "UNKNOWN EXCEPTION!!!!!";
         strExceptionMessage += "\r\nCaught in ---->|File = ";
-        strExceptionMessage += __FILE__;
+        strExceptionMessage += c_szFileName;
         strExceptionMessage += "\r\n               |Function = ";
         strExceptionMessage += c_szFunctionName;
         strExceptionMessage += "\r\n               |Line Number = ";

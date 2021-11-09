@@ -97,7 +97,7 @@ std::vector<Byte> __stdcall GetUserInfoFromEosb(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -107,7 +107,7 @@ std::vector<Byte> __stdcall GetUserInfoFromEosb(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 

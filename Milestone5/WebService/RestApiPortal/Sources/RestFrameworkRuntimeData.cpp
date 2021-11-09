@@ -359,7 +359,7 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
     }
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
         // create error message
         if (strcmp("Resource not found.",oBaseException.GetExceptionMessage()) == 0)
         {
@@ -373,7 +373,7 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
     }
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         // create error message
         strResponseData = "HTTP/1.1 500 InternalServerError\r\nConnection: close\r\n\r\n";
         std::cout << "\n\nRest Response:\n\n" << strResponseData << std::endl;
@@ -386,11 +386,11 @@ void __thiscall RestFrameworkRuntimeData::RunThread(
     }
     catch (BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 
     // Decrement the number of required unix connections by the plugin once the transaction is complete

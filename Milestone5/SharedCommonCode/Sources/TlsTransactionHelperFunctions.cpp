@@ -135,11 +135,11 @@ std::vector<Byte> __stdcall GetTlsTransaction(
     }
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 
     return stlSerializedTransactionBuffer;
@@ -195,12 +195,12 @@ bool __stdcall PutTlsTransaction(
     }
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 
     return fSuccess;

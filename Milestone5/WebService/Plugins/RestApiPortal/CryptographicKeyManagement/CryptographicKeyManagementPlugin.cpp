@@ -789,12 +789,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GenerateEosb(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         stlEosb.clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         stlEosb.clear();
     }
 
@@ -857,12 +857,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RefreshEosb(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponseEosb.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponseEosb.Clear();
     }
 
@@ -1071,12 +1071,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::RegisterEosb(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponseEosb.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponseEosb.Clear();
     }
 
@@ -1128,12 +1128,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::UnregisterEosb(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponseEosb.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponseEosb.Clear();
         dwStatus = 500;
     }
@@ -1181,12 +1181,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::UpdateUserAccessR
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
         dwStatus = 500;
     }
@@ -1236,12 +1236,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::UpdateUserInforma
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
         dwStatus = 500;
     }
@@ -1288,12 +1288,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::ModifyEosbAccessR
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
         dwStatus = 500;
     }
@@ -1343,12 +1343,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::CheckEosbAccessRi
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
         dwStatus = 500;
     }
@@ -1572,12 +1572,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::SignMessageDigest
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponseSignature.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponseSignature.Clear();
     }
 
@@ -1644,12 +1644,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::VerifySignature(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponseSignature.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponseSignature.Clear();
     }
 
@@ -1860,12 +1860,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::CreateDigitalSign
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1918,12 +1918,12 @@ std::vector<Byte> __thiscall CryptographicKeyManagementPlugin::GetUserInfoAndUpd
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 

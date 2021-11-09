@@ -875,7 +875,7 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserRecords(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oAccountRecords.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -885,7 +885,7 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserRecords(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oAccountRecords.Clear();
     }
 
@@ -953,12 +953,12 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserInfo(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1034,7 +1034,7 @@ std::vector<Byte> __thiscall AccountDatabase::GetOrganizationInformation(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1044,7 +1044,7 @@ std::vector<Byte> __thiscall AccountDatabase::GetOrganizationInformation(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1148,7 +1148,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1158,7 +1158,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1246,7 +1246,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterUser(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1256,7 +1256,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterUser(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1362,7 +1362,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1372,7 +1372,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1457,7 +1457,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateOrganizationInformation(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1467,7 +1467,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateOrganizationInformation(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1575,7 +1575,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1585,7 +1585,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1667,7 +1667,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizations(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1677,7 +1677,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizations(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1756,7 +1756,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListUsers(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1766,7 +1766,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListUsers(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1848,7 +1848,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizationUsers(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1858,7 +1858,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizationUsers(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -1939,7 +1939,7 @@ std::vector<Byte> __thiscall AccountDatabase::RecoverUser(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -1949,7 +1949,7 @@ std::vector<Byte> __thiscall AccountDatabase::RecoverUser(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -2035,7 +2035,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteUser(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -2045,7 +2045,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteUser(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 
@@ -2125,7 +2125,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteOrganization(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         oResponse.Clear();
         // Add status if it was a dead packet
         if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
@@ -2135,7 +2135,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteOrganization(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         oResponse.Clear();
     }
 

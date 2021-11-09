@@ -55,7 +55,7 @@ static size_t __stdcall CurlHeaderWriteCallback(
 
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 
     return unSizeOfElements * unNumberOfElements;
@@ -97,7 +97,7 @@ static size_t __stdcall CurlWriteCallback(
 
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 
     return unNumberOfBytesReceived;
@@ -178,12 +178,12 @@ std::vector<Byte> RestApiCall(
 
     catch (BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 
     return stlResponse;
@@ -296,12 +296,12 @@ std::vector<Byte> __stdcall RestApiCall(
 
     catch (BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 
     return stlResponse;
@@ -437,12 +437,12 @@ std::vector<Byte> __stdcall RestApiCall(
 
     catch (BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 
     return stlResponse;

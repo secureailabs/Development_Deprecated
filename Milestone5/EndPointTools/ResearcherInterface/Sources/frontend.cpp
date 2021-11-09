@@ -164,12 +164,12 @@ std::string Login(
 
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
 
     return strEosb;
@@ -213,12 +213,12 @@ void __thiscall Frontend::SetFrontend(
     
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
     
     if (nullptr != poSocket)
@@ -265,12 +265,12 @@ void __thiscall Frontend::HandleExecJob(
     
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
     
     if (nullptr != poSocket)
@@ -315,12 +315,12 @@ void __thiscall Frontend::HandleInspect(
     
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
     
     if (nullptr != poSocket)
@@ -356,12 +356,12 @@ void __thiscall Frontend::HandleGetTable(
     
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
     
     if (nullptr != poSocket)
@@ -402,12 +402,12 @@ void __thiscall Frontend::HandleQuit(void)
         
         catch(BaseException oBaseException)
         {
-            ::RegisterException(oBaseException, __func__, __LINE__);
+            ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
         }
 
         catch(...)
         {
-            ::RegisterUnknownException(__func__, __LINE__);
+            ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         }
         
         if (nullptr != poSocket)
@@ -461,12 +461,12 @@ void __thiscall Frontend::HandlePushData(
     
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
     
     if (nullptr != poSocket)
@@ -548,12 +548,12 @@ void __thiscall Frontend::HandlePullData(
     
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
     
     if (nullptr != poSocket)
@@ -592,12 +592,12 @@ void __thiscall Frontend::HandleDeleteData(
     
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
     
     if (nullptr != poSocket)
@@ -655,12 +655,12 @@ void __thiscall Frontend::HandlePushFN(
     
     catch(BaseException oBaseException)
     {
-        ::RegisterException(oBaseException, __func__, __LINE__);
+        ::RegisterException(oBaseException, __func__, __FILE__, __LINE__);
     }
 
     catch(...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
     }
     
     if (nullptr != poSocket)

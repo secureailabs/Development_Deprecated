@@ -219,11 +219,11 @@ void __thiscall RestFramework::RunServer(void)
         }
         catch (BaseException oException)
         {
-            ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+            ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         }
         catch (...)
         {
-            ::RegisterUnknownException(__func__, __LINE__);
+            ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         }
     }
 
@@ -280,7 +280,7 @@ void __thiscall RestFramework::LoadPlugins(
     }
     catch (BaseException oException)
     {
-        ::RegisterException(oException, oException.GetFunctionName(), oException.GetLineNumber());
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
         // Close all plugin handles
         for (void * pPluginHandle : m_stlPluginHandles)
         {
@@ -289,7 +289,7 @@ void __thiscall RestFramework::LoadPlugins(
     }
     catch (...)
     {
-        ::RegisterUnknownException(__func__, __LINE__);
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
         // Close all plugin handles
         for (void * pPluginHandle : m_stlPluginHandles)
         {

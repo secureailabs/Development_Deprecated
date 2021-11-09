@@ -1,0 +1,59 @@
+{
+    "variables": {
+        "subscription_id": "{{env `AZURE_SUBSCRIPTION_ID`}}",
+        "tenant_id": "{{env `AZURE_TENANT_ID`}}",
+        "client_id": "{{env `AZURE_CLIENT_ID`}}",
+        "client_secret": "{{env `AZURE_CLIENT_SECRET`}}",
+        "location": "",
+        "storage_resource_group": "",
+        "storage_account": ""
+    },
+    "sensitive-variables": ["client_secret"],
+    "builders": [{
+            "type": "azure-arm",
+            "subscription_id": "{{user `subscription_id`}}",
+            "tenant_id": "{{user `tenant_id`}}",
+            "client_id": "{{user `client_id`}}",
+            "client_secret": "{{user `client_secret`}}",
+
+            "os_type": "Linux",
+            "image_publisher": "canonical",
+            "image_offer": "0001-com-ubuntu-server-focal",
+            "image_sku": "20_04-lts",
+            "image_version": "latest",
+
+            "location": "{{user `location`}}",
+            "vm_size": "Standard_DS2_v2",
+            "temp_resource_group_name": "packer-rg",
+            "temp_compute_name": "packervm",
+            "private_virtual_network_with_public_ip": true,
+            "custom_data_file": "",
+            "polling_duration_timeout": "0h30m0s",
+
+            "resource_group_name": "{{user `storage_resource_group`}}",
+            "storage_account": "{{user `storage_account`}}",
+            "capture_container_name": "packer",
+            "capture_name_prefix": "SailUbuntu2004"
+        }
+    ],
+    "provisioners": [{
+        "type": "shell",
+        "inline_shebang": "/bin/sh -x -e",
+        "execute_command": "chmod +x {{ .Path }}; {{ .Vars }} sudo -E sh '{{ .Path }}'",
+        "inline": [
+            "sudo apt-get update",
+            "sudo apt-get upgrade -y",
+            "sudo apt-get install -y libssl-dev libuuid1 python3-dev python3-pip",
+            "sudo pip3 install numpy scipy",
+            "sudo pip3 install pandas xgboost matplotlib shap imbalanced-learn",
+            "sudo pip3 install -U scikit-learn",
+            "sudo pip3 install ipython",
+            "sudo pip3 install torch --no-cache-dir",
+            "sudo wget -O /opt/BaseVmImageInit \"https://confidentialvmdeployment.blob.core.windows.net\/deployemnttemplate\/BaseVmImageInit?sp=r&st=2021-08-19T13:09:21Z&se=2022-07-31T21:09:21Z&sv=2020-08-04&sr=b&sig=kzow6Wyl06A9KD4K51UjhZrYig7xfXjwlFCnOlpQbAs%3D\"",
+            "sudo chmod +x /opt/BaseVmImageInit",
+            "sudo wget -O /opt/install.sh \"https:\/\/virtualmachinesetup.blob.core.windows.net\/setupscripts\/install.sh?sp=r&st=2021-07-26T08:27:00Z&se=2022-03-01T16:27:00Z&spr=https&sv=2020-08-04&sr=b&sig=R0EySY42QuSpewJLDKVm1aByA46isIzwkgEDe8SA%2Fdc%3D\" /opt/install.sh",
+            "(crontab -l 2>/dev/null ; echo \"@reboot cd /mnt; sudo \/opt\/BaseVmImageInit > VmImageInit.log\") | crontab -",
+            "/usr/sbin/waagent -force -deprovision+user && export HISTSIZE=0 && sync"
+        ]
+    }]
+}

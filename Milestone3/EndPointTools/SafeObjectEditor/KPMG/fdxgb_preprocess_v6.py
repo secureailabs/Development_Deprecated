@@ -6,8 +6,8 @@ import math
 agreement_df = __data0
 contact_df = __data1
 payment_df = __data2
-
-
+agreement_map_df = __data3
+create_map_df = __data4
 
 # ### Drop columns
 
@@ -25,7 +25,12 @@ contact_df.loc[(contact_df['Age'] > 100) | (contact_df['Age'] < 0)] = np.nan
 
 
 # In[10]:
+payment_cols = ["PaymentGUID", "PaymentID", "ContactGUID", "AgreementGUID", "AgreementtypeGUID", "PaymentMethod",
+                "PaymentMethodName", "PaymentDate", "PaidAmount", "ChargedDate", "ChargedAmount", "PaymentStatus",
+                "PaymentStatusName", "DirectMail", "Donation", "Medlemskab", "Product", "Lottery"]
 
+if payment_df.columns[0] not in payment_cols:
+    agreement_df = agreement_df.set_axis(payment_cols, axis=1, inplace=False)
 
 agreement_df = agreement_df.drop(["ContactGUID", "AgreementID", "ChannelName", "FutureCancelDate",
                                   "ContactID"], axis=1)
@@ -38,6 +43,19 @@ agreement_df = agreement_df.drop(["ContactGUID", "AgreementID", "ChannelName", "
 if "Membership" in payment_df.columns:
     print("Renaming \"Membership\"")
     payment_df.rename(columns={'Membership': 'Medlemskab'}, inplace=True)
+
+if "DontKnow" in payment_df.columns:
+    payment_df = payment_df.drop(["DontKnow"], axis = 1)
+
+if payment_df["Donation"].dtype!=bool:
+    payment_df["Donation"] = payment_df["Donation"].astype(bool)
+
+if payment_df["Product"].dtype!=bool:
+    payment_df.loc[payment_df["Product"]!='True', "Product"]=False
+    payment_df["Product"]=payment_df["Product"].astype(bool)
+
+if payment_df["Medlemskab"].dtype!=bool:
+    payment_df["Medlemskab"]=payment_df["Medlemskab"].astype(bool)
 
 
 # In[12]:

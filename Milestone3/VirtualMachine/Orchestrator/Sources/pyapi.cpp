@@ -327,16 +327,21 @@ static PyObject* queryresult(PyObject* self, PyObject* args)
 
     std::string strJobID(jobid);
     std::string strFNID(fnid);
-    std::map<std::string, int> stlOutput;
+    std::vector<std::string> stlOutput;
+    std::vector<int> stlOutputLabel;
 
-    getFrontend().QueryResult(strJobID, strFNID, stlOutput);
+    getFrontend().QueryResult(strJobID, strFNID, stlOutput, stlOutputLabel);
     
-    PyObject* output = PyDict_New();
+    PyObject* output = PyList_New(0);
     
-    for(auto const& x : stlOutput)
+    for(size_t i=0;i<stlOutput.size();i++)
     {
-        PyObject* value = Py_BuildValue("i", x.second);
-        PyDict_SetItemString(output, x.first.c_str(), value);
+        PyObject* tmp = PyList_New(0);
+        PyObject* value = Py_BuildValue("i", stlOutputLabel[i]);
+        PyList_Append(tmp, value);
+        PyObject* id = Py_BuildValue("s", stlOutput[i].c_str());
+        PyList_Append(tmp, id);
+        PyList_Append(output, tmp);
     }
 
     return Py_BuildValue("O", output);

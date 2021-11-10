@@ -551,7 +551,8 @@ void __thiscall Frontend::HandlePullData(
 void __thiscall Frontend::QueryResult(
     _in std::string& strJobID,
     _in std::string& strFNID,
-    _inout std::map<std::string, int>& stlOutput
+    _inout std::vector<std::string>& stlOutput,
+    _inout std::vector<int>& stlOutputLabel
 )
 {
     std::cout<<"query result: "<<strJobID<<std::endl;
@@ -572,11 +573,13 @@ void __thiscall Frontend::QueryResult(
                 std::this_thread::sleep_for(std::chrono::milliseconds(2000));
                 std::cout<<"waiting for result: "<<strDataID<<std::endl;
             }
-            stlOutput.emplace(strDataID, 0);
+            stlOutput.push_back(strDataID);
+            stlOutputLabel.push_back(0);
         }
         else
         {
-            stlOutput.emplace(strDataID, 1);
+            stlOutput.push_back(strDataID);
+            stlOutputLabel.push_back(1);
         }
     }
 }

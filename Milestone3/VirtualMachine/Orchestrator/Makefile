@@ -56,5 +56,8 @@ $(OUTPUT): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 	@cp $@ ./sail/sail/
 
+clean:
+	rm -rf $(OUTPUT) $(OBJS)
+
 cleanall:
 	rm -rf $(ABSROOTDIR)/Binary

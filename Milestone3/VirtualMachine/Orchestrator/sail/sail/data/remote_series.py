@@ -124,10 +124,10 @@ class RemoteSeries:
         jobid = newguid()
         inputs = pushdata(self.vm, [normalize, sort, ascending, bins, dropna])
         inputs.append(self.data_id)
-        setparameter(self.vm, jobid, self.fns['value_counts'], inputs)
-        submitjob(self.vm, self.fns['value_counts'], jobid)
-        pulldata(self.vm, jobid, self.fns['value_counts'])
-        result = queryresult(jobid, self.fns['value_counts'])
+        setparameter(self.vm, jobid, self.fns['series_value_counts'], inputs)
+        submitjob(self.vm, self.fns['series_value_counts'], jobid)
+        pulldata(self.vm, jobid, self.fns['series_value_counts'])
+        result = queryresult(jobid, self.fns['series_value_counts'])
         return result[0]
     
     def isin(self, value):

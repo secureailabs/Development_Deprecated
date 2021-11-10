@@ -113,11 +113,11 @@ class Frontend : public Object{
             _in std::string& strJobID,
             _in std::string & strFNID
         );
-        void __thiscall QueryResult
-        (
+        void __thiscall QueryResult(
             _in std::string& strJobID,
             _in std::string& strFNID,
-            _inout std::map<std::string, int>& stlOutput
+            _inout std::vector<std::string>& stlOutput,
+            _inout std::vector<int>& stlOutputLabel
         );
         JobStatusSignals __thiscall QueryJobStatus(
             _in std::string& strJobID

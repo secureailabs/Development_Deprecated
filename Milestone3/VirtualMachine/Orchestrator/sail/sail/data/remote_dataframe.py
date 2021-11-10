@@ -55,7 +55,7 @@ class RemoteDataFrame:
         jobid = newguid()
         inputs = pushdata(self.vm, [key, value])
         inputs.append(self.data_id)
-        setparameter(self.vm, jobid, self.fns['setietm'], inputs)
+        setparameter(self.vm, jobid, self.fns['setitem'], inputs)
         submitjob(self.vm, self.fns['setitem'], jobid)
         pulldata(self.vm, jobid, self.fns['setitem'])
         result = queryresult(jobid, self.fns['setitem'])

@@ -67,19 +67,19 @@ def queryresult(jobid, fnid):
         errstr = "\x1b[31m Cannot complete the requested job due to a possible privacy violation: too few samples \x1b[0m"
         raise RuntimeError(X(errstr))
 
-    resdict =  SAILPyAPI.queryresult(jobid, fnid)
+    res =  SAILPyAPI.queryresult(jobid, fnid)
     reslist = []
-    for key in resdict:
-        if(resdict[key]==0):
-            fname = "/tmp/"+key
+    for item in res:
+        if(item[0]==0):
+            fname = "/tmp/"+item[1]
             with open(fname, 'rb') as f:
                 reslist.append(pickle.load(f))
         else:
-            reslist.append(key)
+            reslist.append(item[1])
     return reslist
 
 def queryresults_parallel(jobids, fnid):
-    arglist = []
+    arglist = [] 
     for jobid in jobids:
         arglist.append((jobid, fnid))
 

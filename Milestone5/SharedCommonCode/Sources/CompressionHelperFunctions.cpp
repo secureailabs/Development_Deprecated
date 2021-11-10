@@ -11,9 +11,9 @@
 #include "DebugLibrary.h"
 #include "StructuredBuffer.h"
 
-#include <LzmaSdk/Alloc.h>
-#include <LzmaSdk/Lzma2Dec.h>
-#include <LzmaSdk/Lzma2Enc.h>
+#include <Alloc.h>
+#include <Lzma2Dec.h>
+#include <Lzma2Enc.h>
 
 #include <iostream>
 

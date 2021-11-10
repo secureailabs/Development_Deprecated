@@ -164,9 +164,9 @@ def get_fns():
     }
     return fnsdict
 
-def VMSetup(contractdict, backendIP):
+def VMSetup(contractdict, backendIP, soPath):
 
-    registersafeobj("/home/jjj/Development/Milestone3/EndPointTools/SafeObjectEditor/KPMG/safeobjects")
+    registersafeobj(soPath)
     print("[P]safe objects registered")
 
     eosb = login("jingwei@kpmg.com", "-OJBFE2qw-OJBFE2qw")

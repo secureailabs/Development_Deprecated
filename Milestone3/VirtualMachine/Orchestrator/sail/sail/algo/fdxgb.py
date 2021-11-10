@@ -26,6 +26,7 @@ class fdxgb(BaseEstimator):
         fndict['preprocessv4_2'] = "893E758F11B2423AB179999B51125A4C"
         fndict['preprocessv5_1']="329C27E4CAE445F18EE96A3E5E6A44E6"
         fndict['preprocessv5_2']="F3CF073412AA4CC09B969EAA489E3C7F"
+        fndict['preprocessv6']="661587C027D243ACB30815A876EF1D7F"
         fndict['handlehash'] = "B804C0767CCB4B01A6BAF5A2F782BD31"
         fndict['train_init'] = "D708DABA545346409FB835560140E882"
         fndict['train_update'] = "BE9644CBB2DC4FCD9FD2AF1733550A7E"
@@ -128,6 +129,17 @@ class fdxgb(BaseEstimator):
             submitjob(self.vms[i], self.fns['preprocessv5_2'], jobid)
             pulldata(self.vms[i], jobid, self.fns['preprocessv5_2'])
             result = queryresult(jobid, self.fns['preprocessv5_2'])
+            res.append(result)
+        return res
+    
+    def data_preprocessv6(self, data):
+        res = []
+        for i in range(len(self.vms)):
+            jobid = newguid()
+            setparameter(self.vms[i], jobid, self.fns['preprocessv6'], data[i])
+            submitjob(self.vms[i], self.fns['preprocessv6'], jobid)
+            pulldata(self.vms[i], jobid, self.fns['preprocessv6'])
+            result = queryresult(jobid, self.fns['preprocessv6'])
             res.append(result)
         return res
     

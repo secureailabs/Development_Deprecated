@@ -93,8 +93,8 @@ class DatasetFamilyManager : public Object
         bool m_fTerminationSignalEncountered;
         uint64_t m_unNumHandledPosts{0};
 
-        std::string m_strDatabaseIpAddr;
-        uint32_t m_unDatabaseIpPort;
+        std::string m_strDatabaseServiceIpAddr;
+        uint32_t m_unDatabaseServiceIpPort;
 };
 
 /********************************************************************************************/

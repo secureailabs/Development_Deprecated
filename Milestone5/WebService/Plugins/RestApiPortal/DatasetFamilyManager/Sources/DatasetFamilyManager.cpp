@@ -272,8 +272,8 @@ void __thiscall DatasetFamilyManager::InitializePlugin(const StructuredBuffer& o
 
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatasetFamilyManager/DeleteDatasetFamily", oDeleteDatasetFamilyParameters, 1);
 
-    m_strDatabaseIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
-    m_unDatabaseIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
+    m_strDatabaseServiceIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
+    m_unDatabaseServiceIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
 
 }
 
@@ -332,7 +332,7 @@ std::vector<Byte> __thiscall DatasetFamilyManager::RegisterDatasetFamily(
         std::vector<Byte> stlRequest = ::CreateRequestPacketFromStructuredBuffer(oRequest);
 
         // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
         // Send request packet
         poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
 
@@ -414,7 +414,7 @@ std::vector<Byte> __thiscall DatasetFamilyManager::ListDatasetFamilies(
             oRequest.PutString("OrganizationGuid", strOrganizationGuid);
 
             std::vector<Byte> stlRequest = ::CreateRequestPacketFromStructuredBuffer(oRequest);
-            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
 
             // Send request packet
             poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -504,7 +504,7 @@ std::vector<Byte> __thiscall DatasetFamilyManager::PullDatasetFamily(
             oRequest.PutString("DatasetFamilyGuid", strDatasetFamilyGuid);
 
             std::vector<Byte> stlRequest = ::CreateRequestPacketFromStructuredBuffer(oRequest);
-            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
 
             // Send request packet
             poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -603,7 +603,7 @@ std::vector<Byte> __thiscall DatasetFamilyManager::EditDatasetFamilyInformation(
                 oDatabaseRequest.PutStructuredBuffer("DatasetFamily", c_oRequest.GetStructuredBuffer("DatasetFamily"));
 
                 std::vector<Byte> stlRequest = ::CreateRequestPacketFromStructuredBuffer(oDatabaseRequest);
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
 
                 // Send request packet
                 poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -708,7 +708,7 @@ std::vector<Byte> __thiscall DatasetFamilyManager::DeleteDatasetFamily(
                 oDatabaseRequest.PutString("OrganizationGuid", strUserOrganizationGuid);
 
                 std::vector<Byte> stlRequest = ::CreateRequestPacketFromStructuredBuffer(oDatabaseRequest);
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
 
                 // Send request packet
                 poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
@@ -743,7 +743,7 @@ std::vector<Byte> __thiscall DatasetFamilyManager::DeleteDatasetFamily(
                 oDatabaseRequest.PutStructuredBuffer("DatasetFamily", oDatasetFamily);
 
                 std::vector<Byte> stlRequest = ::CreateRequestPacketFromStructuredBuffer(oDatabaseRequest);
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
 
                 // Send request packet
                 poTlsNode->Write(stlRequest.data(), (stlRequest.size()));

@@ -567,8 +567,8 @@ void __thiscall AccountDatabase::InitializePlugin(const StructuredBuffer& oIniti
     poThreadManager->CreateThread("AccountManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
 
     // Store our database service IP information
-    m_strDatabaseIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
-    m_unDatabaseIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
+    m_strDatabaseServiceIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
+    m_unDatabaseServiceIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
 }
 
 /********************************************************************************************
@@ -814,7 +814,7 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserRecords(
         Qword qw64BitHashPassphrase = ::Get64BitHashOfNullTerminatedString(strPassphrase.c_str(), false);
 
         // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
         // Create a request to fetch Basic user record
         StructuredBuffer oBasicRecordRequest;
         oBasicRecordRequest.PutString("PluginName", "DatabaseManager");
@@ -846,7 +846,7 @@ std::vector<Byte> __thiscall AccountDatabase::GetUserRecords(
         if (404 != oBasicRecord.GetDword("Status"))
         {
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
             // Create a request to fetch Confidential user record
             StructuredBuffer oConfidentialRecordRequest;
             oConfidentialRecordRequest.PutString("PluginName", "DatabaseManager");
@@ -1005,7 +1005,7 @@ std::vector<Byte> __thiscall AccountDatabase::GetOrganizationInformation(
         if (200 == oUserInfo.GetDword("Status"))
         {
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
             // Create a request to fetch organization information
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -1091,7 +1091,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
     try
     {
         // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
         // Create a request to add a user to the database
         StructuredBuffer oRequest;
         oRequest.PutString("PluginName", "DatabaseManager");
@@ -1215,7 +1215,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterUser(
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to add a user to the database
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -1309,7 +1309,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserRights(
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to add a user to the database
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -1427,7 +1427,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateOrganizationInformation(
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to add a user to the database
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -1522,7 +1522,7 @@ std::vector<Byte> __thiscall AccountDatabase::UpdateUserInformation(
             {
                 StructuredBuffer oUserInformation = c_oRequest.GetStructuredBuffer("UserInformation");
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to add a user to the database
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -1639,7 +1639,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizations(
             if (AccessRights::eSailAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to add a user to the database
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -1727,7 +1727,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListUsers(
             if (AccessRights::eSailAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to add a user to the database
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -1818,7 +1818,7 @@ std::vector<Byte> __thiscall AccountDatabase::ListOrganizationUsers(
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to add a user to the database
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -1908,7 +1908,7 @@ std::vector<Byte> __thiscall AccountDatabase::RecoverUser(
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to add a user to the database
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -1999,7 +1999,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteUser(
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to add a user to the database
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -2096,7 +2096,7 @@ std::vector<Byte> __thiscall AccountDatabase::DeleteOrganization(
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to add a user to the database
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");

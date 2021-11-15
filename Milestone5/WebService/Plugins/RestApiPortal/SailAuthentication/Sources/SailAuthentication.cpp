@@ -306,8 +306,8 @@ void __thiscall SailAuthentication::InitializePlugin(
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AuthenticationManager/Admin/ResetDatabase", 0);
 
     // Store our database service IP information
-    m_strDatabaseIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
-    m_unDatabaseIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
+    m_strDatabaseServiceIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
+    m_unDatabaseServiceIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
 }
 
 /********************************************************************************************
@@ -633,7 +633,7 @@ std::vector<Byte> __thiscall SailAuthentication::UpdatePassword(
             _ThrowBaseExceptionIf((404 == oAuthenticateCredentialsResponse.GetDword("Status")), "Current credentials are invalid.", nullptr);
 
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
             // Create a request to add a user to the database
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -859,7 +859,7 @@ std::vector<Byte> __thiscall SailAuthentication::ShutdownPortal(
     try 
     {
         // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
         // Shutdown the DatabaseGateway
         StructuredBuffer oRequest;
         oRequest.PutString("PluginName", "DatabaseManager");
@@ -926,7 +926,7 @@ std::vector<Byte> __thiscall SailAuthentication::ResetDatabase(
     try 
     {
         // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
         // Reset the database
         StructuredBuffer oRequest;
         oRequest.PutString("PluginName", "DatabaseManager");

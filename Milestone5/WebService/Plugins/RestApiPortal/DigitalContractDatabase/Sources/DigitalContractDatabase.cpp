@@ -551,8 +551,8 @@ void __thiscall DigitalContractDatabase::InitializePlugin(
     poThreadManager->CreateThread("DigitalContractPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
 
     // Store our database service IP information
-    m_strDatabaseIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
-    m_unDatabaseIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
+    m_strDatabaseServiceIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
+    m_unDatabaseServiceIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
 }
 
 /********************************************************************************************
@@ -1116,7 +1116,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ListDigitalContracts(
         if (200 == oUserInfo.GetDword("Status"))
         {
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
             // Create a request to list all the digital contracts for the user organization in the database
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -1215,7 +1215,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::PullDigitalContract(
         {
             // TODO: Add a check if the api has to be restricted
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
             // Create a request to get the digital contract information
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -1336,7 +1336,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
             oSsb.PutString("Note", "...");
             // Get Dataset name from the database
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
             // Create a request to get the digital contract information
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -1368,7 +1368,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDigitalContract(
             this->SerializeDigitalContract(oSsb, stlDigitalContractBlob);
 
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
             // Create a request to add a digital contract to the database
             oRequest.PutString("PluginName", "DatabaseManager");
             oRequest.PutString("Verb", "POST");
@@ -1492,7 +1492,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AcceptDigitalContract(
                             this->SerializeDigitalContract(oSsb, stlUpdatedSsb);
                             // Step 2: Call the database manager resource with the updated blob and update the database
                             // Make a Tls connection with the database portal
-                            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                             // Create a request to update a digital contract to the database
                             StructuredBuffer oRequest;
                             oRequest.PutString("PluginName", "DatabaseManager");
@@ -1637,7 +1637,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::ActivateDigitalContract(
                             this->SerializeDigitalContract(oSsb, stlUpdatedSsb);
                             // Step 2: Call the database manager resource with the updated blob and update the database
                             // Make a Tls connection with the database portal
-                            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                             // Create a request to update digital contract in the database
                             StructuredBuffer oRequest;
                             oRequest.PutString("PluginName", "DatabaseManager");
@@ -1811,7 +1811,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::AssociateWithAzureTemplate
                                 this->SerializeDigitalContract(oSsb, stlUpdatedSsb);
                                 // Step 2: Call the database manager resource with the updated blob and update the database
                                 // Make a Tls connection with the database portal
-                                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                                 // Create a request to update a digital contract to the database
                                 StructuredBuffer oRequest;
                                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -2596,7 +2596,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::UpdateDigitalContractProvi
                     this->SerializeDigitalContract(oSsb, stlUpdatedSsb);
                     // Step 2: Call the database manager resource with the updated blob and update the database
                     // Make a Tls connection with the database portal
-                    poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                    poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                     // Create a request to update digital contract in the database
                     StructuredBuffer oRequest;
                     oRequest.PutString("PluginName", "DatabaseManager");
@@ -2714,7 +2714,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::DeprovisionDigitalContract
                             // auto oListOfVirtualMachines = StructuredBuffer(this->GetProvisioningStatus(c_oRequest)).GetStructuredBuffer("VirtualMachines").GetNamesOfElements();
                             StructuredBuffer oListOfVirtualMachines;
                             // Make a Tls connection with the database portal
-                            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                             // Create a request to get the list of VMs
                             StructuredBuffer oRequest;
                             oRequest.PutString("PluginName", "DatabaseManager");

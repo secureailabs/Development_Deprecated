@@ -446,8 +446,8 @@ void __thiscall AuditLogManager::InitializePlugin(const StructuredBuffer& oIniti
     poThreadManager->CreateThread("AuditLogManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
 
     // Store our database service IP information
-    m_strDatabaseIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
-    m_unDatabaseIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
+    m_strDatabaseServiceIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
+    m_unDatabaseServiceIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
 }
 
 /********************************************************************************************
@@ -726,7 +726,7 @@ std::vector<Byte> __thiscall AuditLogManager::AddNonLeafEvent(
     try 
     {
         // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
         // Create a request to store a non leaf event in the database
         StructuredBuffer oRequest;
         oRequest.PutString("PluginName", "DatabaseManager");
@@ -810,7 +810,7 @@ std::vector<Byte> __thiscall AuditLogManager::AddLeafEvent(
         if (200 == oUserInfo.GetDword("Status"))
         {
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
             // Create a request to store a non leaf event in the database
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -897,7 +897,7 @@ std::vector<Byte> __thiscall AuditLogManager::GetListOfEvents(
         if (200 == oUserInfo.GetDword("Status"))
         {
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
             // Create a request to fetch list of events
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -980,7 +980,7 @@ std::vector<Byte> __thiscall AuditLogManager::DigitalContractBranchExists(
     try 
     {
         // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
         // Create a request to fetch list of events
         StructuredBuffer oRequest;
         oRequest.PutString("PluginName", "DatabaseManager");

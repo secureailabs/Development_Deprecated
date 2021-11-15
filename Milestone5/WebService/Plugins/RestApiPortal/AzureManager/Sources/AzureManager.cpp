@@ -485,8 +485,8 @@ void __thiscall AzureManager::InitializePlugin(
     poThreadManager->CreateThread("AzureManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
 
     // Store our database service IP information
-    m_strDatabaseIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
-    m_unDatabaseIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
+    m_strDatabaseServiceIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
+    m_unDatabaseServiceIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
 }
 
 /********************************************************************************************
@@ -784,7 +784,7 @@ std::vector<Byte> __thiscall AzureManager::GetListOfAzureSettingsTemplates(
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to list of all available azure settings templates of an organization
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -871,7 +871,7 @@ std::vector<Byte> __thiscall AzureManager::PullAzureSettingsTemplate(
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to get azure settings template
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -963,7 +963,7 @@ std::vector<Byte> __thiscall AzureManager::RegisterAzureSettingsTemplate(
                 std::string strTemplateGuid = Guid(eAzureSettingsTemplate).ToString(eHyphensAndCurlyBraces);
 
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to add azure settings template to the database
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -1060,7 +1060,7 @@ std::vector<Byte> __thiscall AzureManager::UpdateAzureSettingsTemplate(
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to update the azure settings template
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -1157,7 +1157,7 @@ std::vector<Byte> __thiscall AzureManager::DeleteAzureSettingsTemplate(
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to delete the template
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -1433,7 +1433,7 @@ std::vector<Byte> __thiscall AzureManager::UpdateAzureTemplateState(
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to update the azure settings template
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");

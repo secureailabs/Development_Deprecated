@@ -101,8 +101,8 @@ class DatasetDatabase : public Object
         PluginDictionary m_oDictionary;
         bool m_fTerminationSignalEncountered;
 
-        std::string m_strDatabaseIpAddr;
-        uint32_t m_unDatabaseIpPort;
+        std::string m_strDatabaseServiceIpAddr;
+        uint32_t m_unDatabaseServiceIpPort;
 };
 
 /********************************************************************************************/

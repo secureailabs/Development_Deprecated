@@ -238,7 +238,9 @@ void __thiscall SailAuthentication::TerminateSignalEncountered(void)
  *
  ********************************************************************************************/
 
-void __thiscall SailAuthentication::InitializePlugin(void)
+void __thiscall SailAuthentication::InitializePlugin(
+    _in const StructuredBuffer& oInitializationVectors
+    )
 {
     __DebugFunction();
 
@@ -302,6 +304,10 @@ void __thiscall SailAuthentication::InitializePlugin(void)
 
     // Reset the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AuthenticationManager/Admin/ResetDatabase", 0);
+
+    // Store our database service IP information
+    m_strDatabaseIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
+    m_unDatabaseIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
 }
 
 /********************************************************************************************
@@ -627,7 +633,7 @@ std::vector<Byte> __thiscall SailAuthentication::UpdatePassword(
             _ThrowBaseExceptionIf((404 == oAuthenticateCredentialsResponse.GetDword("Status")), "Current credentials are invalid.", nullptr);
 
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
             // Create a request to add a user to the database
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -853,7 +859,7 @@ std::vector<Byte> __thiscall SailAuthentication::ShutdownPortal(
     try 
     {
         // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
         // Shutdown the DatabaseGateway
         StructuredBuffer oRequest;
         oRequest.PutString("PluginName", "DatabaseManager");
@@ -920,7 +926,7 @@ std::vector<Byte> __thiscall SailAuthentication::ResetDatabase(
     try 
     {
         // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
         // Reset the database
         StructuredBuffer oRequest;
         oRequest.PutString("PluginName", "DatabaseManager");

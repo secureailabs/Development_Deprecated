@@ -366,7 +366,9 @@ void __thiscall RemoteDataConnectorManager::TerminateSignalEncountered(void)
  *
  ********************************************************************************************/
 
-void __thiscall RemoteDataConnectorManager::InitializePlugin(void)
+void __thiscall RemoteDataConnectorManager::InitializePlugin(
+    _in const StructuredBuffer& oInitializationVectors
+    )
 {
     __DebugFunction();
 
@@ -437,6 +439,10 @@ void __thiscall RemoteDataConnectorManager::InitializePlugin(void)
     poIpcServerParameters->poThreadManager = poThreadManager;
     poIpcServerParameters->poIpcServer = poIpcServer;
     poThreadManager->CreateThread("VirtualMachineManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
+
+    // Store our database service IP information
+    m_strDatabaseIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
+    m_unDatabaseIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
 }
 
 /********************************************************************************************
@@ -734,7 +740,7 @@ std::vector<Byte> __thiscall RemoteDataConnectorManager::GetListOfRemoteDataConn
             // if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
                 // Create a request to list of all available remote data connectors
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -830,7 +836,7 @@ std::vector<Byte> __thiscall RemoteDataConnectorManager::PullRemoteDataConnector
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
                 // Create a request to get remote data connector metadata
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -919,7 +925,7 @@ std::vector<Byte> __thiscall RemoteDataConnectorManager::RegisterRemoteDataConne
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
                 // Create a request to add remote data connector's metadata to the database
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -1011,7 +1017,7 @@ std::vector<Byte> __thiscall RemoteDataConnectorManager::UpdateRemoteDataConnect
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
                 // Create a request to update the remote data connector
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -1101,7 +1107,7 @@ std::vector<Byte> __thiscall RemoteDataConnectorManager::ConnectorHeartBeat(
             // Get datasets that the remote data connector is serving
             StructuredBuffer oDatasets = StructuredBuffer(this->PullRemoteDataConnector(c_oRequest)).GetStructuredBuffer("Connector").GetStructuredBuffer("Datasets");
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
             // Create a request to update the remote data connector
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");

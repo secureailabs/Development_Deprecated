@@ -52,7 +52,9 @@ class SailAuthentication : public Object
         void __thiscall TerminateSignalEncountered(void);
 
         // Method used to initializes data members including the plugin's dictionary
-        void __thiscall InitializePlugin(void);
+        void __thiscall InitializePlugin(
+            _in const StructuredBuffer& oInitializationVectors
+            );
 
         // RestFrameworkRuntimeData parses an incoming connection and calls the requested plugin's flat CallBack
         // functions, SubmitRequest and GetResponse. These functions then call SailAuthentication's
@@ -113,6 +115,9 @@ class SailAuthentication : public Object
         uint64_t m_unNextAvailableIdentifier;
         PluginDictionary m_oDictionary;
         bool m_fTerminationSignalEncountered;
+
+        std::string m_strDatabaseIpAddr;
+        uint32_t m_unDatabaseIpPort;
 };
 
 /********************************************************************************************/

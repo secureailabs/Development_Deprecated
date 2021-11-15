@@ -367,7 +367,9 @@ void __thiscall VirtualMachineManager::TerminateSignalEncountered(void)
  *
  ********************************************************************************************/
 
-void __thiscall VirtualMachineManager::InitializePlugin(void)
+void __thiscall VirtualMachineManager::InitializePlugin(
+    _in const StructuredBuffer& oInitializationVectors
+    )
 {
     __DebugFunction();
 
@@ -476,6 +478,10 @@ void __thiscall VirtualMachineManager::InitializePlugin(void)
     poIpcServerParameters->poThreadManager = poThreadManager;
     poIpcServerParameters->poIpcServer = poIpcServer;
     poThreadManager->CreateThread("VirtualMachineManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
+
+    // Store our database service IP information
+    m_strDatabaseIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
+    m_unDatabaseIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
 }
 
 /********************************************************************************************
@@ -736,7 +742,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetListOfOrganizationVMs(
                 {
                     StructuredBuffer oDigitalContract = oDigitalContracts.GetStructuredBuffer(strDcGuid.c_str());
                     // Make a Tls connection with the database portal
-                    poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                    poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
                     // Create a request to get the list of VMs
                     StructuredBuffer oRequest;
                     oRequest.PutString("PluginName", "DatabaseManager");
@@ -833,7 +839,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetListOfVmIpAddressesAssoci
         if (200 == oUserInfo.GetDword("Status"))
         {
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
             // Create a request to get the list of VMs
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -987,7 +993,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::GetVmInformation(
         if (200 == oUserInfo.GetDword("Status"))
         {
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
             // Create a request to get the virtual machine information
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -1201,7 +1207,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmInstance(
             // TODO: Add a check and Register Vm only if it is an imposter Eosb
             // Register the Virtual Machine
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
             // Create a request to register the virtual machine information in the database
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -1614,7 +1620,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::UpdateVirtualMachineStatus(
                     oVmBlob.PutString("Note", c_oRequest.GetString("Note"));
                 }
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
                 // Create a request to get the list of VMs
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
@@ -1657,7 +1663,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::UpdateVirtualMachineStatus(
                         if ((0 < oDigitalContractResponse.GetSerializedBufferRawDataSizeInBytes())&&(200 == oDigitalContractResponse.GetDword("Status")))
                         {
                             // Make a Tls connection with the database portal
-                            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
                             // Create a request to get the list of VMs
                             oRequest.PutString("PluginName", "DatabaseManager");
                             oRequest.PutString("Verb", "POST");
@@ -1690,7 +1696,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::UpdateVirtualMachineStatus(
                     {
                         // If the virtual machine has the datasetand is ready for computation, then delete the document from the VirtualMachinesWaitingForData collection
                         // Make a Tls connection with the database portal
-                        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
                         // Create a request to get the list of VMs
                         oRequest.PutString("PluginName", "DatabaseManager");
                         oRequest.PutString("Verb", "DELETE");
@@ -1793,7 +1799,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::AddVirtualMachineIpAddress(
                 oVmBlob.PutString("IPAddress", c_oRequest.GetString("IPAddress"));
 
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseIpAddr.c_str(), m_unDatabaseIpPort);
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");
                 oRequest.PutString("Verb", "PUT");

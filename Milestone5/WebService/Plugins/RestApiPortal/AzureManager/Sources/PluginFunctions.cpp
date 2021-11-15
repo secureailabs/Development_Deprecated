@@ -117,7 +117,9 @@ extern "C" bool GetResponse(
 ********************************************************************************************/
 
 extern "C" bool __stdcall InitializePlugin(
-    _in RegisterPluginFn fnRegisterPluginFn
+    _in RegisterPluginFn fnRegisterPluginFn,
+    _in Byte * pbSerializedInitParameters,
+    _in uint64_t unSerializedInitParametersBufferSizeInBytes
     )
 {
     __DebugFunction();
@@ -127,9 +129,10 @@ extern "C" bool __stdcall InitializePlugin(
 
     try
     {
+        StructuredBuffer oInitializationVectorBuffer(pbSerializedInitParameters, unSerializedInitParametersBufferSizeInBytes);
         AzureManager * poAzureManager = ::GetAzureManager();
         __DebugAssert(nullptr != poAzureManager);
-        poAzureManager->InitializePlugin();
+        poAzureManager->InitializePlugin(oInitializationVectorBuffer);
         std::vector<Byte> stlDictionary = poAzureManager->GetDictionarySerializedBuffer();
         fSuccess = fnRegisterPluginFn(poAzureManager->GetName(), poAzureManager->GetUuid(), poAzureManager->GetVersion(), SubmitRequest, GetResponse, stlDictionary.data(), stlDictionary.size());
     }

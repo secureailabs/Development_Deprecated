@@ -291,7 +291,7 @@ std::vector<std::string> __thiscall StructuredBuffer::GetDescriptionOfElements(v
 
 /********************************************************************************************/
 
-std::string __thiscall StructuredBuffer::ToString(void) throw()
+std::string __thiscall StructuredBuffer::ToString(void) const throw()
 {
     __DebugFunction();
 

@@ -166,7 +166,7 @@ class StructuredBuffer : public Object
         std::vector<std::string> __thiscall GetDescriptionOfElements(void) const throw();
         
         // Prints out all of the StructuredBuffer metadata and data
-        std::string __thiscall ToString(void) throw();
+        std::string __thiscall ToString(void) const throw();
         
         // Type strong methods to fetch element values
         void __thiscall GetNull(

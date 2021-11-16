@@ -109,6 +109,11 @@ class SailAuthentication : public Object
             _in const StructuredBuffer & c_oRequest
             );
 
+        // Check the validity of an EOSB
+        std::vector<Byte> __thiscall CheckEosb(
+            _in const StructuredBuffer & c_oRequest
+            );
+
         // private data members
         mutable pthread_mutex_t m_sMutex;
         std::map<Qword, std::vector<Byte>> m_stlCachedResponse;

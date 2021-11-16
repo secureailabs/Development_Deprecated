@@ -1,0 +1,2 @@
+__sum = __a + __b
+__difference = __b - __a

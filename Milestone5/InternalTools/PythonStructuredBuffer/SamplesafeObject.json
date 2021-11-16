@@ -1,0 +1,80 @@
+{
+    "Title": "SafeObjectName",
+    "Version": "0.1",
+    "Uuid": "1CE0BF1818B2467B87F7EBDF2D1E60A6",
+    "Description": "Sample description of the safeobject",
+    "Tags": "sum , difference",
+    "Inputs": {
+        "__a": {
+            "Title": "First number",
+            "Description": "First number for arithmetic operation",
+            "DataSealing": {
+                "SealingFunction": "Encryption"
+            },
+            "TypeSpecification": [
+                {
+                    "InwardType": "int",
+                    "OutwardType": "int",
+                    "SerializationMethod": "Pickle"
+                },
+                {
+                    "InwardType": "string",
+                    "OutwardType": "string",
+                    "SerializationMethod": "StructuredBuffer"
+                },
+                {
+                    "InwardType": "int",
+                    "OutwardType": "string",
+                    "SerializationMethod": "ToInt"
+                }
+            ],
+            "PrivacyGuardMethod": "RangeCheck"
+        },
+        "__b": {
+            "Title": "Second number",
+            "Description": "Second number for arithmetic operation",
+            "DataSealing": {
+                "SealingFunction": "Tokenization"
+            },
+            "TypeSpecification": [
+                {
+                    "InwardType": "int",
+                    "OutwardType": "string",
+                    "SerializationMethod": "ToString"
+                }
+            ],
+            "PrivacyGuardMethod": "CohortSize"
+        }
+    },
+    "Outputs": {
+        "__sum": {
+            "Title": "Sum",
+            "Description": "Sum of two numbers",
+            "DataSealing": {
+                "SealingFunction": "Encryption"
+            },
+            "TypeSpecification": {
+                "InwardType": "int",
+                "OutwardType": "string",
+                "SerializationMethod": "ToString"
+            }
+        },
+        "__difference": {
+            "Title": "Difference",
+            "Description": "Difference of two numbers",
+            "DataSealing": {
+                "SealingFunction": "Encryption"
+            },
+            "TypeSpecification": {
+                "InwardType": "int",
+                "OutwardType": "string",
+                "SerializationMethod": "Pickle"
+            }
+        }
+    },
+    "Imports": [
+        "import numpy",
+        "import json"
+    ],
+    "CodeFile": "samplecode"
+}

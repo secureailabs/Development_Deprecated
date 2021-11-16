@@ -3,6 +3,9 @@ import xgboost as xgb
 from sklearn.base import BaseEstimator
 import numpy as np
 import pickle
+import time
+from multiprocessing import Pool
+from itertools import repeat
 
 class fdxgb(BaseEstimator):
     def __init__(self, vms, params=None, feature_num = 0, hash_r = 4.0, hash_mu = 0.0, hash_sigma = 1.0):
@@ -26,7 +29,7 @@ class fdxgb(BaseEstimator):
         fndict['preprocessv4_2'] = "893E758F11B2423AB179999B51125A4C"
         fndict['preprocessv5_1']="329C27E4CAE445F18EE96A3E5E6A44E6"
         fndict['preprocessv5_2']="F3CF073412AA4CC09B969EAA489E3C7F"
-        fndict['preprocessv6']="661587C027D243ACB30815A876EF1D7F"
+        fndict['preprocessv6']="CF6D56F44BC74769B0E99D993EE0D1B6"
         fndict['handlehash'] = "B804C0767CCB4B01A6BAF5A2F782BD31"
         fndict['train_init'] = "D708DABA545346409FB835560140E882"
         fndict['train_update'] = "BE9644CBB2DC4FCD9FD2AF1733550A7E"
@@ -35,6 +38,7 @@ class fdxgb(BaseEstimator):
         fndict['accuracy_score']="BD9552F72CA94350BDF72207B6E33080"
         fndict['aucpr']="D692FF19A7F0416398C9FB28EE36C3A9"
         fndict['test_compare'] = "18DE7CAFB31C410190A04693667CB26B"
+        fndict['blank']="D5642117B4B841418691657CE1D727C6"
         return fndict
     
     def initvms(self):
@@ -134,14 +138,27 @@ class fdxgb(BaseEstimator):
     
     def data_preprocessv6(self, data):
         res = []
+        jobids = []
         for i in range(len(self.vms)):
             jobid = newguid()
+            jobids.append(jobid)
             setparameter(self.vms[i], jobid, self.fns['preprocessv6'], data[i])
             submitjob(self.vms[i], self.fns['preprocessv6'], jobid)
             pulldata(self.vms[i], jobid, self.fns['preprocessv6'])
-            result = queryresult(jobid, self.fns['preprocessv6'])
-            res.append(result)
-        return res
+        result = queryresults_parallel(jobids, self.fns['preprocessv6'])
+        return result
+    
+    # def data_preprocessv6(self, data):
+    #     res = []
+    #     jobids = []
+    #     for i in range(len(self.vms)):
+    #         jobid = newguid()
+    #         jobids.append(jobid)
+    #         setparameter(self.vms[i], jobid, self.fns['blank'], data[i])
+    #         submitjob(self.vms[i], self.fns['blank'], jobid)
+    #         pulldata(self.vms[i], jobid, self.fns['blank'])
+    #     result = queryresults_parallel(jobids, self.fns['blank'])
+    #     return result
     
     def gen_hashfn(self, num_dim, r, L, mu, sigma):
         hash_functions = []
@@ -181,27 +198,70 @@ class fdxgb(BaseEstimator):
             all_counters.append(result[i][0]['counters'])
         
         print("all_hashes has len {0}".format(len(all_hashes[0])))
-        print("all_counters has len {0}".format(len(all_hashes[0])))
+        print("all_counters has len {0}".format(len(all_counters[0])))
         print(len(all_counters[0][0].keys()))
+
+
+        jobid = newguid()
+        jobids.append(jobid)
+        data_id = pushdata(self.vms[0], [all_hashes, all_counters])
+        setparameter(self.vms[0], jobid, self.fns['handlehash_p'], [data_id[0], data_id[1], X[i]])
+        submitjob(self.vms[0], self.fns['handlehash_p'], jobid)
+        pulldata(self.vms[0], jobid, self.fns['handlehash_p'])
+        result = queryresult(jobid, self.fns['handlehash_p'])
         
         hash_tables = []
         for m in range(len(self.vms)):
             hash_table = np.zeros((len(all_hashes[m]),len(self.vms))) #For each party, build a hash table of dim numInstances x numParties.
-            for i in range( len(all_hashes[m]) ):#Select an instance x_i in m party
-                for j in range(len(self.vms)):  #Select parties to find global instances from
-                    if j == m:
-                        hash_table[i][j] = i
-                    else:
-                        instance_hash_counts = {}
-                        for k in range(len(all_counters[j])):   #Select instance k in other parties
-                            instance_hash_counts[k] = 0
-                            for value in all_counters[m][i].keys():  #Iterate through hash values of x_i^m
-                                if all_counters[j][k][value] != 0:
-                                    instance_hash_counts[k] += min(all_counters[j][k][value], all_counters[m][i][value])
-                        hash_table[i][j] = max(instance_hash_counts, key=instance_hash_counts.get)
+            i_arg = list(range(len(all_hashes[m])))
+            r_arg = (all_hashes, all_counters, m)
+            inp = []
+            for item in i_arg:
+                inp.append((*r_arg, item))
+            #print("original len: ", len(all_hashes[m]))
+            #print("get len: ", len(inp))
+            ans = 0
+            with Pool(8) as p:
+                ans = p.starmap(self.hash_helper, inp)
+            for a in ans:
+                for item in a:
+                    hash_table[item[0]][item[1]]=item[2]
+            # for i in range( len(all_hashes[m]) ):#Select an instance x_i in m party
+            #     #start_time = time.time()
+            #     for j in range(len(self.vms)):  #Select parties to find global instances from
+            #         if j == m:
+            #             hash_table[i][j] = i
+            #         else:
+            #             instance_hash_counts = {}
+            #             for k in range(len(all_counters[j])):   #Select instance k in other parties
+            #                 instance_hash_counts[k] = 0
+            #                 for value in all_counters[m][i].keys():  #Iterate through hash values of x_i^m
+            #                     if all_counters[j][k][value] != 0:
+            #                         instance_hash_counts[k] += min(all_counters[j][k][value], all_counters[m][i][value])
+            #             hash_table[i][j] = max(instance_hash_counts, key=instance_hash_counts.get)
+            #     #print("--- %s seconds ---" % (time.time() - start_time), flush=True)
             hash_tables.append(hash_table)
         
-        self.hash_tables = hash_tables
+        self.hash_tables = result[0]
+        with open('hash_table.pkl', 'wb') as f:
+            pickle.dump(self.hash_tables, f)
+
+    def hash_helper(self, all_hashes, counters, m, i):
+        ret = []
+        for j in range(len(all_hashes)):  #Select parties to find global instances from
+            ans = 0
+            if j == m:
+                ans = i
+            else:
+                instance_hash_counts = {}
+                for k in range(len(counters[j])):   #Select instance k in other parties
+                    instance_hash_counts[k] = 0
+                    for value in counters[m][i].keys():  #Iterate through hash values of x_i^m
+                        if counters[j][k][value] != 0:
+                            instance_hash_counts[k] += min(counters[j][k][value], counters[m][i][value])
+                ans = max(instance_hash_counts, key=instance_hash_counts.get)
+            ret.append([i, j, ans])
+        return ret
     
     def trypickle(self, model):
         pickle.dump(model, open("test.pkl", 'wb'))

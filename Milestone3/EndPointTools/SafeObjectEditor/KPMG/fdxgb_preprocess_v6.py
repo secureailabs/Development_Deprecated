@@ -1,3 +1,5 @@
+print("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", flush=True)
+
 import datetime as dt
 import pandas as pd
 import numpy as np
@@ -12,10 +14,12 @@ create_map_df = __data4
 # ### Drop columns
 
 # In[8]:
+print("1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111", flush=True)
 
 
 contact_df = contact_df.drop(["ContactID", "CreateReasonGUID", "CancelReasonGUID"], axis=1)
 
+print("2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222", flush=True)
 
 # In[9]:
 
@@ -23,18 +27,7 @@ contact_df = contact_df.drop(["ContactID", "CreateReasonGUID", "CancelReasonGUID
 # Make 100+ and negative ages to NaNs
 contact_df.loc[(contact_df['Age'] > 100) | (contact_df['Age'] < 0)] = np.nan
 
-
-# In[10]:
-payment_cols = ["PaymentGUID", "PaymentID", "ContactGUID", "AgreementGUID", "AgreementtypeGUID", "PaymentMethod",
-                "PaymentMethodName", "PaymentDate", "PaidAmount", "ChargedDate", "ChargedAmount", "PaymentStatus",
-                "PaymentStatusName", "DirectMail", "Donation", "Medlemskab", "Product", "Lottery"]
-
-if payment_df.columns[0] not in payment_cols:
-    agreement_df = agreement_df.set_axis(payment_cols, axis=1, inplace=False)
-
-agreement_df = agreement_df.drop(["ContactGUID", "AgreementID", "ChannelName", "FutureCancelDate",
-                                  "ContactID"], axis=1)
-
+print("3333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333", flush=True)
 
 # In[11]:
 
@@ -43,11 +36,14 @@ agreement_df = agreement_df.drop(["ContactGUID", "AgreementID", "ChannelName", "
 if "Membership" in payment_df.columns:
     print("Renaming \"Membership\"")
     payment_df.rename(columns={'Membership': 'Medlemskab'}, inplace=True)
+print("4444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444", flush=True)
 
 if "DontKnow" in payment_df.columns:
-    payment_df = payment_df.drop(["DontKnow"], axis = 1)
+    payment_df = payment_df.drop(["Dontknow"], axis = 1)
+print("5555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555", flush=True)
 
 if payment_df["Donation"].dtype!=bool:
+    payment_df.loc[payment_df["Product"]!='True', "Product"]=False
     payment_df["Donation"] = payment_df["Donation"].astype(bool)
 
 if payment_df["Product"].dtype!=bool:
@@ -55,7 +51,20 @@ if payment_df["Product"].dtype!=bool:
     payment_df["Product"]=payment_df["Product"].astype(bool)
 
 if payment_df["Medlemskab"].dtype!=bool:
+    payment_df.loc[payment_df["Product"]!='True', "Product"]=False
     payment_df["Medlemskab"]=payment_df["Medlemskab"].astype(bool)
+
+# In[10]:
+payment_cols = ["PaymentGUID", "PaymentID", "ContactGUID", "AgreementGUID", "AgreementtypeGUID", "PaymentMethod",
+                "PaymentMethodName", "PaymentDate", "PaidAmount", "ChargedDate", "ChargedAmount", "PaymentStatus",
+                "PaymentStatusName", "DirectMail", "Donation", "Medlemskab", "Product", "Lottery"]
+
+if payment_df.columns[0] not in payment_cols:
+    payment_df = payment_df.set_axis(payment_cols, axis=1, inplace=False)
+
+agreement_df = agreement_df.drop(["ContactGUID", "AgreementID", "ChannelName", "FutureCancelDate",
+                                  "ContactID"], axis=1)
+print("66666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666", flush=True)
 
 
 # In[12]:
@@ -67,12 +76,17 @@ payment_df = payment_df.drop(["PaymentID", "AgreementtypeGUID", "PaymentMethodNa
 # ### Data Merging
 
 # In[13]:
+contact_df = contact_df.drop_duplicates()
 
-
-merged_df = payment_df.merge(agreement_df, on="AgreementGUID", how="left").merge(contact_df,
-                                                                                 on="ContactGUID", how = "left")
+merged_df = payment_df.merge(agreement_df, on="AgreementGUID", how="left")
+merged_df = merged_df.merge(contact_df, on="ContactGUID", how = "left")
 print("Size after original merge:", merged_df.shape)
 
+from sys import getsizeof
+
+print(getsizeof(merged_df), flush=True)
+
+print("777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777777", flush=True)
 
 # In[14]:
 
@@ -108,6 +122,7 @@ nchurn_contacts = merged_df[merged_df["Cancelreason"].isin(nchurn_reasons)]["Con
 merged_df = merged_df[~merged_df["ContactGUID"].isin(nchurn_contacts)]
 print("Size after removing unvalid cancel reasons:", merged_df.shape)
 
+print("77777777777777777777777777777777755555555555555555555555555555555555555555555555555555555555555555555555", flush=True)
 
 # In[16]:
 
@@ -117,6 +132,7 @@ merged_df = merged_df[~merged_df["PaymentDate"].isna()]
 print("Size after removing payments without date:", merged_df.shape)
 print("Unique person IDs:", merged_df.ContactGUID.nunique())
 
+print("77777777777777777777777777777777766666666666666666666666666666666666666666666666666666666666666666666666", flush=True)
 
 # In[17]:
 
@@ -128,6 +144,7 @@ merged_df["CancelDate"] = pd.to_datetime(merged_df["CancelDate"])
 merged_df["ChargedDate"] = pd.to_datetime(merged_df["ChargedDate"])
 merged_df["Startdate"] = pd.to_datetime(merged_df["Startdate"])
 
+print("777777777777777777777777777777777______________________________________________________________________", flush=True)
 
 # In[18]:
 
@@ -137,6 +154,7 @@ merged_df["PaymentDate"] = merged_df.PaymentDate.apply(lambda dt: dt.replace(day
 merged_df["Startdate"] = merged_df.Startdate.apply(lambda dt: dt.replace(day=1))
 merged_df["CancelDate"] = merged_df.CancelDate.apply(lambda dt: dt.replace(day=1))
 
+print("777777777777777777777777777777777888888888888888888888888888888888888888888888888888888888888888888888888", flush=True)
 
 # In[19]:
 
@@ -153,6 +171,8 @@ print("Number of unique persons ever cancelled agreement:", merged_df[merged_df.
 merged_df['PaymentDate_min'] = merged_df.groupby('ContactGUID')['PaymentDate'].transform('min')
 merged_df['PaymentDate_max'] = merged_df.groupby('ContactGUID')['PaymentDate'].transform('max')
 
+print("77777777777777777777777777777777799999999999999999999999999999999999999999999999999999999999999999999", flush=True)
+
 
 # In[21]:
 
@@ -161,6 +181,8 @@ merged_df['PaymentDate_max'] = merged_df.groupby('ContactGUID')['PaymentDate'].t
 ids = list(merged_df.ContactGUID.unique())
 date_range = pd.date_range(
     merged_df["PaymentDate"].min().date(), merged_df["PaymentDate"].max().date(), freq='MS')
+
+print("77777777777777777777777777777777788888888888888888888888888888888885555555555555555555555555555555555", flush=True)
 
 
 # In[22]:
@@ -175,6 +197,7 @@ df = df[["Dates"]]
 df = df.explode("Dates").reset_index().rename(columns = {'index':'ContactGUID', 'Dates':'PaymentDate'})
 df["PaymentDate"] = pd.to_datetime(df["PaymentDate"])
 
+print("88888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888", flush=True)
 
 # In[23]:
 
@@ -241,6 +264,7 @@ print("Size with dummy rows only inside the range:", merged_df.shape)
 churned_df = merged_df[merged_df["CancelDate"].isna() == False].groupby(
     "ContactGUID", as_index = False)["CancelDate"].min()
 
+print("9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999", flush=True)
 
 # In[31]:
 
@@ -433,6 +457,7 @@ one_hot_list += ["PaymentMonth"]
 
 onehot_df = pd.get_dummies(merged_df, columns=one_hot_list)
 
+print("0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", flush=True)
 
 # In[46]:
 
@@ -540,6 +565,8 @@ for one_hot_col in one_hot_list:
 
 # Group and aggregate
 final_df = onehot_df.set_index("PaymentDate").groupby(["ContactGUID", pd.Grouper(freq=pd.offsets.MonthBegin(1))]).agg(agg_dict)
+
+print("11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111", flush=True)
 
 
 # In[55]:

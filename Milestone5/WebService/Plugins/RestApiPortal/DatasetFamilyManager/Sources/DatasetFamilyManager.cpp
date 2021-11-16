@@ -303,8 +303,7 @@ std::vector<Byte> __thiscall DatasetFamilyManager::RegisterDatasetFamily(
 
     try
     {
-        std::vector<Byte> stlUserInfo = ::GetUserInfoFromEosb(c_oRequest);
-        StructuredBuffer oUserInfo(stlUserInfo);
+        StructuredBuffer oUserInfo = ::GetUserInfoFromEosb(c_oRequest);
         std::string strNewGuid = Guid(eDatasetFamily).ToString(eHyphensAndCurlyBraces);
         Guid oDatasetFamilyOwner = oUserInfo.GetGuid("OrganizationGuid");
 
@@ -586,7 +585,6 @@ std::vector<Byte> __thiscall DatasetFamilyManager::EditDatasetFamilyInformation(
 
     try
     {
-        std::vector<Byte> stlUserInfo = ::GetUserInfoFromEosb(c_oRequest);
         StructuredBuffer oUserInfo = ::GetUserInfoFromEosb(c_oRequest);
 
         if ( 200 == oUserInfo.GetDword("Status")  )
@@ -684,7 +682,6 @@ std::vector<Byte> __thiscall DatasetFamilyManager::DeleteDatasetFamily(
 
     try
     {
-        std::vector<Byte> stlUserInfo = ::GetUserInfoFromEosb(c_oRequest);
         StructuredBuffer oUserInfo = ::GetUserInfoFromEosb(c_oRequest);
 
         if ( 200 == oUserInfo.GetDword("Status")  )

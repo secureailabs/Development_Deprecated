@@ -51,7 +51,7 @@ class AccountDatabase : public Object
         void __thiscall TerminateSignalEncountered(void);
 
         // Method used to initializes data members including the plugin's dictionary
-        void __thiscall InitializePlugin(void);
+        void __thiscall InitializePlugin(const StructuredBuffer& oInitializationVectors);
 
         // RestFrameworkRuntimeData parses an incoming connection and calls the requested plugin's flat CallBack
         // functions, SubmitRequest and GetResponse. These functions then call AccountDatabase's
@@ -158,6 +158,9 @@ class AccountDatabase : public Object
         uint64_t m_unNextAvailableIdentifier;
         PluginDictionary m_oDictionary;
         bool m_fTerminationSignalEncountered;
+
+        std::string m_strDatabaseServiceIpAddr;
+        uint32_t m_unDatabaseServiceIpPort;
 };
 
 /********************************************************************************************/

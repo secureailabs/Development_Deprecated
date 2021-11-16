@@ -111,4 +111,4 @@ Milestone2/InternalTools/WindowsPlatformDeliverables/MicrosoftAzureInitializer/o
 Milestone2/InternalTools/WindowsPlatformDeliverables/MicrosoftAzureInitializer/obj/Debug/MicrosoftAzureVirtualMachineInitializer.VirtualMachineProvisionerDialog.resources
 mongo*
 *.a
-
+.vscode/

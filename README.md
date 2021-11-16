@@ -48,7 +48,7 @@ Run the database tool (DatabaseTools) and add user(s) to the database:
 $ ./DatabaseTools
 ```
 
-Start the RestApiPortal server:
+Start the RestApiPortal server (in Milestone5 the options --DatabaseServerIp and --DatabaseServerPort can be provided to specify a remote database gateway):
 ```sh
 $ ./RestApiPortal
 ```

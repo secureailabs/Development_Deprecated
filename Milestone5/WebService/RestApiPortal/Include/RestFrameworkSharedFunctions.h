@@ -13,5 +13,5 @@
 typedef uint64_t (* SubmitRequestFn)(const Byte *, unsigned int, unsigned int *);
 typedef bool (* GetResponseFn)(uint64_t, Byte *, unsigned int);
 typedef bool (* RegisterPluginFn)(const char *, const char *, Qword, SubmitRequestFn, GetResponseFn, const Byte *, unsigned int);
-typedef bool (* InitializePluginFn)(RegisterPluginFn);
+typedef bool (* InitializePluginFn)(RegisterPluginFn, const Byte *, uint64_t);
 typedef void (* ShutdownPluginFn)(void);

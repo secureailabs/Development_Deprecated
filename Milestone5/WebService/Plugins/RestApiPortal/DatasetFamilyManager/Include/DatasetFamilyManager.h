@@ -48,7 +48,7 @@ class DatasetFamilyManager : public Object
 
         void __thiscall TerminateSignalEncountered(void);
 
-        void __thiscall InitializePlugin(void);
+        void __thiscall InitializePlugin(const StructuredBuffer& oInitializationVectors);
 
         uint64_t __thiscall SubmitRequest(
             _in const StructuredBuffer & c_oRequestStructuredBuffer,
@@ -92,6 +92,9 @@ class DatasetFamilyManager : public Object
         PluginDictionary m_oDictionary;
         bool m_fTerminationSignalEncountered;
         uint64_t m_unNumHandledPosts{0};
+
+        std::string m_strDatabaseServiceIpAddr;
+        uint32_t m_unDatabaseServiceIpPort;
 };
 
 /********************************************************************************************/

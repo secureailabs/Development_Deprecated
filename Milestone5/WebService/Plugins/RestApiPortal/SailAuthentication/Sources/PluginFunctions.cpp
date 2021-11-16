@@ -117,7 +117,9 @@ extern "C" bool GetResponse(
 ********************************************************************************************/
 
 extern "C" bool __stdcall InitializePlugin(
-    _in RegisterPluginFn fnRegisterPluginFn
+    _in RegisterPluginFn fnRegisterPluginFn,
+    _in Byte * pbSerializedInitParameters,
+    _in uint64_t unSerializedInitParametersBufferSizeInBytes
     )
 {
     __DebugFunction();
@@ -127,9 +129,10 @@ extern "C" bool __stdcall InitializePlugin(
 
     try
     {
+        StructuredBuffer oInitializationVectorBuffer(pbSerializedInitParameters, unSerializedInitParametersBufferSizeInBytes);
         SailAuthentication * poSailAuthentication = ::GetSailAuthentication();
         __DebugAssert(nullptr != poSailAuthentication);
-        poSailAuthentication->InitializePlugin();
+        poSailAuthentication->InitializePlugin(oInitializationVectorBuffer);
         std::vector<Byte> stlDictionary = poSailAuthentication->GetDictionarySerializedBuffer();
         fSuccess = fnRegisterPluginFn(poSailAuthentication->GetName(), poSailAuthentication->GetUuid(), poSailAuthentication->GetVersion(), SubmitRequest, GetResponse, stlDictionary.data(), stlDictionary.size());
     }

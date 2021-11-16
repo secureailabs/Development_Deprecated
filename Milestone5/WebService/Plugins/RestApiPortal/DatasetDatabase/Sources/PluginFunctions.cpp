@@ -117,7 +117,9 @@ extern "C" bool GetResponse(
 ********************************************************************************************/
 
 extern "C" bool __stdcall InitializePlugin(
-    _in RegisterPluginFn fnRegisterPluginFn
+    _in RegisterPluginFn fnRegisterPluginFn,
+    _in Byte * pbSerializedInitParameters,
+    _in uint64_t unSerializedInitParametersBufferSizeInBytes
     )
 {
     __DebugFunction();
@@ -127,9 +129,10 @@ extern "C" bool __stdcall InitializePlugin(
 
     try
     {
+        StructuredBuffer oInitializationVectorBuffer(pbSerializedInitParameters, unSerializedInitParametersBufferSizeInBytes);
         DatasetDatabase * poDatasetDatabase = ::GetDatasetDatabase();
         __DebugAssert(nullptr != poDatasetDatabase);
-        poDatasetDatabase->InitializePlugin();
+        poDatasetDatabase->InitializePlugin(oInitializationVectorBuffer);
         std::vector<Byte> stlDictionary = poDatasetDatabase->GetDictionarySerializedBuffer();
         fSuccess = fnRegisterPluginFn(poDatasetDatabase->GetName(), poDatasetDatabase->GetUuid(), poDatasetDatabase->GetVersion(), SubmitRequest, GetResponse, stlDictionary.data(), stlDictionary.size());
     }

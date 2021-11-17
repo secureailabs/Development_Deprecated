@@ -135,6 +135,7 @@ std::vector<Byte> __thiscall TlsNode::Read(
             Chronometer oChronometer;
             oChronometer.Start();
 
+            bool fReadTimedOut = false;
             while ((nBytesRead < unNumberOfDesiredBytes) && ((unMillisecondTimeout > oChronometer.GetElapsedTimeWithPrecision(Millisecond))))
             {
                 // The SSL header is always cached to prevent the data loss in case the data read
@@ -151,32 +152,40 @@ std::vector<Byte> __thiscall TlsNode::Read(
                     // the SSL header. The subsequent read will read the required bytes
                     int nEncryptedDataSize = m_stlTlsHeaderCache.at(3)*256 + m_stlTlsHeaderCache.at(4);
                     std::vector<Byte> stlEncryptedDataReadBuffer = m_poSocket->Read(nEncryptedDataSize, unMillisecondTimeout - oChronometer.GetElapsedTimeWithPrecision(Millisecond));
-                    _ThrowBaseExceptionIf((stlEncryptedDataReadBuffer.size() != nEncryptedDataSize), "TLS Read failed: Read Timeout", nullptr);
-
-                    // Write the TLS header to the read BIO for the SSL_read to use
-                    _ThrowBaseExceptionIf((5 != ::BIO_write(m_poReadBIO, m_stlTlsHeaderCache.data(), 5)), "TLS Read failed: Writing to readBIO failed", nullptr);
-
-                    // Since the Header has been consumed and written to the readBIO,
-                    // it should be cleaned.
-                    m_stlTlsHeaderCache.clear();
-
-                    // Write the actual read data to the readBIO. This call only fails when the
-                    // process runs out of memory to write more data.
-                    _ThrowBaseExceptionIf((nEncryptedDataSize != ::BIO_write(m_poReadBIO, stlEncryptedDataReadBuffer.data(), nEncryptedDataSize)), "TLS Read failed: Writing to readBIO failed", nullptr);
-
-                    // Allocating a FIFO buffer reserve for the next SSL_read of dencrypted data.
-                    // It is not possible to figure out the amount of data SSL_read will
-                    // write beforehand. Assuming that the decrypted data length will not be
-                    // larger than the encrypted data length, nEncryptedDataSize is used.
-                    Byte * pbCircularBufferDestination = m_oDecryptedBytesCache.WriteLock(nEncryptedDataSize);
-                    if (nullptr != pbCircularBufferDestination)
+                    if (0 == stlEncryptedDataReadBuffer.size())
                     {
-                        // SSL_read will process and decrypt the record and read the bytes
-                        int nBytesActualRead = ::SSL_read(m_poSSL.get(), pbCircularBufferDestination, nEncryptedDataSize);
-                        _ThrowBaseExceptionIf((0 > nBytesActualRead), "TLS Read failed: Reading from readBIO failed", nullptr);
-                        nBytesRead += nBytesActualRead;
-                        // WriteUnlock will put the data into the FIFO buffer.
-                        m_oDecryptedBytesCache.WriteUnlock(nBytesActualRead);
+                        // In case the read timed out, the read buffer is empty and the read
+                        // operation is considered to be timed out.
+                        fReadTimedOut = true;
+                    }
+
+                    if(false == fReadTimedOut)
+                    {
+                        // Write the TLS header to the read BIO for the SSL_read to use
+                        _ThrowBaseExceptionIf((5 != ::BIO_write(m_poReadBIO, m_stlTlsHeaderCache.data(), 5)), "TLS Read failed: Writing to readBIO failed", nullptr);
+
+                        // Since the Header has been consumed and written to the readBIO,
+                        // it should be cleaned.
+                        m_stlTlsHeaderCache.clear();
+
+                        // Write the actual read data to the readBIO. This call only fails when the
+                        // process runs out of memory to write more data.
+                        _ThrowBaseExceptionIf((nEncryptedDataSize != ::BIO_write(m_poReadBIO, stlEncryptedDataReadBuffer.data(), nEncryptedDataSize)), "TLS Read failed: Writing to readBIO failed", nullptr);
+
+                        // Allocating a FIFO buffer reserve for the next SSL_read of dencrypted data.
+                        // It is not possible to figure out the amount of data SSL_read will
+                        // write beforehand. Assuming that the decrypted data length will not be
+                        // larger than the encrypted data length, nEncryptedDataSize is used.
+                        Byte * pbCircularBufferDestination = m_oDecryptedBytesCache.WriteLock(nEncryptedDataSize);
+                        if (nullptr != pbCircularBufferDestination)
+                        {
+                            // SSL_read will process and decrypt the record and read the bytes
+                            int nBytesActualRead = ::SSL_read(m_poSSL.get(), pbCircularBufferDestination, nEncryptedDataSize);
+                            _ThrowBaseExceptionIf((0 > nBytesActualRead), "TLS Read failed: Reading from readBIO failed", nullptr);
+                            nBytesRead += nBytesActualRead;
+                            // WriteUnlock will put the data into the FIFO buffer.
+                            m_oDecryptedBytesCache.WriteUnlock(nBytesActualRead);
+                        }
                     }
                 }
             }

@@ -108,6 +108,8 @@ void __thiscall Frontend::Listener(
             std::cout << "Waiting for data" << std::endl;
             fflush(stdout);
             std::vector<Byte> stlResponseBuffer = ::GetTlsTransaction(m_stlConnectionMap[strVMID].get(), 0);
+            _ThrowBaseExceptionIf((0 == stlResponseBuffer.size()), "No data received.", nullptr);
+
             StructuredBuffer oResponse(stlResponseBuffer);
             JobStatusSignals eStatusSignalType = (JobStatusSignals)oResponse.GetByte("SignalType");
 
@@ -228,6 +230,8 @@ void __thiscall Frontend::SetFrontend(
             //    _ThrowBaseException("No response for connectVM request", nullptr);
 
             auto stlResponse = GetTlsTransaction(poSocket, 0);
+            _ThrowBaseExceptionIf((0 == stlResponse.size()), "No data received.", nullptr);
+
             StructuredBuffer oResponse(stlResponse);
             strVMID = oResponse.GetString("VirtualMachineUuid");
 

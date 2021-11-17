@@ -147,8 +147,10 @@ void __thiscall CommunicationPortal::HandleConnection(
     {
         std::vector<std::thread> stlListOfThreads;
         std::cout << "New Connection.. Waiting for data" << std::endl;
-        StructuredBuffer oStructuredBufferNewRequest(::GetTlsTransaction(c_poTlsNode, 0));
+        auto stlPacket = ::GetTlsTransaction(c_poTlsNode, 0);
+        _ThrowBaseExceptionIf((0 == stlPacket.size()), "Empty Packet", nullptr);
 
+        StructuredBuffer oStructuredBufferNewRequest(stlPacket);
         // If the connection was established with the JobEngine it will be a persistant connection,
         // otherwise it will be a single transaction function.
         std::string strEndPoint = oStructuredBufferNewRequest.GetString("EndPoint");

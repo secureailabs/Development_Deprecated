@@ -53,6 +53,7 @@ std::vector<Byte> __stdcall GetTlsTransaction(
         }
 
         bool fIsEndOfHeader = false;
+        bool fReadTimedout = false;
         std::vector<Byte> stlHeaderData;
         do
         {
@@ -70,67 +71,70 @@ std::vector<Byte> __stdcall GetTlsTransaction(
             }
             else if (false == fIsBlocking)
             {
-                _ThrowBaseException("Tls read timed out.", nullptr);
+                fReadTimedout = true;
             }
         }
-        while (false == fIsEndOfHeader);
+        while ((false == fIsEndOfHeader) && (false == fReadTimedout));
 
-        // The same function call to GetTlsTransaction will take care of both HTTP and
-        // StructuredBuffer packets. In both the cases the body of the message is a byte buffer
-        // SSB = 'Serialized Structured Buffer'
-        if ("SSB PROTOCOL\r\n\r\n" == std::string(stlHeaderData.begin(), stlHeaderData.end()))
+        if (false == fReadTimedout)
         {
-            std::vector<Byte> stlTemporaryBuffer;
-
-            stlTemporaryBuffer = poTlsNode->Read(sizeof(Qword), 1000);
-            _ThrowBaseExceptionIf((sizeof(Qword) != stlTemporaryBuffer.size()), "Failed to read data from the Tls tunnel", nullptr);
-            Qword qwHeadMarker = *((Qword *) stlTemporaryBuffer.data());
-            _ThrowBaseExceptionIf((0xFFEEDDCCBBAA0099 != qwHeadMarker), "Invalid head marker encountered.", nullptr);
-
-            // The timout here is again set to unMillisecondTimeout as the size of the data packet could be huge
-            stlTemporaryBuffer = poTlsNode->Read(sizeof(unsigned int), 1000);
-            _ThrowBaseExceptionIf((sizeof(unsigned int) != stlTemporaryBuffer.size()), "Failed to read data from the Tls tunnel", nullptr);
-
-            unsigned int unSizeInBytesOfSerializedTransactionBuffer = *((unsigned int *) stlTemporaryBuffer.data());
-            _ThrowBaseExceptionIf((0 == unSizeInBytesOfSerializedTransactionBuffer), "There is no such thing as a zero(0) byte serialized structured buffer.", nullptr);
-            do
+            // The same function call to GetTlsTransaction will take care of both HTTP and
+            // StructuredBuffer packets. In both the cases the body of the message is a byte buffer
+            // SSB = 'Serialized Structured Buffer'
+            if ("SSB PROTOCOL\r\n\r\n" == std::string(stlHeaderData.begin(), stlHeaderData.end()))
             {
-                // Don't worry about reading things in chunks and caching it since the TlsNode
-                // object does it for us!!!
-                stlSerializedTransactionBuffer = poTlsNode->Read(unSizeInBytesOfSerializedTransactionBuffer, unMillisecondTimeout);
-                _ThrowBaseExceptionIf(((0 != stlSerializedTransactionBuffer.size())&&(unSizeInBytesOfSerializedTransactionBuffer != stlSerializedTransactionBuffer.size())), "Failed to read data from the Tls tunnel", nullptr);
-            }
-            while (unSizeInBytesOfSerializedTransactionBuffer != stlSerializedTransactionBuffer.size());
+                std::vector<Byte> stlTemporaryBuffer;
 
-            stlTemporaryBuffer = poTlsNode->Read(sizeof(Qword), 1000);
-            _ThrowBaseExceptionIf((0 == stlTemporaryBuffer.size()), "Failed to read data from the Tls tunnel", nullptr);
-            Qword qwTailMarker = *((Qword *) stlTemporaryBuffer.data());
-            _ThrowBaseExceptionIf((0x0123456789ABCDEF != qwTailMarker), "Invalid marker encountered.", nullptr);
-        }
-        else
-        {
-            // Get the length of the data from the header by reading each line of the header
-            std::string strPayLoadHeader(stlHeaderData.begin(), stlHeaderData.end());
-            std::istringstream oStringStream(strPayLoadHeader);
-            std::string strTempLine;
-            std::string strLineWithKey;
-            while (std::getline(oStringStream, strTempLine))
-            {
-                if (strTempLine.find("Content-Length") != std::string::npos)
+                stlTemporaryBuffer = poTlsNode->Read(sizeof(Qword), 1000);
+                _ThrowBaseExceptionIf((sizeof(Qword) != stlTemporaryBuffer.size()), "Failed to read data from the Tls tunnel", nullptr);
+                Qword qwHeadMarker = *((Qword *) stlTemporaryBuffer.data());
+                _ThrowBaseExceptionIf((0xFFEEDDCCBBAA0099 != qwHeadMarker), "Invalid head marker encountered.", nullptr);
+
+                // The timout here is again set to unMillisecondTimeout as the size of the data packet could be huge
+                stlTemporaryBuffer = poTlsNode->Read(sizeof(unsigned int), 1000);
+                _ThrowBaseExceptionIf((sizeof(unsigned int) != stlTemporaryBuffer.size()), "Failed to read data from the Tls tunnel", nullptr);
+
+                unsigned int unSizeInBytesOfSerializedTransactionBuffer = *((unsigned int *) stlTemporaryBuffer.data());
+                _ThrowBaseExceptionIf((0 == unSizeInBytesOfSerializedTransactionBuffer), "There is no such thing as a zero(0) byte serialized structured buffer.", nullptr);
+                do
                 {
-                    strLineWithKey = strTempLine;
-                    break;
+                    // Don't worry about reading things in chunks and caching it since the TlsNode
+                    // object does it for us!!!
+                    stlSerializedTransactionBuffer = poTlsNode->Read(unSizeInBytesOfSerializedTransactionBuffer, unMillisecondTimeout);
+                    _ThrowBaseExceptionIf(((0 != stlSerializedTransactionBuffer.size())&&(unSizeInBytesOfSerializedTransactionBuffer != stlSerializedTransactionBuffer.size())), "Failed to read data from the Tls tunnel", nullptr);
                 }
-            }
-            std::string strStartOfValue = strLineWithKey.substr(strLineWithKey.find(": ")+2);
-            unsigned int unSizeOfPayload = std::stoi(strStartOfValue.c_str());
-            std::cout << "Content length " << unSizeOfPayload << std::endl;
+                while (unSizeInBytesOfSerializedTransactionBuffer != stlSerializedTransactionBuffer.size());
 
-            // Read the data as the content lenght is now known
-            std::vector<Byte> stlFileToDownload = poTlsNode->Read(unSizeOfPayload, unMillisecondTimeout);
-            _ThrowBaseExceptionIf((unSizeOfPayload != stlFileToDownload.size()), "Read over Tls failed. Timeout", nullptr);
-            stlFileToDownload.push_back(0);
-            stlSerializedTransactionBuffer = JsonValue::ParseDataToStructuredBuffer((char *)stlFileToDownload.data());
+                stlTemporaryBuffer = poTlsNode->Read(sizeof(Qword), 1000);
+                _ThrowBaseExceptionIf((0 == stlTemporaryBuffer.size()), "Failed to read data from the Tls tunnel", nullptr);
+                Qword qwTailMarker = *((Qword *) stlTemporaryBuffer.data());
+                _ThrowBaseExceptionIf((0x0123456789ABCDEF != qwTailMarker), "Invalid marker encountered.", nullptr);
+            }
+            else
+            {
+                // Get the length of the data from the header by reading each line of the header
+                std::string strPayLoadHeader(stlHeaderData.begin(), stlHeaderData.end());
+                std::istringstream oStringStream(strPayLoadHeader);
+                std::string strTempLine;
+                std::string strLineWithKey;
+                while (std::getline(oStringStream, strTempLine))
+                {
+                    if (strTempLine.find("Content-Length") != std::string::npos)
+                    {
+                        strLineWithKey = strTempLine;
+                        break;
+                    }
+                }
+                std::string strStartOfValue = strLineWithKey.substr(strLineWithKey.find(": ")+2);
+                unsigned int unSizeOfPayload = std::stoi(strStartOfValue.c_str());
+                std::cout << "Content length " << unSizeOfPayload << std::endl;
+
+                // Read the data as the content lenght is now known
+                std::vector<Byte> stlFileToDownload = poTlsNode->Read(unSizeOfPayload, unMillisecondTimeout);
+                _ThrowBaseExceptionIf((unSizeOfPayload != stlFileToDownload.size()), "Read over Tls failed. Timeout", nullptr);
+                stlFileToDownload.push_back(0);
+                stlSerializedTransactionBuffer = JsonValue::ParseDataToStructuredBuffer((char *)stlFileToDownload.data());
+            }
         }
     }
     catch(BaseException oBaseException)

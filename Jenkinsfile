@@ -26,7 +26,6 @@ pipeline {
                     docker exec -w /Development/ ubuntu_dev_CI pwd
                     docker exec -w /Development/ ubuntu_dev_CI ls -l
                     docker exec -w /Development/ ubuntu_dev_CI git pull
-                    docker exec -w /Workspace/ ubuntu_dev_CI git pull
                     docker exec -w /Workspace/Milestone3/ ubuntu_dev_CI rm -rf Binary/
                     docker exec -w /Workspace/Milestone5/ ubuntu_dev_CI rm -rf Binary/
                     docker exec -w /Development/Milestone3/ ubuntu_dev_CI sudo mongod --port 27017 --dbpath /srv/mongodb/db0 --replSet rs0 --bind_ip localhost --fork --logpath /var/log/mongod.log

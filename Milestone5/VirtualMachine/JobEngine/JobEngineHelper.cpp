@@ -137,7 +137,7 @@ std::string DataConnectorGetTable(
     // TODO: use StrucutredBuffer instead of pickle
     // After the data is received as a csv string, it is pickeled and put in a file
     ::WriteStringAsFile(strTableUuid + ".string", strResponse);
-    std::string strPythonCmdToExec = "python3 -c \"import pickle\nimport pandas as pd\ndf = pd.read_csv('" + strTableUuid + ".string', sep='\\x1f')\nOutputFileHandler = open('" + strTableUuid + "','wb')\npickle.dump(df, OutputFileHandler)\nOutputFileHandler.close()\"";
+    std::string strPythonCmdToExec = "python3 -c \"import pickle\nstrTable = open('" + strTableUuid + ".string', 'rb').read()\nOutputFileHandler = open('" + strTableUuid + "','wb')\npickle.dump(strTable, OutputFileHandler)\nOutputFileHandler.close()\"";
     ::system(strPythonCmdToExec.c_str());
 
     // Delete the temporary strings file

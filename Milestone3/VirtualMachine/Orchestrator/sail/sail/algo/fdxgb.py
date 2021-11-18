@@ -201,14 +201,10 @@ class fdxgb(BaseEstimator):
         print("all_counters has len {0}".format(len(all_counters[0])))
         print(len(all_counters[0][0].keys()))
 
-
-        jobid = newguid()
-        jobids.append(jobid)
-        data_id = pushdata(self.vms[0], [all_hashes, all_counters])
-        setparameter(self.vms[0], jobid, self.fns['handlehash_p'], [data_id[0], data_id[1], X[i]])
-        submitjob(self.vms[0], self.fns['handlehash_p'], jobid)
-        pulldata(self.vms[0], jobid, self.fns['handlehash_p'])
-        result = queryresult(jobid, self.fns['handlehash_p'])
+        with open("all_hashes.pkl", 'wb') as f:
+            pickle.dump(all_hashes, f)
+        with open("all_counters.pkl", 'wb') as f:
+            pickle.dump(all_counters, f)
         
         hash_tables = []
         for m in range(len(self.vms)):
@@ -359,6 +355,16 @@ class fdxgb(BaseEstimator):
         L = min(40, self.feature_num-1)
         self.gen_hashfn(self.feature_num, self.hash_r, L, self.hash_mu, self.hash_sigma)
         self.gen_hashtables(X)
+        self.model = self.init_model()
+        model = self.train(self.model, X, y)
+        return model
+    
+    def fit_withhash(self, X, y):
+        #L = min(40, self.feature_num-1)
+        #self.gen_hashfn(self.feature_num, self.hash_r, L, self.hash_mu, self.hash_sigma)
+        #self.gen_hashtables(X)
+        with open("hash_table.pkl", "rb") as f:
+            self.hash_tables = pickle.load(f)
         self.model = self.init_model()
         model = self.train(self.model, X, y)
         return model

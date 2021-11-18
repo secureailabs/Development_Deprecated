@@ -155,6 +155,16 @@ class RemoteDataFrame:
         pulldata(self.vm, jobid, self.fns['rdf_reset_index'])
         result = queryresult(jobid, self.fns['rdf_reset_index'])
         return result[0]
+    
+    def label_encode(self, cate_labels):
+        jobid = newguid()
+        inputs = pushdata(self.vm, [cate_labels])
+        inputs.append(self.data_id)
+        setparameter(self.vm, jobid, self.fns['rdf_label_encode'], inputs)
+        submitjob(self.vm, self.fns['rdf_label_encode'], jobid)
+        pulldata(self.vm, jobid, self.fns['rdf_label_encode'])
+        result = queryresult(jobid, self.fns['rdf_label_encode'])
+        return result[0]
 
 class _Loc:
     def __init__(self, vm, data_id, fns):

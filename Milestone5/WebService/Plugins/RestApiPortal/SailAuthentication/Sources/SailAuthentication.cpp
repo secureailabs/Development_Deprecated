@@ -9,6 +9,7 @@
  ********************************************************************************************/
 
 #include "CryptoUtils.h"
+#include "RequestHelpers.h"
 #include "SailAuthentication.h"
 #include "SocketClient.h"
 #include "IpcTransactionHelperFunctions.h"
@@ -238,7 +239,9 @@ void __thiscall SailAuthentication::TerminateSignalEncountered(void)
  *
  ********************************************************************************************/
 
-void __thiscall SailAuthentication::InitializePlugin(void)
+void __thiscall SailAuthentication::InitializePlugin(
+    _in const StructuredBuffer& oInitializationVectors
+    )
 {
     __DebugFunction();
 
@@ -278,6 +281,9 @@ void __thiscall SailAuthentication::InitializePlugin(void)
     StructuredBuffer oShutdownPortal;
     oShutdownPortal.PutStructuredBuffer("Eosb", oEosb);
 
+    StructuredBuffer oCheckEosb;
+    oCheckEosb.PutStructuredBuffer("Eosb", oEosb);
+
     // Add parameters for UpdatePassword resource
     StructuredBuffer oUpdatePassword;
     oUpdatePassword.PutStructuredBuffer("Eosb", oEosb);
@@ -302,6 +308,13 @@ void __thiscall SailAuthentication::InitializePlugin(void)
 
     // Reset the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/AuthenticationManager/Admin/ResetDatabase", 0);
+
+    m_oDictionary.AddDictionaryEntry("GET", "/SAIL/AuthenticationManager/CheckEosb", oCheckEosb, 0);
+
+    // Store our database service IP information
+    m_strDatabaseServiceIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
+    m_unDatabaseServiceIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
+
 }
 
 /********************************************************************************************
@@ -352,6 +365,10 @@ uint64_t __thiscall SailAuthentication::SubmitRequest(
         else if ("/SAIL/AuthenticationManager/RemoteAttestationCertificate" == strResource)
         {
             stlResponseBuffer = this->GetRemoteAttestationCertificate(c_oRequestStructuredBuffer);
+        }
+        else if ("/SAIL/AuthenticationManager/CheckEosb" == strResource)
+        {
+            stlResponseBuffer = this->CheckEosb(c_oRequestStructuredBuffer);
         }
     }
     else if ("PATCH" == strVerb)
@@ -627,7 +644,7 @@ std::vector<Byte> __thiscall SailAuthentication::UpdatePassword(
             _ThrowBaseExceptionIf((404 == oAuthenticateCredentialsResponse.GetDword("Status")), "Current credentials are invalid.", nullptr);
 
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
             // Create a request to add a user to the database
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -853,7 +870,7 @@ std::vector<Byte> __thiscall SailAuthentication::ShutdownPortal(
     try 
     {
         // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
         // Shutdown the DatabaseGateway
         StructuredBuffer oRequest;
         oRequest.PutString("PluginName", "DatabaseManager");
@@ -920,7 +937,7 @@ std::vector<Byte> __thiscall SailAuthentication::ResetDatabase(
     try 
     {
         // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
         // Reset the database
         StructuredBuffer oRequest;
         oRequest.PutString("PluginName", "DatabaseManager");
@@ -964,6 +981,57 @@ std::vector<Byte> __thiscall SailAuthentication::ResetDatabase(
     if (nullptr != poTlsNode)
     {
         poTlsNode->Release();
+    }
+
+    oResponse.PutDword("Status", dwStatus);
+
+    return oResponse.GetSerializedBuffer();
+}
+
+/********************************************************************************************
+ *
+ * @class SailAuthentication
+ * @function CheckEosb
+ * @brief Checks the validity of an EOSB 
+ * @param[in] c_oRequest contains the request body
+ * @returns A serialized structured buffer with the response.
+ *      Status 200 if the EOSB is valid,
+ *      Status 401 if the EOSB is invalid
+ * 
+ ********************************************************************************************/
+std::vector<Byte> __thiscall SailAuthentication::CheckEosb(
+    _in const StructuredBuffer & c_oRequest
+    )
+{
+
+    StructuredBuffer oResponse;
+    Dword dwStatus = 401;
+    try
+    {
+        StructuredBuffer oUserInfo = ::GetUserInfoFromEosb(c_oRequest);
+        if ( 200 == oUserInfo.GetDword("Status") )
+        {
+            dwStatus = 200;
+            if ( c_oRequest.GetBuffer("Eosb") != oUserInfo.GetBuffer("Eosb") )
+            {
+                oResponse.PutBuffer("Eosb", oUserInfo.GetBuffer("Eosb"));
+            }
+        }
+    }
+    catch (BaseException oException)
+    {
+        ::RegisterException(oException, __func__, __FILE__, __LINE__);;
+        oResponse.Clear();
+        // Add status if it was a dead packet
+        if (strcmp("Dead Packet.",oException.GetExceptionMessage()) == 0)
+        {
+            dwStatus = 408;
+        }
+    }
+    catch (...)
+    {
+        ::RegisterUnknownException(__func__, __FILE__, __LINE__);
+        oResponse.Clear();
     }
 
     oResponse.PutDword("Status", dwStatus);

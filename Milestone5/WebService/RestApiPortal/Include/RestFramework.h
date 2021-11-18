@@ -48,7 +48,8 @@ class RestFramework : public Object
         RestFramework(
             _in Word wPortNumber,
             // _in CryptographicTrustStore & oCryptographicTrustStore,
-            _in const std::string & c_strPluginFolderPath
+            _in const std::string & c_strPluginFolderPath,
+            _in const StructuredBuffer & c_oPluginInitializationVectors
             );
         RestFramework (
             _in const char * c_szUnixSocketAddress,
@@ -85,4 +86,5 @@ class RestFramework : public Object
         std::vector<void *> m_stlPluginHandles;
         TlsServer * m_poTlsServer;
         PluginDictionaryManager * m_poDictionaryManager;
+        StructuredBuffer m_oPluginInitializationVectors;
 };

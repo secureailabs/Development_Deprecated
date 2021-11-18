@@ -46,7 +46,10 @@ static std::vector<Byte> __stdcall WaitForInitializationParameters(void)
     TlsNode * poTlsNode = oTlsServer.Accept();
     _ThrowBaseExceptionIf((nullptr == poTlsNode), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
 
-    StructuredBuffer oBackendInitializationParameters(::GetTlsTransaction(poTlsNode, 60*10*1000));
+    auto stlInitializationParameters = ::GetTlsTransaction(poTlsNode, 60*10*1000);
+    _ThrowBaseExceptionIf((0 == stlInitializationParameters.size()), "Unexpected empty initialization parameters", nullptr);
+
+    StructuredBuffer oBackendInitializationParameters(stlInitializationParameters);
     oAllInitializationParameters.PutString("NameOfVirtualMachine", oBackendInitializationParameters.GetString("NameOfVirtualMachine"));
     oAllInitializationParameters.PutString("IpAddressOfVirtualMachine", oBackendInitializationParameters.GetString("IpAddressOfVirtualMachine"));
     oAllInitializationParameters.PutString("VirtualMachineIdentifier", oBackendInitializationParameters.GetString("VirtualMachineIdentifier"));
@@ -81,7 +84,10 @@ static std::vector<Byte> __stdcall WaitForInitializationParameters(void)
     poTlsNode = oTlsServer.Accept();
     _ThrowBaseExceptionIf((nullptr == poTlsNode), "Unexpected nullptr returned from TlsServer.Accept()", nullptr);
 
-    StructuredBuffer oRemoteDatasetParameters(::GetTlsTransaction(poTlsNode, 60*60*1000));
+    auto stlDatasetParameters = ::GetTlsTransaction(poTlsNode, 60*60*1000);
+    _ThrowBaseExceptionIf((0 == stlDatasetParameters.size()), "Unexpected empty dataset parameters", nullptr);
+
+    StructuredBuffer oRemoteDatasetParameters(stlDatasetParameters);
     oAllInitializationParameters.PutString("DataOwnerAccessToken", ::UnEscapeJsonString(oRemoteDatasetParameters.GetString("DataOwnerAccessToken").c_str()));
     oAllInitializationParameters.PutString("SailWebApiPortalIpAddress", oRemoteDatasetParameters.GetString("SailWebApiPortalIpAddress"));
     oAllInitializationParameters.PutString("DataOwnerUserIdentifier", oRemoteDatasetParameters.GetString("DataOwnerUserIdentifier"));

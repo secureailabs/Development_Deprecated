@@ -237,7 +237,9 @@ void __thiscall DatasetDatabase::TerminateSignalEncountered(void)
  *
  ********************************************************************************************/
 
-void __thiscall DatasetDatabase::InitializePlugin(void)
+void __thiscall DatasetDatabase::InitializePlugin(
+    _in const StructuredBuffer& oInitializationVectors
+    )
 {
     __DebugFunction();
 
@@ -310,6 +312,10 @@ void __thiscall DatasetDatabase::InitializePlugin(void)
 
     // Deletes a dataset record from the database
     m_oDictionary.AddDictionaryEntry("DELETE", "/SAIL/DatasetManager/DeleteDataset", oDeleteDataset, 1);
+
+    // Store our database service IP information
+    m_strDatabaseServiceIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
+    m_unDatabaseServiceIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
 }
 
 /********************************************************************************************
@@ -526,7 +532,7 @@ std::vector<Byte> __thiscall DatasetDatabase::GetListOfAvailableDatasets(
         if (200 == oUserInfo.GetDword("Status"))
         {
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
             // Create a request to list of all datasets
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -610,7 +616,7 @@ std::vector<Byte> __thiscall DatasetDatabase::PullDataset(
         if (200 == oUserInfo.GetDword("Status"))
         {
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
             // Create a request to get metadata of the dataset
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -696,7 +702,7 @@ std::vector<Byte> __thiscall DatasetDatabase::RegisterDataset(
         {
             // TODO: Verify that the user is a "DatasetAdmin"
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
             // Create a request to add dataset metadata to the database
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -786,7 +792,7 @@ std::vector<Byte> __thiscall DatasetDatabase::DeleteDataset(
             if (AccessRights::eDatasetAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Make a Tls connection with the database portal
-                poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+                poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
                 // Create a request to delete the dataset
                 StructuredBuffer oRequest;
                 oRequest.PutString("PluginName", "DatabaseManager");

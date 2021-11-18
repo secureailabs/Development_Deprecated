@@ -366,7 +366,7 @@ void __thiscall AuditLogManager::TerminateSignalEncountered(void)
  *
  ********************************************************************************************/
 
-void __thiscall AuditLogManager::InitializePlugin(void)
+void __thiscall AuditLogManager::InitializePlugin(const StructuredBuffer& oInitializationVectors)
 {
     __DebugFunction();
 
@@ -444,6 +444,10 @@ void __thiscall AuditLogManager::InitializePlugin(void)
     poIpcServerParameters->poThreadManager = poThreadManager;
     poIpcServerParameters->poIpcServer = poIpcServer;
     poThreadManager->CreateThread("AuditLogManagerPluginGroup", StartIpcServerThread, (void *) poIpcServerParameters);
+
+    // Store our database service IP information
+    m_strDatabaseServiceIpAddr = oInitializationVectors.GetString("DatabaseServerIp");
+    m_unDatabaseServiceIpPort = oInitializationVectors.GetUnsignedInt32("DatabaseServerPort");
 }
 
 /********************************************************************************************
@@ -722,7 +726,7 @@ std::vector<Byte> __thiscall AuditLogManager::AddNonLeafEvent(
     try 
     {
         // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
         // Create a request to store a non leaf event in the database
         StructuredBuffer oRequest;
         oRequest.PutString("PluginName", "DatabaseManager");
@@ -806,7 +810,7 @@ std::vector<Byte> __thiscall AuditLogManager::AddLeafEvent(
         if (200 == oUserInfo.GetDword("Status"))
         {
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
             // Create a request to store a non leaf event in the database
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -893,7 +897,7 @@ std::vector<Byte> __thiscall AuditLogManager::GetListOfEvents(
         if (200 == oUserInfo.GetDword("Status"))
         {
             // Make a Tls connection with the database portal
-            poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+            poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
             // Create a request to fetch list of events
             StructuredBuffer oRequest;
             oRequest.PutString("PluginName", "DatabaseManager");
@@ -976,7 +980,7 @@ std::vector<Byte> __thiscall AuditLogManager::DigitalContractBranchExists(
     try 
     {
         // Make a Tls connection with the database portal
-        poTlsNode = ::TlsConnectToNetworkSocket("127.0.0.1", 6500);
+        poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
         // Create a request to fetch list of events
         StructuredBuffer oRequest;
         oRequest.PutString("PluginName", "DatabaseManager");

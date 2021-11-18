@@ -63,8 +63,10 @@ extern "C" bool __thiscall RegisterPlugin(
 RestFramework::RestFramework(
     _in const Word wPortNumber,
     // _in CryptographicTrustStore & oCryptographicTrustStore,
-    _in const std::string & c_strPluginFolderPath
-    )
+    _in const std::string & c_strPluginFolderPath,
+    _in const StructuredBuffer& c_oPluginInitializationVectors
+    ) :
+    m_oPluginInitializationVectors(c_oPluginInitializationVectors)
 {
     __DebugFunction();
     __DebugAssert(0 < c_strPluginFolderPath.length());
@@ -258,6 +260,7 @@ void __thiscall RestFramework::LoadPlugins(
     void * pPluginHandle;
     char * szErrorMessage = nullptr;
 
+    std::vector<Byte> stlSerializedBuffer = m_oPluginInitializationVectors.GetSerializedBuffer();
     try
     {
         for (const auto & itrFileEntry : std::experimental::filesystem::directory_iterator(c_strPluginFolderPath))
@@ -275,7 +278,7 @@ void __thiscall RestFramework::LoadPlugins(
                 {
                     InitializePluginFn fnInitializePlugin = (InitializePluginFn) ::dlsym(pPluginHandle, "InitializePlugin");
                     _ThrowBaseExceptionIf((nullptr != (szErrorMessage = dlerror())), szErrorMessage, nullptr);
-                    fnInitializePlugin(::RegisterPlugin);
+                    fnInitializePlugin(::RegisterPlugin, stlSerializedBuffer.data(), stlSerializedBuffer.size());
                     m_stlPluginHandles.push_back(pPluginHandle);
                 }
             }

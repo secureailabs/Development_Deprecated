@@ -117,7 +117,9 @@ extern "C" bool GetResponse(
 ********************************************************************************************/
 
 extern "C" bool __stdcall InitializePlugin(
-    _in RegisterPluginFn fnRegisterPluginFn
+    _in RegisterPluginFn fnRegisterPluginFn,
+    _in Byte * pbSerializedInitParameters,
+    _in uint64_t unSerializedInitParametersBufferSizeInBytes
     )
 {
     __DebugFunction();
@@ -127,9 +129,10 @@ extern "C" bool __stdcall InitializePlugin(
 
     try
     {
+        StructuredBuffer oInitializationVectorBuffer(pbSerializedInitParameters, unSerializedInitParametersBufferSizeInBytes);
         RemoteDataConnectorManager * poRemoteDataConnectorManager = ::GetRemoteDataConnectorManager();
         __DebugAssert(nullptr != poRemoteDataConnectorManager);
-        poRemoteDataConnectorManager->InitializePlugin();
+        poRemoteDataConnectorManager->InitializePlugin(oInitializationVectorBuffer);
         std::vector<Byte> stlDictionary = poRemoteDataConnectorManager->GetDictionarySerializedBuffer();
         fSuccess = fnRegisterPluginFn(poRemoteDataConnectorManager->GetName(), poRemoteDataConnectorManager->GetUuid(), poRemoteDataConnectorManager->GetVersion(), SubmitRequest, GetResponse, stlDictionary.data(), stlDictionary.size());
     }

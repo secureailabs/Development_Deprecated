@@ -277,3 +277,15 @@ def dataInfo(digitalcontracts, backendIP):
         dataInfo.append(response.json())
     
     return dataInfo
+
+def load_dataset(vmids, string, fns):
+    jobid = newguid()
+    #push string remotely
+    inputs = pushdata(vmids[0], [])
+    #add test data to inputs
+    inputs.append(string)
+
+    setparameter(vmids[0], jobid, fns['load_dataset'], inputs)
+    submitjob(vmids[0], fns['load_dataset'], jobid)
+    pulldata(vmids[0], jobid, fns['load_dataset'])
+    return  queryresult(jobid, fns['load_dataset'])

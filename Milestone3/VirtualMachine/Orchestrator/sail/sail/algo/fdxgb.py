@@ -201,46 +201,47 @@ class fdxgb(BaseEstimator):
         print("all_counters has len {0}".format(len(all_counters[0])))
         print(len(all_counters[0][0].keys()))
 
-        with open("all_hashes.pkl", 'wb') as f:
-            pickle.dump(all_hashes, f)
-        with open("all_counters.pkl", 'wb') as f:
-            pickle.dump(all_counters, f)
+        #with open("all_hashes.pkl", 'wb') as f:
+        #    pickle.dump(all_hashes, f)
+        #with open("all_counters.pkl", 'wb') as f:
+        #    pickle.dump(all_counters, f)
         
         hash_tables = []
         for m in range(len(self.vms)):
             hash_table = np.zeros((len(all_hashes[m]),len(self.vms))) #For each party, build a hash table of dim numInstances x numParties.
-            i_arg = list(range(len(all_hashes[m])))
-            r_arg = (all_hashes, all_counters, m)
-            inp = []
-            for item in i_arg:
-                inp.append((*r_arg, item))
-            #print("original len: ", len(all_hashes[m]))
-            #print("get len: ", len(inp))
-            ans = 0
-            with Pool(8) as p:
-                ans = p.starmap(self.hash_helper, inp)
-            for a in ans:
-                for item in a:
-                    hash_table[item[0]][item[1]]=item[2]
-            # for i in range( len(all_hashes[m]) ):#Select an instance x_i in m party
-            #     #start_time = time.time()
-            #     for j in range(len(self.vms)):  #Select parties to find global instances from
-            #         if j == m:
-            #             hash_table[i][j] = i
-            #         else:
-            #             instance_hash_counts = {}
-            #             for k in range(len(all_counters[j])):   #Select instance k in other parties
-            #                 instance_hash_counts[k] = 0
-            #                 for value in all_counters[m][i].keys():  #Iterate through hash values of x_i^m
-            #                     if all_counters[j][k][value] != 0:
-            #                         instance_hash_counts[k] += min(all_counters[j][k][value], all_counters[m][i][value])
-            #             hash_table[i][j] = max(instance_hash_counts, key=instance_hash_counts.get)
-            #     #print("--- %s seconds ---" % (time.time() - start_time), flush=True)
+            # i_arg = list(range(len(all_hashes[m])))
+            # r_arg = (all_hashes, all_counters, m)
+            # inp = []
+            # for item in i_arg:
+            #     inp.append((*r_arg, item))
+            # #print("original len: ", len(all_hashes[m]))
+            # #print("get len: ", len(inp))
+            # ans = 0
+            # with Pool(8) as p:
+            #     ans = p.starmap(self.hash_helper, inp)
+            # for a in ans:
+            #     for item in a:
+            #         hash_table[item[0]][item[1]]=item[2]
+            for i in range( len(all_hashes[m]) ):#Select an instance x_i in m party
+                #start_time = time.time()
+                for j in range(len(self.vms)):  #Select parties to find global instances from
+                    if j == m:
+                        hash_table[i][j] = i
+                    else:
+                        instance_hash_counts = {}
+                        for k in range(len(all_counters[j])):   #Select instance k in other parties
+                            instance_hash_counts[k] = 0
+                            for value in all_counters[m][i].keys():  #Iterate through hash values of x_i^m
+                                if all_counters[j][k][value] != 0:
+                                    instance_hash_counts[k] += min(all_counters[j][k][value], all_counters[m][i][value])
+                        hash_table[i][j] = max(instance_hash_counts, key=instance_hash_counts.get)
+                #print("--- %s seconds ---" % (time.time() - start_time), flush=True)
             hash_tables.append(hash_table)
         
-        self.hash_tables = result[0]
-        with open('hash_table.pkl', 'wb') as f:
-            pickle.dump(self.hash_tables, f)
+        self.hash_tables = hash_tables
+        #self.hash_tables = result[0]
+        #with open('hash_table.pkl', 'wb') as f:
+        #    pickle.dump(self.hash_tables, f)
 
     def hash_helper(self, all_hashes, counters, m, i):
         ret = []
@@ -269,7 +270,7 @@ class fdxgb(BaseEstimator):
         else:    
             num_of_trees = 20
         for i in range(num_of_trees):
-            print("Tree {0}".format(i+1))
+            print("Tree {0}".format(i+1), flush=True)
             training_node = i % len(self.vms)
             local_gradients=[]
             jobids = []
@@ -352,7 +353,7 @@ class fdxgb(BaseEstimator):
         return ret
     
     def fit(self, X, y):
-        L = min(40, self.feature_num-1)
+        L = min(40, self.feature_num)
         self.gen_hashfn(self.feature_num, self.hash_r, L, self.hash_mu, self.hash_sigma)
         self.gen_hashtables(X)
         self.model = self.init_model()

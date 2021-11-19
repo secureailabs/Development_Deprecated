@@ -78,25 +78,34 @@ class Utils:
         result = queryresult(jobid, self.fns['util_train_test_splits'])
         return result
     
-    def read_csv(
-        self, filepath_or_buffer, sep=no_default, delimiter=None, header='infer', names=no_default, 
-        index_col=None, usecols=None, squeeze=False, prefix=no_default, mangle_dupe_cols=True, dtype=None, 
-        engine=None, converters=None, true_values=None, false_values=None, skipinitialspace=False, skiprows=None, 
-        skipfooter=0, nrows=None, na_values=None, keep_default_na=True, na_filter=True, verbose=False, skip_blank_lines=True, 
-        parse_dates=False, infer_datetime_format=False, keep_date_col=False, date_parser=None, dayfirst=False, cache_dates=True, 
-        iterator=False, chunksize=None, compression='infer', thousands=None, decimal='.', lineterminator=None, quotechar='"', 
-        quoting=0, doublequote=True, escapechar=None, comment=None, encoding=None, encoding_errors='strict', dialect=None, 
-        error_bad_lines=None, warn_bad_lines=None, on_bad_lines=None, delim_whitespace=False, low_memory=True, memory_map=False, 
-        float_precision=None, storage_options=None
-    ):
+    # def read_csv(
+    #     self, filepath_or_buffer, sep=no_default, delimiter=None, header='infer', names=no_default, 
+    #     index_col=None, usecols=None, squeeze=False, prefix=no_default, mangle_dupe_cols=True, dtype=None, 
+    #     engine=None, converters=None, true_values=None, false_values=None, skipinitialspace=False, skiprows=None, 
+    #     skipfooter=0, nrows=None, na_values=None, keep_default_na=True, na_filter=True, verbose=False, skip_blank_lines=True, 
+    #     parse_dates=False, infer_datetime_format=False, keep_date_col=False, date_parser=None, dayfirst=False, cache_dates=True, 
+    #     iterator=False, chunksize=None, compression='infer', thousands=None, decimal='.', lineterminator=None, quotechar='"', 
+    #     quoting=0, doublequote=True, escapechar=None, comment=None, encoding=None, encoding_errors='strict', dialect=None, 
+    #     error_bad_lines=None, warn_bad_lines=None, on_bad_lines=None, delim_whitespace=False, low_memory=True, memory_map=False, 
+    #     float_precision=None, storage_options=None
+    # ):
+    #     jobid = newguid()
+    #     inputs = pushdata(self.vm, [sep, delimiter, header, names, index_col, usecols, squeeze, prefix, mangle_dupe_cols, dtype,
+    #                       engine, converters, true_values, false_values, skipinitialspace, skiprows, skipfooter, nrows, na_values,
+    #                       keep_default_na, na_filter, verbose, skip_blank_lines, parse_dates, infer_datetime_format, keep_date_col, date_parser,
+    #                       dayfirst, cache_dates, iterator, chunksize, compression, thousands, decimal, lineterminator, quotechar,
+    #                       quoting, doublequote, escapechar, comment, encoding, encoding_errors, dialect, error_bad_lines,
+    #                       warn_bad_lines, on_bad_lines, delim_whitespace, low_memory, memory_map, float_precision, storage_options])
+    #     inputs.append(filepath_or_buffer)
+    #     setparameter(self.vm, jobid, self.fns['util_read_csv'], inputs)
+    #     submitjob(self.vm, self.fns['util_read_csv'], jobid)
+    #     pulldata(self.vm, jobid, self.fns['util_read_csv'])
+    #     result = queryresult(jobid, self.fns['util_read_csv'])
+    #     return result[0]
+
+    def read_csv(self, file):
         jobid = newguid()
-        inputs = pushdata(self.vm, [sep, delimiter, header, names, index_col, usecols, squeeze, prefix, mangle_dupe_cols, dtype,
-                          engine, converters, true_values, false_values, skipinitialspace, skiprows, skipfooter, nrows, na_values,
-                          keep_default_na, na_filter, verbose, skip_blank_lines, parse_dates, infer_datetime_format, keep_date_col, date_parser,
-                          dayfirst, cache_dates, iterator, chunksize, compression, thousands, decimal, lineterminator, quotechar,
-                          quoting, doublequote, escapechar, comment, encoding, encoding_errors, dialect, error_bad_lines,
-                          warn_bad_lines, on_bad_lines, delim_whitespace, low_memory, memory_map, float_precision, storage_options])
-        inputs.append(filepath_or_buffer)
+        inputs = [file]
         setparameter(self.vm, jobid, self.fns['util_read_csv'], inputs)
         submitjob(self.vm, self.fns['util_read_csv'], jobid)
         pulldata(self.vm, jobid, self.fns['util_read_csv'])

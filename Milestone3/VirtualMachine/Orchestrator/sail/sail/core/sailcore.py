@@ -6,8 +6,8 @@ from concurrent.futures import ThreadPoolExecutor
 def connect(serverIP, port):
     return SAILPyAPI.connect(serverIP, port)
 
-def login(email, password):
-    return SAILPyAPI.login(email,password)
+def login(email, password, port, IP):
+    return SAILPyAPI.login(email,password, port, IP)
 
 def newguid():
     return SAILPyAPI.createguid()
@@ -121,7 +121,6 @@ def get_fns():
         'getattr':'9C4019584DB04B1A9BF05EC91836BCB0',
         'setitem':'A04E4CC9E3BC4A7B9AFAB6CB3E040FAC',
         'iter':'CC8B5A66C10F47A1A977E2BE2B522768',
-        'load_dataset':'D89B7F80F32D4203A147D63B862CB0F8',
         'next':'6D48AC3C3245411992E65E5FF5B90DDB',
         'rdf_describe':'18F2566E7FF34D77A7DE668DD220CEFD',
         'rdf_drop':'9A04D50B403C4716A79CABEF1F90D832',
@@ -164,7 +163,7 @@ def get_fns():
         'util_ravel':'43B37087962644229B53B0D7C3A1E386',
         'util_where':'98F83AA9DC3249B983A4262BE0BCEB55',
         'util_train_test_split':'AF83E839A5514B178951B205F5CCB6E5',
-        'util_read_csv':'419C81897AF0427E9F1D580C019AE1CC'
+        'util_read_csv':'CB11C63410C346A5BF2633621F85356B'
     }
     return fnsdict
 
@@ -173,7 +172,7 @@ def VMSetup(contractdict, backendIP, soPath):
     registersafeobj(soPath)
     print("[P]safe objects registered", flush=True)
 
-    eosb = login("jingwei@kpmg.com", "-OJBFE2qw-OJBFE2qw")
+    eosb = login("jingwei@kpmg.com", "-OJBFE2qw-OJBFE2qw", 6200, backendIP)
     print("[P]login success", flush=True)
 
     #url = "https://40.76.22.246:6200/SAIL/VirtualMachineManager/GetRunningVMsIpAdresses?Eosb="+eosb

@@ -163,7 +163,7 @@ def get_fns():
         'util_ravel':'43B37087962644229B53B0D7C3A1E386',
         'util_where':'98F83AA9DC3249B983A4262BE0BCEB55',
         'util_train_test_split':'AF83E839A5514B178951B205F5CCB6E5',
-        'util_read_csv':'CB11C63410C346A5BF2633621F85356B'
+        'util_read_csv':'E764BBFDB1C44271837A1384CD40AD94'
     }
     return fnsdict
 

@@ -193,7 +193,22 @@ std::vector<Byte> __thiscall DatabaseManager::ListDatasetFamilies(
                             if (oObjectBlob && oObjectBlob.type() == type::k_binary)
                             {
                                 StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size);
-                                oListOfDatasetFamilies.PutString(strDatasetFamilyGuid.c_str(), oObject.GetString("DatasetFamilyTitle"));
+                                StructuredBuffer oDatasetFamilyInformation;
+                                StructuredBuffer oOrganizationName = this->GetOrganizationName(oObject.GetString("DatasetFamilyOwnerGuid"));
+                                oDatasetFamilyInformation.PutString("DatasetFamilyTitle", oObject.GetString("DatasetFamilyTitle"));
+                                oDatasetFamilyInformation.PutString("DatasetFamilyOwnerGuid", oObject.GetString("DatasetFamilyOwnerGuid"));
+                                oDatasetFamilyInformation.PutString("DatasetFamilyTags", oObject.GetString("DatasetFamilyTags"));
+                                oDatasetFamilyInformation.PutBoolean("DatasetFamilyActive", oObject.GetBoolean("DatasetFamilyActive"));
+                                if ( 200 == oOrganizationName.GetDword("Status") )
+                                {
+                                    oDatasetFamilyInformation.PutString("OrganizationName", oOrganizationName.GetString("OrganizationName"));
+                                }
+                                else
+                                {
+                                    oDatasetFamilyInformation.PutString("OrganizationName", "");
+                                }
+
+                                oListOfDatasetFamilies.PutStructuredBuffer(strDatasetFamilyGuid.c_str(), oDatasetFamilyInformation);
                             }
                         }
                     }

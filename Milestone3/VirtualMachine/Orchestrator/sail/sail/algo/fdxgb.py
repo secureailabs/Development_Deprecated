@@ -29,7 +29,7 @@ class fdxgb(BaseEstimator):
         fndict['preprocessv4_2'] = "893E758F11B2423AB179999B51125A4C"
         fndict['preprocessv5_1']="329C27E4CAE445F18EE96A3E5E6A44E6"
         fndict['preprocessv5_2']="F3CF073412AA4CC09B969EAA489E3C7F"
-        fndict['preprocessv6']="CF6D56F44BC74769B0E99D993EE0D1B6"
+        fndict['preprocessv6']="CC41134F677D40EF88E6C34ED134E787"
         fndict['handlehash'] = "B804C0767CCB4B01A6BAF5A2F782BD31"
         fndict['train_init'] = "D708DABA545346409FB835560140E882"
         fndict['train_update'] = "BE9644CBB2DC4FCD9FD2AF1733550A7E"
@@ -201,10 +201,10 @@ class fdxgb(BaseEstimator):
         print("all_counters has len {0}".format(len(all_counters[0])))
         print(len(all_counters[0][0].keys()))
 
-        #with open("all_hashes.pkl", 'wb') as f:
-        #    pickle.dump(all_hashes, f)
-        #with open("all_counters.pkl", 'wb') as f:
-        #    pickle.dump(all_counters, f)
+        with open("all_hashes.pkl", 'wb') as f:
+           pickle.dump(all_hashes, f)
+        with open("all_counters.pkl", 'wb') as f:
+           pickle.dump(all_counters, f)
         
         hash_tables = []
         for m in range(len(self.vms)):

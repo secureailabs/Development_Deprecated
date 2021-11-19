@@ -38,21 +38,21 @@ if "Membership" in payment_df.columns:
     payment_df.rename(columns={'Membership': 'Medlemskab'}, inplace=True)
 print("4444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444444", flush=True)
 
-if "DontKnow" in payment_df.columns:
-    payment_df = payment_df.drop(["Dontknow"], axis = 1)
-print("5555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555", flush=True)
+#if "DontKnow" in payment_df.columns:
+#    payment_df = payment_df.drop(["Dontknow"], axis = 1)
+#print("5555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555", flush=True)
 
-if payment_df["Donation"].dtype!=bool:
-    payment_df.loc[payment_df["Product"]!='True', "Product"]=False
-    payment_df["Donation"] = payment_df["Donation"].astype(bool)
+#if payment_df["Donation"].dtype!=bool:
+#    payment_df.loc[payment_df["Product"]!='True', "Product"]=False
+#    payment_df["Donation"] = payment_df["Donation"].astype(bool)
 
 if payment_df["Product"].dtype!=bool:
     payment_df.loc[payment_df["Product"]!='True', "Product"]=False
     payment_df["Product"]=payment_df["Product"].astype(bool)
 
-if payment_df["Medlemskab"].dtype!=bool:
-    payment_df.loc[payment_df["Product"]!='True', "Product"]=False
-    payment_df["Medlemskab"]=payment_df["Medlemskab"].astype(bool)
+#if payment_df["Medlemskab"].dtype!=bool:
+#    payment_df.loc[payment_df["Product"]!='True', "Product"]=False
+#    payment_df["Medlemskab"]=payment_df["Medlemskab"].astype(bool)
 
 # In[10]:
 payment_cols = ["PaymentGUID", "PaymentID", "ContactGUID", "AgreementGUID", "AgreementtypeGUID", "PaymentMethod",
@@ -76,7 +76,7 @@ payment_df = payment_df.drop(["PaymentID", "AgreementtypeGUID", "PaymentMethodNa
 # ### Data Merging
 
 # In[13]:
-contact_df = contact_df.drop_duplicates()
+#contact_df = contact_df.drop_duplicates()
 
 merged_df = payment_df.merge(agreement_df, on="AgreementGUID", how="left")
 merged_df = merged_df.merge(contact_df, on="ContactGUID", how = "left")

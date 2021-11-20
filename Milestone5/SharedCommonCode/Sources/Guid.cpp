@@ -67,26 +67,40 @@ Guid::Guid(void)
  * @param[in] bObjectType Byte representation of an object type
  * @throw bad_alloc If there isn't enough memory left to allocate the internal GUID/UUID buffer
  * @par
- *    The Guid() constructor accepts the following object types:
- *    (1) 0000 --> Organizatiom
- *    (2) 0001 --> User
- *    (3) 0010 --> Cryptographic Key
- *    (4) 0011 --> Digital Contract
- *    (5) 0100 --> Dataset
- *    (6) 0101 --> Function Node
- *    (7) 0110 --> Virtual Machine
- *    (8) 0111 --> Audit Event (Branch Node)
- *    (9) 1000 --> Audit Event (Encrypted Leaf Node)
- *    (10) 10001 --> Audit Evet (Plain-text Leaf Node)
- *    (11) 10010 --> Azure settings template
- *    (12) 10011 --> Remote data connector
- *    (13) 10100 --> Dataset family
- *    (2) 1111 --> Others
- *
+ *		eUndefined = 0x00,
+ *		eOrganization = 0x04,
+ *		eGroup = 0x08,
+ *		eUser = 0x0C,
+ *		eCryptographicKey = 0x10,
+ *		eDigitalContract = 0x14,
+ *		eDataFederation = 0x18,
+ *		eDatasetFamily = 0x1C,
+ *		eDataset = 0x20,
+ *		eTable = 0x24,
+ *		eColumn = 0x28,
+ *		eAzureTemplate = 0x2C,
+ *		ePlatformServicesVirtualMachine = 0x30,
+ *		eDataServicesVirtualMachine = 0x34,
+ *		eWebUiVirtualMachine = 0x38,
+ *		eRemoteDataConnectorVirtualMachine = 0x3C,
+ *		eSecureComputationalVirtualMachine = 0x40,
+ *		eSafeFunction = 0x44,
+ *		eJobIdentifier = 0x48,
+ *		eInputParameterIdentifier = 0x4C,
+ *		eOutputParameterIdentifier = 0x50,
+ *		eUserSuppliedData = 0x54,
+ *		eOrchestratorIdentifier = 0x58,
+ *		eAuditEvent_RootNode = 0x5C,
+ *		eAuditEvent_DigitalContractBranchNode = 0x60,
+ *		eAuditEvent_VirtualMachineBranchNode = 0x64,
+ *		eAuditEvent_EncryptedLeafNode = 0x68,
+ *		eAuditEvent_PlainTextLeafNode = 0x6C,
+ *		eGuidTypeBitMask = 0xFC
+ *		
  ********************************************************************************************/
 
 Guid::Guid(
-    _in GuidOfObjectType eObjectType
+    _in GuidObjectType eObjectType
     )
 {
     __DebugFunction();
@@ -95,9 +109,8 @@ Guid::Guid(
     uuid_generate(oUniqueIdentifier);
     m_stlRawData.resize(16);
     ::memcpy((void *) m_stlRawData.data(), (void *) &oUniqueIdentifier, 16);
-    // Change Most significant 4 bits to eObjectType
-    m_stlRawData[0] = (m_stlRawData[0] & 0xF) | (eObjectType << 4);
-    m_eObjectType = eObjectType;
+    // Change Most significant 6 bits to eObjectType
+    m_stlRawData[0] = (m_stlRawData[0] & eNegativeGuidTypeMask) | eObjectType;
 }
 
 /********************************************************************************************
@@ -445,11 +458,13 @@ std::string __thiscall Guid::ToString(
  *
  ********************************************************************************************/
 
-GuidOfObjectType __thiscall Guid::GetObjectType(void) const throw()
+GuidObjectType __thiscall Guid::GetObjectType(void) const throw()
 {
     __DebugFunction();
 
-    return m_eObjectType;
+	Byte bObjectType = (m_stlRawData[0] & eGuidTypeBitMask);
+	
+    return (GuidObjectType) bObjectType;
 }
 
 /********************************************************************************************

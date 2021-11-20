@@ -275,7 +275,7 @@ bool RegisterLeafEvents(
     StructuredBuffer oLeafEvents;
     // Add first leaf event
     StructuredBuffer oEvent1;
-    oEvent1.PutString("EventGuid", Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
+    oEvent1.PutString("EventGuid", Guid(eAuditEvent_PlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
     oEvent1.PutQword("EventType", 6);
     oEvent1.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
     StructuredBuffer oEncryptedEventData;
@@ -289,7 +289,7 @@ bool RegisterLeafEvents(
     oLeafEvents.PutStructuredBuffer("0", oEvent1);
     // Add second leaf event
     StructuredBuffer oEvent2;
-    oEvent2.PutString("EventGuid", Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
+    oEvent2.PutString("EventGuid", Guid(eAuditEvent_PlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
     oEvent2.PutQword("EventType", 6);
     oEvent2.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
     oEncryptedEventData.PutString("EventName", "VMDeleted");
@@ -2779,7 +2779,7 @@ bool RegisterRemoteDataConnector(
         }
 
         strContent += "\n    ],"
-                    "\"RemoteDataConnectorGuid\": \""+ Guid(eRemoteDataConnector).ToString(eHyphensAndCurlyBraces) +"\","
+                    "\"RemoteDataConnectorGuid\": \""+ Guid(eRemoteDataConnectorVirtualMachine).ToString(eHyphensAndCurlyBraces) +"\","
                     "\n   \"Version\": \"0x00000001\""
                     "\n}";
         // Create rest request

@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 # set -e
 declare -a StringArray=("BaseVmImageInit" "CommunicationPortal" "DataDomainProcess" "DatabaseGateway"
 "DatabaseTools" "InitializerProcess" "JobEngine" "RestApiPortal" "RootOfTrustProcess" "SignalTerminationProcess"

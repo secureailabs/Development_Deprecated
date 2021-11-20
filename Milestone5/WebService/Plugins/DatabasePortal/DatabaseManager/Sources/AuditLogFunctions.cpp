@@ -338,7 +338,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddNonLeafEvent(
         << "IsLeaf" << false
         << finalize;
 
-        // Create an object document
+		// Create an object document
         StructuredBuffer oObject;
         oObject.PutString("EventGuid", oNonLeafEvent.GetString("EventGuid"));
         oObject.PutString("ParentGuid", oNonLeafEvent.GetString("ParentGuid"));
@@ -358,11 +358,13 @@ std::vector<Byte> __thiscall DatabaseManager::AddNonLeafEvent(
         << "ObjectBlob" << oObjectBlob
         << finalize;
 
-        // Create a plain text object document
+		GuidObjectType eObjectType = Guid(oNonLeafEvent.GetString("EventGuid").c_str()).GetObjectType();
+		
+		// Create a plain text object document
         bsoncxx::document::value oPlainTextObjectDocumentValue = bsoncxx::builder::stream::document{}
         << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
         << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
-        << "ObjectType" << GuidOfObjectType::eAuditEventBranchNode
+        << "ObjectType" << eObjectType
         << finalize;
 
         // Each client and transaction can only be used in a single thread
@@ -505,7 +507,7 @@ std::vector<Byte> __thiscall DatabaseManager::AddLeafEvent(
             stlPlainTextObjectDocuments.push_back(bsoncxx::builder::stream::document{}
             << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
             << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
-            << "ObjectType" << GuidOfObjectType::eAuditEventPlainTextLeafNode
+            << "ObjectType" << GuidObjectType::eAuditEvent_PlainTextLeafNode
             << finalize);
         }
 

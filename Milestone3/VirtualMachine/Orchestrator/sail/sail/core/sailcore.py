@@ -6,8 +6,8 @@ from concurrent.futures import ThreadPoolExecutor
 def connect(serverIP, port):
     return SAILPyAPI.connect(serverIP, port)
 
-def login(email, password):
-    return SAILPyAPI.login(email,password)
+def login(email, password, port, IP):
+    return SAILPyAPI.login(email,password, port, IP)
 
 def newguid():
     return SAILPyAPI.createguid()
@@ -121,7 +121,6 @@ def get_fns():
         'getattr':'9C4019584DB04B1A9BF05EC91836BCB0',
         'setitem':'A04E4CC9E3BC4A7B9AFAB6CB3E040FAC',
         'iter':'CC8B5A66C10F47A1A977E2BE2B522768',
-        'load_dataset':'D89B7F80F32D4203A147D63B862CB0F8',
         'next':'6D48AC3C3245411992E65E5FF5B90DDB',
         'rdf_describe':'18F2566E7FF34D77A7DE668DD220CEFD',
         'rdf_drop':'9A04D50B403C4716A79CABEF1F90D832',
@@ -132,6 +131,7 @@ def get_fns():
         'rdf_sort_values':'10DCB6636C8A4832AD6CE7BCDB1F9983',
         'rdf_set_index':'09EE6479EE97461DBC4E44D95D77235B',
         'rdf_reset_index':'F408E02C932D47C49BC5DC640C108AEB',
+        'rdf_label_encode':'56D864CD0B81459CB0540E364BB49D6F',
         'groupby_agg':'CEFAABE1879741269037050B25A5CCFD',
         'groupby_diff':'9604982079924320B6C7B6DCA27CFC6C',
         'groupby_cumsum':'AB04C77FA5DD4B1B8AAD2867F44BC886',
@@ -161,17 +161,19 @@ def get_fns():
         'util_to_datetime':'D35FC476B97F42AB9CE45D8E7604DD3C',
         'util_to_numeric':'6299E37D96884EAFB9E21692FB24014B',
         'util_ravel':'43B37087962644229B53B0D7C3A1E386',
-        'util_where':'98F83AA9DC3249B983A4262BE0BCEB55'
+        'util_where':'98F83AA9DC3249B983A4262BE0BCEB55',
+        'util_train_test_split':'AF83E839A5514B178951B205F5CCB6E5',
+        'util_read_csv':'E764BBFDB1C44271837A1384CD40AD94'
     }
     return fnsdict
 
 def VMSetup(contractdict, backendIP, soPath):
 
     registersafeobj(soPath)
-    print("[P]safe objects registered")
+    print("[P]safe objects registered", flush=True)
 
-    eosb = login("jingwei@kpmg.com", "-OJBFE2qw-OJBFE2qw")
-    print("[P]login success")
+    eosb = login("jingwei@kpmg.com", "-OJBFE2qw-OJBFE2qw", 6200, backendIP)
+    print("[P]login success", flush=True)
 
     #url = "https://40.76.22.246:6200/SAIL/VirtualMachineManager/GetRunningVMsIpAdresses?Eosb="+eosb
     url = "https://"+backendIP+":6200/SAIL/VirtualMachineManager/GetRunningVMsIpAdresses?Eosb="+eosb
@@ -207,19 +209,19 @@ def VMSetup(contractdict, backendIP, soPath):
     for ip in ips:
         vmid = connect(ip, 3500)
         vmids.append(vmid)
-        print("[P]virtual machine connection to ip: {0} success".format(ip))
+        print("[P]virtual machine connection to ip: {0} success".format(ip), flush=True)
     
     fns = get_fns()
     for vm in vmids:
         for key in fns:
             pushsafeobj(vm, fns[key])
-    print("[P]safe object pushed to virtual machines")
+    print("[P]safe object pushed to virtual machines" , flush=True)
 
     table = []
     for vm in vmids:
         tableid = querydata(vm)
         table.append(tableid)
-    print("[P]obtain table ids")
+    print("[P]obtain table ids", flush=True)
     
     # from ..data.remote_dataframe import RemoteDataFrame
     # demo1= [RemoteDataFrame(vmids[0], table[0]['MGH_biomarker'], fns), 

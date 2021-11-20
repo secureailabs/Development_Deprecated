@@ -68,7 +68,9 @@ class Frontend : public Object{
         );
         std::string Login(
             _in const std::string& c_strEmail,
-            _in const std::string& c_strUserPassword
+            _in const std::string& c_strUserPassword,
+            _in const int c_wordServerPort,
+            _in const std::string& c_strServerIPAddress
         );
         void __thiscall HandleSubmitJob
         (

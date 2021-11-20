@@ -27,16 +27,20 @@ static PyObject* login(PyObject* self, PyObject* args)
 {
     char* email;
     char* password;
+    int serverPort;
+    char* serverIP;
     
-    if(!PyArg_ParseTuple(args, "ss", &email, &password))
+    if(!PyArg_ParseTuple(args, "ssis", &email, &password, &serverPort, &serverIP))
     {
         return NULL;
     }
     
     std::string strEmail(email);
     std::string strPassword(password);
+    //std::string strServerPort(serverPort);
+    std::string strServerIP(serverIP);
     
-    std::string strEOSB = getFrontend().Login(strEmail, strPassword);
+    std::string strEOSB = getFrontend().Login(strEmail, strPassword, serverPort, strServerIP);
     
     return Py_BuildValue("s", strEOSB.c_str());
 }

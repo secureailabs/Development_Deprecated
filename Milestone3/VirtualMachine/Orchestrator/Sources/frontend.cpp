@@ -30,11 +30,6 @@
 #include <chrono>
 #include <thread>
 
-#ifndef SERVER_IP_ADDRESS
-    #define SERVER_PORT 6200
-    #define SERVER_IP_ADDRESS "20.185.6.111"
-#endif
-
 Frontend::Frontend(void):
     m_stlConnectionMap(),
     m_stlJobStatusMap(),
@@ -55,8 +50,10 @@ Frontend::~Frontend(void)
 /********************************************************************************************/
 
 std::string Frontend::Login(
-    _in const std::string & c_strEmail,
-    _in const std::string & c_strUserPassword
+    _in const std::string& c_strEmail,
+    _in const std::string& c_strUserPassword,
+    _in const int c_wordServerPort,
+    _in const std::string& c_strServerIPAddress
     )
 {
     __DebugFunction();
@@ -73,7 +70,7 @@ std::string Frontend::Login(
         std::string strApiUrl = "/SAIL/AuthenticationManager/User/Login?Email="+ c_strEmail +"&Password="+ c_strUserPassword;
         std::string strJsonBody = "";
         // Make the API call and get REST response
-        std::vector<Byte> stlRestResponse = ::RestApiCall(SERVER_IP_ADDRESS, SERVER_PORT, strVerb, strApiUrl, strJsonBody, true);
+        std::vector<Byte> stlRestResponse = ::RestApiCall(c_strServerIPAddress, c_wordServerPort, strVerb, strApiUrl, strJsonBody, true);
         std::string strUnescapedResponse = ::UnEscapeJsonString((const char *) stlRestResponse.data());
         StructuredBuffer oResponse(JsonValue::ParseDataToStructuredBuffer(strUnescapedResponse.c_str()));
         _ThrowBaseExceptionIf((201 != oResponse.GetFloat64("Status")), "Error logging in.", nullptr);

@@ -355,7 +355,7 @@ void __thiscall DatabaseTools::AddVirtualMachine(void)
     oVmInformation.PutUnsignedInt64("NumberOfVCPU", 8);
     oVmInformation.PutString("HostRegion", "East US");
     // Register Vm
-    std::string strVmGuid = Guid(eVirtualMachine).ToString(eHyphensAndCurlyBraces);
+    std::string strVmGuid = Guid(eSecureComputationalVirtualMachine).ToString(eHyphensAndCurlyBraces);
     std::string strVmEosb = ::RegisterVirtualMachine(strIEosb, strVmGuid, oVmInformation);
     // Check if the virtual machine was registered successfully
     _ThrowBaseExceptionIf((0 == strVmEosb.size()), "Error occurred when registering a virtual machine.", nullptr);
@@ -423,7 +423,7 @@ void __thiscall DatabaseTools::RegisterVmAfterDataUpload(
     for (unsigned int unIndex = 0; unIndex < 30; ++unIndex)
     {
         StructuredBuffer oEvent;
-        oEvent.PutString("EventGuid", Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
+        oEvent.PutString("EventGuid", Guid(eAuditEvent_PlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
         oEvent.PutQword("EventType", unIndex % 16);
         un64EpochTimeInMilliseconds += 1000;
         oEvent.PutUnsignedInt64("Timestamp", un64EpochTimeInMilliseconds);
@@ -480,7 +480,7 @@ void __thiscall DatabaseTools::RegisterVmForComputation(
     for (unsigned int unIndex = 0; unIndex < 30; ++unIndex)
     {
         StructuredBuffer oEvent;
-        oEvent.PutString("EventGuid", Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
+        oEvent.PutString("EventGuid", Guid(eAuditEvent_PlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
         oEvent.PutQword("EventType", unIndex % 16);
         oEvent.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
         StructuredBuffer oEncryptedEventData;

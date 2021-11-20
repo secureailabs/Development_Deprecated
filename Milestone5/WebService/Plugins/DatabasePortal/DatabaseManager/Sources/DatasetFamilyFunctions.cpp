@@ -61,7 +61,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterDatasetFamily(
         bsoncxx::document::value oPlainTextObjectDocumentValue = bsoncxx::builder::stream::document{}
         << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
         << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
-        << "ObjectType" << GuidOfObjectType::eDatasetFamily
+        << "ObjectType" << GuidObjectType::eDatasetFamily
         << finalize;
 
         // Each client and transaction can only be used in a single thread

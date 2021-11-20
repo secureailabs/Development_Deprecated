@@ -1121,7 +1121,7 @@ std::vector<Byte> __thiscall AccountDatabase::RegisterOrganizationAndSuperUser(
             StructuredBuffer oRootEvent;
             oRootEvent.PutDword("TransactionType", 0x00000001);
             StructuredBuffer oMetadata;
-            oMetadata.PutString("EventGuid", Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces));
+            oMetadata.PutString("EventGuid", Guid(eAuditEvent_RootNode).ToString(eHyphensAndCurlyBraces));
             oMetadata.PutString("ParentGuid", "{00000000-0000-0000-0000-000000000000}");
             oMetadata.PutString("OrganizationGuid", oDatabaseResponse.GetString("OrganizationGuid"));
             oMetadata.PutQword("EventType", 1);    // 1 for Root event and 2 for Branch event type

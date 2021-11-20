@@ -25,7 +25,7 @@ void TestRegisterLeafEvent(
     StructuredBuffer oLeafEvents;
     // Add leaf event
     StructuredBuffer oEvent;
-    oEvent.PutString("EventGuid", Guid(eAuditEventPlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
+    oEvent.PutString("EventGuid", Guid(eAuditEvent_PlainTextLeafNode).ToString(eHyphensAndCurlyBraces));
     oEvent.PutQword("EventType", 6);
     oEvent.PutUnsignedInt64("Timestamp", ::GetEpochTimeInMilliseconds());
     StructuredBuffer oEncryptedEventData;

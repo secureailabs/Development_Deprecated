@@ -1528,7 +1528,7 @@ std::vector<Byte> __thiscall VirtualMachineManager::RegisterVmAuditEvent(
             oVmBranchEvent.PutDword("TransactionType", 0x00000001);
             oVmBranchEvent.PutBuffer("Eosb", stlEosb);
             StructuredBuffer oVmMetadata;
-            Guid oVmEventGuid(eAuditEventBranchNode);
+            Guid oVmEventGuid(eAuditEvent_VirtualMachineBranchNode);
             oVmMetadata.PutString("EventGuid", oVmEventGuid.ToString(eHyphensAndCurlyBraces));
             oVmMetadata.PutString("ParentGuid", strDcEventGuid);
             oVmMetadata.PutString("OrganizationGuid", strOrganizationGuid);

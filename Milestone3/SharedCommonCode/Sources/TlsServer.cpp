@@ -117,10 +117,12 @@ TlsNode * __thiscall TlsServer::Accept(void)
 
         poTlsNode = new TlsNode(poSocket, eSSLModeServer);
     }
+	
     catch(BaseException oBaseException)
     {
         ::RegisterException(oBaseException, __func__, __LINE__);
     }
+	
     catch(...)
     {
         ::RegisterUnknownException(__func__, __LINE__);

@@ -10,10 +10,15 @@ def GetJsonFromSerializedBuffer(serializedStructureBuffer):
     strJson = oSb.ToJson()
     return strJson
 
+def GetSerializedBufferFromJson(strJson):
+    oSb = StructuredBuffer(strJson=strJson)
+    return oSb.GetSerializedStructuredBuffer()
+
 @app.route('/StructuredBufferToJson', methods=['GET'])
 def StructuredBufferToJson():
     return GetJsonFromSerializedBuffer(request.get_data())
 
 @app.route('/JsonToStructuredBuffer', methods=['GET'])
 def JsonToStructuredBuffer():
-    return 'Hello, Docker!'
+    return GetSerializedBufferFromJson(request.get_data())
+

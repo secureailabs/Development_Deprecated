@@ -268,7 +268,7 @@ static PyObject *PutStructuredBuffer(
     char * szElementName;
     StructuredBuffer * poStructuredBuffer = nullptr;
     StructuredBuffer * poStructuredBufferToPut = nullptr;
-    if (!PyArg_ParseTuple(poPyObjectArguments, "Ksi", &poStructuredBuffer, &szElementName, &poStructuredBufferToPut))
+    if (!PyArg_ParseTuple(poPyObjectArguments, "KsK", &poStructuredBuffer, &szElementName, &poStructuredBufferToPut))
     {
         return nullptr;
     }

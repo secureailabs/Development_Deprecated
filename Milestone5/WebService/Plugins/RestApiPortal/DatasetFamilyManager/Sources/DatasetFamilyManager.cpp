@@ -232,7 +232,7 @@ void __thiscall DatasetFamilyManager::InitializePlugin(const StructuredBuffer& o
 
     StructuredBuffer oRequriedBooleanElement;
     oRequriedBooleanElement.PutByte("ElementType", BOOLEAN_VALUE_TYPE);
-    oOptionalStringElement.PutBoolean("IsRequired", true);
+    oRequriedBooleanElement.PutBoolean("IsRequired", true);
 
     StructuredBuffer oRequriedBufferElement;
     oRequriedBufferElement.PutByte("ElementType", BUFFER_VALUE_TYPE);
@@ -245,7 +245,7 @@ void __thiscall DatasetFamilyManager::InitializePlugin(const StructuredBuffer& o
     StructuredBuffer oCreateNewDatasetFamilyParameters;
     oCreateNewDatasetFamilyParameters.PutStructuredBuffer("Eosb", oRequriedBufferElement);
     oCreateNewDatasetFamilyParameters.PutStructuredBuffer("DatasetFamilyDescription",oRequiredStringElement);
-    oCreateNewDatasetFamilyParameters.PutStructuredBuffer("DatasetFamilyTags",oRequiredStringElement);
+    oCreateNewDatasetFamilyParameters.PutStructuredBuffer("DatasetFamilyTags",oOptionalStringElement);
     oCreateNewDatasetFamilyParameters.PutStructuredBuffer("DatasetFamilyTitle", oRequiredStringElement);
 
     StructuredBuffer oListDatasetFamilyParameters;
@@ -322,7 +322,12 @@ std::vector<Byte> __thiscall DatasetFamilyManager::RegisterDatasetFamily(
         oDatasetFamily.PutString("DatasetFamilyDescription", c_oRequest.GetString("DatasetFamilyDescription"));
         oDatasetFamily.PutString("DatasetFamilyGuid", strNewGuid);
         oDatasetFamily.PutString("DatasetFamilyOwnerGuid", strDatasetFamilyOwner);
-        oDatasetFamily.PutString("DatasetFamilyTags", c_oRequest.GetString("DatasetFamilyTags"));
+
+        if ( true == c_oRequest.IsElementPresent("DatasetFamilyTags", ANSI_CHARACTER_STRING_VALUE_TYPE) )
+        {
+            oDatasetFamily.PutString("DatasetFamilyTags", c_oRequest.GetString("DatasetFamilyTags"));
+        }
+
         oDatasetFamily.PutString("DatasetFamilyTitle", c_oRequest.GetString("DatasetFamilyTitle"));
         oDatasetFamily.PutString("VersionNumber", "0x00000001");
 
@@ -334,7 +339,6 @@ std::vector<Byte> __thiscall DatasetFamilyManager::RegisterDatasetFamily(
         poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);
         // Send request packet
         poTlsNode->Write(stlRequest.data(), (stlRequest.size()));
-
 
         std::vector<Byte> stlRestResponseLength = poTlsNode->Read(sizeof(uint32_t), 2000);
         _ThrowBaseExceptionIf((0 == stlRestResponseLength.size()), "Dead Packet.", nullptr);
@@ -568,7 +572,6 @@ std::vector<Byte> __thiscall DatasetFamilyManager::EditDatasetFamilyInformation(
     __DebugAssert( true == c_oRequest.GetStructuredBuffer("DatasetFamily").IsElementPresent("DatasetFamilyDescription", ANSI_CHARACTER_STRING_VALUE_TYPE) );
     __DebugAssert( true == c_oRequest.GetStructuredBuffer("DatasetFamily").IsElementPresent("DatasetFamilyGuid", ANSI_CHARACTER_STRING_VALUE_TYPE) );
     __DebugAssert( true == c_oRequest.GetStructuredBuffer("DatasetFamily").IsElementPresent("DatasetFamilyOwnerGuid", ANSI_CHARACTER_STRING_VALUE_TYPE) );
-    __DebugAssert( true == c_oRequest.GetStructuredBuffer("DatasetFamily").IsElementPresent("DatasetFamilyTags", ANSI_CHARACTER_STRING_VALUE_TYPE) );
     __DebugAssert( true == c_oRequest.GetStructuredBuffer("DatasetFamily").IsElementPresent("DatasetFamilyTitle", ANSI_CHARACTER_STRING_VALUE_TYPE) );
     __DebugAssert( true == c_oRequest.GetStructuredBuffer("DatasetFamily").IsElementPresent("VersionNumber", ANSI_CHARACTER_STRING_VALUE_TYPE) );
 

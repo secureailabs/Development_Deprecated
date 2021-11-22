@@ -197,7 +197,10 @@ std::vector<Byte> __thiscall DatabaseManager::ListDatasetFamilies(
                                 StructuredBuffer oOrganizationName = this->GetOrganizationName(oObject.GetString("DatasetFamilyOwnerGuid"));
                                 oDatasetFamilyInformation.PutString("DatasetFamilyTitle", oObject.GetString("DatasetFamilyTitle"));
                                 oDatasetFamilyInformation.PutString("DatasetFamilyOwnerGuid", oObject.GetString("DatasetFamilyOwnerGuid"));
-                                oDatasetFamilyInformation.PutString("DatasetFamilyTags", oObject.GetString("DatasetFamilyTags"));
+                                if ( oObject.IsElementPresent("DatasetFamilyTags", ANSI_CHARACTER_STRING_VALUE_TYPE) )
+                                {
+                                    oDatasetFamilyInformation.PutString("DatasetFamilyTags", oObject.GetString("DatasetFamilyTags"));
+                                }
                                 oDatasetFamilyInformation.PutBoolean("DatasetFamilyActive", oObject.GetBoolean("DatasetFamilyActive"));
                                 if ( 200 == oOrganizationName.GetDword("Status") )
                                 {

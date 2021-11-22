@@ -42,6 +42,33 @@
 #define INVALID_VALUE_TYPE                0xFF
 #define ANY_VALUE_TYPE                    0xFF
 
+static const char * gs_aszTypeNames[] =
+{
+    "Null",
+    "Bool",
+    "Char",
+    "String",
+    "float32_t",
+    "float64_t",
+    "int8_t",
+    "int16_t",
+    "int32_t",
+    "int64_t",
+    "uint8_t",
+    "uint16_t",
+    "uint32_t",
+    "uint8_t",
+    "Byte",
+    "Word",
+    "Dword",
+    "Qword",
+    "ByteArray",
+    "StructuredBuffer",
+    "Null",
+    "Guid",
+    "InvalidType"
+};
+
 /********************************************************************************************/
 
 class StructuredBufferElement : public Object

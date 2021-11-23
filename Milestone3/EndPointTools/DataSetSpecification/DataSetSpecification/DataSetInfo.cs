@@ -14,6 +14,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using RestSharp;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace DataSetSpecification
 {
@@ -70,6 +71,7 @@ namespace DataSetSpecification
                     // Offset of Header Marker  + size of Header variable + size of Header Structure + size of ECDSA hash signed with 48byte private key
                     UInt64 currentTableOffset = (UInt64)sizeof(UInt64) + (UInt64)sizeof(UInt32) + (UInt64)oHeaderStructuredBuffer.GetSerializedBufferRawDataSizeInBytes() + (UInt64)128;
 
+                    JObject tableInformation = new();
                     foreach (Control userControl in listTableUserControl)
                     {
                         TableInfo oUserControl1 = (TableInfo)userControl;
@@ -80,7 +82,8 @@ namespace DataSetSpecification
 
                         // Populate the Structured Buffer
                         tablesMetaData[i] = new StructuredBuffer();
-                        tablesMetaData[i].PutGuid("Guid", oUserControl1.m_tableUUID);
+                        var TableGuid = oUserControl1.m_tableUUID;
+                        tablesMetaData[i].PutGuid("Guid", TableGuid);
                         tablesMetaData[i].PutString("Name", oUserControl1.m_tableName);
                         tablesMetaData[i].PutString("Description", oUserControl1.m_tableDescription);
                         tablesMetaData[i].PutString("Hashtags", oUserControl1.m_tableTags);
@@ -95,6 +98,16 @@ namespace DataSetSpecification
                         metadatSize[i] = (UInt64)tablesMetaData[i].GetSerializedBufferRawDataSizeInBytes();
                         currentTableOffset += (UInt64)table.Length;
                         i++;
+
+                        JObject oneTable = new JObject(
+                            new JProperty("Name", oUserControl1.m_tableName),
+                            new JProperty("Description", oUserControl1.m_tableDescription),
+                            new JProperty("Hashtags", oUserControl1.m_tableTags),
+                            new JProperty("NumberColumns", (int)oUserControl1.m_numberOfColumns),
+                            new JProperty("NumberRows", (int)oUserControl1.m_numberOfRows),
+                            new JProperty("ColumnName", oUserControl1.m_columnNames)
+                            );
+                        tableInformation.Add(TableGuid.ToString(), oneTable);
 
                         System.GC.Collect();
                     }
@@ -195,17 +208,22 @@ namespace DataSetSpecification
                             RemoteCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => true
                         };
                         client.Timeout = -1;
-                        string strContent = "{\n   \"DatasetGuid\": \"" + label5.Text + "\"," +
-                                "\n   \"DatasetData\": {" +
-                                "\n   \"VersionNumber\": \"" + "0.1" + "\"," +
-                                "\n   \"DatasetName\": \"" + textBox2.Text + "\"," +
-                                "\n   \"Description\": \"" + textBox4.Text + "\"," +
-                                "\n   \"Keywords\": \"" + textBox3.Text + "\"," +
-                                "\n   \"PublishDate\": " + DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString() + "," + 
-                                "\n   \"PrivacyLevel\": " + "1" + "," +
-                                "\n   \"JurisdictionalLimitations\": \"" + "US,EU,AUS" + "\"" +
-                                "\n   }" + 
-                                "\n}";
+
+                        JObject oRestRequest = new JObject(
+                            new JProperty("DatasetGuid", label5.Text),
+                            new JProperty("DatasetData", new JObject(
+                                new JProperty("VersionNumber", "0.1"),
+                                new JProperty("DatasetName", textBox2.Text),
+                                new JProperty("Description", textBox4.Text),
+                                new JProperty("Keywords", textBox3.Text),
+                                new JProperty("PublishDate", DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                                new JProperty("PrivacyLevel", 1),
+                                new JProperty("JurisdictionalLimitations", "US,EU,AUS"),
+                                new JProperty("Tables", tableInformation)
+                                ))
+                            );
+                        string strContent = oRestRequest.ToString();
+
                         var request = new RestRequest(Method.POST);
                         request.AddHeader("Content-Type", "application/json");
                         request.AddParameter("application/json", strContent, ParameterType.RequestBody);

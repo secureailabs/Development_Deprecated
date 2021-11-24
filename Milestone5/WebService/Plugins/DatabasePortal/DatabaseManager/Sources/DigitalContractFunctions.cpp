@@ -344,7 +344,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterDigitalContract(
         bsoncxx::document::value oPlainTextObjectDocumentValue = bsoncxx::builder::stream::document{}
         << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
         << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
-        << "ObjectType" << GuidOfObjectType::eDigitalContract
+        << "ObjectType" << GuidObjectType::eDigitalContract
         << finalize;
 
         // Each client and transaction can only be used in a single thread

@@ -2020,7 +2020,7 @@ std::vector<Byte> __thiscall DigitalContractDatabase::RegisterDcAuditEvent(
                 oDcBranchEvent.PutDword("TransactionType", 0x00000001);
                 oDcBranchEvent.PutBuffer("Eosb", stlEosb);
                 StructuredBuffer oDcMetadata;
-                strDcEventGuid = Guid(eAuditEventBranchNode).ToString(eHyphensAndCurlyBraces);
+                strDcEventGuid = Guid(eAuditEvent_DigitalContractBranchNode).ToString(eHyphensAndCurlyBraces);
                 oDcMetadata.PutString("EventGuid", strDcEventGuid);
                 oDcMetadata.PutString("ParentGuid", strRootEventGuid);
                 oDcMetadata.PutString("OrganizationGuid", strOrganizationGuid);

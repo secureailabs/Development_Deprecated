@@ -296,4 +296,3 @@ def smote(vmid, oversample, X_data_id, y_data_id, fns):
     results =  queryresult(jobid, fns['smote'])
     
     return results[0], results[1]
-    

@@ -43,8 +43,6 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterDatasetFamily(
         << "DatasetFamilyOwnerOrganizationGuid" << oObject.GetString("DatasetFamilyOwnerGuid")
         << finalize;
 
-
-
         // Create a blob for the serialized structured buffer
         bsoncxx::types::b_binary oObjectBlob
         {
@@ -63,7 +61,7 @@ std::vector<Byte> __thiscall DatabaseManager::RegisterDatasetFamily(
         bsoncxx::document::value oPlainTextObjectDocumentValue = bsoncxx::builder::stream::document{}
         << "PlainTextObjectBlobGuid" << oPlainTextObjectBlobGuid.ToString(eHyphensAndCurlyBraces)
         << "ObjectGuid" << oObjectGuid.ToString(eHyphensAndCurlyBraces)
-        << "ObjectType" << GuidOfObjectType::eDatasetFamily
+        << "ObjectType" << GuidObjectType::eDatasetFamily
         << finalize;
 
         // Each client and transaction can only be used in a single thread
@@ -161,13 +159,11 @@ std::vector<Byte> __thiscall DatabaseManager::ListDatasetFamilies(
     // Access SailDatabase
     mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
     // Fetch all digital contract records associated with a researcher's or data owner's organization
-    mongocxx::cursor oDcRecords = oSailDatabase["DatasetFamily"].find(document{}
-                                                                        << "DatasetFamilyOwnerOrganizationGuid" << c_oRequest.GetString("OrganizationGuid")
-                                                                        << finalize);
+    mongocxx::cursor oDatasetFamilyRecords = oSailDatabase["DatasetFamily"].find({});
 
     // Loop through returned documents and add information to the list
     StructuredBuffer oListOfDatasetFamilies;
-    for (auto&& oDocumentView : oDcRecords)
+    for (auto&& oDocumentView : oDatasetFamilyRecords)
     {
         bsoncxx::document::element oDatasetFamilyGuid = oDocumentView["DatasetFamilyGuid"];
         bsoncxx::document::element oDatasetFamilyOwnerGuid = oDocumentView["DatasetFamilyOwnerOrganizationGuid"];
@@ -197,7 +193,25 @@ std::vector<Byte> __thiscall DatabaseManager::ListDatasetFamilies(
                             if (oObjectBlob && oObjectBlob.type() == type::k_binary)
                             {
                                 StructuredBuffer oObject(oObjectBlob.get_binary().bytes, oObjectBlob.get_binary().size);
-                                oListOfDatasetFamilies.PutString(strDatasetFamilyGuid.c_str(), oObject.GetString("DatasetFamilyTitle"));
+                                StructuredBuffer oDatasetFamilyInformation;
+                                StructuredBuffer oOrganizationName = this->GetOrganizationName(oObject.GetString("DatasetFamilyOwnerGuid"));
+                                oDatasetFamilyInformation.PutString("DatasetFamilyTitle", oObject.GetString("DatasetFamilyTitle"));
+                                oDatasetFamilyInformation.PutString("DatasetFamilyOwnerGuid", oObject.GetString("DatasetFamilyOwnerGuid"));
+                                if ( oObject.IsElementPresent("DatasetFamilyTags", ANSI_CHARACTER_STRING_VALUE_TYPE) )
+                                {
+                                    oDatasetFamilyInformation.PutString("DatasetFamilyTags", oObject.GetString("DatasetFamilyTags"));
+                                }
+                                oDatasetFamilyInformation.PutBoolean("DatasetFamilyActive", oObject.GetBoolean("DatasetFamilyActive"));
+                                if ( 200 == oOrganizationName.GetDword("Status") )
+                                {
+                                    oDatasetFamilyInformation.PutString("OrganizationName", oOrganizationName.GetString("OrganizationName"));
+                                }
+                                else
+                                {
+                                    oDatasetFamilyInformation.PutString("OrganizationName", "");
+                                }
+
+                                oListOfDatasetFamilies.PutStructuredBuffer(strDatasetFamilyGuid.c_str(), oDatasetFamilyInformation);
                             }
                         }
                     }
@@ -338,7 +352,6 @@ std::vector<Byte> __thiscall DatabaseManager::PullDatasetFamily(
     try
     {
         std::string strDatasetFamilyGuid = c_oRequest.GetString("DatasetFamilyGuid");
-        std::string strOrganizationGuid = c_oRequest.GetString("OrganizationGuid");
 
         // Each client and transaction can only be used in a single thread
         mongocxx::pool::entry oClient = m_poMongoPool->acquire();
@@ -346,11 +359,7 @@ std::vector<Byte> __thiscall DatabaseManager::PullDatasetFamily(
         mongocxx::database oSailDatabase = (*oClient)["SailDatabase"];
 
         bsoncxx::stdx::optional<bsoncxx::document::value> oDatasetFamilyDocument = oSailDatabase["DatasetFamily"].find_one(document{}
-                                                                                                                << "$and" << open_array << open_document
                                                                                                                 << "DatasetFamilyGuid" << strDatasetFamilyGuid
-                                                                                                                << close_document << open_document
-                                                                                                                << "DatasetFamilyOwnerOrganizationGuid" << strOrganizationGuid
-                                                                                                                << close_document << close_array
                                                                                                                 << finalize);
 
         if (bsoncxx::stdx::nullopt != oDatasetFamilyDocument)

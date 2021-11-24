@@ -53,7 +53,6 @@ namespace WindowsRemoteDataConnector
             // Setup default values
             m_ExitCode = 0x76541234;
             m_NumberOfHeartbeats = 0;
-            m_NumberOfFailedHeartbeats = 0;
             m_NumberOfHeartbeatsTextBox.Text = "0";
             m_NumberOfFailedHeartbeatsTextBox.Text = "0";
             m_LastHeartbeartTimeTextBox.Text = "Never";
@@ -447,7 +446,6 @@ namespace WindowsRemoteDataConnector
         private System.Threading.Mutex m_Mutex;
         private int m_ExitCode;
         private int m_NumberOfHeartbeats;
-        private int m_NumberOfFailedHeartbeats;
         private HashSet<string> m_ListOfRegisteredDatasets;
     }
 }

@@ -100,7 +100,7 @@ void RunVirtualMachineManagerTests(
 {
     // Create a virtual machine guid that will be used to register a new virtual machine and testing other
     // functions
-    std::string strVmGuid = Guid(eVirtualMachine).ToString(eHyphensAndCurlyBraces);
+    std::string strVmGuid = Guid(eSecureComputationalVirtualMachine).ToString(eHyphensAndCurlyBraces);
 
     // Call unit tests for VirtualMachineManager and AuditLogManager
     ::TestRegisterVirtualMachine(c_strEosb, c_strDcGuid, strVmGuid);

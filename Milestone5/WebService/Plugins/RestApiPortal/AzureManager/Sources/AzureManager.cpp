@@ -960,7 +960,7 @@ std::vector<Byte> __thiscall AzureManager::RegisterAzureSettingsTemplate(
             if (AccessRights::eAdmin == oUserInfo.GetQword("AccessRights"))
             {
                 // Create a template guid
-                std::string strTemplateGuid = Guid(eAzureSettingsTemplate).ToString(eHyphensAndCurlyBraces);
+                std::string strTemplateGuid = Guid(eAzureTemplate).ToString(eHyphensAndCurlyBraces);
 
                 // Make a Tls connection with the database portal
                 poTlsNode = ::TlsConnectToNetworkSocket(m_strDatabaseServiceIpAddr.c_str(), m_unDatabaseServiceIpPort);

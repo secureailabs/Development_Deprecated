@@ -117,6 +117,7 @@ namespace DataSetSpecification
                         System.GC.Collect();
                     }
                     i++;
+                    m_numberOfRows++;
                 }
             }
             System.GC.Collect();
@@ -151,9 +152,9 @@ namespace DataSetSpecification
             {
                 DataTable dataTable = (DataTable)dataGridView1.DataSource;
                 cc.label1_setvalue(dataTable.Rows[0].ItemArray[i].ToString());
-                sb.Append("," + dataTable.Rows[0].ItemArray[i]);
+                sb.Append(dataTable.Rows[0].ItemArray[i] + ",");
                 i++;               
-            }
+            } 
             m_columnNames =  sb.ToString();
         }
 
@@ -252,6 +253,8 @@ namespace DataSetSpecification
                 ButtonEditHeader.Show();
                 m_addHeaderButtonVisibility = 10;
                 m_editHeaderButtonVisibility = 10;
+
+                UpdateColumnControl();
             }
             System.GC.Collect();
         }

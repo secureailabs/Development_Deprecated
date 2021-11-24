@@ -25,26 +25,75 @@ typedef enum name
 }
 GuidFormat;
 
-/********************************************************************************************/
+/********************************************************************************************
 
-typedef enum guidtype
+11111100 (0xFC) Bit Mask for MSB in GUID
+=======================================================
+00000000 (0x00) Undefined
+00000100 (0x04) Organization
+00001000 (0x08) Group
+00001100 (0x0C) User
+00010000 (0x10) Cryptographic Key
+00010100 (0x14) Digital Contract
+00011000 (0x18) Data Federation
+00011100 (0x1C) Dataset Family
+00100000 (0x20) Dataset
+00100100 (0x24) Table
+00101000 (0x28) Column
+00101100 (0x2C) Cloud (Azure) Template
+00110000 (0x30) Platform Services Virtual Machine
+00110100 (0x34) Data Services Virtual Machine
+00111000 (0x38) WebUI Virtual Machine
+00111100 (0x3C) Remote Data Connector Virtual Machine
+01000000 (0x40) Secure Computational Virtual Machine
+01000100 (0x44) SAFE Function
+01001000 (0x48) Job Identifier
+01001100 (0x4C) Input Parameter Identifier
+01010000 (0x50) Output Parameter Identifier
+01010100 (0x54) User Supplied Data
+01011000 (0x58) Orchestrator Identifier
+01011100 (0x5C) Audit Event (Root Node)
+01100000 (0x60) Audit Event (DC Branch Node)
+01100100 (0x64) Audit Event (VM Branch Node)
+01101000 (0x68) Audit Event (Encrypted Leaf Node)
+01101100 (0x6C) Audit Event (Plain-text Leaf Node)
+
+********************************************************************************************/
+
+typedef enum
 {
-    eOrganization = 0x0,
-    eUser = 0x1,
-    eCryptographicKey = 0x2,
-    eDigitalContract = 0x3,
-    eDataset = 0x4,
-    eFunctionNode = 0x5,
-    eVirtualMachine = 0x6,
-    eAuditEventBranchNode = 0x7,
-    eAuditEventEncryptedLeafNode = 0x8,
-    eAuditEventPlainTextLeafNode = 0x9,
-    eAzureSettingsTemplate = 0xA,
-    eRemoteDataConnector = 0xB,
-    eDatasetFamily = 0xC,
-    eOthers = 0xF
+	eUndefined = 0x00,
+	eOrganization = 0x04,
+	eGroup = 0x08,
+	eUser = 0x0C,
+	eCryptographicKey = 0x10,
+	eDigitalContract = 0x14,
+	eDataFederation = 0x18,
+	eDatasetFamily = 0x1C,
+	eDataset = 0x20,
+	eTable = 0x24,
+	eColumn = 0x28,
+	eAzureTemplate = 0x2C,
+	ePlatformServicesVirtualMachine = 0x30,
+	eDataServicesVirtualMachine = 0x34,
+	eWebUiVirtualMachine = 0x38,
+	eRemoteDataConnectorVirtualMachine = 0x3C,
+	eSecureComputationalVirtualMachine = 0x40,
+	eSafeFunction = 0x44,
+	eJobIdentifier = 0x48,
+	eInputParameterIdentifier = 0x4C,
+	eOutputParameterIdentifier = 0x50,
+	eUserSuppliedData = 0x54,
+	eOrchestratorIdentifier = 0x58,
+	eAuditEvent_RootNode = 0x5C,
+	eAuditEvent_DigitalContractBranchNode = 0x60,
+	eAuditEvent_VirtualMachineBranchNode = 0x64,
+	eAuditEvent_EncryptedLeafNode = 0x68,
+	eAuditEvent_PlainTextLeafNode = 0x6C,
+	eGuidTypeBitMask = 0xFC,
+	eNegativeGuidTypeMask = 0x03
 }
-GuidOfObjectType;
+GuidObjectType;
 
 /********************************************************************************************/
 
@@ -54,7 +103,7 @@ class Guid : public Object
 
         Guid(void);
         Guid(
-            _in GuidOfObjectType eObjectType
+            _in GuidObjectType eObjectType
             );
         Guid(
             _in const char * c_szGuid
@@ -96,7 +145,7 @@ class Guid : public Object
             ) const throw();
         
         // Fetch type of Object
-        GuidOfObjectType __thiscall GetObjectType(void) const throw();
+        GuidObjectType __thiscall GetObjectType(void) const throw();
 
     private:
 
@@ -105,5 +154,4 @@ class Guid : public Object
             );
 
         std::vector<Byte> m_stlRawData;
-        GuidOfObjectType m_eObjectType;
 };

@@ -1,0 +1,12 @@
+C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\Binaries\x64\Debug\WindowsRemoteDataConnector.exe.config
+C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\Binaries\x64\Debug\WindowsRemoteDataConnector.exe
+C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\Binaries\x64\Debug\WindowsRemoteDataConnector.pdb
+C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\WindowsRemoteDataConnector\obj\Debug\WindowsRemoteDataConnector.ConnectToApiWebServices.resources
+C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\WindowsRemoteDataConnector\obj\Debug\WindowsRemoteDataConnector.SailRemoteDataConnectorDialog.resources
+C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\WindowsRemoteDataConnector\obj\Debug\WindowsRemoteDataConnector.Properties.Resources.resources
+C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\WindowsRemoteDataConnector\obj\Debug\WindowsRemoteDataConnector.SailWebApiPortalLoginDialog.resources
+C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\WindowsRemoteDataConnector\obj\Debug\WindowsRemoteDataConnector.csproj.GenerateResource.cache
+C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\WindowsRemoteDataConnector\obj\Debug\WindowsRemoteDataConnector.csproj.CoreCompileInputs.cache
+C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\WindowsRemoteDataConnector\obj\Debug\WindowsRemoteDataConnector.exe
+C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\WindowsRemoteDataConnector\obj\Debug\WindowsRemoteDataConnector.pdb
+C:\Users\Luis Miguel Huapaya\Documents\GitHub\Development\Milestone3\InternalTools\WindowsPlatformDeliverables\WindowsRemoteDataConnector\obj\Debug\WindowsRemoteDataConnector.csproj.AssemblyReference.cache

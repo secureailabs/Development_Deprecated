@@ -187,6 +187,7 @@ static Dword __stdcall UploadDatasetToVirtualMachine(
 
     try
     {
+        ::RegisterExceptionalMessage("UploadDatasetToVirtualMachine.001");
         // Deserialize the incoming base64 string into the target StructuredBuffer
         StructuredBuffer oVirtualMachineInformation((char *) pParameters);
         // Extract some basic information
@@ -196,14 +197,18 @@ static Dword __stdcall UploadDatasetToVirtualMachine(
         oVirtualMachineInformation.RemoveElement("64BitHashOfConcatenatedIdentifiers");
         oVirtualMachineInformation.RemoveElement("IPAddress");
         oVirtualMachineInformation.RemoveElement("DatasetFilename");
+        ::RegisterExceptionalMessage("UploadDatasetToVirtualMachine.002");
         // Load the file into a binary buffer and add it to the StructuredBuffer
         std::vector<Byte> stlDatasetFiledata = ::GetBinaryFileBuffer(strDatasetFilename.c_str());
+        ::RegisterExceptionalMessage("UploadDatasetToVirtualMachine.003");
         std::string strEncoded = ::Base64Encode(stlDatasetFiledata.data(), (unsigned int)stlDatasetFiledata.size());
         oVirtualMachineInformation.PutString("Base64EncodedDataset", strEncoded);
+        ::RegisterExceptionalMessage("UploadDatasetToVirtualMachine.004");
         // Prepare the JSON blob
         auto oJsonBody = JsonValue::ParseStructuredBufferToJson(oVirtualMachineInformation);
         std::string strJsonBody = oJsonBody->ToString();
         oJsonBody->Release();
+        ::RegisterExceptionalMessage("UploadDatasetToVirtualMachine.005");
         // Add notification to mark the beginning of the upload transaction
         ::RegisterExceptionalMessage("Began uploading dataset %s to %s", strDatasetFilename.c_str(), strVirtualMachineIpAddress.c_str());
         // Execute the upload transaction

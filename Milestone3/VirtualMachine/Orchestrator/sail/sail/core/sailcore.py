@@ -280,3 +280,20 @@ def dataInfo(digitalcontracts, backendIP):
         dataInfo.append(response.json())
     
     return dataInfo
+
+def smote(vmid, oversample, X_data_id, y_data_id, fns):
+    jobid = newguid()
+    #push string remotely
+    inputs = pushdata(vmid, [oversample])
+    print(inputs)
+    #add test data to inputs
+    inputs.append(X_data_id)
+    inputs.append(y_data_id)
+
+    setparameter(vmid, jobid, fns['smote'], inputs)
+    submitjob(vmid, fns['smote'], jobid)
+    pulldata(vmid, jobid, fns['smote'])
+    results =  queryresult(jobid, fns['smote'])
+    
+    return results[0], results[1]
+    

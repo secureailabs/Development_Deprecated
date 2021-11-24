@@ -1,5 +1,7 @@
 import imblearn
 from imblearn.over_sampling import SMOTE
+from collections import Counter
+
 
 oversample = SMOTE(sampling_strategy=__sample_size, n_jobs=-1)
 print(Counter(__y))
